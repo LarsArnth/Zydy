@@ -1,0 +1,26 @@
+{
+  // Overblikssiden på https://zydy.dk. Ren statisk HTML fra ./public, ingen
+  // server-kode. Samme opsætning som KlaverApp, bare uden Cloudflare Access —
+  // siden er offentlig, den linker kun videre til apps.
+  //
+  // Udrulning:  npm run deploy   (kræver Cloudflare-legitimation, se README.md)
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "zydy",
+  "compatibility_date": "2026-09-01",
+  "account_id": "f4da3a9d6a35690a095dd88f07d2433c",
+
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "single-page-application"
+  },
+
+  // Custom domains: Cloudflare opretter selv DNS-records for begge.
+  "routes": [
+    { "pattern": "zydy.dk", "custom_domain": true },
+    { "pattern": "www.zydy.dk", "custom_domain": true }
+  ],
+
+  // Ingen zydy.larsarnth.workers.dev — kun det rigtige domæne.
+  "workers_dev": false,
+  "preview_urls": false
+}

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Vores apps: Ordle, Imposter og KlaverLær. Tryk på en for at spille.">
+<title>zydy.dk – vores apps</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Ctext x='32' y='42' font-size='34' font-weight='800' text-anchor='middle' fill='%23ffd447' font-family='Helvetica,Arial,sans-serif'%3EZ%3C/text%3E%3C/svg%3E">
+<style>
+  /*
+    Overblikssiden for zydy.dk. Én HTML-fil, ingen build, ingen afhængigheder.
+
+    Tilføj en app: kopiér en <a class="app"> ... </a>-blok nederst i listen,
+    ret href, ikon, navn og undertekst. Det er det hele.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --text:#fff7e6; --muted:#a9acd6; --sun:#ffd447;
+    --r:26px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  body{display:flex;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 28px)}
+  main{width:100%;max-width:640px}
+
+  header{text-align:center;margin-bottom:28px}
+  h1{font-size:44px;line-height:1;margin:0 0 8px;letter-spacing:-1.5px;font-weight:800}
+  h1 span{color:var(--sun)}
+  header p{margin:0;color:var(--muted);font-size:18px}
+
+  .apps{display:flex;flex-direction:column;gap:14px;list-style:none;margin:0;padding:0}
+  .app{display:flex;align-items:center;gap:18px;background:var(--bg2);border-radius:var(--r);
+    padding:16px 18px 16px 16px;color:inherit;text-decoration:none;
+    transition:transform .08s,background .15s;min-height:104px}
+  .app:hover{background:#232860}
+  .app:active{transform:scale(.98)}
+  .app:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
+  .icon{flex:0 0 72px;width:72px;height:72px;border-radius:20px;overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .icon svg{display:block;width:100%;height:100%}
+  .text{flex:1;min-width:0}
+  .text h2{margin:0 0 4px;font-size:24px;line-height:1.1;letter-spacing:-.5px;font-weight:800}
+  .text p{margin:0;color:var(--muted);font-size:16px;line-height:1.35}
+  .tag{display:inline-block;margin-top:8px;font-size:13px;font-weight:700;color:var(--sun);
+    background:rgba(255,212,71,.12);border-radius:999px;padding:3px 10px}
+  .go{flex:0 0 auto;width:40px;height:40px;border-radius:50%;background:var(--sun);color:#1c1f4a;
+    display:grid;place-items:center;font-size:22px;font-weight:800}
+
+  footer{margin-top:36px;text-align:center;color:var(--muted);font-size:14px}
+
+  @media (min-width:560px){
+    h1{font-size:56px}
+    .icon{flex-basis:88px;width:88px;height:88px;border-radius:24px}
+    .text h2{font-size:28px}
+  }
+  @media (prefers-reduced-motion:reduce){ .app{transition:none} }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>zydy<span>.dk</span></h1>
+    <p>Tryk på en app for at spille</p>
+  </header>
+
+  <ul class="apps">
+
+    <li><a class="app" href="https://larsarnth.github.io/ordle/">
+      <span class="icon" aria-hidden="true">
+        <svg viewBox="0 0 512 512"><defs>
+          <linearGradient id="o-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
+          <linearGradient id="o-green" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ddc97"/><stop offset="1" stop-color="#23b57c"/></linearGradient>
+          <linearGradient id="o-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffce4f"/><stop offset="1" stop-color="#eba828"/></linearGradient>
+        </defs>
+          <rect width="512" height="512" fill="url(#o-bg)"/>
+          <g opacity=".14" fill="#fff"><rect x="76" y="96" width="80" height="80" rx="18"/><rect x="176" y="96" width="80" height="80" rx="18"/><rect x="276" y="96" width="80" height="80" rx="18"/><rect x="376" y="96" width="60" height="80" rx="18"/><rect x="76" y="336" width="80" height="80" rx="18"/><rect x="176" y="336" width="80" height="80" rx="18"/><rect x="276" y="336" width="80" height="80" rx="18"/><rect x="376" y="336" width="60" height="80" rx="18"/></g>
+          <rect x="60" y="212" width="88" height="88" rx="20" fill="url(#o-green)"/><rect x="164" y="212" width="88" height="88" rx="20" fill="url(#o-gold)"/><rect x="268" y="212" width="88" height="88" rx="20" fill="#fff" opacity=".92"/><rect x="372" y="212" width="80" height="88" rx="20" fill="#fff" opacity=".18"/>
+          <g font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-size="62" font-weight="700" text-anchor="middle" dominant-baseline="central"><text x="104" y="257" fill="#04231a">O</text><text x="208" y="257" fill="#3a2a00">R</text><text x="312" y="257" fill="#1b2044">D</text><text x="412" y="257" fill="#fff" opacity=".55">Å</text></g>
+        </svg>
+      </span>
+      <span class="text">
+        <h2>Ordle</h2>
+        <p>Gæt dagens danske ord på fem bogstaver. Du har seks forsøg.</p>
+      </span>
+      <span class="go" aria-hidden="true">›</span>
+    </a></li>
+
+    <li><a class="app" href="https://larsarnth.github.io/Imposter/">
+      <span class="icon" aria-hidden="true">
+        <svg viewBox="0 0 512 512">
+          <rect width="512" height="512" fill="#1c1f4a"/>
+          <rect x="96" y="76" width="320" height="360" rx="40" fill="#fff7e6" transform="rotate(-6 256 256)"/>
+          <circle cx="256" cy="200" r="70" fill="#1c1f4a"/>
+          <rect x="176" y="150" width="160" height="34" rx="17" fill="#ff5c7a"/>
+          <circle cx="226" cy="208" r="12" fill="#fff7e6"/><circle cx="286" cy="208" r="12" fill="#fff7e6"/>
+          <text x="256" y="378" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-size="110" font-weight="900" text-anchor="middle" fill="#1c1f4a">?</text>
+        </svg>
+      </span>
+      <span class="text">
+        <h2>Imposter</h2>
+        <p>Alle får det samme ord – undtagen imposterne. Find dem, før de snyder sig til sejren.</p>
+      </span>
+      <span class="go" aria-hidden="true">›</span>
+    </a></li>
+
+    <li><a class="app" href="https://klaver.zydy.dk/">
+      <span class="icon" aria-hidden="true">
+        <svg viewBox="0 0 512 512"><defs>
+          <linearGradient id="k-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f2438"/><stop offset="1" stop-color="#0f111c"/></linearGradient>
+          <linearGradient id="k-rainbow" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF5964"/><stop offset=".25" stop-color="#FFD166"/><stop offset=".5" stop-color="#06D6A0"/><stop offset=".75" stop-color="#4FACFE"/><stop offset="1" stop-color="#8338EC"/></linearGradient>
+          <linearGradient id="k-white" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".85" stop-color="#F5F6FA"/><stop offset="1" stop-color="#D5D9E2"/></linearGradient>
+          <linearGradient id="k-black" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2D303E"/><stop offset="1" stop-color="#10121A"/></linearGradient>
+        </defs>
+          <rect width="512" height="512" fill="url(#k-bg)"/>
+          <path d="M64 160C140 100 220 200 320 120 380 70 420 140 448 110" fill="none" stroke="url(#k-rainbow)" stroke-width="14" stroke-linecap="round"/>
+          <g fill="#FFD166"><circle cx="390" cy="180" r="18"/><rect x="404" y="110" width="8" height="70"/><path d="M412 110C440 115 445 140 445 140" fill="none" stroke="#FFD166" stroke-width="8" stroke-linecap="round"/></g>
+          <rect x="56" y="220" width="400" height="210" rx="16" fill="#0A0B10" stroke="#252836" stroke-width="4"/>
+          <g fill="url(#k-white)"><rect x="64" y="226" width="52" height="196" rx="6"/><rect x="120" y="226" width="52" height="196" rx="6"/><rect x="176" y="226" width="52" height="196" rx="6"/><rect x="232" y="226" width="52" height="196" rx="6"/><rect x="288" y="226" width="52" height="196" rx="6"/><rect x="344" y="226" width="52" height="196" rx="6"/><rect x="400" y="226" width="48" height="196" rx="6"/></g>
+          <g fill="url(#k-black)"><rect x="100" y="226" width="32" height="125" rx="4"/><rect x="156" y="226" width="32" height="125" rx="4"/><rect x="268" y="226" width="32" height="125" rx="4"/><rect x="324" y="226" width="32" height="125" rx="4"/><rect x="380" y="226" width="32" height="125" rx="4"/></g>
+          <g><circle cx="90" cy="396" r="6" fill="#FF5964"/><circle cx="146" cy="396" r="6" fill="#FF9F1C"/><circle cx="202" cy="396" r="6" fill="#FFD166"/><circle cx="258" cy="396" r="6" fill="#06D6A0"/><circle cx="314" cy="396" r="6" fill="#4FACFE"/><circle cx="370" cy="396" r="6" fill="#8338EC"/><circle cx="424" cy="396" r="6" fill="#FF006E"/></g>
+        </svg>
+      </span>
+      <span class="text">
+        <h2>KlaverLær</h2>
+        <p>Lær at spille klaver med faldende noder og sjove sange. Bedst på iPad.</p>
+        <span class="tag">Virker hjemme uden login</span>
+      </span>
+      <span class="go" aria-hidden="true">›</span>
+    </a></li>
+
+  </ul>
+
+  <footer>Familien Arnths apps · zydy.dk</footer>
+</main>
+</body>
+</html>

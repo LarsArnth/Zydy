@@ -1,0 +1,30 @@
+name: Deploy til Cloudflare
+
+# Auto-deploy: hvert push til main udruller public/ til https://zydy.dk
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-zydy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Udrul
+        uses: cloudflare/wrangler-action@v3
+        with:
+          # Konto-ID står i wrangler.jsonc, så kun tokenet skal være en secret.
+          # Brug samme smalle token som KlaverApp (Workers Scripts + Workers
+          # Routes på zydy.dk):  gh secret set CLOUDFLARE_API_TOKEN --repo LarsArnth/Zydy
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Wrangler 3 kræver et "main"-script og fejler på en ren asset-Worker.
+          wranglerVersion: '4'
+
+      - name: Kvittering
+        run: echo "Udrullet til https://zydy.dk"
