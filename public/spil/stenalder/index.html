@@ -1,0 +1,737 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1410">
+<meta name="description" content="Stenalder – brætspil for 2-4 spillere på én iPad: sæt dine folk ud, saml træ, ler, sten og guld, byg hytter og køb kort. Husk maden!">
+<title>Stenalder – zydy.dk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%233a2d23'/%3E%3Cpath d='M12 50 L32 16 L52 50 Z' fill='%23e9b44c'/%3E%3Crect x='27' y='36' width='10' height='14' fill='%233a2d23'/%3E%3C/svg%3E">
+<style>
+/*
+  Stenalder – hot-seat-udgave af brætspillet til 2-4 spillere på én iPad.
+  Reglerne ligger i regler.mjs (testet i Node), data i data.mjs. Denne fil er
+  kun UI: den tegner tilstanden og oversætter tryk til handlinger.
+*/
+:root{
+  --bg:#1a1410; --bg2:#2a211a; --bg3:#3a2d23; --bg4:#4a3a2d; --text:#f6ead8; --muted:#b9a894;
+  --sun:#e9b44c; --coral:#e0533f; --mint:#6cc48a; --sky:#5b9be0; --ink:#1a1410; --r:20px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;
+  padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 14px);
+  touch-action:manipulation;-webkit-user-select:none;user-select:none}
+h1{font-size:40px;line-height:1;margin:0 0 6px;letter-spacing:-1.2px;font-weight:800}
+h2{font-size:24px;line-height:1.1;margin:0 0 8px;letter-spacing:-.5px;font-weight:800}
+h3{font-size:17px;margin:14px 0 4px;font-weight:800}
+p{margin:0 0 12px;color:var(--muted);font-size:16px;line-height:1.4}
+button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+.btn{width:100%;padding:16px;border-radius:var(--r);font-size:18px;font-weight:700;background:var(--sun);margin-top:10px;transition:transform .08s}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:var(--bg3);color:var(--text)}
+.btn.danger{background:var(--coral);color:#fff}
+.btn:disabled{opacity:.4;transform:none}
+.screen{display:none;flex:1;flex-direction:column;width:100%;max-width:1180px;margin:0 auto;min-height:0}
+.screen.on{display:flex}
+input{font:inherit;color:var(--text);background:var(--bg3);border:0;border-radius:14px;padding:12px 14px;width:100%;font-size:17px}
+input:focus{outline:2px solid var(--sun)}
+
+/* Topbar */
+.top{display:flex;align-items:center;gap:8px;min-height:44px;margin-bottom:6px}
+.back{color:var(--muted);text-decoration:none;font-size:17px;font-weight:600;min-width:44px;min-height:44px;display:inline-flex;align-items:center}
+.top .title{flex:1;font-weight:800;font-size:20px;letter-spacing:-.4px;line-height:1.1}
+.top .title small{display:block;font-size:12px;font-weight:600;color:var(--muted)}
+.ib{min-width:44px;min-height:44px;border-radius:14px;background:var(--bg3);color:var(--text);font-weight:800;font-size:18px}
+
+/* Startskærm */
+#start{overflow-y:auto;max-width:560px}
+#start h1 span{color:var(--sun)}
+.seg{display:flex;background:var(--bg2);border-radius:16px;padding:4px;gap:4px;margin:6px 0 12px}
+.seg button{flex:1;padding:12px;border-radius:12px;background:transparent;color:var(--muted);font-weight:700;font-size:17px}
+.seg button.on{background:var(--sun);color:var(--ink)}
+.navne{display:flex;flex-direction:column;gap:8px}
+.navne div{display:flex;align-items:center;gap:10px}
+.dot{width:22px;height:22px;border-radius:50%;flex:0 0 auto;box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
+.note{font-size:13px;color:var(--muted);margin-top:14px;line-height:1.4}
+
+/* Spilskærm */
+#game{overflow-y:auto;-webkit-overflow-scrolling:touch}
+#banner{border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:10px;min-height:52px;
+  background:var(--bg2);border-left:8px solid var(--pc,var(--sun));margin-bottom:10px;transition:border-color .3s}
+#banner .who{font-weight:800;font-size:17px;white-space:nowrap}
+#banner .what{flex:1;color:var(--muted);font-size:15px;line-height:1.25}
+#banner.ny{animation:blink .5s}
+@keyframes blink{0%,100%{background:var(--bg2)}50%{background:var(--bg4)}}
+.sbtn{min-height:40px;padding:0 14px;border-radius:999px;font-weight:700;font-size:14px;white-space:nowrap;background:var(--bg3);color:var(--text)}
+.sbtn.sun{background:var(--sun);color:var(--ink)}
+#msg{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 20px);transform:translateX(-50%);
+  background:var(--coral);color:#fff;font-weight:700;padding:10px 16px;border-radius:999px;font-size:15px;opacity:0;
+  pointer-events:none;transition:opacity .2s;z-index:30;max-width:90vw;text-align:center}
+#msg.show{opacity:1}
+#msg.good{background:var(--mint);color:var(--ink)}
+
+.main{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:980px){.main{grid-template-columns:1fr 330px;align-items:start}}
+.braet{display:flex;flex-direction:column;gap:10px}
+.raekke{display:grid;gap:8px}
+.raekke.ress{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+.raekke.landsby{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.raekke.kortr{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.raekke.bygr{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:2px 0 -4px}
+
+.sted,.kort{min-width:0;overflow-wrap:anywhere}
+.sted{background:var(--bg2);border-radius:16px;padding:10px;min-height:86px;position:relative;cursor:pointer;
+  border:2px solid transparent;transition:transform .1s,border-color .15s;display:flex;flex-direction:column;gap:6px}
+.sted:active{transform:scale(.97)}
+.sted.ok{border-color:rgba(233,180,76,.55)}
+.sted.mine{border-color:var(--sun);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(233,180,76,.0)}50%{box-shadow:0 0 0 6px rgba(233,180,76,.35)}}
+.sted.dim{opacity:.45}
+.sted .hd{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:800;font-size:15px;line-height:1.1;overflow-wrap:normal}
+@media (max-width:420px){.sted .hd{font-size:14px}}
+.sted .hd .ik{font-size:20px}
+.sted .sub{font-size:12px;color:var(--muted);line-height:1.25}
+.sted .sub b{color:var(--sun);font-weight:800;font-size:13px}
+.pladser{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;min-height:14px}
+.pl{width:14px;height:14px;border-radius:50%;background:var(--bg4);box-shadow:inset 0 0 0 1px rgba(0,0,0,.3)}
+.pl.f{box-shadow:inset 0 0 0 2px rgba(0,0,0,.35)}
+.pl.big{width:22px;height:22px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.5)}
+
+.kort{background:var(--bg2);border-radius:16px;padding:10px;min-height:120px;position:relative;cursor:pointer;border:2px solid transparent;
+  display:flex;flex-direction:column;gap:4px;transition:transform .1s}
+.kort:active{transform:scale(.97)}
+.kort.ok{border-color:rgba(233,180,76,.55)}
+.kort.mine{border-color:var(--sun);animation:pulse 1.2s ease-in-out infinite}
+.kort .pris{position:absolute;top:8px;right:8px;background:var(--sun);color:var(--ink);font-weight:800;font-size:12px;border-radius:999px;padding:3px 8px}
+.kort .tomt{color:var(--muted);font-size:13px;margin:auto}
+.kort .top{font-size:22px;line-height:1.1;margin-top:18px}
+.kort .toptxt{font-size:12px;color:var(--text);line-height:1.2;font-weight:600}
+.kort .bund{margin-top:auto;padding-top:6px;border-top:1px dashed rgba(255,255,255,.12);font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.kort .bund .ik{font-size:18px}
+.kort .bund.gron{color:var(--mint)}
+.kort .figur{position:absolute;bottom:8px;right:8px}
+.kort.byg .top{font-size:17px;margin-top:18px}
+.kort .top,.kort .toptxt{padding-right:0}
+.kort .pris,.kort .rest{max-width:48%;text-align:center}
+.kort.byg .pt{font-weight:800;color:var(--sun);font-size:15px}
+.kort .rest{position:absolute;top:8px;right:8px;background:var(--bg4);color:var(--text);font-weight:700;font-size:12px;border-radius:999px;padding:3px 8px}
+
+/* Spillere */
+.spillere{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+@media (min-width:980px){.spillere{grid-template-columns:1fr}}
+.spiller{background:var(--bg2);border-radius:16px;padding:10px 12px;border-left:8px solid var(--pc);display:flex;flex-direction:column;gap:6px;opacity:.85}
+.spiller.aktiv{opacity:1;box-shadow:0 0 0 2px var(--pc)}
+.spiller .navn{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+.spiller .navn .pt{margin-left:auto;background:var(--sun);color:var(--ink);border-radius:999px;padding:2px 10px;font-size:14px}
+.spiller .row{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:14px;color:var(--muted)}
+.spiller .row b{color:var(--text);font-weight:700}
+.spiller .row span{white-space:nowrap}
+.redsk{display:inline-flex;gap:3px;vertical-align:middle}
+.redsk i{display:inline-flex;width:20px;height:20px;border-radius:6px;background:var(--bg4);font-style:normal;font-size:12px;font-weight:800;align-items:center;justify-content:center;color:var(--text)}
+.redsk i.b{opacity:.35;text-decoration:line-through}
+.redsk i.e{background:var(--sky);color:#fff}
+.spiller .knapper{display:flex;gap:6px;flex-wrap:wrap}
+.spiller .knapper .sbtn{min-height:34px;font-size:13px;padding:0 12px}
+
+/* Dialog */
+#dlg{position:fixed;inset:0;display:none;align-items:flex-end;justify-content:center;background:rgba(10,7,5,.7);padding:12px;z-index:20;
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+@media (min-width:700px){#dlg{align-items:center}}
+#dlg.on{display:flex}
+.panel{position:relative;background:var(--bg2);border-radius:24px;padding:20px 18px;width:100%;max-width:460px;max-height:calc(100dvh - 40px);overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);animation:pop .25s cubic-bezier(.2,.9,.3,1.2)}
+.panel.wide{max-width:640px}
+@keyframes pop{from{transform:translateY(20px);opacity:0}}
+.panel h2{font-size:22px}
+.panel .who{display:inline-block;border-radius:999px;padding:3px 10px;font-size:13px;font-weight:800;color:#fff;background:var(--pc,var(--bg4));margin-bottom:8px}
+.terninger{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.die{width:46px;height:46px;border-radius:12px;background:var(--text);color:var(--ink);font-weight:800;font-size:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.die.valgt{opacity:.25}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+.chip{min-height:44px;padding:0 16px;border-radius:14px;background:var(--bg3);color:var(--text);font-weight:800;font-size:16px;border:2px solid transparent}
+.chip.on{border-color:var(--sun);background:var(--bg4)}
+.chip.e{background:#264a6b}
+.sum{font-size:17px;margin:6px 0;color:var(--muted)}
+.sum b{color:var(--text)}
+.sum .res{color:var(--sun);font-weight:800}
+.steppers{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.stp{display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:14px;padding:6px 8px 6px 12px}
+.stp .nm{flex:1;font-weight:700;font-size:16px}
+.stp .nm small{color:var(--muted);font-weight:600;margin-left:6px}
+.stp button{width:44px;height:40px;border-radius:12px;background:var(--bg4);color:var(--text);font-size:22px;font-weight:800}
+.stp button:disabled{opacity:.3}
+.stp .v{width:28px;text-align:center;font-weight:800;font-size:18px}
+.antal{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:8px;margin:10px 0}
+.antal button{height:56px;border-radius:14px;background:var(--bg3);color:var(--text);font-size:22px;font-weight:800}
+.valg{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.valg button{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--bg3);color:var(--text);font-size:16px;font-weight:700;text-align:left}
+.valg button .die{width:38px;height:38px;font-size:20px;flex:0 0 auto}
+.valg button:disabled{opacity:.3}
+.rows{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+.rows div{display:flex;justify-content:space-between;gap:10px;font-size:15px;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);padding-top:4px}
+.rows div b{color:var(--text)}
+.hjaelp p{font-size:15px}
+.hjaelp ul{margin:0 0 10px;padding-left:18px;color:var(--muted);font-size:15px;line-height:1.45}
+.hjaelp li b{color:var(--text)}
+.logg{font-size:13px;color:var(--muted);line-height:1.5;max-height:50vh;overflow-y:auto}
+.kortliste{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.kortliste .kort{min-height:100px;cursor:default}
+.slutscore{width:100%;border-collapse:collapse;font-size:14px}
+.slutscore th,.slutscore td{padding:5px 4px;text-align:right;border-bottom:1px solid rgba(255,255,255,.08)}
+.slutscore th:first-child,.slutscore td:first-child{text-align:left;color:var(--muted);font-weight:600}
+.slutscore thead th{font-size:12px;color:var(--muted)}
+.slutscore .tot td{font-weight:800;font-size:16px;color:var(--sun)}
+.vinder{font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--sun);margin:6px 0 4px}
+.tbl{overflow-x:auto}
+</style></head><body>
+
+<!-- Startskærm -->
+<section id="start" class="screen on">
+  <div class="top"><a class="back" href="/">‹ zydy.dk</a></div>
+  <h1>Sten<span>alder</span></h1>
+  <p>Et brætspil for 2-4 spillere på én iPad. I skiftes til at sætte folk ud, samle træ, ler, sten og guld, bygge hytter og købe kort. Og husk maden hver runde!</p>
+  <button class="btn" id="btnFortsaet" hidden>Fortsæt spillet</button>
+  <div class="seg" id="antalSpillere">
+    <button data-n="2">2 spillere</button><button data-n="3" class="on">3 spillere</button><button data-n="4">4 spillere</button>
+  </div>
+  <div class="navne" id="navne"></div>
+  <button class="btn" id="btnStart">Start nyt spil</button>
+  <button class="btn ghost" id="btnHjaelpStart">Sådan spiller du</button>
+  <p class="note">Spillet gemmes automatisk på denne enhed, så I kan holde pause. Det er en hjemmelavet udgave af det klassiske arbejderplaceringsspil; alle navne og billeder er vores egne.</p>
+</section>
+
+<!-- Spilskærm -->
+<section id="game" class="screen">
+  <div class="top">
+    <a class="back" href="/">‹</a>
+    <div class="title">Stenalder<small id="status"></small></div>
+    <button class="ib" id="btnLog" title="Seneste hændelser">☰</button>
+    <button class="ib" id="btnHjaelp" title="Sådan spiller du">?</button>
+    <button class="ib" id="btnMenu" title="Menu">⋯</button>
+  </div>
+  <div id="banner"><span class="who"></span><span class="what"></span><button class="sbtn" id="btnFortryd" hidden>Fortryd</button></div>
+  <div class="main">
+    <div class="braet" id="braet"></div>
+    <div class="spillere" id="spillere"></div>
+  </div>
+</section>
+
+<div id="dlg"><div class="panel" id="panel"></div></div>
+<div id="msg"></div>
+
+<script type="module">
+import { nytSpil, udfoer, lovligePlaceringer, hvemErPaa, tilfaeldigHandling, kanBetaleBygning, vaerdiAf, ledigeRedskaber, redskabsvaerdi, FARVER, beskrivRess } from './regler.mjs';
+import { RESSOURCER, VAERDI, NAVN, IKON, STEDER, LANDSBY, TERNINGSTEDER, KORT, BYGNINGER, KULTUR, SPECIALIST, TERNINGKORT_GEVINST,
+  beskrivTop, topIkon, beskrivBund, bundIkon, beskrivBygning, bygningIkon, bygningPointFast } from './data.mjs';
+
+const $ = s => document.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const GEM = 'zydy.stenalder.spil', GEM_NAVNE = 'zydy.stenalder.navne';
+const params = new URLSearchParams(location.search);
+const seedParam = params.get('seed');
+
+let S = null;          // spiltilstand
+let sidstePaa = null;  // hvem var på sidst (til blink ved skift)
+let dlgNoegle = null;  // hvilken afventer-dialog er åben
+let D = {};            // dialogens midlertidige valg
+
+// ---- Gem/hent ------------------------------------------------------------
+function gem() { try { localStorage.setItem(GEM, JSON.stringify(S)); } catch {} }
+function hent() { try { const t = localStorage.getItem(GEM); return t ? JSON.parse(t) : null; } catch { return null; } }
+function slet() { try { localStorage.removeItem(GEM); } catch {} }
+
+// ---- Startskærm ----------------------------------------------------------
+let antal = 3;
+const gemteNavne = (() => { try { return JSON.parse(localStorage.getItem(GEM_NAVNE) || 'null'); } catch { return null; } })() || ['', '', '', ''];
+function tegnNavne() {
+  const box = $('#navne'); box.innerHTML = '';
+  for (let i = 0; i < antal; i++) {
+    const row = el('div');
+    row.append(Object.assign(el('span', 'dot'), { style: `background:${FARVER[i].hex}` }));
+    const inp = Object.assign(el('input'), { placeholder: `Spiller ${i + 1} (${FARVER[i].navn.toLowerCase()})`, value: gemteNavne[i] || '', maxLength: 14 });
+    inp.dataset.i = i; inp.autocomplete = 'off';
+    row.append(inp); box.append(row);
+  }
+}
+$('#antalSpillere').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  antal = Number(b.dataset.n);
+  [...$('#antalSpillere').children].forEach(x => x.classList.toggle('on', x === b));
+  tegnNavne();
+});
+tegnNavne();
+function startNyt(navneListe) {
+  const navne = navneListe ?? [...$('#navne').querySelectorAll('input')].map((inp, i) => inp.value.trim() || `Spiller ${i + 1}`);
+  try { localStorage.setItem(GEM_NAVNE, JSON.stringify(navne)); } catch {}
+  S = nytSpil({ navne, seed: seedParam ? Number(seedParam) : undefined });
+  sidstePaa = null; dlgNoegle = null;
+  gem(); visSkaerm('game'); render();
+}
+$('#btnStart').addEventListener('click', () => startNyt());
+$('#btnFortsaet').addEventListener('click', () => { S = hent(); if (S) { visSkaerm('game'); render(); } });
+$('#btnHjaelpStart').addEventListener('click', visHjaelp);
+{
+  const g = hent();
+  if (g && g.fase !== 'slut' && !seedParam) { $('#btnFortsaet').hidden = false; $('#btnFortsaet').textContent = `Fortsæt spillet (runde ${g.runde}, ${g.spillere.map(p => p.navn).join(', ')})`; }
+}
+function visSkaerm(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); }
+
+// ---- Handlinger ----------------------------------------------------------
+function goer(h) {
+  try {
+    S = udfoer(S, h);
+    gem();
+    render();
+    return true;
+  } catch (e) {
+    besked(e.message);
+    return false;
+  }
+}
+let msgT;
+function besked(t, god) {
+  const m = $('#msg'); m.textContent = t; m.className = 'show' + (god ? ' good' : '');
+  clearTimeout(msgT); msgT = setTimeout(() => m.classList.remove('show'), 2200);
+}
+
+// ---- Tegning -------------------------------------------------------------
+const farve = i => FARVER[S.spillere[i].farve].hex;
+const figur = (i, n) => `<span class="pl f big" style="background:${farve(i)}">${n > 1 ? n : ''}</span>`;
+
+function render() {
+  if (!S) return;
+  const paa = hvemErPaa(S);
+  $('#status').textContent = `Runde ${S.runde} · ${{ placering: 'Placér folk', handling: 'Udfør handlinger', fodring: 'Fodring', slut: 'Slut' }[S.fase]}`;
+  tegnBanner(paa);
+  tegnBraet(paa);
+  tegnSpillere(paa);
+  if (S.fase === 'slut') visSlut();
+  else if (S.afventer) visAfventer();
+  else if (dlgNoegle) lukDlg();
+  if (paa !== sidstePaa) { $('#banner').classList.remove('ny'); void $('#banner').offsetWidth; $('#banner').classList.add('ny'); sidstePaa = paa; }
+}
+
+function tegnBanner(paa) {
+  const b = $('#banner');
+  const sp = paa != null ? S.spillere[paa] : null;
+  b.style.setProperty('--pc', sp ? farve(paa) : 'var(--sun)');
+  b.querySelector('.who').textContent = sp ? sp.navn : '';
+  let tekst = '';
+  if (S.fase === 'placering') tekst = `Sæt folk ud: tryk på et sted med gul kant. Du har ${sp.ledige} ${sp.ledige === 1 ? 'person' : 'folk'} tilbage.`;
+  else if (S.fase === 'handling') tekst = S.afventer ? 'Træf dit valg i boksen.' : 'Udfør dine handlinger: tryk på et sted, hvor dine folk står. Rækkefølgen bestemmer du selv.';
+  else if (S.fase === 'fodring') tekst = 'Folkene skal have mad.';
+  else if (S.fase === 'slut') tekst = 'Spillet er slut.';
+  b.querySelector('.what').textContent = tekst;
+  const f = $('#btnFortryd');
+  f.hidden = !(S.fase === 'placering' && S.fortryd);
+  if (!f.hidden) f.textContent = `Fortryd (${S.fortryd.spillere[S.fortryd.aktiv].navn})`;
+}
+
+function tegnBraet(paa) {
+  const box = $('#braet'); box.innerHTML = '';
+  const lovlige = S.fase === 'placering' ? new Set(lovligePlaceringer(S).map(p => p.sted)) : new Set();
+  const mine = S.fase === 'handling' && !S.afventer ? new Set(S.spillere[S.aktiv].placeringer.map(p => p.sted)) : new Set();
+  const klasse = st => (lovlige.has(st) ? ' ok' : '') + (mine.has(st) ? ' mine' : '') + (S.fase === 'handling' && !mine.has(st) && !S.afventer && S.braet[st].some(p => p.spiller === S.aktiv) ? '' : '');
+  const pladser = (st, kap) => {
+    const parts = [];
+    for (const p of S.braet[st]) parts.push(figur(p.spiller, p.antal));
+    const brugt = S.braet[st].reduce((a, p) => a + p.antal, 0);
+    if (kap < 99) for (let i = brugt; i < kap; i++) parts.push('<span class="pl"></span>');
+    return `<div class="pladser">${parts.join('')}</div>`;
+  };
+
+  box.append(el('div', 'lbl', 'Jagt og ressourcer · terningerne lægges sammen og deles med tallet'));
+  const ress = el('div', 'raekke ress');
+  for (const st of TERNINGSTEDER) {
+    const d = STEDER[st];
+    const e = el('div', 'sted' + klasse(st), `<div class="hd"><span class="ik">${d.ikon}</span>${d.navn}</div>
+      <div class="sub">${IKON[d.ressource]} <b>÷${VAERDI[d.ressource]}</b> · ${st === 'jagt' ? 'fri plads' : '7 pladser'}</div>${pladser(st, d.kapacitet)}`);
+    e.dataset.sted = st; ress.append(e);
+  }
+  box.append(ress);
+
+  box.append(el('div', 'lbl', 'Landsbyen' + (S.spillere.length < 4 ? ' · kun 2 af 3 må bruges pr. runde' : '')));
+  const landsby = el('div', 'raekke landsby');
+  for (const st of LANDSBY) {
+    const d = STEDER[st];
+    const e = el('div', 'sted' + klasse(st), `<div class="hd"><span class="ik">${d.ikon}</span>${d.navn}</div><div class="sub">${d.effekt}</div>${pladser(st, d.kapacitet)}`);
+    e.dataset.sted = st; landsby.append(e);
+  }
+  box.append(landsby);
+
+  box.append(el('div', 'lbl', `Civilisationskort · prisen er 1-4 valgfri ressourcer (ikke mad) · ${S.kortbunke.length} i bunken`));
+  const kr = el('div', 'raekke kortr');
+  for (let i = 0; i < S.kortudlagt.length; i++) {
+    const st = `kort:${i}`;
+    const id = S.kortudlagt[i];
+    const e = el('div', 'kort' + klasse(st));
+    e.dataset.sted = st;
+    if (id == null) e.innerHTML = `<span class="pris">${i + 1}</span><span class="tomt">Tom plads</span>`;
+    else e.innerHTML = kortHtml(KORT[id], i + 1) + (S.braet[st].length ? `<span class="figur">${figur(S.braet[st][0].spiller, 1)}</span>` : '');
+    kr.append(e);
+  }
+  box.append(kr);
+
+  box.append(el('div', 'lbl', 'Bygninger · giver point med det samme · spillet slutter, når en stak er tom'));
+  const br = el('div', 'raekke bygr');
+  for (let i = 0; i < S.bygningsstakke.length; i++) {
+    const st = `bygning:${i}`;
+    const stak = S.bygningsstakke[i];
+    const e = el('div', 'kort byg' + klasse(st));
+    e.dataset.sted = st;
+    if (!stak.length) e.innerHTML = `<span class="tomt">Stakken er tom</span>`;
+    else e.innerHTML = bygningHtml(BYGNINGER[stak[0]], stak.length) + (S.braet[st].length ? `<span class="figur">${figur(S.braet[st][0].spiller, 1)}</span>` : '');
+    br.append(e);
+  }
+  box.append(br);
+}
+
+function kortHtml(k, pris) {
+  const gron = k.bund.type === 'kultur';
+  return `${pris != null ? `<span class="pris">${pris} ress.</span>` : ''}
+    <div class="top">${topIkon(k.top)}</div><div class="toptxt">${esc(beskrivTop(k.top))}</div>
+    <div class="bund${gron ? ' gron' : ''}"><span class="ik">${bundIkon(k.bund)}</span><span>${gron ? KULTUR[k.bund.symbol].navn : `${k.bund.antal} × ${SPECIALIST[k.bund.specialist].navn.toLowerCase()}`}</span></div>`;
+}
+function bygningHtml(b, rest) {
+  const pt = b.type === 'fast' ? `<span class="pt">${bygningPointFast(b)} point</span>` : `<span class="pt">Point = værdi</span>`;
+  return `${rest != null ? `<span class="rest">${rest} tilbage</span>` : ''}<div class="top">🛖 ${bygningIkon(b)}</div><div class="toptxt">${pt}</div>
+    <div class="bund"><span>${b.type === 'fast' ? 'Fast pris' : b.type === 'antal' ? `Præcis ${b.antal} ressourcer, ${b.slags} slags` : '1 til 7 ressourcer'}</span></div>`;
+}
+
+function tegnSpillere(paa) {
+  const box = $('#spillere'); box.innerHTML = '';
+  S.spillere.forEach((sp, i) => {
+    const e = el('div', 'spiller' + (i === paa ? ' aktiv' : ''));
+    e.style.setProperty('--pc', farve(i));
+    const ude = sp.folk - sp.ledige - (S.fase === 'placering' ? 0 : 0);
+    const paaBraet = sp.placeringer.reduce((a, p) => a + p.antal, 0);
+    const redsk = sp.redskaber.map((v, k) => `<i class="${sp.brugte[k] ? 'b' : ''}">${v || '·'}</i>`).join('') + sp.engangsredskaber.map(x => `<i class="e">${x.vaerdi}</i>`).join('');
+    const folkTekst = S.fase === 'placering' ? `${sp.ledige} hjemme` : paaBraet ? `${paaBraet} ude` : 'alle hjemme';
+    e.innerHTML = `<div class="navn"><span class="dot" style="background:${farve(i)}"></span>${esc(sp.navn)}<span class="pt">${sp.point} p</span></div>
+      <div class="row"><span>👤 <b>${sp.folk}</b> <small>(${folkTekst})</small></span><span>🍖 <b>${sp.mad}</b></span><span>🌾 <b>${sp.landbrug}</b></span><span>🪓 <span class="redsk">${redsk}</span></span></div>
+      <div class="row">${RESSOURCER.map(r => `<span>${IKON[r]} <b>${sp.ressourcer[r]}</b></span>`).join('')}<span>🛖 <b>${sp.bygninger.length}</b></span><span>🃏 <b>${sp.kort.length}</b></span></div>
+      <div class="knapper"><button class="sbtn" data-vis="kort" data-i="${i}">Se kort</button>${sp.aabneKort.length && kanBrugeValgfri(i) ? `<button class="sbtn sun" data-vis="valgfri2" data-i="${i}">Tag 2 valgfri ressourcer</button>` : ''}</div>`;
+    box.append(e);
+  });
+}
+function kanBrugeValgfri(i) {
+  const a = S.afventer;
+  if (S.fase === 'handling' && S.aktiv === i && (!a || ((a.type === 'betalKort' || a.type === 'betalBygning') && a.spiller === i))) return true;
+  if (S.fase === 'fodring' && a && a.type === 'fodring' && a.spiller === i) return true;
+  return false;
+}
+
+// ---- Tryk på brættet -----------------------------------------------------
+$('#braet').addEventListener('click', e => {
+  const t = e.target.closest('[data-sted]'); if (!t) return;
+  const st = t.dataset.sted;
+  if (S.fase === 'placering' && !S.afventer) {
+    const regel = lovligePlaceringer(S).find(p => p.sted === st);
+    if (regel) {
+      if (regel.min === regel.max) goer({ type: 'placer', sted: st, antal: regel.min });
+      else visAntal(st, regel);
+      return;
+    }
+  }
+  if (S.fase === 'handling' && !S.afventer && S.spillere[S.aktiv].placeringer.some(p => p.sted === st)) {
+    goer({ type: 'handling', sted: st });
+    return;
+  }
+  visInfo(st);
+});
+$('#spillere').addEventListener('click', e => {
+  const b = e.target.closest('[data-vis]'); if (!b) return;
+  const i = Number(b.dataset.i);
+  if (b.dataset.vis === 'kort') visSpillerKort(i);
+  if (b.dataset.vis === 'valgfri2') visValgfri2(i);
+});
+$('#btnFortryd').addEventListener('click', () => goer({ type: 'fortryd' }));
+$('#btnHjaelp').addEventListener('click', visHjaelp);
+$('#btnLog').addEventListener('click', visLog);
+$('#btnMenu').addEventListener('click', visMenu);
+
+// ---- Dialoger ------------------------------------------------------------
+function aabnDlg(html, { bred, luk } = {}) {
+  const p = $('#panel'); p.className = 'panel' + (bred ? ' wide' : ''); p.innerHTML = html;
+  $('#dlg').classList.add('on');
+  $('#dlg').onclick = ev => { if (ev.target.id === 'dlg' && luk) lukDlg(); };
+  return p;
+}
+function lukDlg() { $('#dlg').classList.remove('on'); dlgNoegle = null; D = {}; }
+const hvem = i => `<span class="who" style="--pc:${farve(i)}">${esc(S.spillere[i].navn)}</span>`;
+
+function visAntal(st, regel) {
+  const d = STEDER[st];
+  const p = aabnDlg(`${hvem(S.aktiv)}<h2>Hvor mange til ${d.navn.toLowerCase()}?</h2><p>Der er plads til ${regel.max === S.spillere[S.aktiv].ledige ? 'alle dine' : regel.max} folk. Hver person giver én terning.</p>
+    <div class="antal">${Array.from({ length: regel.max - regel.min + 1 }, (_, k) => `<button data-n="${regel.min + k}">${regel.min + k}</button>`).join('')}</div>
+    <button class="btn ghost" data-luk>Annullér</button>`, { luk: true });
+  p.onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.dataset.luk != null) { lukDlg(); return; }
+    if (b.dataset.n) { lukDlg(); goer({ type: 'placer', sted: st, antal: Number(b.dataset.n) }); }
+  };
+}
+
+function visAfventer() {
+  const a = S.afventer;
+  const noegle = JSON.stringify([a.type, a.spiller, a.sted, a.kast, a.terninger, a.taget, a.mangler, S.runde]);
+  if (noegle === dlgNoegle) { opdaterAfventer(); return; }
+  dlgNoegle = noegle; D = {};
+  if (a.type === 'redskaber') visRedskaber(a);
+  else if (a.type === 'betalKort' || a.type === 'betalBygning') visBetal(a);
+  else if (a.type === 'terningkort') visTerningkort(a);
+  else if (a.type === 'fodring') visFodring(a);
+}
+// Dialogen er åben, men spillerens ressourcer kan være ændret (fx "2 valgfri")
+function opdaterAfventer() {
+  const a = S.afventer;
+  if (a.type === 'betalKort' || a.type === 'betalBygning' || a.type === 'fodring') tegnSteppere();
+}
+
+function visRedskaber(a) {
+  const sp = S.spillere[a.spiller];
+  D.pladser = new Set(); D.engangs = new Set();
+  const ledige = ledigeRedskaber(sp);
+  const hvor = a.sted ? STEDER[a.sted].navn.toLowerCase() : 'kortet';
+  const p = aabnDlg(`${hvem(a.spiller)}<h2>${IKON[a.ressource]} ${hvor.charAt(0).toUpperCase() + hvor.slice(1)}: du slog ${a.sum}</h2>
+    <div class="terninger">${a.kast.map(k => `<span class="die">${k}</span>`).join('')}</div>
+    <p>Hvert redskab kan lægges til én gang pr. runde. Tryk for at bruge det. Engangsredskaber (blå) forsvinder efter brug.</p>
+    <div class="chips">${ledige.map(r => `<button class="chip" data-plads="${r.plads}">+${r.vaerdi}</button>`).join('')}${sp.engangsredskaber.map(x => `<button class="chip e" data-engangs="${x.kort}">+${x.vaerdi} ×1</button>`).join('')}</div>
+    <div class="sum" id="rsum"></div>
+    <button class="btn" id="btnTag">Tag udbyttet</button>`);
+  const opd = () => {
+    let bonus = 0;
+    for (const i of D.pladser) bonus += sp.redskaber[i];
+    for (const k of D.engangs) bonus += sp.engangsredskaber.find(x => x.kort === k).vaerdi;
+    const total = a.sum + bonus;
+    $('#rsum').innerHTML = `${a.sum}${bonus ? ` + ${bonus}` : ''} = <b>${total}</b> ÷ ${VAERDI[a.ressource]} → <span class="res">${Math.floor(total / VAERDI[a.ressource])} ${NAVN[a.ressource]}</span>`;
+  };
+  opd();
+  p.onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.dataset.plads != null) { const i = Number(b.dataset.plads); D.pladser.has(i) ? D.pladser.delete(i) : D.pladser.add(i); b.classList.toggle('on'); opd(); }
+    else if (b.dataset.engangs != null) { const k = Number(b.dataset.engangs); D.engangs.has(k) ? D.engangs.delete(k) : D.engangs.add(k); b.classList.toggle('on'); opd(); }
+    else if (b.id === 'btnTag') { const h = { type: 'brugRedskaber', pladser: [...D.pladser], engangs: [...D.engangs] }; lukDlg(); goer(h); }
+  };
+}
+
+function stepperHtml(sp, maks) {
+  return `<div class="steppers">${RESSOURCER.map(r => `<div class="stp"><span class="nm">${IKON[r]} ${NAVN[r]}<small>har ${sp.ressourcer[r]} · værdi ${VAERDI[r]}</small></span>
+    <button data-dec="${r}" ${!(D.valg[r] > 0) ? 'disabled' : ''}>−</button><span class="v">${D.valg[r]}</span><button data-inc="${r}" ${D.valg[r] >= sp.ressourcer[r] || (maks != null && sum(D.valg) >= maks) ? 'disabled' : ''}>+</button></div>`).join('')}</div>`;
+}
+const sum = r => RESSOURCER.reduce((a, k) => a + (r[k] || 0), 0);
+
+function visBetal(a) {
+  const sp = S.spillere[a.spiller];
+  D.valg = { trae: 0, ler: 0, sten: 0, guld: 0 };
+  let titel, forklaring;
+  if (a.type === 'betalKort') {
+    const k = KORT[a.kort];
+    titel = `Køb kort for ${a.pris} ressource${a.pris > 1 ? 'r' : ''}`;
+    forklaring = `<div class="kortliste"><div class="kort">${kortHtml(k)}</div></div><p style="margin-top:8px">Øverst: ${esc(beskrivTop(k.top))}.<br>Nederst: ${esc(beskrivBund(k.bund))}.<br>Betal ${a.pris} valgfri ressourcer, ikke mad.</p>`;
+    D.maks = a.pris;
+  } else {
+    const b = BYGNINGER[a.bygning];
+    titel = 'Byg';
+    forklaring = `<div class="kortliste"><div class="kort byg">${bygningHtml(b)}</div></div><p style="margin-top:8px">${esc(beskrivBygning(b))}</p>`;
+    D.maks = b.type === 'fast' ? null : b.type === 'antal' ? b.antal : 7;
+    if (b.type === 'fast') D.valg = { ...b.pris };
+  }
+  const p = aabnDlg(`${hvem(a.spiller)}<h2>${titel}</h2>${forklaring}<div id="stp"></div><div class="sum" id="bsum"></div>
+    <button class="btn" id="btnBetal">Betal</button><button class="btn ghost" id="btnAfstaa">Afstå og tag personen hjem</button>`, { bred: true });
+  tegnSteppere();
+  p.onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.dataset.inc) { D.valg[b.dataset.inc]++; tegnSteppere(); }
+    else if (b.dataset.dec) { D.valg[b.dataset.dec]--; tegnSteppere(); }
+    else if (b.id === 'btnBetal') { const h = { type: 'betal', ressourcer: { ...D.valg } }; lukDlg(); goer(h); }
+    else if (b.id === 'btnAfstaa') { lukDlg(); goer({ type: 'afstaa' }); }
+  };
+}
+function tegnSteppere() {
+  const a = S.afventer; if (!a) return;
+  const sp = S.spillere[a.spiller];
+  const box = $('#stp'); if (!box) return;
+  const fast = a.type === 'betalBygning' && BYGNINGER[a.bygning].type === 'fast';
+  let gyldig, tekst;
+  if (a.type === 'fodring') {
+    const mangler = sp.folk - sp.mad;
+    box.innerHTML = stepperHtml(sp, mangler);
+    gyldig = sum(D.valg) === mangler;
+    tekst = `${sum(D.valg)} af ${mangler} ressourcer valgt`;
+    $('#btnFodr').disabled = !gyldig;
+  } else {
+    box.innerHTML = fast ? '' : stepperHtml(sp, D.maks);
+    const har = RESSOURCER.every(r => D.valg[r] <= sp.ressourcer[r]);
+    if (a.type === 'betalKort') { gyldig = har && sum(D.valg) === a.pris; tekst = `${sum(D.valg)} af ${a.pris} valgt`; }
+    else {
+      const b = BYGNINGER[a.bygning];
+      gyldig = har && kanBetaleBygning(b, D.valg);
+      tekst = fast ? (har ? `Du har det, der skal til: <span class="res">${bygningPointFast(b)} point</span>` : 'Du mangler ressourcer til denne bygning.')
+        : `${sum(D.valg)} valgt (${RESSOURCER.filter(r => D.valg[r] > 0).length} slags) → <span class="res">${vaerdiAf(D.valg)} point</span>`;
+    }
+    $('#btnBetal').disabled = !gyldig;
+  }
+  $('#bsum').innerHTML = tekst;
+}
+
+function visTerningkort(a) {
+  const gevinstTekst = { 1: '1 træ', 2: '1 ler', 3: '1 sten', 4: '1 guld', 5: '+1 redskab', 6: '+1 på madsporet' };
+  const ikon = { 1: IKON.trae, 2: IKON.ler, 3: IKON.sten, 4: IKON.guld, 5: '🪓', 6: '🌾' };
+  const p = aabnDlg(`${hvem(a.spiller)}<h2>Terningkort: vælg en terning</h2><p>${esc(S.spillere[a.koeber].navn)} købte kortet og kastede én terning pr. spiller. I vælger efter tur, køberen først. 1 = træ, 2 = ler, 3 = sten, 4 = guld, 5 = redskab, 6 = madsporet.</p>
+    <div class="valg">${a.terninger.map((t, i) => `<button data-i="${i}" ${a.taget.includes(i) ? 'disabled' : ''}><span class="die">${t}</span>${ikon[t]} ${gevinstTekst[t]}</button>`).join('')}</div>`);
+  p.onclick = ev => { const b = ev.target.closest('button[data-i]'); if (!b || b.disabled) return; goer({ type: 'vaelgTerning', indeks: Number(b.dataset.i) }); };
+}
+
+function visFodring(a) {
+  const sp = S.spillere[a.spiller];
+  D.valg = { trae: 0, ler: 0, sten: 0, guld: 0 };
+  const p = aabnDlg(`${hvem(a.spiller)}<h2>Du mangler ${a.mangler} mad</h2><p>Du har ${sp.folk} folk, men kun ${sp.mad} mad (inkl. ${sp.landbrug} fra madsporet). Al din mad afleveres. Resten kan du betale med ressourcer, én ressource pr. manglende mad. Ellers mister du 10 point.</p>
+    <div id="stp"></div><div class="sum" id="bsum"></div>
+    <button class="btn" id="btnFodr">Betal med ressourcer</button><button class="btn danger" id="btnSult">Sult (−10 point)</button>`);
+  tegnSteppere();
+  p.onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.dataset.inc) { D.valg[b.dataset.inc]++; tegnSteppere(); }
+    else if (b.dataset.dec) { D.valg[b.dataset.dec]--; tegnSteppere(); }
+    else if (b.id === 'btnFodr') { const h = { type: 'fodr', ressourcer: { ...D.valg } }; lukDlg(); goer(h); }
+    else if (b.id === 'btnSult') { lukDlg(); goer({ type: 'sult' }); }
+  };
+}
+
+function visValgfri2(i) {
+  const gemtNoegle = dlgNoegle;
+  const valg = { trae: 0, ler: 0, sten: 0, guld: 0 };
+  const p = aabnDlg(`${hvem(i)}<h2>Tag 2 valgfri ressourcer</h2><p>Fra dit kort. Vælg to, ens eller forskellige.</p><div id="v2"></div>
+    <button class="btn" id="btnV2" disabled>Tag dem</button><button class="btn ghost" data-luk>Annullér</button>`);
+  const opd = () => {
+    $('#v2').innerHTML = `<div class="steppers">${RESSOURCER.map(r => `<div class="stp"><span class="nm">${IKON[r]} ${NAVN[r]}</span><button data-dec="${r}" ${valg[r] ? '' : 'disabled'}>−</button><span class="v">${valg[r]}</span><button data-inc="${r}" ${sum(valg) >= 2 ? 'disabled' : ''}>+</button></div>`).join('')}</div>`;
+    $('#btnV2').disabled = sum(valg) !== 2;
+  };
+  opd();
+  p.onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.dataset.inc) { valg[b.dataset.inc]++; opd(); }
+    else if (b.dataset.dec) { valg[b.dataset.dec]--; opd(); }
+    else if (b.dataset.luk != null) { dlgNoegle = null; lukDlg(); render(); }
+    else if (b.id === 'btnV2') { dlgNoegle = null; lukDlg(); goer({ type: 'brugValgfri2', spiller: i, ressourcer: valg }); }
+  };
+  void gemtNoegle;
+}
+
+function visInfo(st) {
+  let html;
+  if (st.startsWith('kort:')) {
+    const id = S.kortudlagt[Number(st.slice(5))];
+    if (id == null) return;
+    const k = KORT[id];
+    html = `<h2>Civilisationskort</h2><div class="kortliste"><div class="kort">${kortHtml(k, Number(st.slice(5)) + 1)}</div></div>
+      <p style="margin-top:10px"><b>Øverst (nu):</b> ${esc(beskrivTop(k.top))}.<br><b>Nederst (slutscoring):</b> ${esc(beskrivBund(k.bund))}.</p>
+      <p>${k.bund.type === 'kultur' ? 'Grønne kort: antal forskellige symboler ganget med sig selv. Dubletter danner et nyt sæt.' : 'Sandfarvede kort: antal figurer ganget med det, de hører til.'}</p>`;
+  } else if (st.startsWith('bygning:')) {
+    const stak = S.bygningsstakke[Number(st.slice(8))];
+    if (!stak.length) return;
+    const b = BYGNINGER[stak[0]];
+    html = `<h2>Bygning</h2><div class="kortliste"><div class="kort byg">${bygningHtml(b, stak.length)}</div></div><p style="margin-top:10px">${esc(beskrivBygning(b))}</p><p>Sæt én person her i placeringsfasen og betal i handlingsfasen. Man må afstå, hvis man alligevel ikke kan eller vil betale.</p>`;
+  } else {
+    const d = STEDER[st];
+    const tekst = {
+      jagt: 'Kast én terning pr. person, læg øjnene sammen og få 1 mad for hver fulde 2. Der er plads til alle, men hver spiller må kun gå på jagt én gang pr. runde.',
+      skov: 'Kast én terning pr. person og få 1 træ for hver fulde 3. Plads til 7 i alt.',
+      lergrav: 'Kast én terning pr. person og få 1 ler for hver fulde 4. Plads til 7 i alt.',
+      stenbrud: 'Kast én terning pr. person og få 1 sten for hver fulde 5. Plads til 7 i alt.',
+      flod: 'Kast én terning pr. person og få 1 guld for hver fulde 6. Plads til 7 i alt.',
+      mark: 'Én person. Dit mærke på madsporet rykker ét felt op, så du får mere mad hver runde (højst 10).',
+      redskabsmager: 'Én person. Du får et redskab: først tre redskaber med værdi 1, derefter opgraderes de et trin ad gangen op til 4. Hvert redskab kan lægges til ét terningkast pr. runde.',
+      hytte: 'Præcis to personer. Du får en ny person fra næste runde (højst 10). Flere folk giver flere terninger, men skal også have mad.',
+    }[st];
+    html = `<h2>${d.ikon} ${d.navn}</h2><p>${tekst}</p>`;
+  }
+  const p = aabnDlg(html + `<button class="btn ghost" data-luk>Luk</button>`, { luk: true });
+  p.onclick = ev => { if (ev.target.closest('[data-luk]')) { lukDlg(); render(); } };
+}
+
+function visSpillerKort(i) {
+  const sp = S.spillere[i];
+  const kort = sp.kort.map(id => KORT[id]);
+  const html = kort.length ? `<div class="kortliste">${kort.map(k => `<div class="kort">${kortHtml(k)}</div>`).join('')}</div>` : '<p>Ingen kort endnu.</p>';
+  const byg = sp.bygninger.length ? `<h3>Bygninger (${sp.bygninger.length})</h3><div class="kortliste">${sp.bygninger.map(id => `<div class="kort byg">${bygningHtml(BYGNINGER[id])}</div>`).join('')}</div>` : '';
+  const p = aabnDlg(`${hvem(i)}<h2>${esc(sp.navn)}s kort</h2>${html}${byg}<button class="btn ghost" data-luk>Luk</button>`, { bred: true, luk: true });
+  p.onclick = ev => { if (ev.target.closest('[data-luk]')) { lukDlg(); render(); } };
+}
+
+function visLog() {
+  const p = aabnDlg(`<h2>Seneste hændelser</h2><div class="logg">${[...S.log].reverse().map(esc).join('<br>')}</div><button class="btn ghost" data-luk>Luk</button>`, { luk: true });
+  p.onclick = ev => { if (ev.target.closest('[data-luk]')) { lukDlg(); render(); } };
+}
+
+function visMenu() {
+  const p = aabnDlg(`<h2>Menu</h2><p>Spillet gemmes automatisk. Du kan lukke siden og fortsætte senere fra forsiden.</p>
+    <button class="btn ghost" id="mFortsaet">Tilbage til spillet</button><button class="btn danger" id="mNyt">Afslut og start forfra</button>`, { luk: true });
+  p.onclick = ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.id === 'mFortsaet') { lukDlg(); render(); }
+    if (b.id === 'mNyt') { if (confirm('Vil du afslutte det nuværende spil?')) { slet(); lukDlg(); S = null; visSkaerm('start'); $('#btnFortsaet').hidden = true; } }
+  };
+}
+
+function visHjaelp() {
+  const p = aabnDlg(`<div class="hjaelp"><h2>Sådan spiller du</h2>
+    <p>Du leder en stamme. Flest point efter sidste runde vinder. Point får man af bygninger undervejs og af civilisationskort til sidst.</p>
+    <h3>Hver runde har tre dele</h3>
+    <ul><li><b>1. Placér folk.</b> Efter tur sætter I 1 eller flere folk på ét sted ad gangen, indtil alle er sat ud. Man må ikke sætte folk to gange samme sted i samme runde, og man må ikke stå over, hvis der er plads et sted.</li>
+    <li><b>2. Udfør handlinger.</b> Startspilleren tager alle sine folk hjem ét sted ad gangen i den rækkefølge, hun selv vælger, og får det, stedet giver. Så er det næste spiller.</li>
+    <li><b>3. Fodring.</b> Du får mad svarende til dit madspor og betaler 1 mad pr. person. Mangler du mad, afleverer du alt, hvad du har, og betaler resten med ressourcer, eller mister 10 point.</li></ul>
+    <h3>Stederne</h3>
+    <ul><li><b>Jagt, skov, lergrav, stenbrud, flod:</b> én terning pr. person. Læg øjnene sammen og del med 2, 3, 4, 5 eller 6. Redskaber lægges til summen, hvert redskab én gang pr. runde.</li>
+    <li><b>Mark:</b> +1 på madsporet. <b>Redskabsmager:</b> +1 redskab. <b>Hytte:</b> 2 folk giver 1 ny person.</li>
+    <li><b>Civilisationskort:</b> koster 1-4 ressourcer alt efter plads. Øverst står, hvad du får nu. Nederst står, hvad kortet tæller til sidst. Kortene rykker mod den billige ende hver runde.</li>
+    <li><b>Bygninger:</b> betal ressourcerne og få point med det samme: træ 3, ler 4, sten 5, guld 6.</li></ul>
+    <h3>Slutscoring</h3>
+    <ul><li><b>Grønne kort:</b> antal forskellige symboler ganget med sig selv. Har du 4 forskellige, er det 16 point. Dubletter danner et nyt sæt.</li>
+    <li><b>Sandfarvede kort:</b> bønder × madsporet, redskabsmagere × redskabernes samlede værdi, hyttebyggere × antal bygninger, shamaner × antal folk.</li>
+    <li>Hver ressource, du har tilbage, giver 1 point. Mad giver ikke point.</li></ul>
+    <h3>Spillet slutter</h3>
+    <p>Efter den runde, hvor en bygningsstak bliver tom, eller når der ikke er kort nok til at fylde de fire pladser.</p>
+    ${S && S.spillere.length < 4 ? `<h3>Med ${S.spillere.length} spillere</h3><p>Kun 2 af de 3 steder i landsbyen må bruges pr. runde, og på hvert af stederne skov, lergrav, stenbrud og flod må der stå folk fra højst ${S.spillere.length === 2 ? 'én spiller' : 'to spillere'}.</p>` : ''}
+    <button class="btn ghost" data-luk>Luk</button></div>`, { bred: true, luk: true });
+  p.onclick = ev => { if (ev.target.closest('[data-luk]')) { lukDlg(); if (S) render(); } };
+}
+
+function visSlut() {
+  const r = S.resultat;
+  if (dlgNoegle === 'slut') return;
+  dlgNoegle = 'slut';
+  const rk = r.raekkefoelge.map(i => r.spillere[i]);
+  const raekke = (navn, f) => `<tr><td>${navn}</td>${rk.map(x => `<td>${f(x)}</td>`).join('')}</tr>`;
+  aabnDlg(`<div class="vinder">🏆 ${esc(S.spillere[r.vinder].navn)} vinder!</div><p>Efter ${S.runde} runder.</p>
+    <div class="tbl"><table class="slutscore"><thead><tr><th></th>${rk.map(x => `<th><span class="dot" style="background:${farve(x.spiller)};display:inline-block;vertical-align:middle;width:12px;height:12px"></span> ${esc(x.navn)}</th>`).join('')}</tr></thead><tbody>
+    ${raekke('Undervejs (bygninger m.m.)', x => x.undervejs)}
+    ${raekke('Grønne kort', x => `${x.kultur}${x.kulturSaet.length ? ` <small>(${x.kulturSaet.map(n => n + '²').join('+')})</small>` : ''}`)}
+    ${raekke('Bønder × madspor', x => x.boender)}
+    ${raekke('Redskabsmagere × redskaber', x => x.redskabsmagere)}
+    ${raekke('Hyttebyggere × bygninger', x => x.hyttebyggere)}
+    ${raekke('Shamaner × folk', x => x.shamaner)}
+    ${raekke('Ressourcer tilbage', x => x.ressourcer)}
+    <tr class="tot"><td>I alt</td>${rk.map(x => `<td>${x.total}</td>`).join('')}</tr></tbody></table></div>
+    <button class="btn" id="btnNyt">Nyt spil</button>`, { bred: true });
+  $('#btnNyt').onclick = () => { slet(); lukDlg(); S = null; visSkaerm('start'); $('#btnFortsaet').hidden = true; };
+  slet();
+}
+
+// ---- Testkrog ------------------------------------------------------------
+window.GAME = {
+  get state() { return S; },
+  udfoer: goer,
+  nyt: navne => startNyt(navne),
+  tilfaeldig: () => { const h = tilfaeldigHandling(S); return h ? goer(h) : false; },
+  lovligePlaceringer: () => lovligePlaceringer(S),
+  hvemErPaa: () => hvemErPaa(S),
+};
+</script>
+</body></html>
