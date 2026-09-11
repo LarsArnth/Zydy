@@ -1,0 +1,732 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Helteriget: deck-building-kortspil for to spillere på én iPad. Køb kort, hyr helte og slå modstanderen fra 50 liv ned til 0.">
+<title>Helteriget – zydy.dk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Cpath d='M32 8 L52 15 V32 C52 44 43 53 32 57 C21 53 12 44 12 32 V15 Z' fill='%23ffd447'/%3E%3Cpath d='M32 14 L46 19 V32 C46 41 39 48 32 51 C25 48 18 41 18 32 V19 Z' fill='%231c1f4a'/%3E%3Cpath d='M24 24 L40 40 M40 24 L24 40' stroke='%23ff5c7a' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  /*
+    Helteriget – deck-building-kortspil (Hero Realms-mekanik, egne kort) for
+    to spillere på én iPad/telefon. Hot-seat: den aktive spiller ser sit bord
+    og sin hånd; mellem turene vises en "giv iPad'en videre"-skærm, så
+    hænderne forbliver hemmelige. Alt inline, ingen afhængigheder.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --violet:#8f6bff;
+    --ink:#1c1f4a; --r:22px;
+    --cw:94px; --ch:134px; --cf:10px;   /* kortstørrelse på telefon */
+  }
+  @media (min-width:700px){ :root{ --cw:118px; --ch:168px; --cf:12.5px } }   /* 6 markedskort + Ildsten på en iPad */
+  @media (min-width:700px) and (max-height:900px){ :root{ --cw:108px; --ch:152px; --cf:11.5px } }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  body.playing{padding-left:10px;padding-right:10px}
+  h1{font-size:44px;line-height:1;margin:0 0 6px;letter-spacing:-1.5px;font-weight:800}
+  h2{font-size:26px;line-height:1.1;margin:0 0 8px;letter-spacing:-.6px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink);padding:0;background:none}
+  button:disabled{cursor:default}
+  .btn{width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s,opacity .2s}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.4}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn.danger{background:var(--coral);color:#fff}
+  .btn.sm{width:auto;margin:0;padding:11px 16px;font-size:15px;border-radius:14px;white-space:nowrap}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+  .pill b{color:var(--text)}
+  .pill.red b{color:var(--coral)} .pill.blue b{color:var(--sky)}
+  .red{--pc:var(--coral)} .blue{--pc:var(--sky)}
+  .pname{color:var(--pc);font-weight:900}
+
+  /* Skærme (start/overlevering/slut) */
+  .screen{display:none;flex-direction:column;flex:1;width:100%;max-width:640px;margin:0 auto}
+  .screen.on{display:flex}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;min-height:44px}
+  .back{color:var(--muted);text-decoration:none;font-size:17px;font-weight:700;display:inline-flex;
+    align-items:center;min-height:44px;min-width:44px;padding:0 6px 0 2px;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .brand{font-weight:800;font-size:18px;letter-spacing:-.3px}
+  .content{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .lead{font-size:18px}
+  .facs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 16px}
+  .facs div{background:var(--bg2);border-radius:14px;padding:10px 12px;font-size:14px;color:var(--muted);border-left:5px solid var(--fc)}
+  .facs b{color:var(--fc);display:block;font-size:15px}
+  .stats{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px}
+
+  /* Overleveringsskærm */
+  #handoff .content{text-align:center;align-items:center}
+  .bigname{font-size:64px;font-weight:900;letter-spacing:-2px;line-height:1;color:var(--pc);margin-bottom:6px}
+  .hotitle{font-size:22px;font-weight:800;margin-bottom:14px}
+  .last{background:var(--bg2);border-radius:var(--r);padding:14px 16px;color:var(--muted);font-size:16px;line-height:1.4;max-width:480px;margin-bottom:18px;min-height:0}
+  .hprow{display:flex;gap:8px;justify-content:center;margin-bottom:10px}
+  #handoff .btn{max-width:480px}
+
+  /* Slutskærm */
+  .winner{font-size:52px;line-height:1;letter-spacing:-2px;font-weight:800;margin:0 0 8px;color:var(--pc)}
+  .score{font-size:22px;font-weight:700;color:var(--muted);margin-bottom:22px}
+
+  /* ======== Bordet ======== */
+  #table{display:none;flex-direction:column;gap:8px;flex:1;width:100%;max-width:1100px;margin:0 auto}
+  #table.on{display:flex}
+  .tbar{display:flex;align-items:center;gap:8px;min-height:44px}
+  .tbar .brand{flex:1;text-align:center}
+  .icon{width:44px;height:44px;border-radius:50%;background:var(--bg2);color:var(--muted);font-size:22px;font-weight:800;
+    display:grid;place-items:center;flex:0 0 auto}
+  .icon:active{background:var(--bg3)}
+  .sec{background:var(--bg2);border-radius:18px;padding:8px 10px 4px}
+  .sec .label{font-size:12px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:0 2px 6px;
+    display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:20px}
+  .sec .label .meta{text-transform:none;letter-spacing:0;font-weight:600}
+  .row{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 6px;-webkit-overflow-scrolling:touch;min-height:calc(var(--ch) + 8px)}
+  .row::-webkit-scrollbar{display:none}
+  .row.short{min-height:0}
+  .row.wrap{flex-wrap:wrap;overflow:visible;justify-content:center;min-height:0}
+  .empty{color:var(--muted);font-size:14px;padding:10px 4px;align-self:center;font-weight:600}
+  .opp{border:2px solid var(--pc);background:linear-gradient(180deg,var(--bg2),var(--bg3))}
+  .opp .label{text-transform:none;letter-spacing:0}
+  .opp .pname{font-size:18px}
+  .hp{font-weight:800;color:var(--text);font-size:15px}
+  .face{margin:2px 0 6px;background:var(--pc);color:#fff}
+  .face:disabled{background:var(--bg3);color:var(--muted);opacity:1}
+  .res{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:2px 0}
+  .stat{background:var(--bg2);border-radius:999px;padding:9px 11px;font-weight:800;font-size:15px;color:var(--text);white-space:nowrap}
+  @media (max-width:420px){ .stat{padding:8px 9px;font-size:14px} .btn.sm{padding:10px 12px;font-size:14px} .res{gap:4px} }
+  .stat.gold{color:var(--sun)} .stat.combat{color:var(--coral)}
+  .res .sp{flex:1}
+  #endTurn{background:var(--mint)}
+
+  /* Kort */
+  .card{width:var(--cw);height:var(--ch);flex:0 0 auto;border-radius:12px;background:#151838;border:2px solid var(--fc);
+    display:flex;flex-direction:column;overflow:hidden;position:relative;font-size:var(--cf);line-height:1.22;text-align:left;
+    color:var(--text);transition:transform .08s,opacity .2s;--fc:#8a8fb5}
+  .card:active{transform:scale(.96)}
+  .card.dim{opacity:.45}
+  .card.selected{outline:3px solid var(--mint);outline-offset:1px}
+  .card.expended{filter:saturate(.3)}
+  .f-kronen{--fc:var(--sun)} .f-lauget{--fc:var(--sky)} .f-skyggerne{--fc:var(--violet)} .f-vildmarken{--fc:var(--coral)}
+  .f-neutral{--fc:#9aa0c9}
+  .card .ctop{display:flex;align-items:center;gap:3px;padding:3px 4px;background:var(--fc);color:var(--ink);font-weight:800;min-height:2.2em}
+  .card .cost{background:var(--ink);color:var(--sun);border-radius:50%;width:1.9em;height:1.9em;display:grid;place-items:center;font-size:1.05em;flex:0 0 auto}
+  .card .name{flex:1;font-size:.95em;line-height:1;letter-spacing:-.3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;hyphens:auto}
+  .card .def{background:var(--ink);color:#fff;border-radius:6px;padding:1px 4px;font-size:1em;flex:0 0 auto;white-space:nowrap}
+  .card.guard .def{background:#fff;color:var(--ink)}
+  .card .emoji{font-size:1.9em;text-align:center;padding:1px 0 0;line-height:1.1}
+  .card .ctext{padding:1px 5px 3px;flex:1;display:flex;flex-direction:column;gap:1px;overflow:hidden}
+  .card .ctext .k{color:var(--fc);font-weight:800}
+  .card .badge{background:rgba(255,255,255,.12);color:var(--text);font-size:.9em;font-weight:800;text-align:center;padding:2px 4px}
+  .card.expended .badge{background:rgba(0,0,0,.35)}
+
+  /* Modal (valg, regler, afslut) */
+  #modal{position:fixed;inset:0;background:rgba(11,13,28,.82);z-index:40;display:flex;align-items:flex-end;justify-content:center;
+    padding:12px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  #modal[hidden]{display:none}
+  .sheet{background:var(--bg2);border-radius:var(--r);padding:16px;width:100%;max-width:720px;max-height:92vh;max-height:92dvh;overflow:auto;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);animation:up .22s ease-out}
+  @keyframes up{from{transform:translateY(30px);opacity:0}}
+  .sheet h2{font-size:22px}
+  .sheet p{font-size:15px;margin-bottom:10px}
+  .sheet .foot{display:flex;gap:8px;margin-top:12px;align-items:center}
+  .sheet .foot .hint{flex:1;color:var(--muted);font-size:14px;font-weight:700}
+  .rules li{color:var(--muted);font-size:15px;line-height:1.45;margin-bottom:8px}
+  .rules b{color:var(--text)}
+  @media (min-width:700px){ #modal{align-items:center} }
+  @media (prefers-reduced-motion:reduce){ .card,.btn{transition:none} .sheet{animation:none} }
+</style>
+</head>
+<body>
+
+<!-- ===== Startskærm ===== -->
+<div class="screen on" id="start">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Helteriget</span>
+    <span class="pill" id="startPill">0 spil</span>
+  </div>
+  <div class="content">
+    <h1>Helteriget</h1>
+    <p class="lead">Kortspil for to på én iPad. Køb kort, hyr helte og slå modstanderen fra 50 liv ned til 0.</p>
+    <div class="facs" aria-hidden="true">
+      <div class="f-kronen"><b>👑 Kronen</b>Liv, guld og vagter</div>
+      <div class="f-lauget"><b>🗝️ Lauget</b>Guld og snedige tricks</div>
+      <div class="f-skyggerne"><b>💀 Skyggerne</b>Kamp gennem ofringer</div>
+      <div class="f-vildmarken"><b>🐺 Vildmarken</b>Rå kamp og kløer</div>
+    </div>
+    <p>I skiftes til at have iPad'en. Mellem turene vises en skærm, hvor I giver den videre, så ingen ser den andens hånd.</p>
+    <button class="btn" id="continueBtn" hidden>Fortsæt spillet</button>
+    <button class="btn" id="playBtn">Nyt spil</button>
+    <button class="btn ghost" id="rulesBtn">Regler</button>
+    <div class="stats" id="startStats"></div>
+  </div>
+</div>
+
+<!-- ===== Overlevering mellem turene ===== -->
+<div class="screen" id="handoff">
+  <div class="topbar">
+    <span class="brand">Helteriget</span>
+    <span class="pill" id="hoTurn">Tur 1</span>
+  </div>
+  <div class="content">
+    <div class="bigname" id="hoName">Rød</div>
+    <div class="hotitle" id="hoTitle">Giv iPad'en til Rød</div>
+    <div class="hprow" id="hoHp"></div>
+    <div class="last" id="hoLast"></div>
+    <button class="btn" id="showBtn">Jeg er klar – vis mine kort</button>
+  </div>
+</div>
+
+<!-- ===== Slutskærm ===== -->
+<div class="screen" id="end">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Helteriget</span>
+    <span class="pill" id="endPill">0 spil</span>
+  </div>
+  <div class="content" style="text-align:center">
+    <div class="winner" id="winnerText">Rød vandt</div>
+    <div class="score" id="scoreText"></div>
+    <button class="btn" id="rematchBtn">Omkamp</button>
+    <button class="btn ghost" id="menuBtn">Til start</button>
+    <div class="stats" id="endStats"></div>
+  </div>
+</div>
+
+<!-- ===== Bordet (den aktive spillers udsigt) ===== -->
+<div id="table">
+  <div class="tbar">
+    <button class="icon" id="quit" aria-label="Afslut spillet">×</button>
+    <span class="brand">Helteriget</span>
+    <span class="pill" id="turnPill">Rød · tur 1</span>
+    <button class="icon" id="rulesBtn2" aria-label="Regler">?</button>
+  </div>
+
+  <section class="sec opp" id="opp" aria-label="Modstander">
+    <div class="label"><span><span class="pname" id="oppName">Blå</span> <span class="hp" id="oppHp">❤ 50</span></span><span class="meta" id="oppMeta"></span></div>
+    <div class="row short" id="oppChamps"></div>
+    <button class="btn sm face" id="attackBtn">Angrib</button>
+  </section>
+
+  <section class="sec" aria-label="Marked">
+    <div class="label"><span>Marked</span><span class="meta" id="marketMeta"></span></div>
+    <div class="row" id="market"></div>
+  </section>
+
+  <section class="sec" aria-label="Dit bord">
+    <div class="label"><span><span class="pname" id="mineName">Rød</span> · dit bord</span><span class="meta">Tryk på en helt for at bruge den</span></div>
+    <div class="row short" id="inplay"></div>
+  </section>
+
+  <div class="res">
+    <span class="stat gold" id="myGold">🪙 0</span>
+    <span class="stat combat" id="myCombat">⚔ 0</span>
+    <span class="stat" id="myHp">❤ 50</span>
+    <span class="sp"></span>
+    <button class="btn sm ghost" id="playAll">Spil alle</button>
+    <button class="btn sm" id="endTurn">Afslut tur</button>
+  </div>
+
+  <section class="sec" aria-label="Din hånd">
+    <div class="label"><span>Din hånd</span><span class="meta" id="handMeta"></span></div>
+    <div class="row" id="hand"></div>
+  </section>
+</div>
+
+<div id="modal" hidden><div class="sheet" id="sheet"></div></div>
+
+<script>
+(function(){
+'use strict';
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+const seed = parseInt(params.get('seed'),10) || ((Math.random()*2**31)|0);
+
+/* ---------- Kortene ----------
+   Effekter er små objekter med én nøgle:
+   g=guld, c=kamp, h=liv, d=træk kort, od=modstander smider kort (ved starten af
+   sin tur), cull=ofr op til n kort fra hånd/kasserede, stun=slå en fjendehelt
+   ud, top=næste køb øverst i bunken, sweep=fjern et markedskort, prep=klargør
+   en helt, cpc=kamp pr. egen helt i spil.
+   fx = når kortet spilles, ally = allieret (et andet kort af samme fraktion i
+   spil), sac = ofring (kun kort på bordet), exp = brug (kun helte, én gang pr. tur). */
+const FAC = {
+  kronen:     { name:'Kronen',     emoji:'👑' },
+  lauget:     { name:'Lauget',     emoji:'🗝️' },
+  skyggerne:  { name:'Skyggerne',  emoji:'💀' },
+  vildmarken: { name:'Vildmarken', emoji:'🐺' },
+  neutral:    { name:'',           emoji:'' },
+};
+const D = {};
+function def(id, o, count){ D[id] = Object.assign({ id, type:'action', fx:[], count }, o); }
+// Startkort og Ildsten (ikke i markedsbunken)
+def('guld',    { name:'Guld',      emoji:'🪙', cost:0, fac:'neutral', type:'item', fx:[{g:1}] }, 0);
+def('rubin',   { name:'Rubin',     emoji:'💎', cost:0, fac:'neutral', type:'item', fx:[{g:2}] }, 0);
+def('daggert', { name:'Daggert',   emoji:'🗡️', cost:0, fac:'neutral', type:'item', fx:[{c:1}] }, 0);
+def('svaerd',  { name:'Kortsværd', emoji:'⚔️', cost:0, fac:'neutral', type:'item', fx:[{c:2}] }, 0);
+def('ildsten', { name:'Ildsten',   emoji:'🔥', cost:2, fac:'neutral', type:'item', fx:[{g:2}], sac:[{c:3}] }, 0);
+// Kronen – liv, guld, vagter
+def('praest',   { name:'Landsbypræst',     emoji:'🙏', cost:2, fac:'kronen', type:'champion', def:3, exp:[{h:2}], ally:[{g:1}] }, 3);
+def('skatte',   { name:'Skattemester',     emoji:'💰', cost:3, fac:'kronen', fx:[{g:2}], ally:[{h:3}] }, 3);
+def('skjold',   { name:'Skjoldbærer',      emoji:'🛡️', cost:3, fac:'kronen', type:'champion', def:5, guard:true, exp:[{c:2}], ally:[{h:2}] }, 2);
+def('raekker',  { name:'Saml rækkerne',    emoji:'📣', cost:3, fac:'kronen', fx:[{c:5}], ally:[{cpc:2}] }, 2);
+def('lys',      { name:'Helligt lys',      emoji:'✨', cost:4, fac:'kronen', fx:[{h:6},{g:1}], ally:[{d:1}] }, 2);
+def('herold',   { name:'Herold',           emoji:'🎺', cost:4, fac:'kronen', type:'champion', def:4, exp:[{g:1},{prep:1}], ally:[{h:2}] }, 2);
+def('magiker',  { name:'Hofmagiker',       emoji:'🔮', cost:5, fac:'kronen', type:'champion', def:5, exp:[{g:2}], ally:[{d:1}] }, 2);
+def('vagt',     { name:'Kongens vagt',     emoji:'💂', cost:5, fac:'kronen', type:'champion', def:7, guard:true, exp:[{c:3}], ally:[{h:4}] }, 2);
+def('dekret',   { name:'Kongeligt dekret', emoji:'📜', cost:6, fac:'kronen', fx:[{g:3},{d:1}], ally:[{h:5}] }, 1);
+def('dronning', { name:'Dronningen',       emoji:'👸', cost:7, fac:'kronen', type:'champion', def:8, guard:true, exp:[{c:3},{h:3}], ally:[{d:1}] }, 1);
+// Lauget – guld og tricks
+def('lommetyv', { name:'Lommetyv',        emoji:'🧤', cost:2, fac:'lauget', fx:[{g:2}], ally:[{od:1}] }, 3);
+def('koebmand', { name:'Købmand',         emoji:'⚖️', cost:2, fac:'lauget', type:'champion', def:3, exp:[{g:1}], ally:[{c:2}] }, 3);
+def('smugler',  { name:'Smugler',         emoji:'📦', cost:3, fac:'lauget', fx:[{g:3}], ally:[{top:1}] }, 3);
+def('bestik',   { name:'Bestikkelse',     emoji:'🤝', cost:3, fac:'lauget', fx:[{g:2},{sweep:1}], ally:[{c:2}] }, 2);
+def('snig',     { name:'Snigmorder',      emoji:'🥷', cost:4, fac:'lauget', fx:[{c:4}], ally:[{od:1}] }, 2);
+def('livvagt',  { name:'Livvagt',         emoji:'🕴️', cost:4, fac:'lauget', type:'champion', def:6, guard:true, exp:[{c:2}], ally:[{g:1}] }, 2);
+def('mester',   { name:'Laugsmester',     emoji:'🎩', cost:5, fac:'lauget', type:'champion', def:5, exp:[{g:2}], ally:[{c:3}] }, 2);
+def('karavane', { name:'Handelskaravane', emoji:'🐪', cost:5, fac:'lauget', fx:[{g:2},{c:2}], ally:[{top:1}] }, 1);
+def('sortboers',{ name:'Sortbørs',        emoji:'🎭', cost:6, fac:'lauget', fx:[{g:4}], ally:[{d:1}] }, 1);
+def('formand',  { name:'Laugsformand',    emoji:'👔', cost:7, fac:'lauget', type:'champion', def:7, exp:[{g:2},{c:2}], ally:[{d:1}] }, 1);
+// Skyggerne – ofringer og kamp
+def('kultist',    { name:'Kultist',        emoji:'🕯️', cost:2, fac:'skyggerne', fx:[{c:2}], sac:[{c:2}] }, 3);
+def('gravroever', { name:'Gravrøver',      emoji:'⛏️', cost:2, fac:'skyggerne', fx:[{g:1},{cull:1}], ally:[{c:2}] }, 3);
+def('kniv',       { name:'Skyggekniv',     emoji:'🔪', cost:3, fac:'skyggerne', fx:[{c:3}], ally:[{od:1}], sac:[{c:3}] }, 3);
+def('besvaerger', { name:'Dødsbesværger',  emoji:'🧙', cost:3, fac:'skyggerne', type:'champion', def:4, exp:[{c:2},{cull:1}], ally:[{c:1}] }, 2);
+def('blodoffer',  { name:'Blodoffer',      emoji:'🩸', cost:4, fac:'skyggerne', fx:[{c:3},{cull:2}], ally:[{c:3}] }, 2);
+def('genfaerd',   { name:'Genfærd',        emoji:'👻', cost:4, fac:'skyggerne', type:'champion', def:5, guard:true, exp:[{c:3}], ally:[{cull:1}] }, 2);
+def('pest',       { name:'Pestbringer',    emoji:'🐀', cost:5, fac:'skyggerne', fx:[{c:5},{cull:1}], ally:[{od:1}] }, 2);
+def('doedsridder',{ name:'Dødsridder',     emoji:'🏇', cost:5, fac:'skyggerne', type:'champion', def:6, guard:true, exp:[{c:3}], ally:[{c:2}] }, 1);
+def('gravherre',  { name:'Gravherre',      emoji:'⚰️', cost:6, fac:'skyggerne', type:'champion', def:6, exp:[{c:3},{cull:1}], ally:[{d:1}] }, 1);
+def('sjaelehoest',{ name:'Sjælehøst',      emoji:'🌑', cost:7, fac:'skyggerne', fx:[{c:6},{cull:2}], ally:[{d:1}] }, 1);
+// Vildmarken – rå kamp
+def('ulveunge', { name:'Ulveunge',       emoji:'🐺', cost:2, fac:'vildmarken', fx:[{c:3}], ally:[{c:1}] }, 3);
+def('bjoern',   { name:'Bjørnekriger',   emoji:'🐻', cost:3, fac:'vildmarken', fx:[{c:4}], ally:[{od:1}] }, 3);
+def('shaman',   { name:'Skovshaman',     emoji:'🌿', cost:3, fac:'vildmarken', type:'champion', def:4, exp:[{c:2}], ally:[{d:1}] }, 2);
+def('vildsvin', { name:'Vildsvin',       emoji:'🐗', cost:4, fac:'vildmarken', fx:[{c:5}], ally:[{stun:1}] }, 2);
+def('krigsraab',{ name:'Krigsråb',       emoji:'🔊', cost:4, fac:'vildmarken', fx:[{c:3},{od:1}], ally:[{d:1}] }, 2);
+def('flokleder',{ name:'Flokleder',      emoji:'🐕', cost:4, fac:'vildmarken', type:'champion', def:5, guard:true, exp:[{c:2}], ally:[{c:2}] }, 2);
+def('oern',     { name:'Kæmpeørn',       emoji:'🦅', cost:5, fac:'vildmarken', type:'champion', def:5, exp:[{c:3}], ally:[{od:1}] }, 2);
+def('trold',    { name:'Kæmpetrold',     emoji:'👹', cost:5, fac:'vildmarken', type:'champion', def:7, guard:true, exp:[{c:3}], ally:[{c:2}] }, 2);
+def('vrede',    { name:'Naturens vrede', emoji:'🌪️', cost:6, fac:'vildmarken', fx:[{c:6},{d:1}], ally:[{stun:1}] }, 1);
+def('drage',    { name:'Drageunge',      emoji:'🐉', cost:7, fac:'vildmarken', type:'champion', def:8, exp:[{c:4}], ally:[{d:1}] }, 1);
+
+const FX = {
+  g: n => `+${n} guld`, c: n => `+${n} kamp`, h: n => `+${n} liv`, d: n => `Træk ${n} kort`,
+  od: n => `Fjenden smider ${n} kort`, cull: n => `Ofr op til ${n} kort fra hånd/kasserede`,
+  stun: () => 'Slå en fjendehelt ud', top: () => 'Næste køb øverst i bunken',
+  sweep: () => 'Fjern et kort fra markedet', prep: () => 'Klargør en af dine helte',
+  cpc: n => `+${n} kamp pr. egen helt`,
+};
+const fxText = list => list.map(e => { const k = Object.keys(e)[0]; return FX[k](e[k]); }).join(', ');
+
+/* ---------- Tilstand ---------- */
+const NAME = { red:'Rød', blue:'Blå' };
+const other = p => p === 'red' ? 'blue' : 'red';
+let state = null;          // hele spillet; serialiseres til localStorage
+let sel = [];              // valgte kort i en prompt (uid'er), ikke gemt
+let modalMode = null;      // 'rules' | 'quit' | null
+const P = p => state.players[p];
+const cur = () => P(state.turn);
+const DEF = c => D[c.id];
+const busy = () => !state || state.phase !== 'play' || state.prompts.length > 0;
+
+// Seedbar PRNG (mulberry32) med tilstanden gemt i state.rs, så et genoptaget spil blander ens
+function rand(){ let a = state.rs|0; a = a + 0x6D2B79F5 | 0; state.rs = a; let t = Math.imul(a ^ a>>>15, 1|a); t = t + Math.imul(t ^ t>>>7, 61|t) ^ t; return ((t ^ t>>>14)>>>0)/4294967296; }
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rand()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+function inst(id){ return { uid: ++state.uid, id, expended:false, allyDone:false }; }
+
+/* ---------- Lagring ---------- */
+const SAVE = 'zydy.helteriget.save', STATS = 'zydy.helteriget.stats';
+function save(){ try { if (state && (state.phase==='play' || state.phase==='handoff')) localStorage.setItem(SAVE, JSON.stringify(state)); } catch(e){} }
+function clearSave(){ try { localStorage.removeItem(SAVE); } catch(e){} }
+function loadSave(){
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE));
+    if (!s || !s.players) return null;
+    const all = [];
+    for (const p of ['red','blue']) { const pl = s.players[p]; all.push(...pl.deck, ...pl.hand, ...pl.discard, ...pl.played, ...pl.champions); }
+    all.push(...s.market, ...s.marketDeck);
+    if (all.some(c => !D[c.id])) return null;   // kortlisten er ændret siden
+    return s;
+  } catch(e){ return null; }
+}
+function loadStats(){ try { return Object.assign({ games:0, red:0, blue:0 }, JSON.parse(localStorage.getItem(STATS)) || {}); } catch(e){ return { games:0, red:0, blue:0 }; } }
+function recordStats(winner){ const s = loadStats(); s.games++; s[winner]++; try { localStorage.setItem(STATS, JSON.stringify(s)); } catch(e){} }
+
+/* ---------- Spilopsætning ---------- */
+function newGame(){
+  state = { phase:'handoff', turn:'red', turnNo:1, rs: state ? state.rs : seed, uid:0, seed,
+    players:{}, market:[], marketDeck:[], gems:16, prompts:[], winner:null, last:null, cur:freshLog() };
+  for (const p of ['red','blue']) {
+    const deck = [];
+    for (let i=0;i<7;i++) deck.push(inst('guld'));
+    deck.push(inst('rubin'), inst('daggert'), inst('svaerd'));
+    state.players[p] = { health:50, gold:0, combat:0, pendingDiscard:0, topNext:false,
+      deck: shuffle(deck), hand:[], discard:[], played:[], champions:[] };
+  }
+  const md = [];
+  for (const id in D) for (let i=0;i<D[id].count;i++) md.push(inst(id));
+  state.marketDeck = shuffle(md);
+  for (let i=0;i<5;i++) state.market.push(state.marketDeck.pop());
+  draw('red', 3); draw('blue', 5);     // den der starter, får kun 3 kort
+  sel = []; modalMode = null;
+  save(); render();
+}
+function freshLog(){ return { dmg:0, bought:[], stunned:[], heal:0, played:0 }; }
+
+function draw(p, n){
+  const me = P(p); let got = 0;
+  for (let i=0;i<n;i++) {
+    if (!me.deck.length) { if (!me.discard.length) break; me.deck = shuffle(me.discard); me.discard = []; }
+    me.hand.push(me.deck.pop()); got++;
+  }
+  return got;
+}
+
+/* ---------- Effekter ---------- */
+function applyFx(list, p){
+  const me = P(p), op = P(other(p));
+  for (const e of list) {
+    if (e.g) me.gold += e.g;
+    if (e.c) me.combat += e.c;
+    if (e.h) { me.health += e.h; state.cur.heal += e.h; }
+    if (e.d) draw(p, e.d);
+    if (e.od) op.pendingDiscard += e.od;
+    if (e.cpc) me.combat += e.cpc * me.champions.length;
+    if (e.top) me.topNext = true;
+    if (e.cull) state.prompts.push({ kind:'cull', n:e.cull, p });
+    if (e.stun) state.prompts.push({ kind:'stun', n:1, p });
+    if (e.sweep) state.prompts.push({ kind:'sweep', n:1, p });
+    if (e.prep) state.prompts.push({ kind:'prep', n:1, p });
+  }
+}
+// Allierede udløses automatisk én gang pr. tur, når et andet kort af samme fraktion er i spil
+function runAllies(){
+  const me = cur(); const inplay = [...me.champions, ...me.played];
+  for (const c of inplay) {
+    const d = DEF(c);
+    if (!d.ally || c.allyDone) continue;
+    if (inplay.some(o => o !== c && DEF(o).fac === d.fac)) { c.allyDone = true; applyFx(d.ally, state.turn); }
+  }
+}
+// Prompts uden noget at vælge imellem (fx "slå en helt ud" uden fjendehelte) fjernes
+function normalizePrompts(){ while (state.prompts.length && promptOptions(state.prompts[0]).length === 0) state.prompts.shift(); }
+
+/* ---------- Handlinger ---------- */
+function play(i){
+  if (busy()) return false;
+  const me = cur(); const c = me.hand[i]; if (!c) return false;
+  me.hand.splice(i, 1); c.expended = false; c.allyDone = false;
+  const d = DEF(c);
+  (d.type === 'champion' ? me.champions : me.played).push(c);
+  state.cur.played++;
+  applyFx(d.fx, state.turn); runAllies(); afterChange(); return true;
+}
+function playAll(){ if (busy()) return 0; let n = 0; while (cur().hand.length && !state.prompts.length) { play(0); n++; } return n; }
+function acquire(me, c){ if (me.topNext) { me.deck.push(c); me.topNext = false; } else me.discard.push(c); state.cur.bought.push(DEF(c).name); }
+function buy(i){
+  if (busy()) return false;
+  const me = cur(); const c = state.market[i]; if (!c || DEF(c).cost > me.gold) return false;
+  me.gold -= DEF(c).cost; state.market.splice(i, 1);
+  if (state.marketDeck.length) state.market.splice(i, 0, state.marketDeck.pop());
+  acquire(me, c); afterChange(); return true;
+}
+function buyGem(){
+  if (busy()) return false;
+  const me = cur(); if (state.gems <= 0 || me.gold < 2) return false;
+  me.gold -= 2; state.gems--; acquire(me, inst('ildsten')); afterChange(); return true;
+}
+const guards = op => op.champions.filter(c => DEF(c).guard);
+function canAttackChamp(c, op){ const d = DEF(c); return cur().combat >= d.def && (d.guard || !guards(op).length); }
+function attackChampion(i){
+  if (busy()) return false;
+  const op = P(other(state.turn)); const c = op.champions[i]; if (!c || !canAttackChamp(c, op)) return false;
+  cur().combat -= DEF(c).def; op.champions.splice(i, 1); op.discard.push(c); state.cur.stunned.push(DEF(c).name);
+  afterChange(); return true;
+}
+function attackFace(){
+  if (busy()) return false;
+  const me = cur(), op = P(other(state.turn)); if (me.combat <= 0 || guards(op).length) return false;
+  op.health -= me.combat; state.cur.dmg += me.combat; me.combat = 0; afterChange(); return true;
+}
+function expend(i){
+  if (busy()) return false;
+  const me = cur(); const c = me.champions[i]; if (!c || c.expended || !DEF(c).exp) return false;
+  c.expended = true; applyFx(DEF(c).exp, state.turn); afterChange(); return true;
+}
+function sacrifice(i){
+  if (busy()) return false;
+  const me = cur(); const c = me.played[i]; if (!c || !DEF(c).sac) return false;
+  me.played.splice(i, 1); applyFx(DEF(c).sac, state.turn); afterChange(); return true;
+}
+function endTurn(){
+  if (busy()) return false;
+  const p = state.turn, me = cur();
+  me.discard.push(...me.hand, ...me.played); me.hand = []; me.played = []; me.gold = 0; me.combat = 0; me.topNext = false;
+  draw(p, 5);
+  state.last = { p, text: summary(state.cur, p) };
+  state.turn = other(p); state.turnNo++; state.phase = 'handoff';
+  save(); render(); return true;
+}
+function startTurn(){
+  if (!state || state.phase !== 'handoff') return false;
+  state.phase = 'play'; const me = cur();
+  me.champions.forEach(c => { c.expended = false; c.allyDone = false; });
+  state.cur = freshLog();
+  if (me.pendingDiscard > 0) {
+    const n = Math.min(me.pendingDiscard, me.hand.length); me.pendingDiscard = 0;
+    if (n > 0) state.prompts.push({ kind:'discard', n, p: state.turn });
+  }
+  runAllies(); afterChange(); return true;
+}
+function summary(log, p){
+  const parts = [];
+  if (log.dmg) parts.push(`gjorde ${log.dmg} skade på ${NAME[other(p)]}`);
+  if (log.stunned.length) parts.push(`slog ${log.stunned.join(' og ')} ud`);
+  if (log.bought.length) parts.push(`købte ${log.bought.join(', ')}`);
+  if (log.heal) parts.push(`fik ${log.heal} liv`);
+  if (!parts.length) parts.push(`spillede ${log.played} kort`);
+  return `${NAME[p]} ${parts.join(', ')}.`;
+}
+function afterChange(){
+  normalizePrompts();
+  const op = P(other(state.turn));
+  if (state.phase === 'play' && op.health <= 0) {
+    op.health = 0; state.phase = 'end'; state.winner = state.turn; state.prompts = [];
+    recordStats(state.winner); clearSave();
+  } else save();
+  render();
+}
+function quitGame(){ state = null; sel = []; modalMode = null; clearSave(); render(); }
+
+/* ---------- Prompts (valg) ---------- */
+function promptOptions(pr){
+  const me = P(pr.p), op = P(other(pr.p));
+  const wrap = (arr, zone) => arr.map(c => ({ uid:c.uid, card:c, zone }));
+  switch (pr.kind) {
+    case 'discard': return wrap(me.hand, 'hand');
+    case 'cull':    return [...wrap(me.hand, 'hand'), ...wrap(me.discard, 'discard')];
+    case 'stun':    return wrap(op.champions, 'champ');
+    case 'sweep':   return wrap(state.market, 'market');
+    case 'prep':    return wrap(me.champions.filter(c => c.expended), 'champ');
+  }
+  return [];
+}
+function promptRule(pr){
+  const n = promptOptions(pr).length;
+  if (pr.kind === 'discard') return { min: Math.min(pr.n, n), max: Math.min(pr.n, n) };
+  if (pr.kind === 'cull')    return { min: 0, max: Math.min(pr.n, n) };
+  return { min: 1, max: 1 };
+}
+function promptTitle(pr){
+  switch (pr.kind) {
+    case 'discard': return `${NAME[pr.p]}, smid ${pr.n} kort fra hånden`;
+    case 'cull':    return `Ofr op til ${pr.n} kort – de forsvinder helt fra spillet`;
+    case 'stun':    return 'Vælg en fjendehelt at slå ud';
+    case 'sweep':   return 'Vælg et kort at fjerne fra markedet';
+    case 'prep':    return 'Vælg en helt at klargøre igen';
+  }
+  return '';
+}
+function choose(uids){
+  const pr = state && state.prompts[0]; if (!pr) return false;
+  const opts = promptOptions(pr), rule = promptRule(pr);
+  uids = [...new Set(uids)].filter(u => opts.some(o => o.uid === u));
+  if (uids.length < rule.min || uids.length > rule.max) return false;
+  const me = P(pr.p), op = P(other(pr.p));
+  for (const u of uids) {
+    if (pr.kind === 'discard') { const i = me.hand.findIndex(c => c.uid === u); me.discard.push(...me.hand.splice(i, 1)); }
+    else if (pr.kind === 'cull') {
+      let i = me.hand.findIndex(c => c.uid === u);
+      if (i >= 0) me.hand.splice(i, 1); else { i = me.discard.findIndex(c => c.uid === u); if (i >= 0) me.discard.splice(i, 1); }
+    }
+    else if (pr.kind === 'stun') { const i = op.champions.findIndex(c => c.uid === u); const [c] = op.champions.splice(i, 1); op.discard.push(c); state.cur.stunned.push(DEF(c).name); }
+    else if (pr.kind === 'sweep') { const i = state.market.findIndex(c => c.uid === u); state.market.splice(i, 1); if (state.marketDeck.length) state.market.splice(i, 0, state.marketDeck.pop()); }
+    else if (pr.kind === 'prep') { const c = me.champions.find(c => c.uid === u); if (c) c.expended = false; }
+  }
+  state.prompts.shift(); sel = []; afterChange(); return true;
+}
+
+/* ---------- Rendering ---------- */
+function esc(s){ return String(s).replace(/[&<>"]/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[ch]); }
+function cardHTML(c, o = {}){
+  const d = DEF(c);
+  const lines = [];
+  if (d.fx.length) lines.push(`<div>${fxText(d.fx)}</div>`);
+  if (d.exp)  lines.push(`<div><span class="k">Brug:</span> ${fxText(d.exp)}</div>`);
+  if (d.ally) lines.push(`<div><span class="k">Allieret:</span> ${fxText(d.ally)}</div>`);
+  if (d.sac)  lines.push(`<div><span class="k">Ofring:</span> ${fxText(d.sac)}</div>`);
+  const cls = ['card', 'f-' + d.fac, d.type === 'champion' ? 'champion' : '', d.guard ? 'guard' : '',
+    o.exp && c.expended ? 'expended' : '', o.dim ? 'dim' : '', o.sel ? 'selected' : ''].filter(Boolean).join(' ');
+  const attrs = o.act ? ` data-act="${o.act}" data-i="${o.i ?? ''}"` : '';
+  return `<button class="${cls}"${attrs} data-uid="${c.uid}" aria-label="${esc(d.name)}${d.def ? ', helt ' + d.def : ''}${d.guard ? ', vagt' : ''}">
+    <div class="ctop">${d.cost ? `<span class="cost">${d.cost}</span>` : ''}<span class="name">${esc(d.name)}</span>${d.def ? `<span class="def">${d.guard ? '🛡' : ''}${d.def}</span>` : ''}</div>
+    <div class="emoji" aria-hidden="true">${d.emoji}</div>
+    <div class="ctext">${lines.join('')}</div>
+    ${o.badge ? `<div class="badge">${o.badge}</div>` : ''}
+  </button>`;
+}
+function render(){
+  const ph = state ? state.phase : 'idle';
+  $('#start').classList.toggle('on', ph === 'idle');
+  $('#handoff').classList.toggle('on', ph === 'handoff');
+  $('#end').classList.toggle('on', ph === 'end');
+  $('#table').classList.toggle('on', ph === 'play');
+  document.body.classList.toggle('playing', ph === 'play');
+  if (ph === 'idle') renderStart();
+  else if (ph === 'handoff') renderHandoff();
+  else if (ph === 'end') renderEnd();
+  else renderTable();
+  renderModal();
+}
+function statsHTML(){
+  const s = loadStats();
+  return `<span class="pill">Spil <b>${s.games}</b></span><span class="pill red"><b>Rød</b> ${s.red}</span><span class="pill blue"><b>Blå</b> ${s.blue}</span>`;
+}
+function renderStart(){
+  const s = loadStats();
+  $('#startPill').textContent = `${s.games} spil`;
+  $('#startStats').innerHTML = statsHTML();
+  $('#continueBtn').hidden = !loadSave();
+}
+function renderHandoff(){
+  const p = state.turn;
+  $('#handoff').className = 'screen on ' + p;
+  $('#hoTurn').textContent = `Tur ${Math.ceil(state.turnNo / 2)}`;
+  $('#hoName').textContent = NAME[p];
+  $('#hoTitle').textContent = `Giv iPad'en til ${NAME[p]}`;
+  $('#hoHp').innerHTML = `<span class="pill red"><b>Rød</b> ❤ ${P('red').health}</span><span class="pill blue"><b>Blå</b> ❤ ${P('blue').health}</span>`;
+  const pend = P(p).pendingDiscard;
+  $('#hoLast').textContent = (state.last ? state.last.text + ' ' : 'Rød begynder og har kun 3 kort i første tur. ')
+    + (pend ? `${NAME[p]} skal smide ${pend} kort, før turen begynder.` : '');
+}
+function renderEnd(){
+  const w = state.winner, l = other(w);
+  $('#end').className = 'screen on ' + w;
+  $('#winnerText').textContent = `${NAME[w]} vandt`;
+  $('#scoreText').textContent = `${NAME[l]} løb tør for liv efter ${Math.ceil(state.turnNo / 2)} ture. ${NAME[w]} har ${P(w).health} liv tilbage.`;
+  $('#endPill').textContent = `${loadStats().games} spil`;
+  $('#endStats').innerHTML = statsHTML();
+}
+function renderTable(){
+  const p = state.turn, me = cur(), o = other(p), op = P(o);
+  $('#turnPill').textContent = `${NAME[p]} · tur ${Math.ceil(state.turnNo / 2)}`;
+  $('#opp').className = 'sec opp ' + o;
+  $('#oppName').textContent = NAME[o];
+  $('#oppHp').textContent = `❤ ${op.health}`;
+  $('#oppMeta').textContent = `Bunke ${op.deck.length} · Hånd ${op.hand.length} · Kasserede ${op.discard.length}`;
+  const g = guards(op);
+  $('#oppChamps').innerHTML = op.champions.length
+    ? op.champions.map((c, i) => cardHTML(c, { act:'attack', i, dim: !canAttackChamp(c, op), badge: canAttackChamp(c, op) ? 'Tryk: angrib' : (DEF(c).def > me.combat ? `Kræver ${DEF(c).def} ⚔` : 'Bag vagt') })).join('')
+    : '<div class="empty">Ingen helte i spil</div>';
+  const face = $('#attackBtn');
+  face.textContent = g.length ? `🛡 ${NAME[o]} er beskyttet af vagter – slå dem ud først` : `Angrib ${NAME[o]} med ${me.combat} ⚔`;
+  face.disabled = !!g.length || me.combat <= 0;
+  $('#market').innerHTML = state.market.map((c, i) => cardHTML(c, { act:'buy', i, dim: DEF(c).cost > me.gold })).join('')
+    + cardHTML({ uid:'gem', id:'ildsten' }, { act:'gem', i:0, dim: state.gems <= 0 || me.gold < 2, badge: `${state.gems} tilbage` });
+  $('#marketMeta').textContent = `${state.marketDeck.length} kort i bunken`;
+  const mine = me.champions.map((c, i) => cardHTML(c, { act:'expend', i, exp:true, dim: c.expended || !DEF(c).exp, badge: c.expended ? 'Brugt' : (DEF(c).exp ? 'Tryk: brug' : '') }))
+    .concat(me.played.map((c, i) => cardHTML(c, { act:'sac', i, dim: !DEF(c).sac, badge: DEF(c).sac ? 'Tryk: ofr' : '' })));
+  $('#inplay').innerHTML = mine.length ? mine.join('') : '<div class="empty">Spil kort fra hånden – de lander her</div>';
+  $('#mineName').textContent = NAME[p]; $('#mineName').className = 'pname ' + p;
+  $('#myGold').textContent = `🪙 ${me.gold}`; $('#myCombat').textContent = `⚔ ${me.combat}`; $('#myHp').textContent = `❤ ${me.health}`;
+  $('#hand').innerHTML = me.hand.length ? me.hand.map((c, i) => cardHTML(c, { act:'play', i })).join('') : '<div class="empty">Ingen kort på hånden</div>';
+  $('#handMeta').textContent = `Bunke ${me.deck.length} · Kasserede ${me.discard.length}${me.topNext ? ' · næste køb øverst' : ''}`;
+  $('#playAll').disabled = !me.hand.length;
+}
+const RULES = `
+<h2>Sådan spiller I</h2>
+<ul class="rules">
+  <li><b>Målet:</b> Slå modstanderen fra 50 liv ned til 0. I skiftes til at have iPad'en.</li>
+  <li><b>Din tur:</b> Tryk på kortene i din hånd for at spille dem. De giver <b>🪙 guld</b> til at købe kort fra markedet og <b>⚔ kamp</b> til at angribe med.</li>
+  <li><b>Helte</b> (kort med et tal i hjørnet) bliver liggende på bordet. Tryk på en helt for at <b>bruge</b> den – én gang pr. tur. Alle andre kort smides efter turen.</li>
+  <li><b>Allieret:</b> Udløses af sig selv, når du har et andet kort fra samme fraktion i spil (også helte fra tidligere ture).</li>
+  <li><b>Ofring:</b> Tryk på et spillet kort med "Ofring" for at ofre det. Kortet forsvinder for altid, men du får bonussen nu.</li>
+  <li><b>Angrib:</b> Tryk på en fjendehelt for at slå den ud – det koster lige så meget kamp som heltens tal. <b>🛡 Vagter</b> skal slås ud, før du kan ramme spilleren eller andre helte. Resten af kampen sender du mod modstanderen med den store knap.</li>
+  <li><b>Køb:</b> Købte kort lægges i dine kasserede kort og kommer med, når din bunke blandes igen. <b>Ildsten</b> kan altid købes for 2.</li>
+  <li><b>Afslut tur:</b> Hånd og spillede kort smides, og du trækker 5 nye. Løber bunken tør, blandes de kasserede kort til en ny bunke.</li>
+  <li><b>Fjenden smider kort:</b> Modstanderen vælger selv, hvad der smides, når deres tur begynder.</li>
+</ul>`;
+function renderModal(){
+  const m = $('#modal'), sh = $('#sheet');
+  if (modalMode === 'rules') {
+    sh.innerHTML = RULES + `<div class="foot"><button class="btn" data-act="closeModal">Forstået</button></div>`;
+    m.hidden = false; return;
+  }
+  if (modalMode === 'quit') {
+    sh.innerHTML = `<h2>Afslut spillet?</h2><p>Stillingen slettes, og I starter forfra næste gang.</p>
+      <div class="foot"><button class="btn ghost" data-act="closeModal">Spil videre</button><button class="btn danger" data-act="quitYes">Afslut</button></div>`;
+    m.hidden = false; return;
+  }
+  const pr = state && state.phase === 'play' && state.prompts[0];
+  if (pr) {
+    const opts = promptOptions(pr), rule = promptRule(pr);
+    sel = sel.filter(u => opts.some(o => o.uid === u));
+    const zoneName = { hand:'Hånd', discard:'Kasserede', champ:'', market:'' };
+    sh.innerHTML = `<h2>${promptTitle(pr)}</h2>
+      <div class="row wrap">${opts.map(o => cardHTML(o.card, { act:'pick', i:0, sel: sel.includes(o.uid), badge: zoneName[o.zone] || '' })).join('')}</div>
+      <div class="foot"><span class="hint">${rule.max === 1 && rule.min === 1 ? 'Tryk på et kort' : `${sel.length} af ${rule.max} valgt`}</span>
+        ${rule.min === 0 ? `<button class="btn sm ghost" data-act="promptSkip">${sel.length ? 'Ofr ingen' : 'Spring over'}</button>` : ''}
+        ${!(rule.max === 1 && rule.min === 1) ? `<button class="btn sm" data-act="promptOk" ${sel.length < rule.min || (rule.min === 0 && !sel.length) ? 'disabled' : ''}>OK</button>` : ''}
+      </div>`;
+    m.hidden = false; return;
+  }
+  m.hidden = true;
+}
+
+/* ---------- Input ---------- */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const act = el.dataset.act, i = parseInt(el.dataset.i, 10);
+  switch (act) {
+    case 'play': play(i); break;
+    case 'buy': buy(i); break;
+    case 'gem': buyGem(); break;
+    case 'attack': attackChampion(i); break;
+    case 'expend': expend(i); break;
+    case 'sac': sacrifice(i); break;
+    case 'pick': {
+      const pr = state && state.prompts[0]; if (!pr) break;
+      const uid = parseInt(el.dataset.uid, 10), rule = promptRule(pr);
+      if (rule.min === 1 && rule.max === 1) { choose([uid]); break; }
+      if (sel.includes(uid)) sel = sel.filter(u => u !== uid); else if (sel.length < rule.max) sel.push(uid);
+      renderModal(); break;
+    }
+    case 'promptOk': choose(sel); break;
+    case 'promptSkip': choose([]); break;
+    case 'closeModal': modalMode = null; renderModal(); break;
+    case 'quitYes': quitGame(); break;
+  }
+});
+$('#playBtn').addEventListener('click', newGame);
+$('#continueBtn').addEventListener('click', () => { const s = loadSave(); if (s) { state = s; render(); } });
+$('#rulesBtn').addEventListener('click', () => { modalMode = 'rules'; renderModal(); });
+$('#rulesBtn2').addEventListener('click', () => { modalMode = 'rules'; renderModal(); });
+$('#showBtn').addEventListener('click', startTurn);
+$('#endTurn').addEventListener('click', endTurn);
+$('#playAll').addEventListener('click', playAll);
+$('#attackBtn').addEventListener('click', attackFace);
+$('#quit').addEventListener('click', () => { modalMode = 'quit'; renderModal(); });
+$('#rematchBtn').addEventListener('click', newGame);
+$('#menuBtn').addEventListener('click', () => { state = null; render(); });
+$('#modal').addEventListener('click', e => { if (e.target === e.currentTarget && modalMode) { modalMode = null; renderModal(); } });
+
+render();
+
+/* ---------- Til tests ---------- */
+window.GAME = {
+  get state(){ return state; }, DEFS: D, FAC, seed,
+  newGame, startTurn, play, playAll, buy, buyGem, attackChampion, attackFace, expend, sacrifice, endTurn, choose, quitGame,
+  prompt(){ const pr = state && state.prompts[0]; return pr ? { ...pr, options: promptOptions(pr).map(o => ({ uid:o.uid, id:o.card.id, zone:o.zone })), ...promptRule(pr) } : null; },
+  load(){ const s = loadSave(); if (s) { state = s; render(); } return !!s; },
+};
+})();
+</script>
+</body></html>
