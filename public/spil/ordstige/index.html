@@ -1,0 +1,762 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Ordstige: skift ét bogstav ad gangen og nå frem til målordet på så få trin som muligt. Dansk ordspil med dagens stige.">
+<title>Ordstige – zydy.dk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Crect x='10' y='40' width='16' height='14' rx='4' fill='%23ff5c7a'/%3E%3Crect x='24' y='25' width='16' height='14' rx='4' fill='%23ffd447'/%3E%3Crect x='38' y='10' width='16' height='14' rx='4' fill='%235ee0a8'/%3E%3C/svg%3E">
+<style>
+  /*
+    Ordstige – dansk "word ladder" til zydy.dk. Én HTML-fil + de to ordlistefiler.
+    Ordlisten (words-allowed.js / words-solutions.js) er fra Stavekontrolden da_DK
+    (GPL/LGPL/MPL) via Ordle (github.com/LarsArnth/ordle). Se headerne i filerne.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --violet:#8f6bff;
+    --ink:#1c1f4a; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;overflow:hidden}
+  h1{font-size:44px;line-height:1;margin:0 0 6px;letter-spacing:-1.5px;font-weight:800}
+  h2{font-size:30px;line-height:1.1;margin:0 0 8px;letter-spacing:-.8px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn.danger{background:var(--coral);color:#fff}
+  .btn[disabled]{opacity:.45;cursor:default}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+
+  /* Skærme */
+  .screen{display:none;flex-direction:column;flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto}
+  .screen.on{display:flex}
+
+  /* Topbar */
+  .top{display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:6px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;color:var(--muted);
+    text-decoration:none;font-weight:700;font-size:16px}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:20px;letter-spacing:-.5px}
+
+  /* Startskærm */
+  #start{justify-content:center;text-align:center;padding-bottom:8vh}
+  #start h1 span{color:var(--sun)}
+  .example{display:flex;flex-direction:column;gap:6px;align-items:center;margin:8px 0 18px}
+  .example .row{--tile:36px}
+  .example .arrow{color:var(--muted);font-size:14px;line-height:1}
+  .example .row .tile.changed{background:var(--sun);color:var(--ink)}
+  .example .row.goal .tile{background:var(--mint);color:var(--ink)}
+  .start-btns{display:flex;flex-direction:column;gap:0}
+  .daily-note{margin-top:10px;font-size:14px;color:var(--muted)}
+
+  /* Rækker og fliser */
+  .row{--tile:52px;display:grid;grid-template-columns:repeat(5,var(--tile));gap:6px;justify-content:center}
+  .tile{width:var(--tile);height:var(--tile);border-radius:12px;background:var(--bg3);color:var(--text);
+    display:grid;place-items:center;font-weight:800;font-size:calc(var(--tile) * .5);
+    text-transform:uppercase;border:3px solid transparent;transition:background .2s,transform .12s,border-color .12s}
+  .tile.hit{background:rgba(94,224,168,.28);color:var(--mint)}
+  .row.target{--tile:56px;margin-bottom:6px}
+  .row.target .tile{background:var(--mint);color:var(--ink)}
+  .caption{text-align:center;color:var(--muted);font-size:13px;font-weight:700;letter-spacing:.5px;
+    text-transform:uppercase;margin:2px 0 6px}
+
+  /* Stigen */
+  .ladder-wrap{flex:1;min-height:0;position:relative;display:flex;flex-direction:column}
+  .ladder{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;
+    padding:12px 0 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    /* blød kant, så man kan se at stigen kan scrolles når den bliver lang */
+    -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 10px),transparent);
+    mask-image:linear-gradient(to bottom,transparent 0,#000 14px,#000 calc(100% - 10px),transparent)}
+  .ladder::-webkit-scrollbar{display:none}
+  .ladder .row{flex:0 0 auto}
+  .ladder .row.past .tile{opacity:.72}
+  .ladder .row.past .tile.hit{opacity:.85}
+  .ladder .row.current{--tile:58px}
+  .ladder .row.current .tile{cursor:pointer;background:#2b3070;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+  .ladder .row.current .tile.hit{background:rgba(94,224,168,.3)}
+  .ladder .row.current .tile.sel{border-color:var(--sun);transform:translateY(-3px)}
+  .ladder .row.solution .tile{background:transparent;border:2px dashed rgba(169,172,214,.45);color:var(--muted);opacity:.85}
+  .ladder .row.solution.last .tile{border-color:rgba(94,224,168,.6);color:var(--mint)}
+  .ladder .row.enter{animation:enter .28s cubic-bezier(.2,.8,.3,1.2) both}
+  @keyframes enter{from{opacity:0;transform:translateY(18px) scale(.92)}to{opacity:1;transform:none}}
+  .ladder .row.shake{animation:shake .45s}
+  @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}
+    30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
+  .ladder .row.won .tile{animation:bounce .5s both}
+  .ladder .row.won .tile:nth-child(2){animation-delay:.06s}.ladder .row.won .tile:nth-child(3){animation-delay:.12s}
+  .ladder .row.won .tile:nth-child(4){animation-delay:.18s}.ladder .row.won .tile:nth-child(5){animation-delay:.24s}
+  @keyframes bounce{0%,100%{transform:none}40%{transform:translateY(-14px)}}
+  .hint{text-align:center;color:var(--muted);font-size:14px;min-height:20px;margin:0 0 4px}
+
+  /* Toast */
+  .toast{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) scale(.9);
+    background:var(--text);color:var(--ink);font-weight:800;font-size:17px;padding:12px 20px;
+    border-radius:999px;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:5}
+  .toast.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+  /* Handlingsknapper */
+  .actions{display:flex;gap:8px;margin:4px 0 8px}
+  .actions button{flex:1;min-height:44px;border-radius:14px;background:var(--bg2);color:var(--text);
+    font-weight:700;font-size:15px;padding:10px 6px;transition:transform .08s,opacity .15s}
+  .actions button:active{transform:scale(.96)}
+  .actions button[disabled]{opacity:.4;cursor:default}
+  .actions button.give{color:var(--coral)}
+
+  /* Skærmtastatur */
+  .kbd{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+  .krow{display:flex;gap:4px;justify-content:center}
+  .key{flex:1 1 0;max-width:44px;min-width:0;height:46px;border-radius:9px;background:#3a3f7a;color:var(--text);
+    font-weight:700;font-size:17px;text-transform:uppercase;padding:0;transition:transform .06s,background .1s}
+  .key:active{transform:scale(.92);background:var(--sun);color:var(--ink)}
+  .key.flash{background:var(--sun);color:var(--ink)}
+
+  /* Slutoverlay */
+  .overlay{position:fixed;inset:0;background:rgba(17,20,42,.86);display:none;align-items:flex-end;justify-content:center;
+    padding:16px;z-index:20;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .overlay.on{display:flex}
+  .card{width:100%;max-width:480px;background:var(--bg2);border-radius:28px;padding:24px 20px calc(env(safe-area-inset-bottom) + 20px);
+    animation:up .3s cubic-bezier(.2,.8,.3,1.1) both;text-align:center}
+  @keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+  .card h2{margin-bottom:4px}
+  .card h2.win{color:var(--mint)}.card h2.lose{color:var(--coral)}
+  .card .sub{font-size:18px;color:var(--text);margin-bottom:14px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0 6px}
+  .stat{background:var(--bg3);border-radius:14px;padding:10px 4px}
+  .stat b{display:block;font-size:24px;font-weight:800;line-height:1.1}
+  .stat span{display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.2}
+  .card a.link{display:block;margin-top:14px;color:var(--muted);font-weight:700;text-decoration:none;padding:8px}
+
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:30}
+
+  @media (min-height:760px){ .row{--tile:56px} .ladder .row.current{--tile:62px} .key{height:50px} }
+  @media (min-width:600px) and (min-height:900px){
+    .row{--tile:66px} .row.target{--tile:70px} .ladder .row.current{--tile:72px} .example .row{--tile:44px}
+    .key{height:58px;max-width:54px;font-size:20px} .actions button{min-height:52px;font-size:17px}
+  }
+  @media (max-height:660px){ .row{--tile:44px} .row.target{--tile:48px} .ladder .row.current{--tile:50px} .key{height:40px} .caption{display:none} }
+  @media (prefers-reduced-motion:reduce){
+    .ladder .row.enter,.ladder .row.shake,.ladder .row.won .tile,.card{animation:none}
+    .tile,.key,.btn{transition:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- Startskærm -->
+<section id="start" class="screen on">
+  <div class="top"><a class="back" href="/">‹ zydy.dk</a><span class="name"></span><span class="pill" id="start-pill">Ordstige</span></div>
+  <div style="flex:1"></div>
+  <h1>Ord<span>stige</span></h1>
+  <p>Kom fra startordet til målordet ved at ændre <b style="color:var(--text)">ét bogstav</b> ad gangen. Hvert trin skal være et rigtigt dansk ord. Jo færre trin, jo bedre.</p>
+  <div class="example" id="example" aria-hidden="true"></div>
+  <div class="start-btns">
+    <button class="btn" id="btn-daily">Dagens stige</button>
+    <button class="btn ghost" id="btn-random">Tilfældig stige</button>
+  </div>
+  <p class="daily-note" id="daily-note"></p>
+  <div style="flex:1"></div>
+</section>
+
+<!-- Spilskærm -->
+<section id="game" class="screen">
+  <div class="top"><a class="back" href="/">‹ zydy.dk</a><span class="name">Ordstige</span><span class="pill" id="pill">Trin 0 · par –</span></div>
+  <div class="caption" id="caption">Mål</div>
+  <div class="row target" id="target"></div>
+  <div class="ladder-wrap">
+    <div class="ladder" id="ladder"></div>
+    <div class="toast" id="toast">Ikke et ord</div>
+  </div>
+  <div class="hint" id="hint"></div>
+  <div class="actions">
+    <button id="btn-undo" type="button">Fortryd</button>
+    <button id="btn-solve" class="give" type="button">Vis løsning</button>
+    <button id="btn-new" type="button">Ny tilfældig</button>
+  </div>
+  <div class="kbd" id="kbd"></div>
+</section>
+
+<!-- Slutoverlay -->
+<div class="overlay" id="end">
+  <div class="card">
+    <h2 id="end-title">Perfekt!</h2>
+    <div class="sub" id="end-sub"></div>
+    <div class="stats" id="end-stats"></div>
+    <button class="btn" id="end-random">Ny tilfældig stige</button>
+    <button class="btn ghost" id="end-close">Se stigen</button>
+    <a class="link" href="/">Tilbage til zydy.dk</a>
+  </div>
+</div>
+<canvas id="confetti"></canvas>
+
+<!-- Ordlister fra Stavekontrolden da_DK (GPL/LGPL/MPL) via Ordle. Forskudt 13 pladser i alfabetet. -->
+<script src="words-allowed.js"></script>
+<script src="words-solutions.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ================= Ordlister og graf ================= */
+
+  var LEN = 5;
+  var ALPHABET = 'abcdefghijklmnopqrstuvwxyzæøå';
+  var SHIFT = 13;                           // samme forskydning som i ordlistefilerne
+  var EPOCH = Date.UTC(2026, 8, 11);        // 11. sep. 2026 = Ordstige nr. 1 (UTC)
+  var KEY_STATS = 'zydy.ordstige.stats';
+  var KEY_DAILY = 'zydy.ordstige.daily';
+
+  function unscramble(text) {
+    var n = ALPHABET.length, out = '';
+    for (var i = 0; i < text.length; i++) {
+      var p = ALPHABET.indexOf(text.charAt(i));
+      out += p < 0 ? text.charAt(i) : ALPHABET.charAt((p - SHIFT % n + n) % n);
+    }
+    return out;
+  }
+  function split(text) {
+    var out = [];
+    for (var i = 0; i + LEN <= text.length; i += LEN) out.push(text.substr(i, LEN));
+    return out;
+  }
+
+  var tBuild = performance.now();
+  var solutions = split(unscramble(window.ORDLE_SOLUTIONS || ''));
+  var allowedSet = Object.create(null);
+  var allWords = [];
+  split(unscramble(window.ORDLE_ALLOWED || '')).concat(solutions).forEach(function (w) {
+    if (!allowedSet[w]) { allowedSet[w] = true; allWords.push(w); }
+  });
+  var solutionSet = Object.create(null);
+  solutions.forEach(function (w) { solutionSet[w] = true; });
+
+  // Mønsternøgler: "h?nde" -> [hunde, hånde, ...]. Naboer = ord der deler et mønster.
+  var patterns = Object.create(null);
+  allWords.forEach(function (w) {
+    for (var i = 0; i < LEN; i++) {
+      var k = w.slice(0, i) + '?' + w.slice(i + 1);
+      (patterns[k] || (patterns[k] = [])).push(w);
+    }
+  });
+  var buildMs = performance.now() - tBuild;
+  console.log('Ordstige: graf bygget på ' + buildMs.toFixed(1) + ' ms (' + allWords.length + ' ord)');
+
+  function isWord(w) { return !!allowedSet[String(w).toLowerCase()]; }
+
+  function neighbors(w) {
+    w = String(w).toLowerCase();
+    var out = [];
+    for (var i = 0; i < LEN; i++) {
+      var list = patterns[w.slice(0, i) + '?' + w.slice(i + 1)] || [];
+      for (var j = 0; j < list.length; j++) if (list[j] !== w) out.push(list[j]);
+    }
+    return out;
+  }
+
+  function diffCount(a, b) {
+    var d = 0;
+    for (var i = 0; i < LEN; i++) if (a.charAt(i) !== b.charAt(i)) d++;
+    return d;
+  }
+
+  // BFS fra ét ord; returnerer {dist, prev} for hele den nåbare komponent.
+  function bfs(start, stopAt) {
+    var dist = Object.create(null), prev = Object.create(null);
+    dist[start] = 0; prev[start] = null;
+    var queue = [start];
+    for (var qi = 0; qi < queue.length; qi++) {
+      var w = queue[qi];
+      if (w === stopAt) break;
+      var nb = neighbors(w);
+      for (var i = 0; i < nb.length; i++) {
+        var n = nb[i];
+        if (dist[n] === undefined) { dist[n] = dist[w] + 1; prev[n] = w; queue.push(n); }
+      }
+    }
+    return { dist: dist, prev: prev };
+  }
+
+  // Korteste vej fra a til b, uden a selv. null hvis der ikke er nogen.
+  function shortestPath(a, b) {
+    if (a === b) return [];
+    var r = bfs(a, b);
+    if (r.dist[b] === undefined) return null;
+    var path = [];
+    for (var w = b; w !== a; w = r.prev[w]) path.unshift(w);
+    return path;
+  }
+
+  /* ================= PRNG og generering ================= */
+
+  function mulberry32(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Vælger start og mål blandt de almindelige ord. Par = korteste vej (4–6).
+  // Start og mål må højst dele ét bogstav på samme plads, så det bliver en rigtig omvej.
+  function generate(seed) {
+    var rng = mulberry32(seed);
+    var best = null;
+    for (var attempt = 0; attempt < 80; attempt++) {
+      var start = solutions[Math.floor(rng() * solutions.length)];
+      var dist = bfs(start).dist;
+      var cands = [], loose = [];
+      for (var i = 0; i < solutions.length; i++) {
+        var w = solutions[i], d = dist[w];
+        if (d === undefined || d < 4 || d > 6) continue;
+        var same = LEN - diffCount(start, w);
+        if (same <= 1) cands.push(w); else if (same <= 2) loose.push(w);
+      }
+      if (cands.length) {
+        var target = cands[Math.floor(rng() * cands.length)];
+        return { start: start, target: target, par: dist[target] };
+      }
+      if (loose.length && !best) best = { start: start, target: loose[Math.floor(rng() * loose.length)], par: dist[loose[0]] };
+    }
+    if (best) { best.par = bfs(best.start).dist[best.target]; return best; }
+    // Bør aldrig ske, men hellere et spil end ingenting.
+    var s = solutions[0], nb = shortestPath(s, solutions[1]);
+    return { start: s, target: solutions[1], par: nb ? nb.length : 0 };
+  }
+
+  /* ================= Dato og lagring ================= */
+
+  function dayNumber(date) {
+    var d = date || new Date();
+    var utc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    return Math.floor((utc - EPOCH) / 864e5) + 1;
+  }
+  function dailySeed(day) { return (day * 2654435761 + 12345) >>> 0; }
+
+  function load(key, fallback) {
+    try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
+  }
+  function save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* privat tilstand el.lign. */ }
+  }
+  function getStats() {
+    return load(KEY_STATS, { played: 0, won: 0, streak: 0, lastDay: 0, diffSum: 0 });
+  }
+
+  /* ================= Spiltilstand ================= */
+
+  var state = null;       // {start, target, par, steps, done, won, mode, seed, day}
+  var selected = 0;       // valgt position i det aktuelle ord
+  var lastSolution = [];  // vist løsning ved opgivelse
+
+  function currentWord() { return state.steps[state.steps.length - 1]; }
+
+  function firstDiffPos(w) {
+    for (var i = 0; i < LEN; i++) if (w.charAt(i) !== state.target.charAt(i)) return i;
+    return 0;
+  }
+
+  function newGame(seed, mode) {
+    seed = (seed === undefined || seed === null) ? (Math.random() * 4294967296) >>> 0 : (Number(seed) >>> 0);
+    mode = mode || 'random';
+    var g = generate(seed);
+    state = { start: g.start, target: g.target, par: g.par, steps: [g.start], done: false, won: false,
+              mode: mode, seed: seed, day: mode === 'daily' ? dayNumber() : null };
+    lastSolution = [];
+    selected = firstDiffPos(g.start);
+    hideEnd();
+    renderAll();
+    showScreen('game');
+    return state;
+  }
+
+  function tryWord(word) {
+    if (!state) return { ok: false, reason: 'nogame' };
+    if (state.done) return { ok: false, reason: 'done' };
+    word = String(word).toLowerCase();
+    if (word.length !== LEN) return { ok: false, reason: 'length' };
+    var cur = currentWord();
+    if (word === cur) return { ok: false, reason: 'same' };
+    if (diffCount(cur, word) !== 1) return { ok: false, reason: 'diff' };
+    if (!isWord(word)) return { ok: false, reason: 'notword' };
+    state.steps.push(word);
+    var won = word === state.target;
+    if (won) { state.done = true; state.won = true; }
+    selected = won ? 0 : (word.charAt(selected) === state.target.charAt(selected) ? firstDiffPos(word) : selected);
+    renderLadder(true);
+    renderPill();
+    if (won) finish();
+    return { ok: true, reason: won ? 'won' : 'step' };
+  }
+
+  function undo() {
+    if (!state || state.done || state.steps.length < 2) return false;
+    state.steps.pop();
+    selected = Math.min(selected, LEN - 1);
+    renderLadder(false);
+    renderPill();
+    return true;
+  }
+
+  function solve() {
+    if (!state) return null;
+    return shortestPath(currentWord(), state.target);
+  }
+
+  // Giver op: viser korteste vej fra det nuværende ord, tæller som tabt.
+  function giveUp() {
+    if (!state || state.done) return;
+    lastSolution = solve() || [];
+    state.done = true; state.won = false;
+    renderLadder(true);
+    finish();
+  }
+
+  /* ================= Afslutning og statistik ================= */
+
+  function rating(steps, par) {
+    var over = steps - par;
+    if (over <= 0) return 'Perfekt!';
+    if (over <= 2) return 'Flot!';
+    return 'Klaret';
+  }
+
+  function finish() {
+    var steps = state.steps.length - 1;
+    var stats = getStats();
+    stats.played++;
+    if (state.won) { stats.won++; stats.diffSum += steps - state.par; }
+    if (state.mode === 'daily') {
+      if (state.won) stats.streak = (stats.lastDay === state.day - 1) ? stats.streak + 1 : 1;
+      else stats.streak = 0;
+      stats.lastDay = state.day;
+      save(KEY_DAILY, { day: state.day, steps: state.steps, won: state.won });
+    }
+    save(KEY_STATS, stats);
+    setTimeout(function () {
+      showEnd(stats);
+      if (state.won) confetti();
+    }, state.won ? 700 : 400);
+  }
+
+  function showEnd(stats, alreadyPlayed) {
+    var steps = state.steps.length - 1;
+    var title = document.getElementById('end-title'), sub = document.getElementById('end-sub');
+    title.className = state.won ? 'win' : 'lose';
+    if (state.won) {
+      title.textContent = rating(steps, state.par);
+      sub.textContent = (alreadyPlayed ? 'Du klarede dagens stige på ' : 'Du klarede det på ') + steps + ' trin (par ' + state.par + ')';
+    } else {
+      title.textContent = alreadyPlayed ? 'Dagens stige er brugt' : 'Løsningen er vist';
+      sub.textContent = alreadyPlayed ? 'Du gav op i dag. Prøv igen i morgen – eller tag en tilfældig stige.'
+                                      : 'Korteste vej fra dit sidste ord er vist med stiplede fliser.';
+    }
+    var pct = stats.played ? Math.round(100 * stats.won / stats.played) : 0;
+    var avg = stats.won ? (stats.diffSum / stats.won) : 0;
+    var avgTxt = (avg >= 0 ? '+' : '') + (Math.round(avg * 10) / 10);
+    document.getElementById('end-stats').innerHTML =
+      '<div class="stat"><b>' + stats.played + '</b><span>spillet</span></div>' +
+      '<div class="stat"><b>' + pct + '%</b><span>vundet</span></div>' +
+      '<div class="stat"><b>' + stats.streak + '</b><span>streak<br>dagens</span></div>' +
+      '<div class="stat"><b>' + avgTxt + '</b><span>trin over par<br>i snit</span></div>';
+    document.getElementById('end').classList.add('on');
+  }
+  function hideEnd() { document.getElementById('end').classList.remove('on'); }
+
+  /* ================= Rendering ================= */
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(function (s) { s.classList.toggle('on', s.id === id); });
+  }
+
+  function tileRow(word, cls, opts) {
+    opts = opts || {};
+    var row = document.createElement('div');
+    row.className = 'row ' + cls;
+    for (var i = 0; i < LEN; i++) {
+      var t = document.createElement('div');
+      t.className = 'tile';
+      if (opts.hits && word.charAt(i) === state.target.charAt(i)) t.classList.add('hit');
+      if (opts.selectable && i === selected) t.classList.add('sel');
+      t.textContent = word.charAt(i);
+      t.setAttribute('data-pos', i);
+      row.appendChild(t);
+    }
+    return row;
+  }
+
+  function renderTarget() {
+    var el = document.getElementById('target');
+    el.innerHTML = '';
+    Array.prototype.slice.call(tileRow(state.target, '').childNodes).forEach(function (n) { el.appendChild(n); });
+    document.getElementById('caption').textContent =
+      'Mål · ' + (state.mode === 'daily' ? 'Dagens stige nr. ' + state.day : 'Tilfældig stige');
+  }
+
+  function renderPill() {
+    document.getElementById('pill').textContent = 'Trin ' + (state.steps.length - 1) + ' · par ' + state.par;
+    document.getElementById('btn-undo').disabled = state.done || state.steps.length < 2;
+    document.getElementById('btn-solve').disabled = state.done;
+    var hint = document.getElementById('hint');
+    if (state.done) hint.textContent = state.won ? 'Du nåede målet!' : 'Korteste vej vist';
+    else hint.textContent = state.steps.length === 1 ? 'Tryk på et bogstav i ordet, og vælg et nyt på tastaturet' : '';
+  }
+
+  function renderLadder(animate) {
+    var el = document.getElementById('ladder');
+    el.innerHTML = '';
+    var n = state.steps.length;
+    state.steps.forEach(function (w, i) {
+      var last = i === n - 1;
+      var cls = last ? (state.done ? (state.won ? 'current won' : 'current') : 'current') : 'past';
+      var row = tileRow(w, cls, { hits: true, selectable: last && !state.done });
+      if (last && animate && i > 0) row.classList.add('enter');
+      el.appendChild(row);
+    });
+    if (state.done && !state.won) {
+      lastSolution.forEach(function (w, i) {
+        var row = tileRow(w, 'solution' + (i === lastSolution.length - 1 ? ' last' : ''), {});
+        if (animate) { row.classList.add('enter'); row.style.animationDelay = (i * 90) + 'ms'; }
+        el.appendChild(row);
+      });
+    }
+    requestAnimationFrame(function () { el.scrollTop = el.scrollHeight; });
+  }
+
+  function renderSelection() {
+    var row = document.querySelector('#ladder .row.current');
+    if (!row) return;
+    row.childNodes.forEach(function (t, i) { t.classList.toggle('sel', i === selected); });
+  }
+
+  function renderAll() { renderTarget(); renderPill(); renderLadder(false); }
+
+  var toastTimer = 0;
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('on'); }, 1000);
+  }
+
+  function shakeCurrent() {
+    var row = document.querySelector('#ladder .row.current');
+    if (!row) return;
+    row.classList.remove('shake');
+    void row.offsetWidth;   // genstart animationen
+    row.classList.add('shake');
+    if (navigator.vibrate) navigator.vibrate(60);
+  }
+
+  /* ================= Indtastning ================= */
+
+  function selectPos(i) {
+    if (!state || state.done) return;
+    selected = (i + LEN) % LEN;
+    renderSelection();
+  }
+
+  // Sæt et bogstav på den valgte plads. Bliver det et gyldigt nyt ord, lægges det som næste trin.
+  function typeLetter(ch) {
+    if (!state || state.done) return;
+    ch = ch.toLowerCase();
+    if (ALPHABET.indexOf(ch) < 0) return;
+    var cur = currentWord();
+    var cand = cur.slice(0, selected) + ch + cur.slice(selected + 1);
+    var r = tryWord(cand);
+    if (r.ok) {
+      if (navigator.vibrate && !r.won) navigator.vibrate(15);
+      return;
+    }
+    if (r.reason === 'same') { toast('Samme ord'); }
+    else { toast('Ikke et ord'); }
+    shakeCurrent();
+  }
+
+  // Klik på fliser i det aktuelle ord (pointer events, så det svarer straks på touch)
+  document.getElementById('ladder').addEventListener('pointerdown', function (e) {
+    var t = e.target.closest ? e.target.closest('.row.current .tile') : null;
+    if (!t || state.done) return;
+    e.preventDefault();
+    selectPos(Number(t.getAttribute('data-pos')));
+  });
+
+  // Skærmtastatur
+  var KEYROWS = ['qwertyuiopå', 'asdfghjklæø', 'zxcvbnm'];
+  (function buildKeyboard() {
+    var kbd = document.getElementById('kbd');
+    KEYROWS.forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'krow';
+      r.split('').forEach(function (ch) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'key'; b.textContent = ch; b.setAttribute('data-key', ch);
+        row.appendChild(b);
+      });
+      kbd.appendChild(row);
+    });
+    kbd.addEventListener('click', function (e) {
+      var k = e.target.closest ? e.target.closest('.key') : null;
+      if (!k) return;
+      k.classList.add('flash');
+      setTimeout(function () { k.classList.remove('flash'); }, 120);
+      typeLetter(k.getAttribute('data-key'));
+    });
+  })();
+
+  // Fysisk tastatur: bogstav = sæt på valgt plads, pile flytter valget, backspace = fortryd
+  document.addEventListener('keydown', function (e) {
+    if (!document.getElementById('game').classList.contains('on') || !state) return;
+    if (document.getElementById('end').classList.contains('on')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'ArrowLeft') { selectPos(selected - 1); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { selectPos(selected + 1); e.preventDefault(); }
+    else if (e.key === 'Backspace') { undo(); e.preventDefault(); }
+    else if (e.key.length === 1 && ALPHABET.indexOf(e.key.toLowerCase()) >= 0) { typeLetter(e.key); e.preventDefault(); }
+  });
+
+  /* ================= Knapper ================= */
+
+  var urlSeed = (function () {
+    var m = /[?&]seed=(\d+)/.exec(location.search);
+    return m ? Number(m[1]) : null;
+  })();
+
+  function startDaily() {
+    var day = dayNumber();
+    var saved = load(KEY_DAILY, null);
+    if (saved && saved.day === day && saved.steps && saved.steps.length) {
+      // Dagens stige er allerede spillet: vis resultatet igen
+      var g = generate(dailySeed(day));
+      state = { start: g.start, target: g.target, par: g.par, steps: saved.steps.slice(), done: true, won: !!saved.won,
+                mode: 'daily', seed: dailySeed(day), day: day };
+      lastSolution = saved.won ? [] : (shortestPath(currentWord(), state.target) || []);
+      selected = 0;
+      renderAll();
+      showScreen('game');
+      showEnd(getStats(), true);
+      return;
+    }
+    newGame(dailySeed(day), 'daily');
+  }
+
+  document.getElementById('btn-daily').addEventListener('click', startDaily);
+  document.getElementById('btn-random').addEventListener('click', function () {
+    var s = urlSeed; urlSeed = null;   // URL-seed bruges kun til det første tilfældige spil
+    newGame(s === null ? undefined : s, 'random');
+  });
+  document.getElementById('btn-undo').addEventListener('click', undo);
+  document.getElementById('btn-solve').addEventListener('click', giveUp);
+  document.getElementById('btn-new').addEventListener('click', function () { newGame(undefined, 'random'); });
+  document.getElementById('end-random').addEventListener('click', function () { newGame(undefined, 'random'); });
+  document.getElementById('end-close').addEventListener('click', hideEnd);
+
+  // Ingen scroll/zoom på spilfladen
+  ['touchstart', 'touchmove'].forEach(function (ev) {
+    document.getElementById('kbd').addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false });
+  });
+  document.getElementById('kbd').addEventListener('touchend', function (e) {
+    // click udløses ikke efter preventDefault på touchstart, så vi trykker selv tasten
+    var k = e.target.closest ? e.target.closest('.key') : null;
+    if (k) { e.preventDefault(); k.click(); }
+  }, { passive: false });
+
+  /* ================= Startskærm: eksempel og note ================= */
+
+  (function renderExample() {
+    // Fast eksempel; alle fire ord er verificeret i listen (falder tilbage til et fundet, hvis ikke).
+    var ex = ['sport', 'stort', 'stolt', 'stole'];
+    var ok = ex.every(isWord) && ex.every(function (w, i) { return i === 0 || diffCount(ex[i - 1], w) === 1; });
+    if (!ok) {
+      // Find et 3-trins eksempel gennem almindelige ord
+      outer: for (var a = 0; a < solutions.length; a++) {
+        var s = solutions[a], n1 = neighbors(s);
+        for (var b = 0; b < n1.length; b++) {
+          if (!solutionSet[n1[b]]) continue;
+          var n2 = neighbors(n1[b]);
+          for (var c = 0; c < n2.length; c++) {
+            if (!solutionSet[n2[c]] || n2[c] === s) continue;
+            var n3 = neighbors(n2[c]);
+            for (var d = 0; d < n3.length; d++) {
+              if (solutionSet[n3[d]] && n3[d] !== s && n3[d] !== n1[b]) { ex = [s, n1[b], n2[c], n3[d]]; break outer; }
+            }
+          }
+        }
+      }
+    }
+    var el = document.getElementById('example');
+    ex.forEach(function (w, i) {
+      if (i > 0) { var ar = document.createElement('div'); ar.className = 'arrow'; ar.textContent = '↓'; el.appendChild(ar); }
+      var row = document.createElement('div');
+      row.className = 'row' + (i === ex.length - 1 ? ' goal' : '');
+      for (var k = 0; k < LEN; k++) {
+        var t = document.createElement('div');
+        t.className = 'tile' + (i > 0 && w.charAt(k) !== ex[i - 1].charAt(k) ? ' changed' : '');
+        t.textContent = w.charAt(k);
+        row.appendChild(t);
+      }
+      el.appendChild(row);
+    });
+    var day = dayNumber(), saved = load(KEY_DAILY, null);
+    document.getElementById('start-pill').textContent = 'Stige nr. ' + day;
+    document.getElementById('daily-note').textContent =
+      (saved && saved.day === day) ? 'Dagens stige er spillet – ny stige i morgen.' : 'Ny stige hver dag. Streak: ' + getStats().streak;
+  })();
+
+  /* ================= Konfetti ================= */
+
+  function confetti() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var cv = document.getElementById('confetti'), ctx = cv.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = window.innerWidth, H = window.innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    ctx.scale(dpr, dpr);
+    var colors = ['#ffd447', '#ff5c7a', '#5ee0a8', '#5b8cff', '#8f6bff', '#fff7e6'];
+    var parts = [];
+    for (var i = 0; i < 140; i++) {
+      parts.push({ x: W / 2 + (Math.random() - .5) * 80, y: H * .45, vx: (Math.random() - .5) * 14, vy: -Math.random() * 14 - 4,
+        r: 4 + Math.random() * 5, c: colors[i % colors.length], a: Math.random() * Math.PI, va: (Math.random() - .5) * .3 });
+    }
+    var t0 = performance.now();
+    function frame(now) {
+      var t = (now - t0) / 1000;
+      ctx.clearRect(0, 0, W, H);
+      parts.forEach(function (p) {
+        p.vy += .35; p.x += p.vx; p.y += p.vy; p.vx *= .99; p.a += p.va;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
+        ctx.globalAlpha = Math.max(0, 1 - Math.max(0, t - 1.6) / .8);
+        ctx.fillStyle = p.c; ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); ctx.restore();
+      });
+      if (t < 2.5) requestAnimationFrame(frame); else ctx.clearRect(0, 0, W, H);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ================= Eksponér til tests ================= */
+
+  window.GAME = {
+    get state() { return state; },
+    newGame: newGame,
+    tryWord: tryWord,
+    undo: undo,
+    solve: solve,
+    giveUp: giveUp,
+    isWord: isWord,
+    neighbors: neighbors,
+    dayNumber: dayNumber,
+    buildMs: buildMs,
+    get selected() { return selected; }
+  };
+})();
+</script>
+</body></html>

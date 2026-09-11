@@ -1,8 +1,9 @@
 # zydy.dk – overblikssiden
 
-Forsiden på **<https://zydy.dk>**: en liste med familiens apps, så børnene bare
-skal huske ét domæne. Siden er én statisk HTML-fil uden build og uden
-afhængigheder. Den linker kun videre — selve appsene bor andre steder.
+Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
+børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
+afhængigheder. De store apps bor i egne repoer og linkes til; fem små spil
+ligger direkte her under `public/spil/`.
 
 | App | Hvor den kører | Kode |
 |---|---|---|
@@ -10,6 +11,36 @@ afhængigheder. Den linker kun videre — selve appsene bor andre steder.
 | Taltræf | <https://larsarnth.github.io/taltraef/> (GitHub Pages) | `../iPhoneSpil` |
 | Imposter | <https://larsarnth.github.io/Imposter/> (GitHub Pages) | `../Imposter` |
 | KlaverLær | <https://klaver.zydy.dk> (Cloudflare Worker + Access) | `../KlaverApp` |
+
+## Spil der bor her
+
+Ud over links til de andre apps huser repoet fem små spil, hver som én
+HTML-fil under `public/spil/<navn>/` uden afhængigheder. De udrulles sammen
+med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
+
+| Spil | Sti | Hvad |
+|---|---|---|
+| Tårn | `public/spil/taarn/` | Stack-arcade på canvas: tryk for at slippe blokken, overhæng skæres af, perfekte drops giver bonus. |
+| Sæt | `public/spil/saet/` | Kortspillet Set på dansk: find tre kort hvor antal, form, farve og fyld er helt ens eller helt forskellige. Klassisk og Blitz. |
+| Farvesortering | `public/spil/farvesortering/` | Water sort: hæld farvet væske til hvert glas har én farve. Uendelige, solver-verificerede niveauer. |
+| Ordstige | `public/spil/ordstige/` | Word ladder: skift ét bogstav ad gangen til et rigtigt dansk ord. Dagens stige + tilfældige. Ordlisten er Ordles (Stavekontrolden, GPL/LGPL/MPL). |
+| Duel | `public/spil/duel/` | To spillere på én telefon, skærmen delt i to: fem reflex-minispil, først til 3/5/10 point. |
+
+Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
+kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
+
+### Test
+
+```bash
+PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs          # alle
+PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs taarn    # ét spil
+```
+
+`test/run.mjs` starter en lokal server og kører `test/*.test.mjs` i headless
+Chromium med iPhone 13-profil: hvert spil spilles igennem via UI og
+`window.GAME`, der tjekkes for console-fejl og vandret scroll, og der gemmes et
+screenshot i `test/shots/`. Har man `playwright` i `node_modules`, kan
+`PLAYWRIGHT` udelades.
 
 ## Tilføj en app
 

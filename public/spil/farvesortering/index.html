@@ -1,0 +1,617 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Farvesortering: hæld farvet væske mellem reagensglas, til hvert glas kun har én farve. Uendeligt mange niveauer.">
+<title>Farvesortering – zydy.dk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Crect x='10' y='12' width='12' height='40' rx='6' fill='%23ff5c7a'/%3E%3Crect x='26' y='12' width='12' height='40' rx='6' fill='%23ffd447'/%3E%3Crect x='42' y='12' width='12' height='40' rx='6' fill='%235ee0a8'/%3E%3C/svg%3E">
+<style>
+  /*
+    Farvesortering – et "water sort"-puslespil til zydy.dk.
+    Én fil, ingen build. Glassene tegnes med DOM/CSS, animationer med CSS-transitions.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --violet:#8f6bff;
+    --ink:#1c1f4a; --r:22px;
+    --tw:52px; --th:180px; /* glassenes størrelse, sættes af layout() */
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none}
+  h1{font-size:44px;line-height:1;margin:0 0 6px;letter-spacing:-1.5px;font-weight:800}
+  h2{font-size:30px;line-height:1.1;margin:0 0 8px;letter-spacing:-.8px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;text-align:center;
+    text-decoration:none;display:block;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn.danger{background:var(--coral);color:#fff}
+  .btn[disabled]{opacity:.4;cursor:default}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--text);font-weight:700}
+
+  .screen{display:none}
+  .screen.on{display:flex;flex-direction:column;flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto}
+
+  /* Topbar */
+  .topbar{display:flex;align-items:center;gap:8px;min-height:44px;flex:0 0 auto}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 8px 0 0;
+    color:var(--muted);text-decoration:none;font-size:16px;font-weight:600;white-space:nowrap}
+  .back:active{color:var(--text)}
+  .topbar .name{flex:1;font-weight:800;font-size:18px;letter-spacing:-.3px;text-align:right}
+  .topbar .pills{display:flex;gap:6px}
+
+  /* Startskærm */
+  .hero{flex:1;display:flex;flex-direction:column;justify-content:center;padding:12px 0}
+  .hero h1 span{color:var(--sun)}
+  .demo{display:flex;justify-content:center;gap:18px;margin:14px 0 22px;align-items:flex-end}
+  .demo svg{width:220px;max-width:70%;height:auto;display:block}
+  .startbtns{flex:0 0 auto;padding-bottom:6px}
+  .hint{font-size:14px;text-align:center;margin:12px 0 0}
+
+  /* Spillefladen */
+  #board{flex:1;min-height:0;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;
+    gap:34px var(--gx,10px);padding:22px 0 10px;touch-action:none;position:relative}
+  .tube{width:var(--tw);height:var(--th);position:relative;flex:0 0 auto;
+    transition:transform .3s cubic-bezier(.4,.1,.3,1);transform-origin:50% 0;will-change:transform}
+  .tube.pour{z-index:6}
+  .tube.pour .glass{transition:transform .3s}
+  .glass{position:absolute;inset:0;border-radius:6px 6px calc(var(--tw)/2) calc(var(--tw)/2);
+    border:3px solid rgba(255,247,230,.32);border-top:0;overflow:hidden;
+    background:rgba(255,255,255,.06);transition:transform .22s cubic-bezier(.2,.8,.3,1.2),box-shadow .3s}
+  .tube::before{ /* glaskanten (mundingen) */
+    content:"";position:absolute;left:-4px;right:-4px;top:-5px;height:8px;border-radius:4px;
+    background:rgba(255,247,230,.45);transition:transform .22s cubic-bezier(.2,.8,.3,1.2)}
+  .tube.sel .glass, .tube.sel::before{transform:translateY(-18px)}
+  .tube.sel .glass{box-shadow:0 0 0 3px var(--sun),0 12px 30px rgba(0,0,0,.4)}
+  .layer{position:absolute;left:0;right:0;height:0;transition:height .3s ease,bottom .3s ease}
+  .layer::after{ /* lille lys på væsken */
+    content:"";position:absolute;left:18%;right:60%;top:0;bottom:0;background:rgba(255,255,255,.18);
+    border-radius:8px}
+  .shine{position:absolute;top:6px;bottom:10px;left:10%;width:14%;border-radius:8px;
+    background:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.05));pointer-events:none}
+  .tube.shake{animation:shake .4s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}
+    60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+  .tube.done .glass{box-shadow:0 0 0 3px var(--mint),0 0 26px rgba(94,224,168,.7);animation:glow .6s}
+  @keyframes glow{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+
+  .controls{display:flex;gap:8px;flex:0 0 auto;padding-top:6px}
+  .controls .btn{margin:0;padding:14px 8px;font-size:16px;border-radius:18px;min-height:52px}
+
+  /* Overlay ved løst niveau */
+  .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:20px;
+    background:rgba(17,20,42,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);z-index:20}
+  .overlay.on{display:flex;animation:fadein .3s}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+  .card{background:var(--bg2);border-radius:var(--r);padding:26px 22px;width:100%;max-width:360px;
+    text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5);animation:pop .35s cubic-bezier(.2,.9,.3,1.3)}
+  @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+  .card h2{color:var(--sun)}
+  .card .stats{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .card .note{font-size:14px;margin:-6px 0 12px}
+
+  /* Konfetti */
+  #confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:15}
+  .conf{position:absolute;top:-20px;width:10px;height:16px;border-radius:3px;
+    animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+
+  @media (max-width:460px){ #game .topbar .name{display:none} }
+  @media (min-width:560px){ h1{font-size:56px} }
+  @media (prefers-reduced-motion:reduce){
+    .tube,.glass,.tube::before,.layer{transition:none}
+    .tube.shake,.tube.done .glass,.card,.overlay.on{animation:none}
+    .conf{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- Startskærm -->
+<section id="start" class="screen on">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="name"></span>
+    <span class="pill" id="startPill">Niveau <b>1</b></span>
+  </div>
+  <div class="hero">
+    <h1>Farve<span>sortering</span></h1>
+    <p>Hæld væsken fra ét glas til et andet. Du må kun hælde oven på <b>samme farve</b> – eller i et tomt glas.
+       Du er færdig, når hvert glas kun har én farve.</p>
+    <div class="demo" aria-hidden="true">
+      <svg viewBox="0 0 220 110">
+        <defs><clipPath id="c1"><path d="M10 4h36v78a18 18 0 0 1-36 0z"/></clipPath>
+              <clipPath id="c2"><path d="M76 4h36v78a18 18 0 0 1-36 0z"/></clipPath>
+              <clipPath id="c3"><path d="M174 4h36v78a18 18 0 0 1-36 0z"/></clipPath></defs>
+        <g clip-path="url(#c1)"><rect x="10" y="62" width="36" height="40" fill="#5b8cff"/><rect x="10" y="42" width="36" height="20" fill="#ffd447"/><rect x="10" y="22" width="36" height="20" fill="#ff5c7a"/></g>
+        <g clip-path="url(#c2)"><rect x="76" y="62" width="36" height="40" fill="#ff5c7a"/></g>
+        <g clip-path="url(#c3)"><rect x="174" y="42" width="36" height="60" fill="#ff5c7a"/></g>
+        <g fill="none" stroke="rgba(255,247,230,.4)" stroke-width="3"><path d="M10 4v78a18 18 0 0 0 36 0V4"/><path d="M76 4v78a18 18 0 0 0 36 0V4"/><path d="M174 4v78a18 18 0 0 0 36 0V4"/></g>
+        <path d="M122 50h38" stroke="#ffd447" stroke-width="5" stroke-linecap="round"/><path d="M150 38l14 12-14 12" fill="none" stroke="#ffd447" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M28 4c8 0 20 12 20 16" fill="none" stroke="#ff5c7a" stroke-width="5" stroke-linecap="round" opacity=".9"/>
+      </svg>
+    </div>
+  </div>
+  <div class="startbtns">
+    <button class="btn" id="btnContinue">Spil</button>
+    <button class="btn ghost" id="btnFromOne" hidden>Start forfra</button>
+    <p class="hint" id="startHint"></p>
+  </div>
+</section>
+
+<!-- Spilskærm -->
+<section id="game" class="screen">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="name">Farvesortering</span>
+    <span class="pills">
+      <span class="pill" id="pillLevel">Niveau <b>1</b></span>
+      <span class="pill" id="pillMoves"><b>0</b> træk</span>
+    </span>
+  </div>
+  <div id="board" aria-label="Spilleplade"></div>
+  <div class="controls">
+    <button class="btn ghost" id="btnUndo">Fortryd</button>
+    <button class="btn ghost" id="btnReset">Start forfra</button>
+    <button class="btn ghost" id="btnExtra">+ glas</button>
+  </div>
+</section>
+
+<!-- Overlay ved løst niveau -->
+<div id="overlay" class="overlay">
+  <div class="card">
+    <h2 id="ovTitle">Niveau 1 løst!</h2>
+    <div class="stats"><span class="pill" id="ovMoves"><b>0</b> træk</span><span class="pill" id="ovBest">Bedste: <b>–</b></span></div>
+    <p class="note" id="ovNote" hidden>Du brugte et ekstra glas</p>
+    <button class="btn" id="btnNext">Næste niveau</button>
+    <button class="btn ghost" id="btnAgain">Prøv niveauet igen</button>
+    <a class="btn ghost" href="/">Tilbage til zydy.dk</a>
+  </div>
+</div>
+<div id="confetti" aria-hidden="true"></div>
+
+<script>
+(function(){
+'use strict';
+// @@CORE-START  (ren logik uden DOM – kan køres i Node til test)
+
+const CAP = 4;            // lag pr. glas
+const BUDGET = 200000;    // maks. antal tilstande i solveren
+
+// Seedbar PRNG (mulberry32)
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// Blander spillerens seed, niveau og forsøgsnummer til ét seed
+function mix(a, b, c){
+  let h = (a ^ 0x9E3779B9) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B);
+  h = (h ^ (b * 0x165667B1 | 0)) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35);
+  h = (h ^ Math.imul(c | 0, 0x27D4EB2F)) >>> 0;
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+
+// Niveauets parametre: antal farver og tomme glas
+function params(level){
+  if (level >= 20 && level % 4 === 0){
+    // Hvert 4. niveau fra 20: færre farver, men kun ét tomt glas
+    return { colors: 4 + (Math.floor(level / 4) % 4), empties: 1 };
+  }
+  return { colors: Math.min(9, 3 + Math.floor(level / 3)), empties: 2 };
+}
+
+function isMono(t){ for (let i = 1; i < t.length; i++) if (t[i] !== t[0]) return false; return true; }
+function isSolvedTubes(tubes){
+  return tubes.every(t => t.length === 0 || (t.length === CAP && isMono(t)));
+}
+// Hvor mange lag af topfarven ligger sammenhængende øverst
+function topRun(t){
+  if (!t.length) return 0;
+  const c = t[t.length - 1]; let n = 1;
+  for (let i = t.length - 2; i >= 0 && t[i] === c; i--) n++;
+  return n;
+}
+// Antal lag der ville blive hældt fra a til b (0 = ulovligt)
+function pourCount(tubes, a, b){
+  if (a === b) return 0;
+  const from = tubes[a], to = tubes[b];
+  if (!from.length || to.length >= CAP) return 0;
+  if (to.length && to[to.length - 1] !== from[from.length - 1]) return 0;
+  return Math.min(topRun(from), CAP - to.length);
+}
+function applyPour(tubes, a, b, n){
+  const out = tubes.map(t => t.slice());
+  const moved = out[a].splice(out[a].length - n, n);
+  out[b].push(...moved);
+  return out;
+}
+// Normaliseret nøgle: glassenes rækkefølge er ligegyldig
+function keyOf(tubes){ return tubes.map(t => t.join('')).sort().join('|'); }
+
+// DFS med visited-set og budget. Returnerer liste af [fra,til] eller null.
+function solve(tubes, budget){
+  budget = budget || BUDGET;
+  const start = tubes.map(t => t.slice());
+  if (isSolvedTubes(start)) return [];
+  const seen = new Set([keyOf(start)]);
+  const stack = [{ t: start, mv: null, parent: null }];
+  let n = 0;
+  while (stack.length){
+    const node = stack.pop();
+    if (++n > budget) return null;
+    const t = node.t, len = t.length;
+    const cand = [];
+    for (let a = 0; a < len; a++){
+      if (!t[a].length) continue;
+      const monoA = isMono(t[a]);
+      if (monoA && t[a].length === CAP) continue;        // færdigt glas, lad det være
+      const run = topRun(t[a]);
+      let emptyDone = false;
+      for (let b = 0; b < len; b++){
+        if (a === b) continue;
+        const to = t[b];
+        if (to.length >= CAP) continue;
+        if (!to.length){
+          if (monoA || emptyDone) continue;               // ét tomt glas er nok, og mono→tom er meningsløst
+          emptyDone = true;
+          cand.push({ a, b, n: Math.min(run, CAP), s: 0 });
+        } else if (to[to.length - 1] === t[a][t[a].length - 1]){
+          const cnt = Math.min(run, CAP - to.length);
+          let s = 2;
+          if (isMono(to) && to.length + cnt === CAP) s += 3;  // fuldender et glas
+          if (cnt === t[a].length) s += 1;                    // tømmer kilden
+          if (cnt === run) s += 1;                            // hele farvekørslen med
+          cand.push({ a, b, n: cnt, s });
+        }
+      }
+    }
+    cand.sort((x, y) => x.s - y.s); // lav prioritet først, så høj prioritet poppes først
+    for (const c of cand){
+      const nt = applyPour(t, c.a, c.b, c.n);
+      const k = keyOf(nt);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const nn = { t: nt, mv: [c.a, c.b], parent: node };
+      if (isSolvedTubes(nt)){
+        const path = [];
+        for (let p = nn; p.mv; p = p.parent) path.push(p.mv);
+        return path.reverse();
+      }
+      stack.push(nn);
+    }
+  }
+  return null;
+}
+
+// Genererer et løsbart niveau deterministisk ud fra spillerens seed
+function generate(level, playerSeed){
+  const { colors, empties } = params(level);
+  for (let attempt = 0; attempt < 500; attempt++){
+    const rnd = mulberry32(mix(playerSeed, level, attempt));
+    const layers = [];
+    for (let c = 0; c < colors; c++) for (let k = 0; k < CAP; k++) layers.push(c);
+    for (let i = layers.length - 1; i > 0; i--){ // Fisher-Yates
+      const j = Math.floor(rnd() * (i + 1));
+      const tmp = layers[i]; layers[i] = layers[j]; layers[j] = tmp;
+    }
+    const tubes = [];
+    for (let c = 0; c < colors; c++) tubes.push(layers.slice(c * CAP, c * CAP + CAP));
+    if (tubes.some(isMono)) continue;                        // ingen glas må være færdige fra start
+    for (let e = 0; e < empties; e++) tubes.push([]);
+    const sol = solve(tubes);
+    if (sol && sol.length >= colors) return { tubes, solution: sol, attempt };
+  }
+  return null;
+}
+// @@CORE-END
+
+// ---------- Farver ----------
+const COLORS = ['#ff4d5e','#ffd447','#3ddc97','#4f8bff','#9b6bff','#ff9538','#ff8ad8','#2fd0e6','#b5ec3c'];
+const COLOR_NAMES = ['koral','gul','mint','blå','lilla','orange','pink','turkis','lime'];
+
+// ---------- Lagring ----------
+const KEY = 'zydy.farvesortering.';
+function load(k, def){ try { const v = localStorage.getItem(KEY + k); return v == null ? def : JSON.parse(v); } catch (e){ return def; } }
+function save(k, v){ try { localStorage.setItem(KEY + k, JSON.stringify(v)); } catch (e){} }
+
+// Spillerens seed: ?seed= i URL'en, ellers et gemt tilfældigt seed (så niveau N er ens hver gang)
+const qs = new URLSearchParams(location.search);
+let playerSeed;
+if (qs.has('seed')) playerSeed = (parseInt(qs.get('seed'), 10) || 0) >>> 0;
+else {
+  playerSeed = load('seed', null);
+  if (playerSeed == null){ playerSeed = (Math.random() * 4294967296) >>> 0; save('seed', playerSeed); }
+}
+
+// ---------- Tilstand ----------
+const state = { level: 1, tubes: [], moves: 0, solved: false, helped: false, history: [] };
+let selected = -1;
+let animTimers = [];
+let pourEl = null;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const $ = id => document.getElementById(id);
+const board = $('board');
+let tubeEls = [], layerEls = [];
+
+// ---------- Opbygning af glas ----------
+function buildBoard(){
+  board.innerHTML = '';
+  tubeEls = []; layerEls = [];
+  state.tubes.forEach((t, i) => {
+    const tube = document.createElement('div');
+    tube.className = 'tube'; tube.dataset.i = i;
+    tube.setAttribute('role', 'button');
+    const glass = document.createElement('div'); glass.className = 'glass';
+    const layers = [];
+    for (let k = 0; k < CAP; k++){
+      const L = document.createElement('div'); L.className = 'layer';
+      L.style.bottom = (k * 100 / CAP) + '%';
+      glass.appendChild(L); layers.push(L);
+    }
+    const shine = document.createElement('div'); shine.className = 'shine'; glass.appendChild(shine);
+    tube.appendChild(glass); board.appendChild(tube);
+    tubeEls.push(tube); layerEls.push(layers);
+  });
+  layout();
+  render();
+}
+
+// Beregner glasstørrelse så alt passer uden scroll: én række hvis glassene kan være
+// mindst 44 px brede, ellers to rækker. Sidepolstring styrer hvor flex-wrap deler rækkerne.
+function layout(){
+  const n = state.tubes.length; if (!n) return;
+  const W = board.parentElement.clientWidth, H = board.clientHeight - 32;
+  const gx = 10, maxTw = 80;
+  // Størrelse for en given opdeling i rækker – bredden begrænses også af højden
+  const option = rows => {
+    const perRow = Math.ceil(n / rows);
+    let tw = Math.min(maxTw, Math.floor((W - gx * (perRow - 1) - 4) / perRow));
+    let th = Math.min(Math.round(tw * 3.5), Math.floor((H - 34 * (rows - 1)) / rows) - 16);
+    tw = Math.max(30, Math.min(tw, Math.floor(th / 2.4))); th = Math.max(90, th);
+    return { rows, perRow, tw, th };
+  };
+  let o = option(1);
+  if (n > 6){ const o2 = option(2); if (o.tw < 44 || o2.tw > o.tw) o = o2; }
+  const { perRow, tw, th } = o;
+  const rowW = perRow * tw + (perRow - 1) * gx + 2;
+  const pad = Math.max(0, (W - rowW) / 2);
+  board.style.paddingLeft = board.style.paddingRight = pad + 'px';
+  board.style.setProperty('--tw', tw + 'px');
+  board.style.setProperty('--th', th + 'px');
+  board.style.setProperty('--gx', gx + 'px');
+  board.setAttribute('aria-label', 'Spilleplade med ' + n + ' glas');
+}
+
+function render(){
+  state.tubes.forEach((t, i) => {
+    const layers = layerEls[i]; if (!layers) return;
+    for (let k = 0; k < CAP; k++){
+      const L = layers[k];
+      if (k < t.length){ L.style.background = COLORS[t[k]]; L.style.height = 'calc(' + (100 / CAP) + '% + 1px)'; }
+      else L.style.height = '0%';
+    }
+    tubeEls[i].setAttribute('aria-label', 'Glas ' + (i + 1) + ': ' + (t.length ? t.map(c => COLOR_NAMES[c]).join(', ') : 'tomt'));
+    tubeEls[i].classList.toggle('sel', i === selected);
+  });
+  $('pillLevel').innerHTML = 'Niveau <b>' + state.level + '</b>';
+  $('pillMoves').innerHTML = '<b>' + state.moves + '</b> træk';
+  $('btnUndo').disabled = !state.history.length || state.solved;
+  $('btnExtra').disabled = state.helped || state.solved;
+}
+
+// ---------- Animation af hældning ----------
+function finishAnim(){
+  animTimers.forEach(clearTimeout); animTimers = [];
+  if (pourEl){ pourEl.style.transform = ''; pourEl.classList.remove('pour'); pourEl = null; }
+  render();
+}
+function later(fn, ms){ animTimers.push(setTimeout(fn, ms)); }
+
+function animatePour(a, b, done){
+  finishAnim();
+  const src = tubeEls[a], dst = tubeEls[b];
+  if (reduced || !src || !dst){ render(); if (done) done(); return; }
+  const s = src.getBoundingClientRect(), d = dst.getBoundingClientRect();
+  const dir = d.left + d.width / 2 >= s.left + s.width / 2 ? 1 : -1;
+  const dx = (d.left + d.width / 2) - (s.left + s.width / 2) - dir * s.width * 0.9;
+  const dy = d.top - s.top - s.height * 0.55;
+  src.classList.remove('sel'); src.classList.add('pour'); pourEl = src;
+  src.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) rotate(' + (dir * 42) + 'deg)';
+  later(render, 240);                               // lagene flytter
+  later(() => { src.style.transform = ''; }, 620);   // glasset går tilbage
+  later(() => { src.classList.remove('pour'); pourEl = null; animTimers = []; if (done) done(); }, 940);
+}
+
+function shake(i){
+  const el = tubeEls[i]; if (!el) return;
+  el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+  setTimeout(() => el.classList.remove('shake'), 450);
+  navigator.vibrate && navigator.vibrate(30);
+}
+
+// ---------- Spillogik ----------
+function start(level){
+  finishAnim();
+  level = Math.max(1, Math.floor(level || 1));
+  const gen = generate(level, playerSeed);
+  state.level = level;
+  state.tubes = gen ? gen.tubes : fallbackLevel(level);
+  state.moves = 0; state.solved = false; state.helped = false; state.history = [];
+  selected = -1;
+  $('overlay').classList.remove('on');
+  $('confetti').innerHTML = '';
+  show('game');
+  buildBoard();
+}
+// Nødløsning hvis generatoren mod forventning fejler: et allerede ordnet niveau blandet let
+function fallbackLevel(level){
+  const { colors, empties } = params(level);
+  const tubes = [];
+  for (let c = 0; c < colors; c++) tubes.push([c, c, c, c]);
+  for (let e = 0; e < empties; e++) tubes.push([]);
+  return tubes;
+}
+
+function pour(a, b){
+  if (state.solved) return false;
+  a |= 0; b |= 0;
+  if (a < 0 || b < 0 || a >= state.tubes.length || b >= state.tubes.length) return false;
+  const n = pourCount(state.tubes, a, b);
+  if (!n) return false;
+  state.tubes = applyPour(state.tubes, a, b, n);
+  state.history.push([a, b, n]);
+  state.moves++;
+  selected = -1;
+  const solvedNow = isSolvedTubes(state.tubes);
+  if (solvedNow){ state.solved = true; saveProgress(); }
+  animatePour(a, b, solvedNow ? celebrate : null);
+  render();
+  return true;
+}
+
+function undo(){
+  if (state.solved || !state.history.length) return false;
+  const [a, b, n] = state.history.pop();
+  state.tubes = applyPour(state.tubes, b, a, n);
+  state.moves = Math.max(0, state.moves - 1);
+  selected = -1;
+  animatePour(b, a, null);
+  render();
+  return true;
+}
+
+function extraTube(){
+  if (state.helped || state.solved || state.tubes.length >= 12) return false;
+  finishAnim();
+  state.helped = true;
+  state.tubes.push([]);
+  selected = -1;
+  buildBoard();
+  return true;
+}
+
+function tapTube(i){
+  if (state.solved) return;
+  if (selected === -1){
+    if (!state.tubes[i].length){ shake(i); return; }
+    selected = i; render(); return;
+  }
+  if (selected === i){ selected = -1; render(); return; }
+  const from = selected;
+  if (!pour(from, i)){
+    selected = -1; render(); shake(i);
+  }
+}
+
+// ---------- Fremskridt ----------
+function bestFor(level){ const b = load('best', {}); return b[level] || null; }
+function saveProgress(){
+  const lvl = load('level', 1);
+  if (state.level + 1 > lvl) save('level', state.level + 1);
+  const best = load('best', {});
+  const prev = best[state.level];
+  if (!prev || state.moves < prev.moves) best[state.level] = { moves: state.moves, help: state.helped };
+  save('best', best);
+}
+
+// ---------- Fejring ----------
+function celebrate(){
+  const filled = state.tubes.map((t, i) => t.length ? i : -1).filter(i => i >= 0);
+  filled.forEach((i, k) => later(() => tubeEls[i].classList.add('done'), k * 110));
+  later(confetti, filled.length * 60);
+  later(showOverlay, filled.length * 110 + 500);
+}
+function confetti(){
+  if (reduced) return;
+  const box = $('confetti'); box.innerHTML = '';
+  for (let i = 0; i < 90; i++){
+    const c = document.createElement('div'); c.className = 'conf';
+    c.style.left = (Math.random() * 100) + 'vw';
+    c.style.background = COLORS[i % COLORS.length];
+    c.style.animationDuration = (1.8 + Math.random() * 1.6) + 's';
+    c.style.animationDelay = (Math.random() * .8) + 's';
+    c.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)';
+    c.style.width = (7 + Math.random() * 7) + 'px';
+    box.appendChild(c);
+  }
+  setTimeout(() => { box.innerHTML = ''; }, 4500);
+}
+function showOverlay(){
+  $('ovTitle').textContent = 'Niveau ' + state.level + ' løst!';
+  $('ovMoves').innerHTML = '<b>' + state.moves + '</b> træk';
+  const best = bestFor(state.level);
+  $('ovBest').innerHTML = 'Bedste: <b>' + (best ? best.moves : state.moves) + '</b>';
+  $('ovNote').hidden = !state.helped;
+  $('overlay').classList.add('on');
+  navigator.vibrate && navigator.vibrate([40, 60, 40]);
+}
+
+// ---------- Skærme ----------
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
+  if (id === 'game') requestAnimationFrame(layout);
+}
+function updateStart(){
+  const lvl = qs.has('level') ? (parseInt(qs.get('level'), 10) || 1) : load('level', 1);
+  $('startPill').innerHTML = 'Niveau <b>' + lvl + '</b>';
+  $('btnContinue').textContent = lvl > 1 ? 'Fortsæt fra niveau ' + lvl : 'Spil';
+  $('btnFromOne').hidden = lvl <= 1;
+  const bests = load('best', {});
+  const n = Object.keys(bests).length;
+  $('startHint').textContent = n ? n + ' niveau' + (n === 1 ? '' : 'er') + ' løst' : 'Uendeligt mange niveauer – de bliver sværere og sværere';
+  return lvl;
+}
+
+// ---------- Input ----------
+board.addEventListener('pointerdown', e => {
+  const el = e.target.closest && e.target.closest('.tube');
+  if (!el) { if (selected !== -1){ selected = -1; render(); } return; }
+  e.preventDefault();
+  tapTube(+el.dataset.i);
+});
+board.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+board.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+$('btnContinue').addEventListener('click', () => start(updateStart()));
+$('btnFromOne').addEventListener('click', () => start(1));
+$('btnUndo').addEventListener('click', undo);
+$('btnReset').addEventListener('click', () => start(state.level));
+$('btnExtra').addEventListener('click', extraTube);
+$('btnNext').addEventListener('click', () => start(state.level + 1));
+$('btnAgain').addEventListener('click', () => start(state.level));
+window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', () => setTimeout(layout, 150));
+
+updateStart();
+
+// ---------- Offentlig API til tests ----------
+window.GAME = {
+  get state(){ return state; },
+  start, pour, undo, extraTube,
+  isSolved: () => isSolvedTubes(state.tubes),
+  solve: () => solve(state.tubes),
+  generate, params, solveTubes: solve,
+  get seed(){ return playerSeed; },
+  colors: COLORS
+};
+})();
+</script>
+</body></html>

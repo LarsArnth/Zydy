@@ -1,0 +1,567 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Duel: to spillere, én telefon. Hurtige reflex- og opmærksomhedsrunder – først til 5 point vinder.">
+<title>Duel – zydy.dk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Ccircle cx='22' cy='20' r='13' fill='%235b8cff'/%3E%3Ccircle cx='42' cy='44' r='13' fill='%23ff5c7a'/%3E%3Cpath d='M36 12 L26 34 L34 34 L28 52 L42 28 L34 28 Z' fill='%23ffd447'/%3E%3C/svg%3E">
+<style>
+  /*
+    Duel – to spillere på én telefon. Skærmen er delt i to halvdele; den øverste
+    er roteret 180°, så spilleren overfor ser sin halvdel rigtigt. Rød nederst,
+    Blå øverst. Alt inline, ingen afhængigheder.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --violet:#8f6bff;
+    --ink:#1c1f4a; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  body.playing{padding:0;overflow:hidden}
+  h1{font-size:44px;line-height:1;margin:0 0 6px;letter-spacing:-1.5px;font-weight:800}
+  h2{font-size:30px;line-height:1.1;margin:0 0 8px;letter-spacing:-.8px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn.danger{background:var(--coral);color:#fff}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted)}
+
+  /* Skærme (start/slut) i normalt layout med topbar */
+  .screen{display:none;flex-direction:column;flex:1;width:100%;max-width:640px;margin:0 auto}
+  .screen.on{display:flex}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;min-height:44px}
+  .back{color:var(--muted);text-decoration:none;font-size:17px;font-weight:700;display:inline-flex;
+    align-items:center;min-height:44px;min-width:44px;padding:0 6px 0 2px;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .brand{font-weight:800;font-size:18px;letter-spacing:-.3px}
+  .content{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .lead{font-size:18px}
+
+  /* Lille illustration på startskærmen: telefonen mellem to spillere */
+  .demo{display:flex;flex-direction:column;border-radius:var(--r);overflow:hidden;margin:10px 0 18px;
+    border:2px solid var(--bg3)}
+  .demo div{padding:14px;font-weight:800;font-size:15px;text-align:center;letter-spacing:.5px}
+  .demo .b{background:#141d3f;color:var(--sky);transform:rotate(180deg)}
+  .demo .r{background:#2a1526;color:var(--coral)}
+
+  /* Valg af antal point */
+  .seg{display:flex;background:var(--bg2);border-radius:999px;padding:4px;gap:4px;margin:8px 0 6px}
+  .seg button{flex:1;padding:12px 0;border-radius:999px;background:transparent;color:var(--muted);font-weight:700;font-size:17px;min-height:44px}
+  .seg button.on{background:var(--sun);color:var(--ink)}
+  .stats{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px}
+  .stats .pill b{color:var(--text)}
+  .stats .pill.red b{color:var(--coral)}
+  .stats .pill.blue b{color:var(--sky)}
+
+  /* Slutskærm */
+  .winner{font-size:52px;line-height:1;letter-spacing:-2px;font-weight:800;margin:0 0 8px}
+  .winner.red{color:var(--coral)} .winner.blue{color:var(--sky)}
+  .score{font-size:28px;font-weight:800;color:var(--text);margin-bottom:22px}
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+
+  /* ======== Spilfladen ======== */
+  #arena{position:fixed;inset:0;height:100vh;height:100dvh;display:flex;flex-direction:column;
+    background:#0b0d1c;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+    overflow:hidden;z-index:10}
+  #arena[hidden]{display:none}
+  .half{flex:1 1 50%;min-height:0;position:relative;display:flex;flex-direction:column;
+    padding:30px 16px 12px;overflow:hidden;transition:background .25s} /* 30px top: plads til ×-knappen */
+  .half.red{--acc:var(--coral);--acc2:#ff8ea3;background:linear-gradient(180deg,#1a1230 0%,#2a1327 100%)}
+  .half.blue{--acc:var(--sky);--acc2:#8fb0ff;background:linear-gradient(180deg,#141a3a 0%,#132455 100%);
+    transform:rotate(180deg)}
+  /* Sikkerhedszoner: rød har notch-bunden, blå (roteret) har notch-toppen som sin "bund" */
+  .half.red{padding-bottom:calc(env(safe-area-inset-bottom) + 12px)}
+  .half.blue{padding-bottom:calc(env(safe-area-inset-top) + 12px)}
+  .half.go{background:var(--mint) !important}
+  .half.go .head, .half.go .hud{opacity:0}
+  .half.flash-win{animation:flashw .5s ease-out}
+  .half.flash-lose{animation:flashl .5s ease-out}
+  @keyframes flashw{0%{box-shadow:inset 0 0 0 12px var(--mint)}100%{box-shadow:inset 0 0 0 0 transparent}}
+  @keyframes flashl{0%{box-shadow:inset 0 0 0 12px var(--coral)}100%{box-shadow:inset 0 0 0 0 transparent}}
+
+  /* Point-kuglerne ligger i layout-bunden = fysisk tættest på spilleren */
+  .hud{display:flex;justify-content:center;gap:8px;min-height:16px;margin-top:10px;order:9}
+  .orb{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.12);transition:transform .3s,background .3s}
+  .orb.on{background:var(--acc);transform:scale(1.15);box-shadow:0 0 12px var(--acc)}
+  .head{text-align:center;min-height:64px}
+  .rname{font-weight:800;font-size:22px;letter-spacing:-.5px;color:var(--acc2)}
+  .instr{color:var(--muted);font-size:15px;line-height:1.3;margin-top:2px;min-height:19px}
+  .bar{height:5px;border-radius:3px;background:rgba(255,255,255,.1);margin:8px auto 0;max-width:260px;overflow:hidden}
+  .bar i{display:block;height:100%;width:100%;background:var(--acc);border-radius:3px}
+  .bar i.run{transition:width linear}
+  .stage{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:10px;width:100%;max-width:560px;margin:0 auto}
+
+  /* Knapper i spilfladen (Højeste tal, Stroop, Tæl prikkerne) */
+  .gbtn{border-radius:18px;background:var(--bg2);color:var(--text);font-weight:800;
+    display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;
+    box-shadow:0 4px 0 rgba(0,0,0,.35);transition:transform .06s;pointer-events:auto}
+  .gbtn.pressed{transform:translateY(3px) scale(.97);box-shadow:none}
+  .grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;flex:1;min-height:0;max-height:240px}
+  .grid6 .gbtn{font-size:40px;letter-spacing:-1px}
+  .word{font-size:52px;font-weight:900;letter-spacing:-1px;line-height:1;flex:1;display:flex;align-items:center;
+    text-shadow:0 2px 12px rgba(0,0,0,.4)}
+  .row4{display:flex;gap:8px;width:100%}
+  .row4 .gbtn{flex:1;height:62px;color:transparent}
+  .dotfield{position:absolute;inset:0}
+  .dot{position:absolute;width:26px;height:26px;border-radius:50%;background:var(--sun);
+    box-shadow:0 0 10px rgba(255,212,71,.5);transform:translate(-50%,-50%);animation:pop .25s ease-out}
+  @keyframes pop{from{transform:translate(-50%,-50%) scale(0)}}
+  .row3{display:flex;gap:10px;width:100%}
+  .row3 .gbtn{flex:1;height:78px;font-size:38px}
+  .pair{display:flex;gap:28px;align-items:center;justify-content:center;flex:1}
+  .fig{width:104px;height:104px}
+  .fig svg{width:100%;height:100%;display:block}
+  .hint{color:var(--muted);font-size:15px;font-weight:700}
+  .wait{color:var(--muted);font-size:20px;font-weight:800;letter-spacing:.5px}
+
+  /* Resultat i hver halvdel */
+  .verdict{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:12px;background:rgba(11,13,28,.72);border-radius:var(--r)}
+  .verdict.on{display:flex;animation:pop2 .3s ease-out}
+  .half.res .stage{visibility:hidden} /* skjul udfordringen bag resultatet */
+  @keyframes pop2{from{transform:scale(.85);opacity:0}}
+  .verdict .big{font-size:34px;font-weight:900;letter-spacing:-1px;line-height:1.05}
+  .verdict .big.red{color:var(--coral)} .verdict .big.blue{color:var(--sky)}
+  .verdict .sub{color:var(--muted);font-size:16px;margin-top:8px;font-weight:700}
+
+  /* Skillelinje og afslut-knap */
+  #divider{position:absolute;left:0;right:0;top:50%;height:2px;background:rgba(255,255,255,.12);transform:translateY(-1px);z-index:2;pointer-events:none}
+  #quit{position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%);border-radius:50%;
+    background:var(--bg2);color:var(--muted);font-size:24px;font-weight:700;line-height:1;z-index:3;
+    display:grid;place-items:center;box-shadow:0 2px 10px rgba(0,0,0,.5);touch-action:none}
+  #quit:active{background:var(--bg3)}
+
+  @media (min-width:700px){
+    .rname{font-size:28px} .instr{font-size:18px}
+    .grid6 .gbtn{font-size:52px} .grid6{max-height:320px}
+    .word{font-size:76px} .row4 .gbtn{height:80px} .row3 .gbtn{height:96px;font-size:48px}
+    .fig{width:150px;height:150px} .dot{width:34px;height:34px}
+  }
+  @media (max-height:560px){ /* liggende telefon: kompakt layout */
+    .half{padding-top:24px;padding-bottom:6px}
+    .head{min-height:0} .rname{font-size:16px} .instr{display:none} .bar{margin-top:4px;height:4px}
+    .hud{margin-top:4px;min-height:10px} .orb{width:10px;height:10px}
+    .stage{gap:6px} .grid6{gap:6px} .grid6 .gbtn{font-size:24px}
+    .word{font-size:30px} .row4 .gbtn{height:44px} .row3 .gbtn{height:48px;font-size:26px}
+    .fig{width:56px;height:56px} .dot{width:18px;height:18px} .hint{display:none}
+    .verdict .big{font-size:22px} .verdict .sub{font-size:13px;margin-top:2px} .wait{font-size:16px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .half,.orb,.gbtn{transition:none} .verdict.on,.dot,.half.flash-win,.half.flash-lose{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Startskærm ===== -->
+<div class="screen on" id="start">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Duel</span>
+    <span class="pill" id="startPill">0 kampe</span>
+  </div>
+  <div class="content">
+    <h1>Duel</h1>
+    <p class="lead">To spillere, én telefon. Læg den på bordet mellem jer – Rød sidder nederst, Blå øverst.</p>
+    <div class="demo" aria-hidden="true"><div class="b">BLÅ</div><div class="r">RØD</div></div>
+    <p>Hver runde er en hurtig udfordring: tryk når det bliver grønt, find det højeste tal, farven og ikke ordet, tæl prikker, eller spot når to figurer er ens. Hurtigst rigtige tager pointet – trykker du forkert, får modstanderen det.</p>
+    <p style="margin-bottom:4px;font-weight:700">Først til</p>
+    <div class="seg" id="targetSeg" role="radiogroup" aria-label="Antal point">
+      <button data-target="3" role="radio" aria-checked="false">3 point</button>
+      <button data-target="5" class="on" role="radio" aria-checked="true">5 point</button>
+      <button data-target="10" role="radio" aria-checked="false">10 point</button>
+    </div>
+    <button class="btn" id="playBtn">Spil</button>
+    <div class="stats" id="startStats"></div>
+  </div>
+</div>
+
+<!-- ===== Slutskærm ===== -->
+<div class="screen" id="end">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Duel</span>
+    <span class="pill" id="endPill">0 kampe</span>
+  </div>
+  <div class="content" style="text-align:center">
+    <div class="winner" id="winnerText">Rød vandt</div>
+    <div class="score" id="scoreText">5–3</div>
+    <button class="btn" id="rematchBtn">Omkamp</button>
+    <button class="btn ghost" id="menuBtn">Til start</button>
+    <div class="stats" id="endStats"></div>
+  </div>
+</div>
+<canvas id="confetti" hidden></canvas>
+
+<!-- ===== Spilfladen: to halvdele ===== -->
+<div id="arena" hidden>
+  <section class="half blue" data-side="blue" aria-label="Blå spiller">
+    <div class="hud"></div>
+    <div class="head"><div class="rname"></div><div class="instr"></div><div class="bar"><i></i></div></div>
+    <div class="stage"></div>
+    <div class="verdict"><div class="big"></div><div class="sub"></div></div>
+  </section>
+  <div id="divider"></div>
+  <button id="quit" aria-label="Afslut kampen">×</button>
+  <section class="half red" data-side="red" aria-label="Rød spiller">
+    <div class="hud"></div>
+    <div class="head"><div class="rname"></div><div class="instr"></div><div class="bar"><i></i></div></div>
+    <div class="stage"></div>
+    <div class="verdict"><div class="big"></div><div class="sub"></div></div>
+  </section>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+/* ---------- Seedbar PRNG (mulberry32) ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const params = new URLSearchParams(location.search);
+const seed = parseInt(params.get('seed'),10) || ((Math.random()*2**31)|0);
+const rnd = mulberry32(seed);
+const ri = (a,b) => a + Math.floor(rnd()*(b-a+1));
+const pick = arr => arr[Math.floor(rnd()*arr.length)];
+const shuffle = arr => { for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; };
+
+/* ---------- Konstanter ---------- */
+const SIDES = ['red','blue'];
+const NAME = { red:'Rød', blue:'Blå' };
+const other = s => s==='red' ? 'blue' : 'red';
+const COLORS = [
+  { key:'rød',  word:'RØD',  css:'var(--coral)' },
+  { key:'blå',  word:'BLÅ',  css:'var(--sky)' },
+  { key:'gul',  word:'GUL',  css:'var(--sun)' },
+  { key:'grøn', word:'GRØN', css:'var(--mint)' },
+];
+const SHAPES = ['circle','square','triangle','star'];
+const FIGCOL = ['var(--coral)','var(--sky)','var(--sun)','var(--mint)'];
+
+/* ---------- Timere ---------- */
+let timers = [];
+function after(ms, fn){ const id = setTimeout(fn, ms); timers.push(id); return id; }
+function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
+
+/* ---------- Lagring ---------- */
+const KEY = 'zydy.duel.stats';
+function loadStats(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && typeof s.games==='number') return s; }catch(e){} return {games:0, red:0, blue:0}; }
+function saveStats(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} }
+let stats = loadStats();
+function renderStats(){
+  const html = `<span class="pill">Kampe <b>${stats.games}</b></span><span class="pill red">Rød <b>${stats.red}</b></span><span class="pill blue">Blå <b>${stats.blue}</b></span>`;
+  $('#startStats').innerHTML = html; $('#endStats').innerHTML = html;
+  const t = `${stats.games} ${stats.games===1?'kamp':'kampe'}`;
+  $('#startPill').textContent = t; $('#endPill').textContent = t;
+}
+
+/* ---------- Tilstand ---------- */
+const state = { phase:'idle', round:null, scores:{red:0,blue:0}, target:5, roundNo:0 };
+const GAME = { state, fast:false, forceType:null, seed };
+window.GAME = GAME;
+
+const halves = { red: $('.half.red'), blue: $('.half.blue') };
+const D = () => ({ intro: GAME.fast?20:1800, result: GAME.fast?20:1200, window: GAME.fast?0:25 });
+
+/* ---------- Hjælpere til begge halvdele ---------- */
+function each(fn){ SIDES.forEach(s => fn(halves[s], s)); }
+function setHead(name, instr){ each(h => { h.querySelector('.rname').textContent = name; h.querySelector('.instr').textContent = instr; }); }
+function setStage(htmlFn){ each((h,s) => { h.querySelector('.stage').innerHTML = htmlFn(s); }); }
+function renderOrbs(){
+  each((h,s) => {
+    const hud = h.querySelector('.hud');
+    hud.innerHTML = '';
+    for(let i=0;i<state.target;i++){ const o = document.createElement('i'); o.className = 'orb' + (i < state.scores[s] ? ' on' : ''); hud.appendChild(o); }
+  });
+}
+function runBar(ms){
+  each(h => {
+    const i = h.querySelector('.bar i');
+    i.className = ''; i.style.transition = 'none'; i.style.width = '100%';
+    void i.offsetWidth; // tving reflow så transition starter fra 100 %
+    i.className = 'run'; i.style.transition = `width ${ms}ms linear`; i.style.width = '0%';
+  });
+}
+function stopBar(){ each(h => { const i = h.querySelector('.bar i'); i.className=''; i.style.transition='none'; i.style.width='0%'; }); }
+
+/* ---------- SVG-figurer til "Ens eller ej" ---------- */
+function figSVG(shape, color){
+  let body = '';
+  if(shape==='circle')   body = `<circle cx="50" cy="50" r="40" fill="${color}"/>`;
+  if(shape==='square')   body = `<rect x="12" y="12" width="76" height="76" rx="16" fill="${color}"/>`;
+  if(shape==='triangle') body = `<path d="M50 8 L94 88 L6 88 Z" fill="${color}" stroke="${color}" stroke-width="8" stroke-linejoin="round"/>`;
+  if(shape==='star')     body = `<path d="M50 6 L62 38 L96 40 L69 61 L78 94 L50 75 L22 94 L31 61 L4 40 L38 38 Z" fill="${color}" stroke="${color}" stroke-width="6" stroke-linejoin="round"/>`;
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">${body}</svg>`;
+}
+
+/* ---------- Rundetyper ----------
+   Hver type har: name, instr, setup() → data, begin(round), render, judge(round, payload) → 'win'|'lose'|null,
+   ready(round) → kan man svare rigtigt nu?, skip(round) → spring ventefase over. */
+const ROUNDS = {
+  green: {
+    name:'Grønt lys', instr:'Tryk på din halvdel, når den bliver grøn. Ikke før!',
+    setup(){ return { delay: ri(1000,4000), ready:false, correct:null }; },
+    begin(r){
+      setStage(() => `<div class="wait">Vent…</div>`);
+      after(GAME.fast ? 400 : r.delay, () => ROUNDS.green.go(r));
+    },
+    go(r){ if(r.ready || state.phase!=='play') return; r.ready = true; each(h => h.classList.add('go')); setStage(() => `<div class="wait" style="color:var(--ink);font-size:32px">TRYK!</div>`); },
+    skip(r){ clearTimers(); ROUNDS.green.go(r); },
+    judge(r){ return r.ready ? 'win' : 'lose'; },
+    loseText:'trykkede for tidligt',
+  },
+  numbers: {
+    name:'Højeste tal', instr:'Tryk på det højeste tal',
+    setup(){
+      const set = new Set(); while(set.size<6) set.add(ri(11,99));
+      const nums = shuffle([...set]); const max = Math.max(...nums);
+      return { nums, correct:max, ready:true };
+    },
+    begin(r){ setStage(() => `<div class="grid6">${r.nums.map(n => `<button class="gbtn" data-v="${n}">${n}</button>`).join('')}</div>`); },
+    judge(r, p){ if(p==null) return null; return String(p)===String(r.correct) ? 'win' : 'lose'; },
+    loseText:'trykkede forkert',
+  },
+  stroop: {
+    name:'Farve, ikke ord', instr:'Tryk på den farve ordet er skrevet med – ikke det ordet siger',
+    setup(){
+      const w = ri(0,3); let ink = ri(0,2); if(ink>=w) ink++; // blækfarve ≠ ordet
+      const order = shuffle([0,1,2,3]);
+      return { word:w, ink, order, correct:COLORS[ink].key, ready:true };
+    },
+    begin(r){
+      setStage(() => `<div class="word" style="color:${COLORS[r.ink].css}">${COLORS[r.word].word}</div>
+        <div class="row4">${r.order.map(i => `<button class="gbtn" data-v="${COLORS[i].key}" style="background:${COLORS[i].css}" aria-label="${COLORS[i].key}">${COLORS[i].key}</button>`).join('')}</div>`);
+    },
+    judge(r, p){ if(p==null) return null; return String(p)===r.correct ? 'win' : 'lose'; },
+    loseText:'trykkede forkert',
+  },
+  dots: {
+    name:'Tæl prikkerne', instr:'Husk hvor mange prikker der er – de forsvinder hurtigt',
+    setup(){
+      const n = ri(5,12);
+      // Placer prikkerne i tilfældige celler i et 5×4-gitter med lidt jitter, så de ikke overlapper
+      const cells = shuffle(Array.from({length:20},(_,i)=>i)).slice(0,n);
+      const pos = cells.map(c => ({ x: 10 + (c%5)*20 + ri(-4,4), y: 12 + Math.floor(c/5)*25 + ri(-5,5) }));
+      // Tre svarmuligheder: det rigtige plus to naboer, sorteret stigende
+      const offs = shuffle([[-2,-1],[-1,1],[1,2],[-2,1],[-1,2]])[0];
+      const opts = [n, n+offs[0], n+offs[1]].map(v => Math.max(1,v)).sort((a,b)=>a-b);
+      return { n, pos, opts, correct:n, ready:false };
+    },
+    begin(r){
+      setStage(() => `<div class="dotfield">${r.pos.map(p => `<i class="dot" style="left:${p.x}%;top:${p.y}%"></i>`).join('')}</div>`);
+      after(GAME.fast ? 400 : 1200, () => ROUNDS.dots.show(r));
+    },
+    show(r){ if(r.ready || state.phase!=='play') return; r.ready = true;
+      setStage(() => `<div class="hint">Hvor mange var der?</div><div class="row3">${r.opts.map(o => `<button class="gbtn" data-v="${o}">${o}</button>`).join('')}</div>`); },
+    skip(r){ clearTimers(); ROUNDS.dots.show(r); },
+    judge(r, p){ if(!r.ready || p==null) return null; return String(p)===String(r.correct) ? 'win' : 'lose'; },
+    loseText:'trykkede forkert',
+  },
+  same: {
+    name:'Ens eller ej', instr:'Tryk når de to figurer er helt ens – både form og farve',
+    setup(){ return { step:0, matchAt: ri(2,7), matching:false, pair:null, ready:false, correct:null }; },
+    randomFig(){ return { s: pick(SHAPES), c: pick(FIGCOL) }; },
+    nextPair(r){
+      const a = ROUNDS.same.randomFig();
+      r.matching = r.step === r.matchAt;
+      let b;
+      if(r.matching){ b = {...a}; r.matchAt = r.step + ri(3,5); } // næste match om 3–5 trin
+      else { do { b = ROUNDS.same.randomFig(); } while(b.s===a.s && b.c===a.c); }
+      r.pair = [a,b]; r.ready = r.matching; r.step++;
+      setStage(() => `<div class="pair"><div class="fig">${figSVG(a.s,a.c)}</div><div class="fig">${figSVG(b.s,b.c)}</div></div>`);
+    },
+    begin(r){ ROUNDS.same.tick(r); },
+    tick(r){ if(state.phase!=='play') return; ROUNDS.same.nextPair(r); after(900, () => ROUNDS.same.tick(r)); },
+    skip(r){ clearTimers(); r.step = r.matchAt; ROUNDS.same.tick(r); },
+    judge(r){ return r.matching ? 'win' : 'lose'; },
+    loseText:'trykkede for tidligt',
+  },
+};
+const TYPES = Object.keys(ROUNDS);
+
+/* ---------- Spilforløb ---------- */
+let lastType = null;
+let pending = [], pendingTimer = null;
+
+function start(target){
+  if(target) state.target = target;
+  state.scores = { red:0, blue:0 }; state.roundNo = 0; lastType = null;
+  showArena(true);
+  nextRound();
+}
+
+function nextRound(){
+  clearTimers(); pending = []; pendingTimer = null;
+  let type = GAME.forceType && ROUNDS[GAME.forceType] ? GAME.forceType : null;
+  GAME.forceType = null;
+  if(!type){ const cands = TYPES.filter(t => t!==lastType); type = pick(cands); }
+  lastType = type;
+  const def = ROUNDS[type];
+  const round = Object.assign({ type }, def.setup());
+  state.round = round; state.roundNo++;
+  state.phase = 'intro';
+  each(h => { h.classList.remove('go','flash-win','flash-lose','res'); h.querySelector('.verdict').classList.remove('on'); });
+  renderOrbs();
+  setHead(def.name, def.instr);
+  setStage(() => `<div class="wait">Gør klar…</div>`);
+  runBar(D().intro);
+  after(D().intro, beginPlay);
+}
+
+function beginPlay(){
+  if(state.phase!=='intro') return;
+  clearTimers(); stopBar();
+  state.phase = 'play';
+  ROUNDS[state.round.type].begin(state.round);
+}
+
+/* press(side, payload, ts): et tryk fra en spiller. Trykkene samles i et lille vindue
+   og afgøres på tidsstempel, så to samtidige tryk behandles fair. */
+function press(side, payload, ts){
+  if(state.phase!=='play' || !SIDES.includes(side)) return;
+  const r = state.round;
+  const verdict = ROUNDS[r.type].judge(r, payload);
+  if(!verdict) return;
+  pending.push({ side, verdict, ts: (typeof ts==='number' ? ts : performance.now()) });
+  if(D().window===0) resolvePress();
+  else if(!pendingTimer) pendingTimer = setTimeout(resolvePress, D().window);
+}
+
+function resolvePress(){
+  pendingTimer = null;
+  if(state.phase!=='play' || !pending.length) return;
+  pending.sort((a,b) => a.ts - b.ts);
+  const first = pending[0]; pending = [];
+  const winner = first.verdict==='win' ? first.side : other(first.side);
+  const r = state.round;
+  clearTimers();
+  state.phase = 'result';
+  state.scores[winner]++;
+  renderOrbs();
+  navigator.vibrate?.(first.verdict==='win' ? 30 : [30,40,30]);
+  const big = first.verdict==='win' ? `${NAME[winner]} tog pointet` : `${NAME[first.side]} ${ROUNDS[r.type].loseText}`;
+  const sub = first.verdict==='win'
+    ? (r.correct!=null ? `Rigtigt svar: ${String(r.correct).toUpperCase()}` : 'Hurtigst!')
+    : `Pointet går til ${NAME[winner]}`;
+  each((h,s) => {
+    h.classList.remove('go'); h.classList.add('res');
+    h.classList.add(s===winner ? 'flash-win' : 'flash-lose');
+    const v = h.querySelector('.verdict');
+    v.querySelector('.big').textContent = big; v.querySelector('.big').className = 'big ' + winner;
+    v.querySelector('.sub').textContent = sub;
+    v.classList.add('on');
+  });
+  after(D().result, advance);
+}
+
+function advance(){
+  if(state.phase!=='result') return;
+  const w = SIDES.find(s => state.scores[s] >= state.target);
+  if(w) finish(w); else nextRound();
+}
+
+function finish(winner){
+  clearTimers();
+  state.phase = 'end';
+  stats.games++; stats[winner]++; saveStats(stats); renderStats();
+  showArena(false);
+  $('#start').classList.remove('on'); $('#end').classList.add('on');
+  const wt = $('#winnerText'); wt.textContent = `${NAME[winner]} vandt`; wt.className = 'winner ' + winner;
+  $('#scoreText').textContent = `${state.scores[winner]}–${state.scores[other(winner)]}`;
+  confetti(winner);
+}
+
+function quit(){
+  clearTimers(); pending = [];
+  state.phase = 'idle';
+  showArena(false);
+  $('#end').classList.remove('on'); $('#start').classList.add('on');
+}
+
+function showArena(on){
+  $('#arena').hidden = !on;
+  document.body.classList.toggle('playing', on);
+  if(on){ $('#start').classList.remove('on'); $('#end').classList.remove('on'); }
+}
+
+/* skipWait(): spring den aktuelle ventefase over (til test og utålmodige) */
+function skipWait(){
+  const r = state.round;
+  if(state.phase==='intro') beginPlay();
+  else if(state.phase==='play' && r && ROUNDS[r.type].skip) ROUNDS[r.type].skip(r);
+  else if(state.phase==='result'){ clearTimers(); advance(); }
+}
+
+function currentRound(){
+  const r = state.round; if(!r) return null;
+  return { type:r.type, correct:r.correct, ready:!!r.ready, matching:!!r.matching, no:state.roundNo };
+}
+
+/* ---------- Input på spilfladen ---------- */
+const arena = $('#arena');
+arena.addEventListener('pointerdown', e => {
+  if(e.target.closest('#quit')) return;
+  e.preventDefault();
+  const half = e.target.closest('.half');
+  const side = half ? half.dataset.side : (e.clientY < innerHeight/2 ? 'blue' : 'red');
+  const btn = e.target.closest('[data-v]');
+  if(btn){ btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 150); }
+  press(side, btn ? btn.dataset.v : null, e.timeStamp);
+}, { passive:false });
+['touchstart','touchmove','touchend'].forEach(t => arena.addEventListener(t, e => e.preventDefault(), { passive:false }));
+arena.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault());
+$('#quit').addEventListener('click', quit);
+
+/* ---------- Start-/slutskærm ---------- */
+$('#targetSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-target]'); if(!b) return;
+  $$('#targetSeg button').forEach(x => { x.classList.toggle('on', x===b); x.setAttribute('aria-checked', x===b ? 'true' : 'false'); });
+  state.target = parseInt(b.dataset.target,10);
+});
+$('#playBtn').addEventListener('click', () => start(state.target));
+$('#rematchBtn').addEventListener('click', () => start(state.target));
+$('#menuBtn').addEventListener('click', quit);
+renderStats();
+
+/* ---------- Konfetti i vinderens farve ---------- */
+function confetti(winner){
+  const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const cv = $('#confetti'); if(reduce) return;
+  const ctx = cv.getContext('2d'); const dpr = Math.min(devicePixelRatio||1, 2);
+  const W = innerWidth, H = innerHeight; cv.width = W*dpr; cv.height = H*dpr; cv.style.width = W+'px'; cv.style.height = H+'px';
+  ctx.scale(dpr,dpr); cv.hidden = false;
+  const base = winner==='red' ? ['#ff5c7a','#ff8ea3','#ffd447','#fff7e6'] : ['#5b8cff','#8fb0ff','#8f6bff','#fff7e6'];
+  const ps = Array.from({length:120}, () => ({
+    x: W/2 + (Math.random()-.5)*60, y: H*0.35, vx:(Math.random()-.5)*14, vy: -Math.random()*14-4,
+    w: 6+Math.random()*8, h: 4+Math.random()*6, rot: Math.random()*6.3, vr:(Math.random()-.5)*.3,
+    c: base[Math.floor(Math.random()*base.length)] }));
+  const t0 = performance.now();
+  function frame(now){
+    const t = (now-t0)/1000; ctx.clearRect(0,0,W,H);
+    ps.forEach(p => { p.vy += .35; p.x += p.vx; p.y += p.vy; p.vx *= .99; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.globalAlpha = Math.max(0, 1 - Math.max(0,t-1.8)/.8);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore(); });
+    if(t < 2.6 && state.phase==='end') requestAnimationFrame(frame); else { ctx.clearRect(0,0,W,H); cv.hidden = true; }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Eksponér til test ---------- */
+Object.assign(GAME, { start, press, currentRound, skipWait, quit });
+})();
+</script>
+</body></html>

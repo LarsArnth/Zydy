@@ -1,0 +1,527 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Tårn: stak blokkene så præcist du kan. Alt der hænger ud over kanten, skæres af.">
+<title>Tårn – zydy.dk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Cpath d='M12 50h34v-9H12z' fill='%235b8cff'/%3E%3Cpath d='M46 50l6-4v-9l-6 4z' fill='%233a62c9'/%3E%3Cpath d='M16 41h26v-9H16z' fill='%238f6bff'/%3E%3Cpath d='M42 41l6-4v-9l-6 4z' fill='%236548c4'/%3E%3Cpath d='M20 32h18v-9H20z' fill='%23ffd447'/%3E%3Cpath d='M38 32l6-4v-9l-6 4z' fill='%23d9ad20'/%3E%3C/svg%3E">
+<style>
+  /*
+    Tårn – et "Stack"-spil for zydy.dk. Én fil, ingen afhængigheder.
+    Spillogikken kører i verdenskoordinater (CSS-px, x centreret om 0, y opad),
+    og tegnes på et canvas der tager højde for devicePixelRatio.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --violet:#8f6bff;
+    --ink:#1c1f4a; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:44px;line-height:1;margin:0 0 6px;letter-spacing:-1.5px;font-weight:800}
+  h2{font-size:30px;line-height:1.1;margin:0 0 8px;letter-spacing:-.8px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn.danger{background:var(--coral);color:#fff}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+
+  .wrap{width:100%;max-width:640px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:20px;letter-spacing:-.4px}
+
+  /* Spilfladen er et afrundet "kort" der fylder resten af skærmen. */
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:var(--bg2)}
+  canvas{display:block;position:absolute;inset:0;touch-action:none}
+
+  .hud{position:absolute;left:0;right:0;top:14px;display:flex;flex-direction:column;align-items:center;
+    gap:6px;pointer-events:none}
+  #score{font-size:64px;font-weight:800;line-height:1;letter-spacing:-2px;
+    text-shadow:0 4px 18px rgba(0,0,0,.45);transition:transform .12s}
+  #score.bump{transform:scale(1.18)}
+  #streak{background:rgba(94,224,168,.16);color:var(--mint);border-radius:999px;padding:6px 14px;
+    font-size:15px;font-weight:700;opacity:0;transform:translateY(-6px);transition:opacity .2s,transform .2s}
+  #streak.on{opacity:1;transform:none}
+  .hud{transition:opacity .25s}
+  .stage.over .hud{opacity:0}
+
+  /* Skærme (start/slut) ligger som overlays over canvas. */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;justify-content:center;align-items:center;
+    padding:24px 20px;background:rgba(17,20,42,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  #overScreen{background:rgba(17,20,42,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:400px;text-align:center}
+  .card h1{margin-bottom:10px}
+  .demo{display:block;width:150px;height:auto;margin:0 auto 14px}
+  .hint{font-size:15px;margin-top:12px}
+  .big{font-size:80px;font-weight:800;line-height:1;letter-spacing:-3px;margin:4px 0 6px}
+  .rekord{color:var(--sun);font-weight:800;font-size:22px;margin-bottom:6px;display:none}
+  .rekord.on{display:block;animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+  .over-best{color:var(--muted);font-size:17px;margin-bottom:14px}
+
+  @media (max-height:640px){
+    h1{font-size:36px} .demo{width:110px} #score{font-size:48px} .big{font-size:60px}
+    .screen .btn{padding:14px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .btn,#score,#streak{transition:none} .rekord.on{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Tårn</div>
+    <span class="pill" id="bestPill">Bedste: 0</span>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Spilflade"></canvas>
+
+    <div class="hud" aria-live="polite">
+      <div id="score">0</div>
+      <div id="streak">Perfekt ×1</div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Tårn</h1>
+        <svg class="demo" viewBox="0 0 150 110" aria-hidden="true">
+          <path d="M20 100h90V80H20z" fill="#5b8cff"/><path d="M110 100l14-9V71l-14 9z" fill="#3a62c9"/><path d="M20 80l14-9h90l-14 9z" fill="#8fb0ff"/>
+          <path d="M26 71h84V51H26z" fill="#7a78ff"/><path d="M110 71l14-9V42l-14 9z" fill="#5350c9"/><path d="M26 51l14-9h84l-14 9z" fill="#a8a6ff"/>
+          <path d="M26 42h63V22H26z" fill="#8f6bff"/><path d="M89 42l14-9V13l-14 9z" fill="#6548c4"/><path d="M26 22l14-9h63l-14 9z" fill="#b39cff"/>
+          <path d="M92 40h18V22H92z" fill="#ff5c7a" opacity=".9" transform="rotate(14 101 31)"/>
+          <path d="M55 8h60v12H55z" fill="#ffd447" opacity=".85"/>
+        </svg>
+        <p>En blok glider hen over tårnet. Tryk for at slippe den. Det, der hænger ud over kanten, skæres af – og tårnet bliver smallere.</p>
+        <p>Land <strong style="color:var(--mint)">perfekt</strong> tre gange i træk, og blokken vokser igen. Hvor højt kan du bygge?</p>
+        <button class="btn" id="startBtn">Spil</button>
+        <p class="hint">Tryk hvor som helst på spilfladen – eller brug mellemrum.</p>
+      </div>
+    </div>
+
+    <div class="screen" id="overScreen">
+      <div class="card">
+        <div class="rekord" id="rekord">Ny rekord!</div>
+        <h2>Spillet er slut</h2>
+        <div class="big" id="overScore">0</div>
+        <div class="over-best" id="overBest">Bedste: 0</div>
+        <button class="btn" id="againBtn">Spil igen</button>
+        <a class="btn ghost" href="/">Tilbage til zydy.dk</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- Seedbar tilfældighed ---------- */
+const params = new URLSearchParams(location.search);
+let seed = parseInt(params.get('seed'), 10);
+if (!Number.isFinite(seed)) seed = (Math.random() * 4294967296) >>> 0;
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rnd = mulberry32(seed);
+const starRnd = mulberry32(7);
+const stars = Array.from({ length: 46 }, () => ({ x: starRnd(), y: starRnd(), r: 0.8 + starRnd() * 1.4, a: 0.18 + starRnd() * 0.4 }));
+
+/* ---------- Lagring ---------- */
+const KEY_BEST = 'zydy.taarn.best';
+const loadBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const saveBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
+const scoreEl = $('score'), streakEl = $('streak'), bestPill = $('bestPill');
+const startScreen = $('startScreen'), overScreen = $('overScreen');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Mål ---------- */
+let W = 1, Hs = 1, dpr = 1;
+let BH = 30;      // blokhøjde (verden = CSS-px)
+let W0 = 240;     // startbredde
+let DX = 15, DY = 10; // dybde på sidefladen (til højre og op)
+const BOTTOM = 56;    // afstand fra fundamentets top til bunden af skærmen
+const PERFECT = 5;    // tolerance i px for "Perfekt!"
+const HUE0 = 225;     // startfarve (~ --sky)
+const HUE_STEP = 7;
+
+function metrics() {
+  BH = Math.max(22, Math.min(36, W * 0.075));
+  W0 = Math.min(W * 0.62, 280);
+  DX = BH * 0.5; DY = BH * 0.34;
+}
+function resize() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); Hs = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(Hs * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = Hs + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  metrics();
+}
+resize();
+addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 60));
+if ('ResizeObserver' in window) new ResizeObserver(resize).observe(stage);
+
+/* ---------- Tilstand ---------- */
+let phase = 'idle';            // idle | playing | dying | over
+let blocks = [];               // {x, w, hue}  (x = venstre kant i verden-x, lag i = index)
+let moving = null;             // {x, w, dir, speed, hue}
+let score = 0, best = loadBest(), prevBest = best, streak = 0, recordShown = false;
+let startedAt = 0;
+const cam = { top: 0, zoom: 1 };
+let debris = [], rings = [], popups = [], confetti = [];
+let flash = 0, shake = 0, shakeX = 0, shakeY = 0;
+let lastT = 0;
+
+bestPill.textContent = 'Bedste: ' + best;
+
+const camMin = zoom => (Hs * 0.45 - BOTTOM) / zoom;
+cam.top = camMin(1);
+
+/* ---------- Koordinater ---------- */
+const sx = wx => W / 2 + wx * cam.zoom + shakeX;
+const sy = wy => Hs * 0.55 + (cam.top - wy) * cam.zoom + shakeY;
+const hsl = (h, s, l, a = 1) => `hsla(${h},${s}%,${l}%,${a})`;
+
+/* Bevægelsesområde for den glidende blok, så den altid er synlig. */
+function range(w) {
+  const pad = 6;
+  const min = -W / 2 + pad, max = W / 2 - pad - w - DX;
+  return { min, max: Math.max(min, max) };
+}
+
+function newMoving(w, hue) {
+  const n = blocks.length;
+  const dir = n % 2 === 1 ? 1 : -1;       // skifter side for hvert lag
+  const r = range(w);
+  const speed = W * (0.45 + 0.016 * Math.min(score, 45));
+  moving = { x: dir > 0 ? r.min : r.max, w, dir, speed, hue };
+}
+
+function start() {
+  blocks = [{ x: -W0 / 2, w: W0, hue: HUE0 }];
+  score = 0; streak = 0; recordShown = false; prevBest = best;
+  debris = []; rings = []; popups = []; confetti = []; flash = 0; shake = 0;
+  newMoving(W0, HUE0 + HUE_STEP);
+  phase = 'playing'; startedAt = performance.now();
+  startScreen.classList.remove('on'); overScreen.classList.remove('on'); stage.classList.remove('over');
+  updateHud();
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+function updateHud() {
+  if (scoreEl.textContent !== String(score)) {
+    scoreEl.textContent = score;
+    scoreEl.classList.add('bump'); setTimeout(() => scoreEl.classList.remove('bump'), 120);
+  }
+  streakEl.textContent = 'Perfekt ×' + streak;
+  streakEl.classList.toggle('on', streak >= 1);
+  bestPill.textContent = 'Bedste: ' + best;
+}
+
+function popup(text, wx, wy, color, size) {
+  popups.push({ text, wx, wy, color, size, t: 0 });
+}
+
+function celebrateRecord() {
+  if (reduceMotion) return;
+  const colors = ['#ffd447', '#ff5c7a', '#5ee0a8', '#5b8cff', '#8f6bff', '#fff7e6'];
+  for (let i = 0; i < 90; i++) {
+    confetti.push({
+      x: W / 2 + (rnd() - 0.5) * W * 0.4, y: -10 - rnd() * 40,
+      vx: (rnd() - 0.5) * 260, vy: 60 + rnd() * 140,
+      rot: rnd() * 6.28, vr: (rnd() - 0.5) * 10,
+      s: 5 + rnd() * 6, color: colors[(rnd() * colors.length) | 0], t: 0, life: 2.6 + rnd() * 1.2
+    });
+  }
+}
+
+/* Slip blokken (et tryk). */
+function drop() {
+  if (phase !== 'playing') return;
+  if (performance.now() - startedAt < 120) return; // beskyt mod dobbelt-tryk lige efter "Spil"
+  const n = blocks.length, top = blocks[n - 1], m = moving;
+  const left = Math.max(m.x, top.x), right = Math.min(m.x + m.w, top.x + top.w);
+  const overlap = right - left;
+  const wy = n * BH;
+
+  if (overlap <= 0) {
+    // Helt forbi: hele blokken falder, og spillet er slut.
+    debris.push({ x: m.x, y: wy, w: m.w, hue: m.hue, vx: m.dir * 60, vy: 40, rot: 0,
+      vr: (m.x < top.x ? -1 : 1) * 1.6, a: 1, t: 0 });
+    phase = 'dying';
+    shake = reduceMotion ? 0 : 9;
+    navigator.vibrate && navigator.vibrate(60);
+    setTimeout(gameOver, 850);
+    return;
+  }
+
+  let nx, nw;
+  const diff = Math.abs(m.x - top.x);
+  if (diff <= PERFECT) {
+    // Perfekt: snap på plads.
+    nx = top.x; nw = top.w; streak++;
+    if (streak >= 3 && nw < W0) {
+      const g = Math.min(W0 - nw, W0 * 0.08);
+      nw += g; nx -= g / 2;                // vokser lidt, centreret over blokken under
+    }
+    rings.push({ wx: nx, wy, w: nw, t: 0 });
+    flash = reduceMotion ? 0 : 0.35;
+    popup(streak >= 3 ? 'Perfekt ×' + streak : 'Perfekt!', nx + nw / 2, wy + BH * 2.2, '#5ee0a8', 24);
+    navigator.vibrate && navigator.vibrate(12);
+  } else {
+    streak = 0;
+    nx = left; nw = overlap;
+    // Den del der hænger ud over, skæres af og falder.
+    if (m.x < top.x) {
+      debris.push({ x: m.x, y: wy, w: top.x - m.x, hue: m.hue, vx: -50, vy: 20, rot: 0, vr: -2.2, a: 1, t: 0 });
+    } else {
+      const e = top.x + top.w;
+      debris.push({ x: e, y: wy, w: m.x + m.w - e, hue: m.hue, vx: 50, vy: 20, rot: 0, vr: 2.2, a: 1, t: 0 });
+    }
+  }
+
+  blocks.push({ x: nx, w: nw, hue: m.hue });
+  score = blocks.length - 1;
+  if (score > best) {
+    best = score; saveBest(best);
+    if (!recordShown && prevBest > 0) {
+      recordShown = true;
+      popup('Ny rekord!', nx + nw / 2, wy + BH * 3.6, '#ffd447', 30);
+      celebrateRecord();
+    }
+  }
+  newMoving(nw, m.hue + HUE_STEP);
+  updateHud();
+}
+
+function gameOver() {
+  if (phase !== 'dying') return;
+  phase = 'over';
+  saveBest(best);
+  const isRecord = score > 0 && score > prevBest;
+  if (isRecord && !recordShown) { recordShown = true; celebrateRecord(); }
+  $('overScore').textContent = score;
+  $('overBest').textContent = 'Bedste: ' + best;
+  $('rekord').classList.toggle('on', isRecord);
+  overScreen.classList.add('on');
+  stage.classList.add('over');
+  updateHud();
+}
+
+/* ---------- Opdatering ---------- */
+function update(dt) {
+  const n = blocks.length, topY = n * BH;
+
+  // Kamera: toppen ligger ved ~55 % af højden; ved game over zoomes ud så hele tårnet ses.
+  let zoomT = 1;
+  const ending = phase === 'over' || phase === 'dying';
+  if (ending) zoomT = Math.min(1, (Hs * 0.72) / ((n + 1) * BH + DY));
+  const cmin = camMin(zoomT);
+  const camT = ending || phase === 'idle' ? cmin : Math.max(topY, cmin);
+  const k = 1 - Math.exp(-dt * (ending ? 3.5 : 6));
+  cam.top += (camT - cam.top) * k;
+  cam.zoom += (zoomT - cam.zoom) * k;
+
+  // Den glidende blok
+  if (phase === 'playing' && moving) {
+    const r = range(moving.w);
+    moving.x += moving.dir * moving.speed * dt;
+    if (moving.x > r.max) { moving.x = r.max; moving.dir = -1; }
+    if (moving.x < r.min) { moving.x = r.min; moving.dir = 1; }
+  }
+
+  // Afskårne stykker
+  for (const d of debris) {
+    d.t += dt; d.vy -= 1400 * dt; d.y += d.vy * dt; d.x += d.vx * dt; d.rot += d.vr * dt;
+    d.a = Math.max(0, 1 - Math.max(0, d.t - 0.5) / 0.7);
+  }
+  debris = debris.filter(d => d.a > 0);
+
+  for (const r of rings) r.t += dt;
+  rings = rings.filter(r => r.t < 0.55);
+  for (const p of popups) p.t += dt;
+  popups = popups.filter(p => p.t < 1.1);
+  for (const c of confetti) {
+    c.t += dt; c.vy += 420 * dt; c.vx *= 1 - 0.8 * dt;
+    c.x += c.vx * dt; c.y += c.vy * dt; c.rot += c.vr * dt;
+  }
+  confetti = confetti.filter(c => c.t < c.life && c.y < Hs + 20);
+
+  flash = Math.max(0, flash - dt * 1.6);
+  if (shake > 0) {
+    shake = Math.max(0, shake - dt * 22);
+    shakeX = (rnd() * 2 - 1) * shake; shakeY = (rnd() * 2 - 1) * shake;
+  } else { shakeX = shakeY = 0; }
+}
+
+/* ---------- Tegning ---------- */
+/* Tegner en 2,5D-blok: forside, top og en mørkere sideflade til højre. */
+function drawPrism(wx, wyBot, w, h, hue, alpha, rot, light) {
+  const z = cam.zoom;
+  const X = sx(wx), Y = sy(wyBot + h), Wd = w * z, Hd = h * z, dx = DX * z, dy = DY * z;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if (rot) {
+    const cx = X + Wd / 2, cy = Y + Hd / 2;
+    ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-cx, -cy);
+  }
+  // sideflade
+  ctx.fillStyle = hsl(hue, 62, 36 + light);
+  ctx.beginPath(); ctx.moveTo(X + Wd, Y); ctx.lineTo(X + Wd + dx, Y - dy);
+  ctx.lineTo(X + Wd + dx, Y - dy + Hd); ctx.lineTo(X + Wd, Y + Hd); ctx.closePath(); ctx.fill();
+  // top
+  ctx.fillStyle = hsl(hue, 75, 72 + light);
+  ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + dx, Y - dy);
+  ctx.lineTo(X + Wd + dx, Y - dy); ctx.lineTo(X + Wd, Y); ctx.closePath(); ctx.fill();
+  // forside
+  ctx.fillStyle = hsl(hue, 70, 57 + light);
+  ctx.fillRect(X, Y, Wd, Hd);
+  // lille kantlys
+  ctx.fillStyle = 'rgba(255,255,255,.18)';
+  ctx.fillRect(X, Y, Wd, Math.max(1, 1.5 * z));
+  ctx.restore();
+}
+
+function drawBackground() {
+  const h = 232 + Math.min(score, 60) * 2.2;
+  const l = 12 + Math.min(score, 60) * 0.22;
+  const g = ctx.createLinearGradient(0, 0, 0, Hs);
+  g.addColorStop(0, hsl(h, 42, l + 8));
+  g.addColorStop(1, hsl(236, 40, 11));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, Hs);
+  // Små stjerner der glider langsomt med kameraet (parallax)
+  const off = cam.top * 0.35 * cam.zoom;
+  for (const st of stars) {
+    const y = (((st.y * Hs + off) % Hs) + Hs) % Hs;
+    ctx.fillStyle = `rgba(255,247,230,${st.a})`;
+    ctx.beginPath(); ctx.arc(st.x * W, y, st.r, 0, 6.283); ctx.fill();
+  }
+}
+
+function draw() {
+  drawBackground();
+  const n = blocks.length;
+  if (n) {
+    // fundament under nederste blok
+    const b0 = blocks[0];
+    drawPrism(b0.x, -4000, b0.w, 4000, b0.hue, 1, 0, -14);
+    for (let i = 0; i < n; i++) {
+      const b = blocks[i];
+      const topScreen = sy((i + 1) * BH + DY);
+      if (topScreen > Hs + 10) continue;        // uden for skærmen
+      if (sy(i * BH) < -10) continue;
+      drawPrism(b.x, i * BH, b.w, BH, b.hue, 1, 0, 0);
+    }
+  }
+  if (phase === 'playing' && moving) {
+    drawPrism(moving.x, n * BH, moving.w, BH, moving.hue, 1, 0, 4);
+  }
+  for (const d of debris) drawPrism(d.x, d.y, d.w, BH, d.hue, d.a, d.rot, 0);
+
+  // Perfekt: en lysende kontur der vokser ud fra blokken og fader
+  for (const r of rings) {
+    const p = r.t / 0.55, z = cam.zoom, grow = p * 26;
+    const X = sx(r.wx) - grow, Y = sy(r.wy + BH) - grow;
+    const Wd = r.w * z + DX * z + grow * 2, Hd = BH * z + DY * z + grow * 2;
+    ctx.save();
+    ctx.globalAlpha = (1 - p) * 0.85;
+    ctx.strokeStyle = '#5ee0a8'; ctx.lineWidth = 2 + (1 - p) * 3;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(X, Y - DY * z, Wd, Hd, 6 + grow / 2); else ctx.rect(X, Y - DY * z, Wd, Hd);
+    ctx.stroke();
+    ctx.restore();
+  }
+  // Tekst-popups
+  for (const p of popups) {
+    const f = p.t / 1.1, X = sx(p.wx), Y = sy(p.wy) - f * 40;
+    const s = p.t < 0.15 ? 0.6 + (p.t / 0.15) * 0.4 : 1;
+    ctx.save();
+    ctx.globalAlpha = f < 0.6 ? 1 : 1 - (f - 0.6) / 0.4;
+    ctx.font = `800 ${p.size * s}px -apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillText(p.text, X, Y + 2);
+    ctx.fillStyle = p.color; ctx.fillText(p.text, X, Y);
+    ctx.restore();
+  }
+  // Konfetti
+  for (const c of confetti) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (c.life - c.t) / 0.6);
+    ctx.translate(c.x, c.y); ctx.rotate(c.rot);
+    ctx.fillStyle = c.color; ctx.fillRect(-c.s / 2, -c.s / 3, c.s, c.s * 0.66);
+    ctx.restore();
+  }
+  if (flash > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${flash})`;
+    ctx.fillRect(0, 0, W, Hs);
+  }
+}
+
+function frame(t) {
+  const dt = Math.min(0.05, Math.max(0, (t - lastT) / 1000) || 0);
+  lastT = t;
+  update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(t => { lastT = t; frame(t); });
+
+/* ---------- Input ---------- */
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); drop(); });
+canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.key === ' ') {
+    e.preventDefault();
+    if (phase === 'playing') drop();
+    else if (phase === 'idle' || phase === 'over') start();
+  }
+});
+$('startBtn').addEventListener('click', start);
+$('againBtn').addEventListener('click', start);
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  start, drop,
+  setMovingX(x) { if (moving) moving.x = x; },
+  get state() {
+    return {
+      phase, running: phase === 'playing', score, best, streak, seed,
+      blocks: blocks.map(b => ({ x: b.x, w: b.w })),
+      moving: moving ? { x: moving.x, w: moving.w, dir: moving.dir } : null,
+      startWidth: W0, blockHeight: BH
+    };
+  }
+};
+})();
+</script>
+</body></html>
