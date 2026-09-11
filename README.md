@@ -7,6 +7,7 @@ afhængigheder. Den linker kun videre — selve appsene bor andre steder.
 | App | Hvor den kører | Kode |
 |---|---|---|
 | Ordle | <https://larsarnth.github.io/ordle/> (GitHub Pages) | `../Ordle` |
+| Taltræf | <https://larsarnth.github.io/taltraef/> (GitHub Pages) | `../iPhoneSpil` |
 | Imposter | <https://larsarnth.github.io/Imposter/> (GitHub Pages) | `../Imposter` |
 | KlaverLær | <https://klaver.zydy.dk> (Cloudflare Worker + Access) | `../KlaverApp` |
 
