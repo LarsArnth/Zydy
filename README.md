@@ -5,7 +5,7 @@ børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
 afhængigheder. De store apps bor i egne repoer og linkes til; ti spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er to små
 API'er (`src/`): en [online topliste](#online-topliste) og
-[hvor tit spillene spilles](#populaere-spil-og-spiller-nu).
+[hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu).
 
 | App | Hvor den kører | Kode |
 |---|---|---|
@@ -85,24 +85,55 @@ npx wrangler@4 d1 execute zydy-highscore --remote --file schema.sql   # rigtig d
 npx wrangler@4 d1 execute zydy-highscore --local  --file schema.sql   # til wrangler dev
 ```
 
+`CREATE TABLE IF NOT EXISTS` rører ikke en tabel, der findes i forvejen, så nye
+kolonner skal tilføjes med `ALTER TABLE`. Begge er kørt på den rigtige database
+og mangler altså ikke — de står her (og i `schema.sql`), så den næste ikke er i
+tvivl:
+
+| Kolonne | Kom til | Migrering (kørt) |
+|---|---|---|
+| `scores.token` | 2026-09-12 | `ALTER TABLE scores ADD COLUMN token TEXT` |
+| `aktive.navn` | 2026-09-12 | `ALTER TABLE aktive ADD COLUMN navn TEXT` |
+
+Har du en lokal D1 til `wrangler dev`, skal de køres dér med `--local` — eller
+bare drop den flygtige `aktive`-tabel og kør `schema.sql` igen.
+
 <a id="populaere-spil-og-spiller-nu"></a>
 
-### Populære spil og «spiller nu»
+### Populære spil, «spiller nu» og hvem der er her
 
 Forsiden sorterer kortene efter, hvad der bliver spillet mest, og viser for
-hvert spil hvor mange der er i gang lige nu og hvem der har rekorden. Det
-bruger samme D1-database som toplisten:
+hvert spil hvem der er i gang lige nu og hvem der har rekorden. Øverst står
+hvem der ellers er på zydy.dk — «Sofie og Selma er her nu» — også dem der bare
+står på forsiden uden at spille. Det bruger samme D1-database som toplisten:
 
 | Del | Fil | Hvad |
 |---|---|---|
-| Database | `starter(spil, dag, antal)` og `aktive(klient, spil, sidst)` i `schema.sql` | `starter` tæller ét tal pr. spil pr. UTC-døgn. `aktive` har én række pr. åben fane med et tidsstempel; rækker uden livstegn i 90 sekunder ryddes ved næste kald, så tabellen aldrig vokser. |
-| API | `src/worker.mjs` → `src/aktivitet.mjs` | `POST /api/aktivitet/<spil>` med `{ny: true}` tæller en start, `{klient}` melder «jeg spiller nu», `{slut: true}` melder fra. `GET /api/oversigt` giver for hvert spil `starter` (i alt), `nylig` (30 dage), `aktive` og `top` (rekordholderen fra toplisten). |
+| Database | `starter(spil, dag, antal)` og `aktive(klient, spil, sidst, navn)` i `schema.sql` | `starter` tæller ét tal pr. spil pr. UTC-døgn. `aktive` har én række pr. åben fane med et tidsstempel og spillerens navn; rækker uden livstegn i 90 sekunder ryddes ved næste kald, så tabellen aldrig vokser. |
+| API | `src/worker.mjs` → `src/aktivitet.mjs` | `POST /api/aktivitet/<spil>` med `{ny: true}` tæller en start, `{klient, navn}` melder «jeg er her nu», `{slut: true}` melder fra. `GET /api/oversigt?mig=<klient>` giver for hvert spil `starter` (i alt), `nylig` (30 dage), `aktive`, `navne` og `top` (rekordholderen fra toplisten) — plus `her: {antal, navne}` med alle på siden. `mig` er ens eget klient-id, som holdes uden for tællingen. |
 | Klient i spillene | `public/spil/aktivitet.js` | Ét script-tag pr. spil: `<script src="/spil/aktivitet.js" data-spil="taarn"></script>`. Tæller én start ved indlæsning og sender livstegn hvert 30. sekund, så længe fanen er synlig. |
-| Klient på forsiden | scriptet nederst i `public/index.html` | Henter `/api/oversigt`, sorterer kortene (mest spillet de sidste 30 dage øverst) og tegner mærkaterne. Rækkefølgen sættes kun én gang pr. indlæsning; derefter opdateres tallene hvert halve minut, så kortene ikke hopper, mens man kigger. |
+| Klient på forsiden | samme script med `data-spil="forsiden"` + scriptet nederst i `public/index.html` | Forsiden melder sig selv til på præcis samme måde, så man tæller med uden at spille. Scriptet henter `/api/oversigt`, sorterer kortene (mest spillet de sidste 30 dage øverst) og tegner mærkaterne. Rækkefølgen sættes kun én gang pr. indlæsning; derefter opdateres tallene hvert halve minut, så kortene ikke hopper, mens man kigger. |
 
-Klient-id'et er et tilfældigt tal i `sessionStorage` (`zydy.klient`). Der
-gemmes hverken navne eller andet om spilleren, og alt fejler stille: uden
-forbindelse ser siden og spillene ud præcis som før.
+Klient-id'et er et tilfældigt tal i `sessionStorage` (`zydy.klient`).
+**Navnet** er det, man selv har skrevet på forsiden (`localStorage`
+`zydy.navn`, samme nøgle som toplisterne) — det står i forvejen offentligt på
+toplisterne, og det ligger kun i den flygtige `aktive`-tabel, altså glemt 90
+sekunder efter man lukker siden. Har man ikke skrevet noget navn, tæller man
+med som anonym («Sofie og 1 mere er her nu»). Der vises højst tre navne i
+toppen og to pr. kort, så en telefonskærm ikke sprænges.
+
+Man tæller ikke sig selv med: forsiden sender sit eget klient-id som `?mig=…`,
+så teksten i toppen handler om de andre — ellers ville man læse sit eget navn
+og tro, der var nogen. Er man alene, står der som før «Tryk på et spil for at
+spille». Skriver eller skifter man navn, sender `/ideer.js` hændelsen
+`zydy:navn`, aktivitets-klienten melder det med det samme, og forsiden henter
+en frisk oversigt (`zydy:aktivitet`), så man ikke skal vente et halvt minut.
+
+Alt fejler stille: uden forbindelse ser siden og spillene ud præcis som før.
+
+Selma spurgte gennem «Nyt spil?» både om at kunne se hvem der er på siden **og
+om venner**. Venner kræver rigtige konti og login, som siden bevidst ikke har —
+det er ikke bygget.
 
 Apps der bor et andet sted (Ordle, Taltræf, Imposter, KlaverLær) kan ikke
 melde til selv, for de ligger på et andet domæne. For dem tæller forsiden i
@@ -110,9 +141,8 @@ stedet trykket på kortet, og de har ingen rekordholder at vise. Skal de med
 på toplisterne, kræver det CORS på API'et og en ændring i deres egne repoer.
 
 **Tilføj et nyt spil:** tilføj `<script src="/spil/aktivitet.js" data-spil="<navn>">`
-i spillet og `data-spil="<navn>"` på kortets `<li>` i `public/index.html`.
-Spil med topliste er automatisk kendt; ellers skriv navnet i `FORSIDE_SPIL` i
-`src/aktivitet.mjs`.
+i spillet. Resten kommer af sig selv, fordi kortene genereres ud fra
+`public/spil/<navn>/kort.json` (se «Tilføj en app — et nyt kort på forsiden»).
 
 ### Navnet, idéer og ønsker
 
@@ -121,7 +151,9 @@ Forsiden spørger «Hvem spiller?» ved første besøg og gemmer svaret i
 bruger** (`Highscore.navn`). Derfor kender spillene navnet med det samme, og en
 rekord bliver gemt uden at spørge igen. Bagefter står navnet som en knap i
 toppen, hvor det kan skiftes. Siger man nej tak, huskes det i
-`zydy.navn.spurgt`, og man bliver ikke spurgt igen.
+`zydy.navn.spurgt`, og man bliver ikke spurgt igen. Navnet er også det, de
+andre ser i «Sofie er her nu» (se afsnittet ovenfor); skiftes det, sendes
+hændelsen `zydy:navn`, så aktivitets-klienten melder det med det samme.
 
 Hvor virker navnet? Tårn, Sæt, Farvesortering, Ordstige, Duel, Helteriget og
 Dybet bruger `Highscore.panel()` og får det gratis. Obby og Stenalder har deres

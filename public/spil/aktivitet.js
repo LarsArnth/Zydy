@@ -1,16 +1,24 @@
 /*
-  Fælles aktivitets-klient for spillene på zydy.dk. Klassisk script, ingen build:
+  Fælles aktivitets-klient for zydy.dk. Klassisk script, ingen build:
 
     <script src="/spil/aktivitet.js" data-spil="taarn"></script>
+    <script src="/spil/aktivitet.js" data-spil="forsiden"></script>   (selve forsiden)
 
   Ved indlæsning sendes én "start" til /api/aktivitet/<spil> (tæller i
   forsidens popularitet), og derefter et heartbeat hvert 30. sekund, så længe
-  siden er synlig, så forsiden kan vise hvor mange der spiller lige nu. Når
-  siden lukkes, meldes der fra. Klient-id'et er tilfældigt og ligger i
-  sessionStorage – der gemmes ingen navne og intet andet om spilleren.
+  siden er synlig, så forsiden kan vise hvem der er her lige nu. Når siden
+  lukkes, meldes der fra. Klient-id'et er tilfældigt og ligger i sessionStorage.
+
+  Livstegnet tager navnet med, hvis man har skrevet det på forsiden
+  (localStorage 'zydy.navn' – samme nøgle som toplisterne bruger), så de andre
+  kan se hvem der er her. Navnet læses ved hvert kald, så det følger med, hvis
+  det bliver skrevet eller skiftet undervejs; 'zydy:navn'-hændelsen fra
+  /ideer.js sender et livstegn med det samme, så man ikke skal vente 30 sek.
+  Uden navn tæller man med som anonym.
 
   Alt fejler stille: uden netværk eller API sker der bare ingenting.
-  window.Aktivitet = { spil, klient, aktive } er til tests (aktive = seneste svar).
+  window.Aktivitet = { spil, klient, aktive, nu() } er til tests og til
+  forsiden (aktive = seneste svar, nu() sender et livstegn med det samme).
 */
 (function () {
 'use strict';
@@ -22,6 +30,7 @@ if (!spil) return;
 const API = '/api/aktivitet/' + spil;
 const INTERVAL = 30_000;
 const KEY = 'zydy.klient';
+const KEY_NAVN = 'zydy.navn';        // fælles med /ideer.js og /spil/highscore.js
 
 function klientId() {
   let id = null;
@@ -32,8 +41,11 @@ function klientId() {
   }
   return id;
 }
+function navn() {
+  try { return localStorage.getItem(KEY_NAVN) || ''; } catch (e) { return ''; }
+}
 const klient = klientId();
-const A = window.Aktivitet = { spil, klient, aktive: null, sendt: 0 };
+const A = window.Aktivitet = { spil, klient, aktive: null, sendt: 0, nu: () => send() };
 
 async function send(ekstra) {
   A.sendt++;
@@ -41,7 +53,7 @@ async function send(ekstra) {
     const r = await fetch(API, {
       method: 'POST', keepalive: true,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(Object.assign({ klient }, ekstra || {})),
+      body: JSON.stringify(Object.assign({ klient, navn: navn() }, ekstra || {})),
     });
     if (r.ok) { const d = await r.json(); if (d && typeof d.aktive === 'number') A.aktive = d.aktive; }
   } catch (e) { /* ingen forbindelse – pyt */ }
@@ -59,4 +71,10 @@ document.addEventListener('visibilitychange', () => {
   else stop();
 });
 window.addEventListener('pagehide', () => { stop(); send({ slut: true }); });
+
+// Navnet blev skrevet eller skiftet på forsiden: meld det med det samme, og sig
+// til bagefter, så forsiden kan hente en frisk oversigt med det nye navn i.
+document.addEventListener('zydy:navn', () => {
+  send().then(() => document.dispatchEvent(new CustomEvent('zydy:aktivitet')));
+});
 })();

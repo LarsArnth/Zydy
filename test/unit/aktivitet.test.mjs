@@ -2,22 +2,21 @@
 // Cloudflare. Kør:  node --test test/unit/aktivitet.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { haandterAktivitet, topNoegle, kendteSpil, rensKlient, AKTIV_TIMEOUT_MS } from '../../src/aktivitet.mjs';
+import { haandterAktivitet, topNoegle, kendteSpil, maaTaelles, tael, rensKlient, FORSIDEN, AKTIV_TIMEOUT_MS } from '../../src/aktivitet.mjs';
 
 /** Hukommelses-udgave af d1Aktivitet(). */
 function huskAktivitet() {
   const starter = new Map();   // 'spil|dag' → antal
-  const aktive = new Map();    // klient → { spil, sidst }
+  const aktive = new Map();    // klient → { klient, spil, sidst, navn }
   return {
     starter, aktive,
     async taelStart(spil, dag) { const k = spil + '|' + dag; starter.set(k, (starter.get(k) || 0) + 1); },
-    async markerAktiv(klient, spil, nu) { aktive.set(klient, { spil, sidst: nu }); },
+    async markerAktiv(klient, spil, nu, navn = null) { aktive.set(klient, { klient, spil, sidst: nu, navn }); },
     async fjernAktiv(klient) { aktive.delete(klient); },
     async rydAktive(foer) { for (const [k, v] of aktive) if (v.sidst < foer) aktive.delete(k); },
-    async aktivePrSpil(efter) {
-      const ud = {};
-      for (const v of aktive.values()) if (v.sidst >= efter) ud[v.spil] = (ud[v.spil] || 0) + 1;
-      return ud;
+    async aktiveNu(efter) {
+      return [...aktive.values()].filter(v => v.sidst >= efter).sort((a, b) => a.sidst - b.sidst)
+        .map(({ klient, spil, navn }) => ({ klient, spil, navn }));
     },
     async starterPrSpil(fraDag) {
       const ud = {};
@@ -43,7 +42,8 @@ const post = (sti, krop, akt, nu = NU) => haandterAktivitet(new Request(BASE + s
   method: 'POST', headers: { 'content-type': 'application/json' },
   body: typeof krop === 'string' ? krop : JSON.stringify(krop),
 }), akt, huskHs(), nu);
-const oversigt = (akt, hs, nu = NU) => haandterAktivitet(new Request(BASE + '/api/oversigt'), akt, hs, nu);
+const oversigt = (akt, hs, nu = NU, mig = null) =>
+  haandterAktivitet(new Request(BASE + '/api/oversigt' + (mig ? '?mig=' + mig : '')), akt, hs, nu);
 
 test('andre stier giver null, så højscore-API og filer overtager', async () => {
   assert.equal(await haandterAktivitet(new Request(BASE + '/'), huskAktivitet(), huskHs()), null);
@@ -61,6 +61,20 @@ test('kendte spil: forsidens plus alle med topliste; topNoegle finder tilstanden
   assert.equal(rensKlient('ABC'), null);
   assert.equal(rensKlient('a'.repeat(41)), null);
   assert.equal(rensKlient(42), null);
+  // Forsiden er ikke et kort, men må godt melde til – ellers kunne man ikke se
+  // dem der bare står på zydy.dk uden at spille.
+  assert.equal(s.includes(FORSIDEN), false, 'forsiden er ikke et spil på listen');
+  assert.equal(maaTaelles(FORSIDEN), true);
+  assert.equal(maaTaelles('taarn'), true);
+  assert.equal(maaTaelles('findesikke'), false);
+});
+
+test('tael: samme navn i to faner er én person, folk uden navn tæller stadig med', () => {
+  assert.deepEqual(tael([]), { antal: 0, navne: [] });
+  assert.deepEqual(tael([{ navn: 'Sofie' }, { navn: 'Sofie' }]), { antal: 1, navne: ['Sofie'] },
+    'iPad og telefon med samme navn er én person');
+  assert.deepEqual(tael([{ navn: 'Sofie' }, { navn: null }, { navn: 'Selma' }, { navn: '' }]),
+    { antal: 4, navne: ['Sofie', 'Selma'] }, 'de anonyme tæller med, men har intet navn at vise');
 });
 
 test('ukendt spil giver 404, GET giver 405, ikke-JSON giver 400', async () => {
@@ -92,7 +106,7 @@ test('aktive: tæller klienter pr. spil, glemmer dem efter timeout og ved slut',
   // Samme klient skifter spil: flytter med, tæller ikke dobbelt
   svar = await (await post('/api/aktivitet/dybet', { klient: 'klient1' }, akt, NU + 3000)).json();
   assert.equal(svar.aktive, 2);
-  assert.equal((await akt.aktivePrSpil(0)).taarn, 1);
+  assert.equal((await akt.aktiveNu(0)).filter(r => r.spil === 'taarn').length, 1);
   // Slut fjerner
   svar = await (await post('/api/aktivitet/dybet', { klient: 'klient1', slut: true }, akt, NU + 4000)).json();
   assert.equal(svar.aktive, 1);
@@ -122,9 +136,43 @@ test('oversigt: starter i alt og seneste 30 dage, aktive og rekordholder pr. spi
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('cache-control'), 'no-store');
   const { spil } = await r.json();
-  assert.deepEqual(spil.taarn, { starter: 3, nylig: 2, aktive: 1, top: { navn: 'Simon', score: 55, retning: 'desc', noegle: 'taarn' } });
-  assert.deepEqual(spil.saet, { starter: 1, nylig: 1, aktive: 0, top: { navn: 'Far', score: 120, retning: 'asc', noegle: 'saet-klassisk' } }, 'laveste tid vinder i Sæt');
-  assert.deepEqual(spil.ordle, { starter: 0, nylig: 0, aktive: 0, top: null });
+  assert.deepEqual(spil.taarn, { starter: 3, nylig: 2, aktive: 1, navne: [], top: { navn: 'Simon', score: 55, retning: 'desc', noegle: 'taarn' } });
+  assert.deepEqual(spil.saet, { starter: 1, nylig: 1, aktive: 0, navne: [], top: { navn: 'Far', score: 120, retning: 'asc', noegle: 'saet-klassisk' } }, 'laveste tid vinder i Sæt');
+  assert.deepEqual(spil.ordle, { starter: 0, nylig: 0, aktive: 0, navne: [], top: null });
   assert.deepEqual(spil.dybet.top, null, 'ingen på listen endnu');
   assert.equal((await haandterAktivitet(new Request(BASE + '/api/oversigt', { method: 'POST' }), akt, hs)).status, 405);
+});
+
+test('navnet følger med livstegnet og kommer med ud i oversigten', async () => {
+  const akt = huskAktivitet();
+  await post('/api/aktivitet/taarn', { klient: 'klienta', navn: '  Sofie  ' }, akt);
+  await post('/api/aktivitet/taarn', { klient: 'klientb', navn: 'Selma' }, akt, NU + 100);
+  await post('/api/aktivitet/dybet', { klient: 'klientc' }, akt, NU + 200);          // gæst uden navn
+  const { spil } = await (await oversigt(akt, huskHs())).json();
+  assert.deepEqual(spil.taarn.navne, ['Sofie', 'Selma'], 'navnet renses som på toplisten');
+  assert.equal(spil.taarn.aktive, 2);
+  assert.deepEqual(spil.dybet, { starter: 0, nylig: 0, aktive: 1, navne: [], top: null },
+    'uden navn tæller man med, men står ikke på listen');
+  // Skifter man navn undervejs, følger rækken med (samme klient, ny værdi).
+  await post('/api/aktivitet/taarn', { klient: 'klienta', navn: 'Sofia' }, akt, NU + 300);
+  const igen = await (await oversigt(akt, huskHs(), NU + 300)).json();
+  assert.deepEqual(igen.spil.taarn.navne, ['Selma', 'Sofia'], 'nyeste livstegn står sidst');
+});
+
+test('her: alle på zydy.dk, også dem på forsiden – og man tæller ikke sig selv med', async () => {
+  const akt = huskAktivitet();
+  await post('/api/aktivitet/' + FORSIDEN, { ny: true, klient: 'klientmig', navn: 'Simon' }, akt);
+  await post('/api/aktivitet/' + FORSIDEN, { klient: 'klientfar', navn: 'Far' }, akt, NU + 100);
+  await post('/api/aktivitet/taarn', { ny: true, klient: 'klientsof', navn: 'Sofie' }, akt, NU + 200);
+  await post('/api/aktivitet/taarn', { klient: 'klientgst' }, akt, NU + 300);        // gæst uden navn
+
+  const alle = await (await oversigt(akt, huskHs(), NU + 300)).json();
+  assert.deepEqual(alle.her, { antal: 4, navne: ['Simon', 'Far', 'Sofie'] }, 'forsidens folk tæller med');
+  assert.equal(alle.spil.taarn.aktive, 2, 'kun spillets egne står på kortet');
+  assert.equal(alle.spil.forsiden, undefined, 'forsiden er ikke et kort');
+
+  const uden = await (await oversigt(akt, huskHs(), NU + 300, 'klientmig')).json();
+  assert.deepEqual(uden.her, { antal: 3, navne: ['Far', 'Sofie'] }, 'man ser ikke sig selv som gæst');
+  const ukendtMig = await (await oversigt(akt, huskHs(), NU + 300, 'Ugyldigt!')).json();
+  assert.equal(ukendtMig.her.antal, 4, 'et ugyldigt mig-id filtrerer ingenting fra');
 });

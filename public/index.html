@@ -34,7 +34,12 @@
   header{text-align:center;margin-bottom:28px}
   h1{font-size:44px;line-height:1;margin:0 0 8px;letter-spacing:-1.5px;font-weight:800}
   h1 span{color:var(--sun)}
-  header p{margin:0;color:var(--muted);font-size:18px}
+  header p{margin:0;color:var(--muted);font-size:18px;text-wrap:balance}
+  /* "Sofie og Selma er her nu": samme grønne som "spiller nu"-mærkatet, med
+     den samme lille blinkende prik foran. */
+  header p.her{color:#7cf0c0;font-weight:700}
+  header p.her::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;
+    vertical-align:middle;border-radius:50%;background:currentColor;animation:puls 1.8s ease-in-out infinite}
 
   .apps{display:flex;flex-direction:column;gap:14px;list-style:none;margin:0;padding:0}
   .app{display:flex;align-items:center;gap:18px;background:var(--bg2);border-radius:var(--r);
@@ -76,7 +81,7 @@
     .icon{flex-basis:88px;width:88px;height:88px;border-radius:24px}
     .text h2{font-size:28px}
   }
-  @media (prefers-reduced-motion:reduce){ .app{transition:none} .m.nu::before{animation:none} }
+  @media (prefers-reduced-motion:reduce){ .app{transition:none} .m.nu::before,header p.her::before{animation:none} }
 </style>
 </head>
 <body>
@@ -436,16 +441,27 @@
   <footer>Familien Arnths apps · zydy.dk</footer>
 </main>
 
+<!-- Forsiden melder sig selv til på samme måde som spillene, så man tæller med,
+     selv om man bare står her og kigger. Skal stå før scriptet nedenfor, som
+     bruger window.Aktivitet.klient til at holde sig selv ude af "hvem er her". -->
+<script src="/spil/aktivitet.js" data-spil="forsiden"></script>
+
 <script>
 /*
-  Popularitet, "spiller nu" og rekordholder.
+  Hvem der er her, popularitet, "spiller nu" og rekordholder.
 
   Alt kommer fra ét kald til /api/oversigt (src/aktivitet.mjs + Cloudflare D1):
-  for hvert spil hvor tit det er startet i alt og de sidste 30 dage, hvor mange
-  der spiller lige nu, og hvem der står øverst på toplisten. Spillene her på
-  zydy.dk melder selv til via /spil/aktivitet.js; apps der bor et andet sted
-  (Ordle, Taltræf, Imposter, KlaverLær) kan ikke, så for dem tæller vi trykket
-  på kortet her.
+  hvem der er på zydy.dk lige nu (`her`), og for hvert spil hvor tit det er
+  startet i alt og de sidste 30 dage, hvem der spiller det lige nu, og hvem der
+  står øverst på toplisten. Spillene her på zydy.dk melder selv til via
+  /spil/aktivitet.js — og det gør forsiden også (data-spil="forsiden"), så man
+  tæller med, selv om man bare står og kigger. Apps der bor et andet sted
+  (Ordle, Taltræf, Imposter, KlaverLær) kan ikke melde til, så for dem tæller vi
+  trykket på kortet her.
+
+  Vi sender vores eget klient-id med som ?mig=… og bliver derfor ikke talt med i
+  `her`: teksten i toppen handler om de *andre*, ellers ville man læse sit eget
+  navn og tro, der var nogen.
 
   Rækkefølgen sættes én gang ved indlæsning (mest spillet de sidste 30 dage
   øverst). Derefter opdateres kun mærkaterne hvert halve minut, så kortene
@@ -495,8 +511,20 @@
     return e;
   }
 
-  function tegn(data) {
-    var nogenSpiller = 0;
+  /* "Sofie", "Sofie og Selma", "Sofie, Selma og Simon", "Sofie, Selma og 3 mere".
+     `antal` er alle – også dem uden navn – så en gæst der ikke har skrevet sit
+     navn, tælles med som "1 mere". Der vises højst `maks` navne, så mærkaterne
+     ikke sprænger en telefonskærm, når hele familien er på. */
+  function navneliste(navne, antal, maks) {
+    var dele = navne.slice(0, maks);
+    var rest = antal - dele.length;
+    if (rest > 0) dele.push(rest + ' mere');
+    if (dele.length === 0) return '';
+    if (dele.length === 1) return dele[0];
+    return dele.slice(0, -1).join(', ') + ' og ' + dele[dele.length - 1];
+  }
+
+  function tegn(data, her) {
     kort.forEach(function (li) {
       var d = data[li.dataset.spil];
       var boks = li.querySelector('.meta');
@@ -504,8 +532,9 @@
       boks.innerHTML = '';
       if (!d) return;
       if (d.aktive > 0) {
-        nogenSpiller += d.aktive;
-        boks.appendChild(maerkat('nu', d.aktive === 1 ? 'Én spiller nu' : d.aktive + ' spiller nu'));
+        var navne = d.navne || [];
+        boks.appendChild(maerkat('nu', navne.length ? navneliste(navne, d.aktive, 2) + ' spiller nu'
+          : d.aktive === 1 ? 'Én spiller nu' : d.aktive + ' spiller nu'));
       }
       if (d.top) {
         var f = FORMAT[d.top.noegle] || String;
@@ -513,9 +542,17 @@
       }
       if (d.nylig > 0) boks.appendChild(maerkat('', d.nylig === 1 ? 'Spillet 1 gang i denne måned' : 'Spillet ' + d.nylig + ' gange i denne måned'));
     });
+
+    // Toppen: hvem der ellers er på siden lige nu – uanset om de spiller eller
+    // bare kigger. Er man alene, står der som før bare "Tryk på et spil".
     var u = document.getElementById('undertekst');
-    if (u) u.textContent = nogenSpiller === 0 ? 'Tryk på et spil for at spille'
-      : nogenSpiller === 1 ? 'Der er én i gang lige nu' : 'Der er ' + nogenSpiller + ' i gang lige nu';
+    if (!u) return;
+    var antal = (her && her.antal) || 0;
+    var navne = (her && her.navne) || [];
+    u.textContent = antal === 0 ? 'Tryk på et spil for at spille'
+      : navne.length ? navneliste(navne, antal, 3) + ' er her nu'
+      : antal === 1 ? 'Der er én anden her nu' : 'Der er ' + antal + ' andre her nu';
+    u.classList.toggle('her', antal > 0);
   }
 
   /* Mest spillet de sidste 30 dage øverst; derefter flest gange nogensinde, og
@@ -532,11 +569,13 @@
 
   var foerste = true;
   function opdater() {
-    fetch('/api/oversigt', { cache: 'no-store' })
+    // Vores eget klient-id kommer fra /spil/aktivitet.js, som melder forsiden til.
+    var mig = window.Aktivitet && window.Aktivitet.klient;
+    fetch('/api/oversigt' + (mig ? '?mig=' + encodeURIComponent(mig) : ''), { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (svar) {
         if (!svar || !svar.spil) return;
-        tegn(svar.spil);
+        tegn(svar.spil, svar.her);
         if (foerste) { foerste = false; sorter(svar.spil); }
       })
       .catch(function () { /* ingen forbindelse – siden virker uden */ });
@@ -547,6 +586,8 @@
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') opdater();
   });
+  // Livstegnet med et nyt navn er landet: hent en frisk oversigt med det samme.
+  document.addEventListener('zydy:aktivitet', opdater);
 })();
 </script>
 

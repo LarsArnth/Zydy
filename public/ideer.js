@@ -33,7 +33,9 @@ const gem = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const laes = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
 const navn = {
   hent: () => laes(KEY_NAVN),
-  gem: n => gem(KEY_NAVN, n),
+  // Sig til, når navnet er skrevet eller skiftet: /spil/aktivitet.js sender med
+  // det samme et livstegn med det nye navn, så "Sofie er her nu" står der straks.
+  gem: n => { gem(KEY_NAVN, n); document.dispatchEvent(new CustomEvent('zydy:navn', { detail: n })); },
 };
 
 const el = (tag, cls, text) => {

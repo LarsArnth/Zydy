@@ -90,6 +90,34 @@ await page.waitForSelector('.id-dlg[open]', { state: 'hidden' });
 assert.equal(await page.evaluate(() => localStorage.getItem('zydy.navn')), 'Simon');
 assert.match(await page.locator('#navnKnap').textContent(), /Hej Simon/);
 
+/* ---------- Hvem er her lige nu ---------- */
+// Forsiden melder sig selv til ligesom spillene, så man tæller med, selv om man
+// bare står og kigger – og navnet følger med, så de andre kan se hvem det er.
+/** Venter (højst 5 sek.) på noget her i Node – fx at et kald er nået frem til mocken. */
+const vent = async (naar, hvad) => {
+  for (let i = 0; i < 100 && !naar(); i++) await page.waitForTimeout(50);
+  assert.ok(naar(), hvad);
+};
+await vent(() => api.log.aktivitet.some(a => a.spil === 'forsiden' && a.ny === true),
+  'forsiden tæller sig selv med som "her nu"');
+await vent(() => api.log.aktivitet.some(a => a.spil === 'forsiden' && a.navn === 'Simon'),
+  'det nye navn sendes med det samme, ikke først om 30 sekunder');
+
+// Er man alene, står der som før bare "Tryk på et spil" – man er ikke gæst hos sig selv.
+assert.equal(await page.locator('#undertekst').textContent(), 'Tryk på et spil for at spille');
+
+// To andre dukker op: Selma spiller Tårn, og en gæst uden navn står på forsiden.
+const nu = Date.now();
+await api.akt.markerAktiv('klientselma', 'taarn', nu, 'Selma');
+await api.akt.markerAktiv('klientgaest', 'forsiden', nu, null);
+await page.evaluate(() => document.dispatchEvent(new CustomEvent('zydy:aktivitet')));
+await page.waitForFunction(() => /er her nu/.test(document.getElementById('undertekst').textContent));
+
+assert.equal(await page.locator('#undertekst').textContent(), 'Selma og 1 mere er her nu',
+  'den navnløse gæst tæller med, men har intet navn at vise');
+assert.equal(await page.locator('li[data-spil="taarn"] .m.nu').textContent(), 'Selma spiller nu');
+await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/forside-hvem-er-her.png' });
+
 /* ---------- En gæst der ikke vil skrive navn, får lov at være i fred ---------- */
 {
   const ctx2 = await browser.newContext({ ...devices['iPhone 13'] });

@@ -59,13 +59,12 @@ export function huskAktivitet() {
   return {
     starter, aktive,
     async taelStart(spil, dag) { const k = spil + '|' + dag; starter.set(k, (starter.get(k) || 0) + 1); },
-    async markerAktiv(klient, spil, nu) { aktive.set(klient, { spil, sidst: nu }); },
+    async markerAktiv(klient, spil, nu, navn = null) { aktive.set(klient, { klient, spil, sidst: nu, navn }); },
     async fjernAktiv(klient) { aktive.delete(klient); },
     async rydAktive(foer) { for (const [k, v] of aktive) if (v.sidst < foer) aktive.delete(k); },
-    async aktivePrSpil(efter) {
-      const ud = {};
-      for (const v of aktive.values()) if (v.sidst >= efter) ud[v.spil] = (ud[v.spil] || 0) + 1;
-      return ud;
+    async aktiveNu(efter) {
+      return [...aktive.values()].filter(v => v.sidst >= efter).sort((a, b) => a.sidst - b.sidst)
+        .map(({ klient, spil, navn }) => ({ klient, spil, navn }));
     },
     async starterPrSpil(fraDag) {
       const ud = {};

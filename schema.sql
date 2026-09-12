@@ -23,12 +23,15 @@ CREATE TABLE IF NOT EXISTS starter (
   antal      INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (spil, dag)
 );
--- … og hvem der spiller lige nu (én række pr. browser-tab, heartbeat hvert 30. sek., glemt efter 90).
+-- … og hvem der er på siden lige nu (én række pr. browser-tab, heartbeat hvert 30. sek., glemt efter 90).
 CREATE TABLE IF NOT EXISTS aktive (
   klient     TEXT    PRIMARY KEY,          -- tilfældigt id fra klienten (sessionStorage)
-  spil       TEXT    NOT NULL,
-  sidst      INTEGER NOT NULL              -- ms siden epoch
+  spil       TEXT    NOT NULL,             -- spillets id, eller 'forsiden' for dem der bare står på zydy.dk
+  sidst      INTEGER NOT NULL,             -- ms siden epoch
+  navn       TEXT                          -- spillerens navn fra localStorage ('zydy.navn'), tomt hvis man ikke har skrevet det
 );
+-- Kolonnen navn kom til 2026-09-12. Databaser oprettet før det blev opdateret med:
+--   npx wrangler@4 d1 execute zydy-highscore --remote --command "ALTER TABLE aktive ADD COLUMN navn TEXT"
 CREATE INDEX IF NOT EXISTS aktive_sidst ON aktive (sidst);
 
 -- Idéer og ønsker (src/ideer.mjs): forslag til nye spil og ting der mangler i
