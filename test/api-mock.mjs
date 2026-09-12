@@ -9,10 +9,12 @@
 //   ...                                       // for Playwright prøver ruterne nyeste først
 //   api.log.aktivitet   → [{ spil, ny?, klient?, slut? }, …]
 //   api.scores          → rækkerne i højscore-lageret
+//   api.ideer.rows      → de idéer og ønsker der er sendt ind
 //
 // Options: { scores: [{ spil, navn, score }] } lægger startrækker på toplisterne.
 import { haandterApi } from '../src/highscore.mjs';
 import { haandterAktivitet } from '../src/aktivitet.mjs';
+import { haandterIdeer } from '../src/ideer.mjs';
 
 /** Højscore-lager i hukommelsen – samme seks metoder som d1Lager(). */
 export function huskLager(start = []) {
@@ -73,10 +75,25 @@ export function huskAktivitet() {
   };
 }
 
+/** Idé-lager i hukommelsen – samme to metoder som d1Ideer(). */
+export function huskIdeer() {
+  const rows = [];
+  return {
+    rows,
+    async gem(slags, spil, navn, tekst) {
+      const id = rows.length + 1;
+      rows.push({ id, slags, spil, navn, tekst, oprettet: new Date(Date.UTC(2026, 0, 1, 0, 0, id)).toISOString() });
+      return id;
+    },
+    async alle(n = rows.length) { return rows.slice().reverse().slice(0, n); },
+  };
+}
+
 /** Sætter mocken op på `page`. Returnerer lagrene og en log over aktivitets-kald. */
 export async function mockApi(page, opt = {}) {
   const hs = huskLager(opt.scores || []);
   const akt = huskAktivitet();
+  const ideer = huskIdeer();
   const log = { aktivitet: [], highscore: [] };
 
   // Cloudflare Web Analytics-beaconen holdes ude af testene. Den hører ikke til
@@ -101,7 +118,9 @@ export async function mockApi(page, opt = {}) {
     }
 
     const request = new Request(req.url(), { method: metode, headers: req.headers(), body: krop });
-    const svar = (await haandterAktivitet(request, akt, hs)) || (await haandterApi(request, hs));
+    const svar = (await haandterAktivitet(request, akt, hs))
+      || (await haandterIdeer(request, ideer))
+      || (await haandterApi(request, hs));
     if (!svar) return route.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"fejl":"Ikke API (mock)"}' });
     return route.fulfill({
       status: svar.status,
@@ -110,5 +129,5 @@ export async function mockApi(page, opt = {}) {
     });
   });
 
-  return { hs, akt, log, get scores() { return hs.rows; } };
+  return { hs, akt, ideer, log, get scores() { return hs.rows; } };
 }

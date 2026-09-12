@@ -84,6 +84,8 @@
   <header>
     <h1>zydy<span>.dk</span></h1>
     <p id="undertekst">Tryk på et spil for at spille</p>
+    <!-- Navnet huskes i localStorage ('zydy.navn') og bruges af spillenes toplister. Se /ideer.js. -->
+    <button id="navnKnap" class="navn-knap" type="button"></button>
   </header>
 
   <ul class="apps" id="apps">
@@ -548,5 +550,9 @@
   });
 })();
 </script>
+
+<!-- Navnet i toppen, "Mangler der noget?" under hvert kort og "Nyt spil?"-kortet nederst.
+     Knapperne og kortet laves i JS, så nye kort her i filen automatisk får dem med. -->
+<script src="/ideer.js" defer></script>
 </body>
 </html>

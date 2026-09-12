@@ -7,6 +7,7 @@
   "scripts": {
     "deploy": "npx --yes wrangler@4 deploy",
     "dev": "npx --yes wrangler@4 dev",
-    "serve": "python3 -m http.server 4175 -d public"
+    "serve": "python3 -m http.server 4175 -d public",
+    "ideer": "node scripts/ideer.mjs"
   }
 }

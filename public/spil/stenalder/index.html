@@ -255,6 +255,9 @@ function slet() { try { localStorage.removeItem(GEM); } catch {} }
 // ---- Startskærm ----------------------------------------------------------
 let antal = 3;
 const gemteNavne = (() => { try { return JSON.parse(localStorage.getItem(GEM_NAVNE) || 'null'); } catch { return null; } })() || ['', '', '', ''];
+// Har man skrevet sit navn på forsiden (zydy.dk), står det klar som spiller 1 –
+// samme navn som toplisterne bruger. Har man spillet Stenalder før, vinder de gemte navne.
+if (!gemteNavne[0]) gemteNavne[0] = Highscore.navn.hent();
 function tegnNavne() {
   const box = $('#navne'); box.innerHTML = '';
   for (let i = 0; i < antal; i++) {
@@ -275,6 +278,9 @@ tegnNavne();
 function startNyt(navneListe) {
   const navne = navneListe ?? [...$('#navne').querySelectorAll('input')].map((inp, i) => inp.value.trim() || `Spiller ${i + 1}`);
   try { localStorage.setItem(GEM_NAVNE, JSON.stringify(navne)); } catch {}
+  // Kender vi slet ikke spilleren endnu, så lær navnet her, så resten af zydy.dk også gør.
+  // (klippet til 12 tegn, som er alt toplisten gemmer)
+  if (!Highscore.navn.hent() && !/^Spiller \d$/.test(navne[0])) Highscore.navn.gem(Array.from(navne[0]).slice(0, 12).join(''));
   S = nytSpil({ navne, seed: seedParam ? Number(seedParam) : undefined });
   sidstePaa = null; dlgNoegle = null;
   gem(); visSkaerm('game'); render();

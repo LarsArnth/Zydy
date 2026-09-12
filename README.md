@@ -112,6 +112,50 @@ i spillet og `data-spil="<navn>"` på kortets `<li>` i `public/index.html`.
 Spil med topliste er automatisk kendt; ellers skriv navnet i `FORSIDE_SPIL` i
 `src/aktivitet.mjs`.
 
+### Navnet, idéer og ønsker
+
+Forsiden spørger «Hvem spiller?» ved første besøg og gemmer svaret i
+`localStorage` under `zydy.navn` — **den samme nøgle, som spillenes toplister
+bruger** (`Highscore.navn`). Derfor kender spillene navnet med det samme, og en
+rekord bliver gemt uden at spørge igen. Bagefter står navnet som en knap i
+toppen, hvor det kan skiftes. Siger man nej tak, huskes det i
+`zydy.navn.spurgt`, og man bliver ikke spurgt igen.
+
+Hvor virker navnet? Tårn, Sæt, Farvesortering, Ordstige, Duel, Helteriget og
+Dybet bruger `Highscore.panel()` og får det gratis. Obby og Stenalder har deres
+eget navnefelt på startskærmen, som nu står udfyldt med navnet fra forsiden
+(Stenalder kun for spiller 1, og skriver man et navn dér uden at have et i
+forvejen, læres det til resten af siden). Kryds og bolle har ingen topliste, og
+Ordle, Taltræf, Imposter og KlaverLær bor på andre domæner og kan ikke læse
+`localStorage` herfra — dér giver navnet ikke mening.
+
+Samme sted kan man **foreslå spil og ønske sig ting**:
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Database | tabellen `ideer` i `schema.sql` | `ideer(slags, spil, navn, tekst, oprettet)`. `slags` er `'nyt'` (forslag til et helt nyt spil, `spil` er tom) eller `'oenske'` (ønske til et spil, der findes). Kun de nyeste 500 beholdes. |
+| API | `src/worker.mjs` → `src/ideer.mjs` | `POST /api/ideer` med `{slags, spil?, navn, tekst}`. Navnet renses som på toplisten (12 tegn), teksten til 3-600 tegn, og `spil` skal være et kendt spil. |
+| Klient | `public/ideer.js` | Navneknappen i toppen, «Mangler der noget?» under hvert spilkort og «Nyt spil?»-kortet nederst. Knapperne og kortet laves i JS, så nye kort i `index.html` automatisk får dem. Kender vi ikke navnet, spørges der først, og formularen fortsætter bagefter. |
+
+Hent det ind, når der skal bygges videre:
+
+```bash
+export CLOUDFLARE_EMAIL=larsarnth@outlook.com          # se ~/.dsh/skills/cloudflare/SKILL.md
+export CLOUDFLARE_API_KEY=<global API key>
+npm run ideer                 # pænt overblik, nyeste først
+npm run ideer -- --json       # rå JSON, fx til at give videre til en AI
+npm run ideer -- --nyt        # kun forslag til nye spil
+npm run ideer -- --oensker    # kun ønsker til de spil der findes
+```
+
+`scripts/ideer.mjs` spørger databasen direkte gennem wrangler, så der ikke
+findes et offentligt endepunkt, som kan læse dem — man kan kun skrive. Er en
+idé bygget færdig eller bare pjat, så slet den:
+
+```bash
+npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM ideer WHERE id = 42"
+```
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -136,7 +180,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, højscore- og aktivitets-API'et (ingen browser, ~3 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, højscore-, aktivitets- og idé-API'et (ingen browser, ~3 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter

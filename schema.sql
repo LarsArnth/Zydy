@@ -30,3 +30,15 @@ CREATE TABLE IF NOT EXISTS aktive (
   sidst      INTEGER NOT NULL              -- ms siden epoch
 );
 CREATE INDEX IF NOT EXISTS aktive_sidst ON aktive (sidst);
+
+-- Idéer og ønsker (src/ideer.mjs): forslag til nye spil og ting der mangler i
+-- dem der findes. Hentes ned med `npm run ideer`.
+CREATE TABLE IF NOT EXISTS ideer (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  slags      TEXT    NOT NULL,             -- 'nyt' (forslag til nyt spil) eller 'oenske' (ønske til et spil)
+  spil       TEXT,                         -- kun ved 'oenske', fx 'taarn'
+  navn       TEXT    NOT NULL,             -- 1-12 tegn, renset i Worker'en
+  tekst      TEXT    NOT NULL,             -- 3-600 tegn
+  oprettet   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS ideer_slags ON ideer (slags, id DESC);
