@@ -253,6 +253,44 @@ som løst. Det er arbejderen, ikke loopet, der sætter `loest`, og loopet tjekke
 bagefter i databasen, om det rent faktisk skete; gjorde det ikke, prøver den
 igen (tre gange, så springer den ønsket over). Se filens hoved for flag.
 
+<a id="nyt-paa-zydy"></a>
+
+### Nyt på Zydy — release notes
+
+Øverst på forsiden står knappen **«✨ Nyt på Zydy»**. Den åbner listen over
+hvad der er lavet på siden: hvornår, hvad, hvilket spil det handler om, og
+**hvem der havde ønsket sig det** — for næsten alt her er bygget, fordi nogen
+skrev et ønske i «Mangler der noget?». Knappen **lyser op med et antal**, når
+der er kommet noget til, siden man sidst kiggede.
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Listen | `public/nyheder.json` | `{nyheder: [{nr, dato, spil, titel, hvad, oensket}, …]}`, nyeste først. `nr` tæller opad og er den «version», browseren husker. `spil` er mappenavnet under `public/spil/` — eller `""`, hvis det er hele siden. |
+| Klient | `public/nyheder.js` | Knappen i toppen (ved siden af navneknappen) og dialogen med listen. Spillenes navne og links slås op i kortene på forsiden, så et spil kun hedder noget ét sted. |
+
+Der er **ingen server og ingen database** i det: filen udrulles sammen med
+resten, og «sidst set» er det højeste `nr`, man har åbnet listen med, gemt i
+`localStorage` under `zydy.nyheder.set`. Har man aldrig været inde, er alt nyt.
+Mærkaterne bliver stående, mens dialogen er åben, men knappen holder op med at
+lyse med det samme — ellers ser det ud, som om man overså noget. Kan filen ikke
+hentes, er der ingen knap, og forsiden ser ud som før.
+
+**Har du lavet noget? Skriv det på listen.** Det er hele pointen — ellers står
+der ikke noget nyt, næste gang børnene kigger:
+
+```jsonc
+{ "nr": 14,                      // det højeste nr i filen + 1
+  "dato": "2026-09-13",          // i dag
+  "spil": "obby",                // mappenavnet, eller "" for hele siden
+  "titel": "Kort og forståeligt", // højst 60 tegn
+  "hvad": "En sætning eller to om hvad man nu kan – skrevet til et barn.",
+  "oensket": "Sofie" }           // den der bad om det
+```
+
+Listen begynder 2026-09-12; det, der blev lavet før, står kun i git.
+`test/unit/nyheder.test.mjs` fejler, hvis en linje mangler noget, hvis to har
+samme `nr`, eller hvis `spil` ikke er et spil, der findes.
+
 ### Gulvet er lava – styring og bane
 
 Spillet er bygget efter et forslag fra Selma gennem «Nyt spil?»-kortet, hvor
@@ -378,7 +416,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, forsidens kort, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
@@ -395,10 +433,13 @@ og kan bagefter kigge i `api.log.aktivitet`, `api.scores`, `api.ideer.rows` og
 og Obby lægger deres egen `page.route('**/api/highscore/**')` ovenpå, når de
 har brug for en bestemt startliste. API'erne testes desuden hver for sig i
 `test/unit/highscore.test.mjs`, `test/unit/aktivitet.test.mjs`,
-`test/unit/ideer.test.mjs` og `test/unit/venner.test.mjs`. Forsiden har to
-browser-tests: `test/forside.test.mjs` (navn, ønsker, «hvem er her») og
+`test/unit/ideer.test.mjs` og `test/unit/venner.test.mjs`. Forsiden har tre
+browser-tests: `test/forside.test.mjs` (navn, ønsker, «hvem er her»),
 `test/venner.test.mjs` (spørg, sig ja, se hvem der spiller hvad, fjern en ven —
-den anden part spilles af testen selv gennem `api.venner`). Vil man prøve
+den anden part spilles af testen selv gennem `api.venner`) og
+`test/nyheder.test.mjs` («Nyt på Zydy», hvor en ekstra nyhed serveres gennem
+`page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til).
+Vil man prøve
 hele kæden lokalt mod en lokal D1-database:
 
 ```bash
@@ -455,6 +496,9 @@ scriptet igen.
 et `kort.json` mangler noget, eller hvis et spil her på sitet ikke har en
 `index.html` at linke til. `node scripts/byg-forside.mjs --tjek` svarer på det
 samme uden at skrive noget.
+
+Til sidst: skriv spillet på nyhedslisten i `public/nyheder.json`, så det lyser
+op på forsiden hos dem, der har været her før — se [Nyt på Zydy](#nyt-paa-zydy).
 
 ## Kør lokalt
 

@@ -1,0 +1,109 @@
+{
+  "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
+  "nyheder": [
+    {
+      "nr": 13,
+      "dato": "2026-09-12",
+      "spil": "",
+      "titel": "Nu kan du se hvad der er nyt",
+      "hvad": "Knappen i toppen viser hvad vi har lavet, hvornår, og hvem der ønskede sig det. Den lyser op, når der er kommet noget til, siden du sidst var inde.",
+      "oensket": "Lars"
+    },
+    {
+      "nr": 12,
+      "dato": "2026-09-12",
+      "spil": "farvesortering",
+      "titel": "Man kan se hvem der har rekorden",
+      "hvad": "Der står nu «🏆 Sofie har rekorden · niveau 42» på startskærmen og efter hvert niveau. Tryk på linjen for at se hele top 10.",
+      "oensket": "Selma"
+    },
+    {
+      "nr": 11,
+      "dato": "2026-09-12",
+      "spil": "blokblast",
+      "titel": "Blokblast er kommet på siden",
+      "hvad": "Træk de tre brikker ned på brættet og fyld hele rækker og søjler, så de blæser væk. Rydder du flere linjer i træk, ganges pointene op.",
+      "oensket": "Selma"
+    },
+    {
+      "nr": 10,
+      "dato": "2026-09-12",
+      "spil": "taarn",
+      "titel": "Points du samler på tværs af alle spil",
+      "hvad": "Hver blok giver 10 points, og perfekte landinger giver bonus. Pointene lægges sammen fra gang til gang, og for hver hele tusinde popper «1000 POINTS!» op med konfetti.",
+      "oensket": "Selma"
+    },
+    {
+      "nr": 9,
+      "dato": "2026-09-12",
+      "spil": "duel",
+      "titel": "Du kan spille mod en bot",
+      "hvad": "Duel kan nu spilles alene: vælg «Mod botten» på startskærmen og bagefter hvor svær den skal være. Den kan både tyvstarte og trykke forkert, så Nem er faktisk nem.",
+      "oensket": "Selma"
+    },
+    {
+      "nr": 8,
+      "dato": "2026-09-12",
+      "spil": "miskmask",
+      "titel": "Miskmask er kommet på siden",
+      "hvad": "En pose med 13 bittesmå spil i ét: tryk, tæl, find den anderledes, prik ballonerne — og lad være med at røre. Du har få sekunder til hvert, og det går hurtigere og hurtigere.",
+      "oensket": "Selma"
+    },
+    {
+      "nr": 7,
+      "dato": "2026-09-12",
+      "spil": "kat",
+      "titel": "Min kat er kommet på siden",
+      "hvad": "Adopter din egen killing, giv den navn, og pas på den: mad, garnnøgle, børstning og søvn. Behovene siver nedad i rigtig tid, også mens du er i skole.",
+      "oensket": "Selma"
+    },
+    {
+      "nr": 6,
+      "dato": "2026-09-12",
+      "spil": "obby",
+      "titel": "Der står hvem der har lavet spillet",
+      "hvad": "Øverst på startskærmen står der nu «Sofie fandt på spillet · Far og Claude byggede det».",
+      "oensket": "Sofie"
+    },
+    {
+      "nr": 5,
+      "dato": "2026-09-12",
+      "spil": "klodser",
+      "titel": "Klodser er kommet på siden",
+      "hvad": "Din egen 3D-verden af klodser: løb rundt på øen, byg og riv ned — og find de 12 guldklodser så hurtigt du kan. Det du bygger, bliver gemt.",
+      "oensket": "Selma"
+    },
+    {
+      "nr": 4,
+      "dato": "2026-09-12",
+      "spil": "",
+      "titel": "Man kan være venner",
+      "hvad": "Øverst på forsiden kan du spørge en anden, om I skal være venner. Siger I begge ja, kan du se hvornår vennen er på, og hoppe med ind i det spil, vedkommende spiller.",
+      "oensket": "Selma"
+    },
+    {
+      "nr": 3,
+      "dato": "2026-09-12",
+      "spil": "lava",
+      "titel": "Gulvet er lava er kommet på siden",
+      "hvad": "Lavaen stiger i stuen! Klatr op ad sofaen, bordet og reolen, hop i trampolinpuffen, og pas på flyttekasserne. Hvor højt når du?",
+      "oensket": "Selma"
+    },
+    {
+      "nr": 2,
+      "dato": "2026-09-12",
+      "spil": "obby",
+      "titel": "Checkpointet er til at få øje på",
+      "hvad": "Hver femte firkant har nu en flagstang, der bliver grøn, når du har nået den, og TRY AGAIN fortæller hvor du fortsætter fra. Coins får du kun ved nye checkpoints, tre ad gangen.",
+      "oensket": "Sofie"
+    },
+    {
+      "nr": 1,
+      "dato": "2026-09-12",
+      "spil": "obby",
+      "titel": "Skins, coins og en fart der stiger",
+      "hvad": "Du kan samle coins og købe blandt 14 forskellige firkanter og hatte i butikken. Jo længere du kommer, jo hurtigere løber du.",
+      "oensket": "Sofie"
+    }
+  ]
+}
