@@ -14,8 +14,11 @@
     Obby – et one-button-platformspil for zydy.dk, lavet efter Sofies prompt:
     flyvende firkanter man hopper på med mellemrum, laser på hver anden,
     lava i bunden, checkpoint på hver femte, TRY AGAIN når man dør, og en
-    tæller for hop i træk. Én fil, ingen afhængigheder (ud over toplistens
-    fælles klient /spil/highscore.js).
+    tæller for hop i træk. Senere kom Sofies anden ønskeseddel til: coins
+    (én for hver ny firkant, vist i højre hjørne), en skinbutik med farvede
+    firkanter og hatte til højst 100 coins, og en fart der stiger, jo længere
+    man kommer. Én fil, ingen afhængigheder (ud over toplistens fælles klient
+    /spil/highscore.js).
 
     Spilverdenen regnes i "enheder" (1 enhed = spillerens bredde), og en
     enhed er så mange px, at der altid er 12 enheder på tværs og 16 i højden.
@@ -52,7 +55,7 @@
   #menuBtn[hidden]{display:none}
 
   .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:var(--bg2)}
-  canvas{display:block;position:absolute;inset:0;touch-action:none}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
 
   /* Tælleren i øverste venstre hjørne: hop i træk + rekord */
   .hud{position:absolute;left:14px;top:12px;pointer-events:none;text-shadow:0 3px 14px rgba(0,0,0,.5)}
@@ -61,6 +64,36 @@
   #hop.bump{transform:scale(1.2)}
   .hud .rek{margin-top:6px;font-size:16px;font-weight:700;color:var(--sun)}
   .hud .rek b{font-variant-numeric:tabular-nums}
+  /* Coins i modsatte hjørne af hop-tælleren */
+  .hud.hoejre{left:auto;right:14px;text-align:right}
+  #coins{display:block;font-size:40px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:var(--sun);
+    font-variant-numeric:tabular-nums;transition:transform .12s}
+  #coins.bump{transform:scale(1.25)}
+
+  /* Coin-pil (på knapper og i butikken) */
+  .coins-pil{display:inline-flex;align-items:center;gap:5px;background:rgba(255,212,71,.16);color:var(--sun);
+    border-radius:999px;padding:3px 10px;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+  .coins-pil.stor{font-size:19px;padding:6px 14px}
+
+  /* Butikken */
+  .shop-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+  .shop-top h2{margin:0}
+  .shop-hint{font-size:14px;margin:0 0 12px}
+  .skin-gitter{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin-bottom:14px}
+  .skin-kort{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px 9px;border-radius:18px;
+    background:var(--bg2);border:2px solid transparent;color:var(--text);font:inherit;text-align:center;
+    min-height:44px;transition:transform .08s,border-color .15s}
+  .skin-kort:active{transform:scale(.96)}
+  .skin-kort canvas{width:52px;height:52px;display:block;position:static}
+  .skin-navn{font-size:13px;font-weight:700;line-height:1.15}
+  .skin-pris{font-size:13px;font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums}
+  .skin-kort.ejet .skin-pris{color:var(--mint)}
+  .skin-kort.valgt{border-color:var(--sun)}
+  .skin-kort.valgt .skin-pris{color:var(--sun)}
+  .skin-kort.dyr{opacity:.5}
+  .skin-kort.dyr .skin-pris{color:var(--muted)}
+  .skin-kort.ryst{animation:ryst .32s}
+  @keyframes ryst{0%,100%{transform:none}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 
   /* Beskeder midt på spilfladen */
   .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -102,10 +135,14 @@
   .regler span{font-size:13px;background:var(--bg2);border-radius:999px;padding:5px 10px;color:var(--muted)}
 
   @media (max-height:640px){
-    h1{font-size:32px} #hop{font-size:44px} .hs .hs-liste{max-height:26vh} .screen .btn{padding:14px}
+    h1{font-size:32px} #hop{font-size:44px} #coins{font-size:32px} .hs .hs-liste{max-height:26vh} .screen .btn{padding:14px}
+  }
+  @media (max-width:380px){
+    .top .name{display:none}          /* plads til Skins + Menu på en lille telefon */
   }
   @media (prefers-reduced-motion:reduce){
-    .btn,#hop{transition:none} #tryAgain.on .big,#readyHint .sub{animation:none}
+    .btn,#hop,#coins,.skin-kort{transition:none}
+    #tryAgain.on .big,#readyHint .sub,.skin-kort.ryst{animation:none}
   }
 </style>
 </head>
@@ -114,6 +151,7 @@
   <div class="top">
     <a class="back" href="/">‹ zydy.dk</a>
     <div class="name">Obby</div>
+    <button class="pill" id="skinBtn" hidden>Skins</button>
     <button class="pill" id="menuBtn" hidden>Menu</button>
   </div>
 
@@ -124,6 +162,11 @@
       <span class="lbl">Hop</span>
       <b id="hop">0</b>
       <div class="rek">Rekord <b id="rekHud">0</b></div>
+    </div>
+
+    <div class="hud hoejre" aria-live="polite">
+      <span class="lbl">Coins</span>
+      <b id="coins">0</b>
     </div>
 
     <div class="msg" id="readyHint"><div class="sub">Tryk for at hoppe</div></div>
@@ -149,7 +192,20 @@
           <button class="btn" type="submit">OK</button>
         </form>
         <button class="btn" id="startBtn">Spil</button>
+        <button class="btn ghost" id="skinStartBtn">Skins <span class="coins-pil">🪙 <b id="coinsStart">0</b></span></button>
         <p class="hint">Hop med mellemrum – eller tryk på skærmen.</p>
+      </div>
+    </div>
+
+    <div class="screen" id="shopScreen">
+      <div class="card">
+        <div class="shop-top">
+          <h2>Skins</h2>
+          <div class="coins-pil stor">🪙 <b id="coinsShop">0</b></div>
+        </div>
+        <p class="shop-hint">Du får 1 coin for hver ny firkant, du hopper videre til.</p>
+        <div class="skin-gitter" id="skinGitter"></div>
+        <button class="btn" id="shopTilbageBtn">Tilbage</button>
       </div>
     </div>
   </div>
@@ -187,14 +243,27 @@ const saveBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch
 /* ---------- DOM ---------- */
 const $ = id => document.getElementById(id);
 const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
+// Ældre Safari mangler roundRect. Lappen sættes på prototypen, så butikkens
+// små forhåndsvisninger får den med (de har hver deres 2d-kontekst).
+if (!ctx.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
 const hopEl = $('hop'), rekHud = $('rekHud'), rekordVal = $('rekordVal');
 const startScreen = $('startScreen'), tryAgain = $('tryAgain'), readyHint = $('readyHint'), nyRekord = $('nyRekord');
+const coinsEl = $('coins'), coinsStart = $('coinsStart'), coinsShop = $('coinsShop');
+const shopScreen = $('shopScreen'), skinGitter = $('skinGitter'), skinBtn = $('skinBtn');
 const nameBtn = $('nameBtn'), nameForm = $('nameForm'), nameInput = $('nameInput'), menuBtn = $('menuBtn');
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- Fysik i enheder (1 enhed = spillerens bredde) ---------- */
 const P = 1;                 // spillerens bredde og højde
-const VX = 6.4;              // løbefart, enheder/sek
+/*
+  Farten stiger, jo længere man kommer (Sofies ønske: "for hvert hop skal det gå
+  hurtigere"). Den hænger på platformens nummer og ikke på hop-tælleren, fordi
+  banen er genereret ud fra netop den fart: efter en død genopstår man på et
+  checkpoint langt inde, hvor tælleren er nulstillet, men terrænet stadig er
+  bygget til den høje fart. Så ville et nulstillet tempo gøre spring uspillelige.
+*/
+const VX0 = 6.0, VX_MAKS = 9.5, VX_TRIN = 0.006;   // fuld fart omkring platform 100
+const fartVed = i => Math.min(VX_MAKS, VX0 * (1 + VX_TRIN * i));
 const T_UP = 0.33;           // sekunder op til toppen af et hop
 const H_JUMP = 2.0;          // hophøjde
 const G = 2 * H_JUMP / (T_UP * T_UP);
@@ -254,13 +323,20 @@ function gen(prev) {
   const y = Math.max(Y_MIN, Math.min(yLoft, prev.y + (rnd() * 2 - 1) * (0.6 + 1.0 * diff)));
   const dy = y - prev.y;
   const dyWorst = y + amp - bund, dyBest = y - amp - (prev.y + prev.amp);
-  const reachWorst = VX * tLand(dyWorst), reachBest = VX * tLand(dyBest);
+  const vx = fartVed(prev.i);                             // farten på hoppet hertil (fra forrige platform)
+  const reachWorst = vx * tLand(dyWorst), reachBest = vx * tLand(dyBest);
   const k = laser ? 0.55 + 0.2 * diff + rnd() * 0.1 : 0.4 + 0.3 * diff + rnd() * 0.15;
   const gap = Math.max(1.2, k * reachWorst);
+  // Hvor langt inde på platformen kan man lande? Det sted skal der være plads efter.
+  const landing = Math.max(0, reachBest - gap);
+  // En laser passeres ved at hoppe over den og lande på samme platform igen. Det
+  // hop tages med farten *på* platformen og er længst, når platformen synker
+  // under en imens – derfor skal laserplatforme være bredere, jo hurtigere man løber.
+  const selvHop = fartVed(i) * tLand(-2 * amp);
   let w = isCheckpoint ? 4.5 + rnd()
-    : laser ? Math.max(7.5, 2 * (reachWorst * (1 - k) + 1.6)) + rnd() * 1.5
+    : laser ? Math.max(7.5, landing + selvHop + P + 1.2) + rnd() * 1.2
     : Math.max(2.4, 4.4 - 1.6 * diff + rnd() * 1.2);
-  w = Math.max(w, reachBest - gap + 0.6);                 // et hop fra kanten må ikke flyve forbi
+  w = Math.max(w, landing + 0.6);                         // et hop fra kanten må ikke flyve forbi
   return {
     i, x: prev.x + prev.w + gap, w, y, amp,
     freq: 1.0 + rnd() * 1.4, phase: rnd() * 6.2832,
@@ -281,7 +357,7 @@ function fyldBane() {
 }
 
 /* ---------- Spilleren ---------- */
-const player = { x: 0, y: 0, vy: 0, on: null, running: false, alive: true, coyote: 0, jumpBuf: 0, jumped: false, ev: null };
+const player = { x: 0, y: 0, vy: 0, vx: VX0, on: null, running: false, alive: true, coyote: 0, jumpBuf: 0, jumped: false, ev: null };
 
 /**
  * Ét fysik-trin for spilleren p fra tiden t0 til t0+dt. Ren i den forstand, at
@@ -292,7 +368,7 @@ function stepPlayer(p, t0, dt) {
   const t1 = t0 + dt;
   p.ev = null;
   const x0 = p.x;
-  if (p.running) p.x += VX * dt;
+  if (p.running) p.x += p.vx * dt;
   p.coyote = Math.max(0, p.coyote - dt);
   p.jumpBuf = Math.max(0, p.jumpBuf - dt);
 
@@ -327,6 +403,148 @@ function stepPlayer(p, t0, dt) {
   if (p.y < 0.05) { p.alive = false; p.ev = 'lava'; }
 }
 
+/* ---------- Skins ---------- */
+/*
+  Hver skin er en firkant med et ansigt og eventuelt en hat. Prisen er i coins og
+  må højst være 100 (Sofies regel). Klassisk er gratis og ejes fra start.
+  Tegnes af tegnSkin() i et 1x1-koordinatsystem, så den samme kode kan bruges
+  både til spilleren på canvas og til de små forhåndsvisninger i butikken.
+*/
+const SKINS = [
+  { id: 'klassisk',  navn: 'Klassisk',  pris: 0,   krop: '#ffd447', ansigt: 'smil' },
+  { id: 'mynte',     navn: 'Mynte',     pris: 10,  krop: '#5ee0a8', ansigt: 'smil' },
+  { id: 'himmel',    navn: 'Himmel',    pris: 10,  krop: '#5b8cff', ansigt: 'grin' },
+  { id: 'koral',     navn: 'Koral',     pris: 15,  krop: '#ff5c7a', ansigt: 'overrasket' },
+  { id: 'violet',    navn: 'Violet',    pris: 20,  krop: '#8f6bff', ansigt: 'sov' },
+  { id: 'slik',      navn: 'Slik',      pris: 25,  krop: '#ff9ad5', ansigt: 'grin', hat: 'sloejfe' },
+  { id: 'frosk',     navn: 'Frøen',     pris: 30,  krop: '#7bd34a', ansigt: 'grin', hat: 'blad' },
+  { id: 'sej',       navn: 'Den seje',  pris: 40,  krop: '#2ec9c9', ansigt: 'sej' },
+  { id: 'kasket',    navn: 'Kasketten', pris: 45,  krop: '#ff8a3d', ansigt: 'smil', hat: 'kasket' },
+  { id: 'spoegelse', navn: 'Spøgelse',  pris: 55,  krop: '#eef0ff', ansigt: 'overrasket' },
+  { id: 'nisse',     navn: 'Nissen',    pris: 60,  krop: '#e8413f', ansigt: 'smil', hat: 'nissehue' },
+  { id: 'troldmand', navn: 'Troldmand', pris: 75,  krop: '#4a3fb0', ansigt: 'sov', hat: 'spids' },
+  { id: 'robot',     navn: 'Robotten',  pris: 85,  krop: '#9aa7c7', ansigt: 'robot', hat: 'antenne' },
+  { id: 'konge',     navn: 'Kongen',    pris: 100, krop: '#ffd447', ansigt: 'sej', hat: 'krone' },
+];
+const skinMed = id => SKINS.find(s => s.id === id) || SKINS[0];
+
+/**
+ * Tegner en skin i et kvadrat med hjørne (0,0) og siden `s`. `ctx` skal være
+ * translateret på forhånd. Bruges både på spilfladen og i butikken.
+ */
+function tegnSkin(ctx, s, skin) {
+  const m = s / 100, mork = '#1c1f4a';
+  const e = (x, y, r) => { ctx.beginPath(); ctx.arc(x * m, y * m, r * m, 0, 6.283); ctx.fill(); };
+
+  // Hatten sidder oven på hovedet og tegnes før kroppen, så den ligger bagved kanten
+  if (skin.hat === 'krone') {
+    ctx.fillStyle = '#ffcc2e';
+    ctx.beginPath();
+    ctx.moveTo(18 * m, -4 * m); ctx.lineTo(30 * m, -24 * m); ctx.lineTo(44 * m, -10 * m);
+    ctx.lineTo(58 * m, -28 * m); ctx.lineTo(72 * m, -10 * m); ctx.lineTo(84 * m, -24 * m);
+    ctx.lineTo(84 * m, 2 * m); ctx.lineTo(18 * m, 2 * m); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ff5c7a'; e(51, -6, 5);
+  } else if (skin.hat === 'kasket') {
+    ctx.fillStyle = '#2b6be0';
+    ctx.beginPath(); ctx.ellipse(50 * m, -6 * m, 32 * m, 22 * m, 0, Math.PI, 0); ctx.fill();
+    ctx.fillRect(18 * m, -8 * m, 64 * m, 9 * m);
+    ctx.fillStyle = '#1e4fa8'; ctx.fillRect(50 * m, -8 * m, 44 * m, 8 * m);   // skyggen
+  } else if (skin.hat === 'nissehue') {
+    ctx.fillStyle = '#d8342f';
+    ctx.beginPath(); ctx.moveTo(16 * m, 0); ctx.lineTo(62 * m, -34 * m); ctx.lineTo(84 * m, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(12 * m, -8 * m, 76 * m, 9 * m); e(62, -34, 8);
+  } else if (skin.hat === 'spids') {
+    ctx.fillStyle = '#6a5ae0';
+    ctx.beginPath(); ctx.moveTo(12 * m, 2 * m); ctx.lineTo(50 * m, -40 * m); ctx.lineTo(88 * m, 2 * m); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#4b3fb5'; ctx.fillRect(10 * m, -8 * m, 80 * m, 10 * m);   // skygge under skyggen
+    ctx.fillStyle = '#ffd447'; e(50, -24, 5); e(36, -10, 4); e(64, -12, 3);
+  } else if (skin.hat === 'sloejfe') {
+    ctx.fillStyle = '#ff4f9a';
+    ctx.beginPath(); ctx.moveTo(50 * m, -6 * m); ctx.lineTo(22 * m, -22 * m); ctx.lineTo(22 * m, 4 * m); ctx.closePath();
+    ctx.moveTo(50 * m, -6 * m); ctx.lineTo(78 * m, -22 * m); ctx.lineTo(78 * m, 4 * m); ctx.closePath(); ctx.fill();
+    e(50, -7, 8);
+  } else if (skin.hat === 'blad') {
+    ctx.fillStyle = '#3f9e2f';
+    ctx.beginPath(); ctx.ellipse(60 * m, -14 * m, 20 * m, 9 * m, -0.5, 0, 6.283); ctx.fill();
+    ctx.strokeStyle = '#2c7320'; ctx.lineWidth = 4 * m; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(46 * m, 2 * m); ctx.lineTo(58 * m, -14 * m); ctx.stroke();
+  } else if (skin.hat === 'antenne') {
+    ctx.strokeStyle = '#6f7b98'; ctx.lineWidth = 5 * m; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(50 * m, 4 * m); ctx.lineTo(50 * m, -20 * m); ctx.stroke();
+    ctx.fillStyle = '#ff5c7a'; e(50, -25, 9);
+  }
+
+  // Kroppen
+  ctx.fillStyle = skin.krop;
+  ctx.beginPath(); ctx.roundRect(0, 0, s, s, 0.22 * s); ctx.fill();
+
+  // Ansigtet
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (skin.ansigt === 'sej') {
+    ctx.fillStyle = '#15182e';
+    ctx.beginPath(); ctx.roundRect(16 * m, 30 * m, 68 * m, 22 * m, 6 * m); ctx.fill();
+    ctx.fillRect(46 * m, 34 * m, 8 * m, 8 * m);
+    ctx.fillStyle = '#fff'; ctx.globalAlpha = .35;
+    ctx.beginPath(); ctx.moveTo(22 * m, 48 * m); ctx.lineTo(34 * m, 33 * m); ctx.lineTo(40 * m, 33 * m); ctx.lineTo(28 * m, 48 * m); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = mork; ctx.lineWidth = 7 * m;
+    ctx.beginPath(); ctx.arc(50 * m, 62 * m, 16 * m, 0.25, Math.PI - 0.25); ctx.stroke();
+  } else if (skin.ansigt === 'robot') {
+    ctx.fillStyle = '#15182e';
+    ctx.beginPath(); ctx.roundRect(20 * m, 32 * m, 22 * m, 16 * m, 4 * m); ctx.roundRect(58 * m, 32 * m, 22 * m, 16 * m, 4 * m); ctx.fill();
+    ctx.fillStyle = '#5ee0a8'; ctx.fillRect(25 * m, 36 * m, 12 * m, 8 * m); ctx.fillRect(63 * m, 36 * m, 12 * m, 8 * m);
+    ctx.strokeStyle = mork; ctx.lineWidth = 6 * m;
+    ctx.beginPath(); ctx.moveTo(30 * m, 68 * m); ctx.lineTo(70 * m, 68 * m); ctx.stroke();
+  } else if (skin.ansigt === 'sov') {
+    ctx.strokeStyle = mork; ctx.lineWidth = 6 * m;
+    ctx.beginPath(); ctx.arc(34 * m, 42 * m, 12 * m, Math.PI * 0.15, Math.PI * 0.85);
+    ctx.arc(70 * m, 42 * m, 12 * m, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+    ctx.beginPath(); ctx.arc(50 * m, 70 * m, 10 * m, Math.PI * 1.2, Math.PI * 1.8); ctx.stroke();
+  } else {
+    // Øjne med hvid baggrund (smil, grin, overrasket)
+    ctx.fillStyle = '#fff'; e(36, 40, 15); e(70, 40, 15);
+    ctx.fillStyle = mork; e(40, 42, 7); e(74, 42, 7);
+    if (skin.ansigt === 'grin') {
+      ctx.fillStyle = mork;
+      ctx.beginPath(); ctx.arc(52 * m, 60 * m, 20 * m, 0.1, Math.PI - 0.1); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillRect(34 * m, 60 * m, 36 * m, 6 * m);
+    } else if (skin.ansigt === 'overrasket') {
+      ctx.fillStyle = mork; e(52, 68, 11);
+    } else {
+      ctx.strokeStyle = mork; ctx.lineWidth = 6 * m;
+      ctx.beginPath(); ctx.arc(52 * m, 58 * m, 16 * m, 0.2, Math.PI - 0.2); ctx.stroke();
+    }
+  }
+}
+
+/* ---------- Coins og ejede skins ---------- */
+const KEY_COINS = 'zydy.obby.coins', KEY_EJET = 'zydy.obby.skins', KEY_VALGT = 'zydy.obby.skin';
+const laes = (k, fallback) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? fallback : v; } catch (e) { return fallback; } };
+const skriv = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+let coins = Math.max(0, parseInt(laes(KEY_COINS, 0), 10) || 0);
+let ejet = laes(KEY_EJET, ['klassisk']);
+if (!Array.isArray(ejet) || !ejet.includes('klassisk')) ejet = ['klassisk'];
+ejet = ejet.filter(id => SKINS.some(s => s.id === id));
+let valgtSkin = laes(KEY_VALGT, 'klassisk');
+if (!ejet.includes(valgtSkin)) valgtSkin = 'klassisk';
+let maksNaaet = 0;           // højeste platform man har været på – coins gives kun for nye firkanter
+
+/** Lægger n coins til og lader dem poppe op fra platformen. */
+function tjenCoins(n, pl) {
+  coins += n; skriv(KEY_COINS, coins);
+  visCoins();
+  if (pl) popups.push({ text: '+' + n, x: pl.x + pl.w / 2, y: platTop(pl, T) + 1.4, t: 0, color: '#ffd447' });
+}
+
+function visCoins() {
+  if (coinsEl.textContent !== String(coins)) {
+    coinsEl.textContent = coins;
+    coinsEl.classList.add('bump'); setTimeout(() => coinsEl.classList.remove('bump'), 120);
+  }
+  coinsStart.textContent = coins; coinsShop.textContent = coins;
+}
+
 /** Hvor ender et hop lige nu? { i, x } for platformen og landingsstedet, eller null hvis man dør. Bruges af tests. */
 function simJump() {
   const p = { ...player, running: true, vy: VJ, on: null, coyote: 0, jumpBuf: 0 };
@@ -357,12 +575,12 @@ function updateHud() {
 
 function spawn() {
   const pl = checkpoint;
-  player.x = pl.x + 0.5; player.y = platTop(pl, T); player.vy = 0; player.on = pl;
+  player.x = pl.x + 0.5; player.y = platTop(pl, T); player.vy = 0; player.on = pl; player.vx = fartVed(pl.i);
   player.running = false; player.alive = true; player.coyote = 0; player.jumpBuf = 0; player.jumped = false;
   streak = 0; camX = player.x - Wu * 0.3; particles = []; popups = []; shake = 0;
   phase = 'ready';
   tryAgain.classList.remove('on'); readyHint.classList.add('on'); startScreen.classList.remove('on');
-  menuBtn.hidden = false;
+  menuBtn.hidden = false; skinBtn.hidden = false;
   fyldBane(); updateHud();
 }
 
@@ -372,6 +590,7 @@ function doJump() {
 
 /** Et tryk (mellemrum eller finger). */
 function jump() {
+  if (butikAaben || shopScreen.classList.contains('on')) return;   // man kigger på skins
   if (phase === 'ready') { phase = 'run'; player.running = true; readyHint.classList.remove('on'); doJump(); return; }
   if (phase === 'run') {
     if (player.on || player.coyote > 0) doJump(); else player.jumpBuf = BUFFER;
@@ -385,6 +604,13 @@ function onLand(pl) {
   if (player.jumped) {
     streak++; player.jumped = false; squash = 0.18;
     navigator.vibrate && navigator.vibrate(8);
+  }
+  player.vx = fartVed(pl.i);                 // hurtigere og hurtigere, jo længere man er nået
+  if (pl.i > maksNaaet) {
+    // Én coin pr. ny firkant. Kun for firkanter man ikke har været på før, så man
+    // ikke kan samle coins ved at dø og hoppe de samme felter igen.
+    tjenCoins(pl.i - maksNaaet, pl);
+    maksNaaet = pl.i;
   }
   if (pl.checkpoint && pl !== checkpoint) {
     checkpoint = pl; pl.active = true; flashT = 0.4;
@@ -420,8 +646,9 @@ function start() {
 
 function tilMenu() {
   phase = 'menu'; player.running = false;
+  butikAaben = false; shopScreen.classList.remove('on');
   tryAgain.classList.remove('on'); readyHint.classList.remove('on');
-  startScreen.classList.add('on'); menuBtn.hidden = true;
+  startScreen.classList.add('on'); menuBtn.hidden = true; skinBtn.hidden = true;
   hentListe();
 }
 
@@ -447,7 +674,6 @@ function tick(dt) {
 const sx = wx => (wx - camX) * u;
 const sy = wy => H - 1.6 * u - wy * u;
 const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
-if (!ctx.roundRect) ctx.roundRect = function (x, y, w, h, r) { this.rect(x, y, w, h); };
 
 function draw() {
   ctx.save();
@@ -519,11 +745,7 @@ function draw() {
     ctx.translate(px + u / 2, py + u);
     ctx.rotate(tilt); ctx.scale(1 / sq, sq);
     ctx.translate(-u / 2, -u);
-    ctx.fillStyle = '#ffd447'; rr(0, 0, u, u, 0.22 * u); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(u * 0.42, u * 0.38, u * 0.15, 0, 6.283); ctx.arc(u * 0.8, u * 0.38, u * 0.15, 0, 6.283); ctx.fill();
-    ctx.fillStyle = '#1c1f4a'; ctx.beginPath(); ctx.arc(u * 0.47, u * 0.4, u * 0.07, 0, 6.283); ctx.arc(u * 0.85, u * 0.4, u * 0.07, 0, 6.283); ctx.fill();
-    ctx.strokeStyle = '#1c1f4a'; ctx.lineWidth = Math.max(1.5, u * 0.06); ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(u * 0.63, u * 0.6, u * 0.16, 0.2, Math.PI - 0.2); ctx.stroke();
+    tegnSkin(ctx, u, skinMed(valgtSkin));
     ctx.restore();
   }
 
@@ -570,7 +792,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   if (!lastT) lastT = now;
   let dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
-  if (!paused) {
+  if (!paused && !butikAaben) {
     acc += dt;
     while (acc >= DT) { tick(DT); acc -= DT; }
   }
@@ -635,6 +857,82 @@ async function omdoebMigSelv(nyt) {
   } catch (e) { minRaekke.gem(null); }             // rækken er væk (trimmet) – glem kvitteringen
 }
 
+/* ---------- Butikken ---------- */
+/*
+  Butikken kan åbnes både fra startskærmen og midt i et løb. Åbner man den under
+  spil, fryser alt (butikAaben), og man fortsætter præcis hvor man slap, når den
+  lukkes – ellers ville man dø, mens man kiggede på hatte.
+*/
+let butikAaben = false, shopFra = 'menu';
+
+/** Tegner ét kort i gitteret for en skin. */
+function skinKort(skin) {
+  const harDen = ejet.includes(skin.id), erValgt = skin.id === valgtSkin, raad = coins >= skin.pris;
+  const knap = document.createElement('button');
+  knap.type = 'button';
+  knap.className = 'skin-kort' + (harDen ? ' ejet' : '') + (erValgt ? ' valgt' : '') + (!harDen && !raad ? ' dyr' : '');
+  knap.dataset.skin = skin.id;
+  knap.setAttribute('aria-pressed', String(erValgt));
+
+  const c = document.createElement('canvas');
+  const dp = Math.min(3, window.devicePixelRatio || 1), px = 52;
+  c.width = c.height = Math.round(px * dp);
+  c.style.width = c.style.height = px + 'px';
+  const k = c.getContext('2d');
+  k.setTransform(dp, 0, 0, dp, 0, 0);
+  k.translate(px * 0.15, px * 0.29);              // luft over hovedet, så hatten ikke klippes
+  tegnSkin(k, px * 0.70, skin);
+  knap.appendChild(c);
+
+  const navnEl = document.createElement('span');
+  navnEl.className = 'skin-navn'; navnEl.textContent = skin.navn;
+  knap.appendChild(navnEl);
+
+  const pris = document.createElement('span');
+  pris.className = 'skin-pris';
+  pris.textContent = erValgt ? 'Valgt' : harDen ? 'Ejet' : '🪙 ' + skin.pris;
+  knap.appendChild(pris);
+
+  knap.addEventListener('click', () => vaelgEllerKoeb(skin));
+  return knap;
+}
+
+function tegnButik() {
+  skinGitter.innerHTML = '';
+  for (const skin of SKINS) skinGitter.appendChild(skinKort(skin));
+  visCoins();
+}
+
+/** Klik på et kort: ejer man den, vælges den; ellers købes den, hvis man har råd. */
+function vaelgEllerKoeb(skin) {
+  if (!ejet.includes(skin.id)) {
+    if (coins < skin.pris) {
+      const kort = skinGitter.querySelector('[data-skin="' + skin.id + '"]');
+      if (kort) { kort.classList.remove('ryst'); void kort.offsetWidth; kort.classList.add('ryst'); }
+      return;
+    }
+    coins -= skin.pris; skriv(KEY_COINS, coins);
+    ejet = [...ejet, skin.id]; skriv(KEY_EJET, ejet);
+    navigator.vibrate && navigator.vibrate(20);
+  }
+  valgtSkin = skin.id; skriv(KEY_VALGT, valgtSkin);
+  tegnButik();
+}
+
+function aabnButik() {
+  shopFra = phase;
+  if (phase === 'run' || phase === 'ready') butikAaben = true;   // fryser spillet
+  shopScreen.classList.add('on'); startScreen.classList.remove('on');
+  tegnButik();
+}
+
+function lukButik() {
+  shopScreen.classList.remove('on');
+  butikAaben = false;
+  lastT = 0; acc = 0;                                 // ingen kæmpe tidsspring efter pausen
+  if (shopFra === 'menu') startScreen.classList.add('on');
+}
+
 /* ---------- Input ---------- */
 canvas.addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
 addEventListener('keydown', e => {
@@ -647,6 +945,9 @@ addEventListener('keydown', e => {
 });
 $('startBtn').addEventListener('click', start);
 menuBtn.addEventListener('click', tilMenu);
+skinBtn.addEventListener('click', aabnButik);
+$('skinStartBtn').addEventListener('click', aabnButik);
+$('shopTilbageBtn').addEventListener('click', lukButik);
 nameBtn.addEventListener('click', () => {
   nameBtn.hidden = true; nameForm.hidden = false;
   nameInput.value = navn();
@@ -666,26 +967,30 @@ nameForm.addEventListener('submit', e => {
 nyBane();
 camX = -Wu * 0.3;
 fyldBane();
-visNavn(); updateHud(); hentListe();
+visNavn(); updateHud(); visCoins(); hentListe();
 
 /* ---------- Test-API ---------- */
 window.GAME = {
-  start, jump, tick, simJump, spawn, tilMenu, seed,
+  start, jump, tick, simJump, spawn, tilMenu, aabnButik, lukButik, seed,
+  skins: SKINS.map(k => ({ id: k.id, navn: k.navn, pris: k.pris, hat: k.hat || null })),
   pause() { paused = true; }, resume() { paused = false; lastT = 0; acc = 0; },
   die() { if (phase === 'run' || phase === 'ready') { player.alive = false; die('lava'); } },
   /** Stil spilleren på platform nr. i (tests). */
   placer(i) {
     const pl = platforms.find(q => q.i === i); if (!pl) return false;
-    player.x = pl.x + 0.3; player.on = pl; player.y = platTop(pl, T); player.vy = 0; player.alive = true; player.jumped = false;
+    player.x = pl.x + 0.3; player.on = pl; player.y = platTop(pl, T); player.vy = 0; player.vx = fartVed(pl.i);
+    player.alive = true; player.jumped = false;
     camX = player.x - Wu * 0.3; fyldBane(); return true;
   },
   get state() {
     return {
       phase, running: phase === 'run', streak, best, T, camX,
+      coins, skin: valgtSkin, ejet: [...ejet], maksNaaet, butikAaben,
+      fart: player.vx, maksFart: VX_MAKS,
       player: { x: player.x, y: player.y, vy: player.vy, on: player.on ? player.on.i : null, alive: player.alive },
       checkpoint: checkpoint ? checkpoint.i : null,
       platforms: platforms.map(pl => ({ i: pl.i, x: pl.x, w: pl.w, y: pl.y, amp: pl.amp, laser: pl.laser, checkpoint: pl.checkpoint, active: pl.active, top: platTop(pl, T) })),
-      consts: { VX, G, VJ, LASER_H, P },
+      consts: { VX0, VX_MAKS, G, VJ, LASER_H, P },
     };
   },
 };
