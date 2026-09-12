@@ -79,6 +79,14 @@ export async function mockApi(page, opt = {}) {
   const akt = huskAktivitet();
   const log = { aktivitet: [], highscore: [] };
 
+  // Cloudflare Web Analytics-beaconen holdes ude af testene. Den hører ikke til
+  // spillene, og fra localhost afviser cloudflareinsights.com indrapporteringen
+  // med en CORS-fejl, der ellers vælter "ingen console-fejl"-assertionen i hver
+  // eneste test. Scriptet svares som tomt, så beaconen aldrig kører.
+  await page.route('**/static.cloudflareinsights.com/**',
+    route => route.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
+  await page.route('**/cdn-cgi/rum**', route => route.fulfill({ status: 204, body: '' }));
+
   await page.route('**/api/**', async route => {
     const req = route.request();
     const metode = req.method();
