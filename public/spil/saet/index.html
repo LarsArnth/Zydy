@@ -100,11 +100,18 @@ button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
 .sbtn:active{transform:scale(.95)}
 
 /* Slutskærm */
-#end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+#end{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;
   background:rgba(17,20,42,.86);padding:20px;z-index:10;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 #end.on{display:flex}
-.panel{position:relative;background:var(--bg2);border-radius:28px;padding:24px 22px;width:100%;max-width:400px;
+.panel{position:relative;background:var(--bg2);border-radius:28px;padding:24px 22px;width:100%;max-width:400px;margin:auto 0;
   box-shadow:0 20px 60px rgba(0,0,0,.5);animation:pop .35s cubic-bezier(.2,.9,.3,1.2)}
+/* Toplisten (tegnes af /spil/highscore.js). Panelet er selv --bg2, så listen får en mørkere bund. */
+.panel .hs-liste,.panel .hs-input{background:var(--bg)}
+.panel .hs-liste{max-height:30vh}
+#btnListe{color:var(--sun);font-weight:700;min-height:36px}
+#hsStart{display:none;margin-top:4px}
+#hsStart.on{display:block}
+#hsStart .hs-titel{margin-top:10px}
 @keyframes pop{from{transform:scale(.8);opacity:0}}
 .big{font-size:56px;font-weight:800;letter-spacing:-2px;line-height:1;color:var(--sun);margin:6px 0 14px}
 .rows{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
@@ -141,6 +148,7 @@ button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
 <section id="start" class="screen on">
   <div class="top">
     <a class="back" href="/">‹ zydy.dk</a>
+    <button class="pill" id="btnListe">Topliste</button>
     <span class="pill" id="startBest">Find sæt</span>
   </div>
   <h1>Sæt<span>.</span></h1>
@@ -154,6 +162,10 @@ button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
   <div class="modes">
     <button class="btn" id="btnKlassisk"><span>Klassisk<br><small>Hele bunken på tid</small></span><span id="bestK" style="font-size:15px;opacity:.8"></span></button>
     <button class="btn ghost" id="btnBlitz"><span>Blitz<br><small>Flest sæt på 2 minutter</small></span><span id="bestB" style="font-size:15px;opacity:.8"></span></button>
+  </div>
+  <div id="hsStart">
+    <div class="hs" id="hsK"></div>
+    <div class="hs" id="hsB"></div>
   </div>
 </section>
 
@@ -187,12 +199,14 @@ button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
       <div><span>Hints brugt</span><b id="endHints">0</b></div>
       <div><span>Bedste</span><b id="endBest">–</b></div>
     </div>
+    <div class="hs" id="hs"></div>
     <button class="btn" id="btnAgain">Spil igen</button>
     <button class="btn ghost" id="btnMenu">Skift tilstand</button>
     <a class="link" href="/">Tilbage til zydy.dk</a>
   </div>
 </div>
 
+<script src="/spil/highscore.js"></script>
 <script>
 (() => {
 'use strict';
@@ -538,6 +552,10 @@ function finish() {
   }
   $('end').classList.add('on');
   refreshBest();
+  // Online topliste – én liste pr. tilstand. Klassisk gemmer tiden i sekunder og vises som m:ss.
+  Highscore.panel($('hs'), blitz
+    ? { spil: 'saet-blitz', score, titel: 'Topliste · Blitz' }
+    : { spil: 'saet-klassisk', score, titel: 'Topliste · Klassisk', format: fmt });
 }
 
 function stop() {
@@ -584,6 +602,13 @@ $('btnKlassisk').addEventListener('click', () => start('klassisk'));
 $('btnBlitz').addEventListener('click', () => start('blitz'));
 $('btnHint').addEventListener('click', hint);
 $('btnStop').addEventListener('click', stop);
+$('btnListe').addEventListener('click', () => {
+  const on = $('hsStart').classList.toggle('on');
+  if (!on) return;
+  Highscore.panel($('hsK'), { spil: 'saet-klassisk', titel: 'Klassisk · hurtigste tid', format: fmt });
+  Highscore.panel($('hsB'), { spil: 'saet-blitz', titel: 'Blitz · flest sæt' });
+  $('hsStart').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
 $('btnAgain').addEventListener('click', () => start(S.mode));
 $('btnMenu').addEventListener('click', stop);
 window.addEventListener('resize', () => { if (S.running) fitBoard(); });

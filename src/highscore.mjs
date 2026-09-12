@@ -3,20 +3,33 @@
 // hovedmodulet (src/worker.mjs) — og fordi det gør koden testbar uden Cloudflare
 // (test/unit/highscore.test.mjs bytter D1 ud med et hukommelses-lager).
 //
-//   GET  /api/highscore/taarn            → { spil, liste: [{ id, navn, score, oprettet }] }
+//   GET  /api/highscore/taarn            → { spil, retning, min, maks, liste: [{ id, navn, score, oprettet }] }
 //   POST /api/highscore/taarn            body { navn, score }
-//                                        → { ok: true, id, placering, liste }
+//                                        → { ok: true, id, placering, retning, min, maks, liste }
 //
 // API'et er åbent (ingen login) — det er et familie-site. Værnet mod pjat er
 // derfor kun: kendte spil, fornuftige grænser og en trimning til de bedste
 // 100 pr. spil. Skulle listen blive fyldt med skrald, så ryd op med
 //   npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM scores WHERE spil='taarn'"
 
-/** Spil der må gemme højscore, med den højeste score der giver mening. Nye spil: tilføj en linje. */
+/**
+ * Spil der må gemme højscore. Nye spil: tilføj en linje.
+ *   maks/min  – grænser for en gyldig score (min er 1, hvis den udelades)
+ *   retning   – 'desc' (flest point vinder, standard) eller 'asc' (laveste tal vinder, fx tid i sekunder)
+ * Et spil med flere tilstande bruger én nøgle pr. tilstand (saet-klassisk / saet-blitz).
+ */
 export const SPIL = {
   taarn: { maks: 2000 },
-  dybet: { maks: 500 },      // score = dybde (niveau) nået
+  dybet: { maks: 500 },                                             // score = dybde (niveau) nået
+  'saet-klassisk': { retning: 'asc', min: 20, maks: 3 * 3600 },   // sekunder for hele bunken
+  'saet-blitz': { maks: 60 },                                       // sæt fundet på 2 minutter
 };
+
+/** Regler for et spil med standardværdier udfyldt. */
+export function reglerFor(spil) {
+  const r = SPIL[spil];
+  return { retning: r.retning === 'asc' ? 'asc' : 'desc', min: r.min == null ? 1 : r.min, maks: r.maks };
+}
 
 export const LISTE_LAENGDE = 10;   // hvor mange der vises
 const GEM_LAENGDE = 100;           // hvor mange der beholdes pr. spil
@@ -41,29 +54,32 @@ export function rensNavn(navn) {
 /** Returnerer scoren som heltal, eller null hvis den er ugyldig for spillet. */
 export function rensScore(score, spil) {
   const n = typeof score === 'string' ? Number(score) : score;
-  if (typeof n !== 'number' || !Number.isInteger(n) || n < 1) return null;
-  if (n > SPIL[spil].maks) return null;
+  const { min, maks } = reglerFor(spil);
+  if (typeof n !== 'number' || !Number.isInteger(n) || n < min || n > maks) return null;
   return n;
 }
 
 /* ---------- Lager ---------- */
 
+/** Sorteringen: bedste først, ved lige score den ældste. `retning` kommer fra reglerFor(), aldrig fra klienten. */
+const orderBy = retning => 'ORDER BY score ' + (retning === 'asc' ? 'ASC' : 'DESC') + ', oprettet ASC';
+
 /** D1-udgaven af lageret. Samme to metoder findes i testens hukommelses-udgave. */
 export function d1Lager(db) {
   return {
-    async top(spil, n) {
+    async top(spil, n, retning) {
       const r = await db.prepare(
-        'SELECT id, navn, score, oprettet FROM scores WHERE spil = ?1 ORDER BY score DESC, oprettet ASC LIMIT ?2'
+        'SELECT id, navn, score, oprettet FROM scores WHERE spil = ?1 ' + orderBy(retning) + ' LIMIT ?2'
       ).bind(spil, n).all();
       return r.results;
     },
-    async gem(spil, navn, score) {
+    async gem(spil, navn, score, retning) {
       const r = await db.prepare(
         'INSERT INTO scores (spil, navn, score) VALUES (?1, ?2, ?3) RETURNING id'
       ).bind(spil, navn, score).first();
       // Hold tabellen lille: kun de bedste GEM_LAENGDE pr. spil overlever.
       await db.prepare(
-        'DELETE FROM scores WHERE spil = ?1 AND id NOT IN (SELECT id FROM scores WHERE spil = ?1 ORDER BY score DESC, oprettet ASC LIMIT ?2)'
+        'DELETE FROM scores WHERE spil = ?1 AND id NOT IN (SELECT id FROM scores WHERE spil = ?1 ' + orderBy(retning) + ' LIMIT ?2)'
       ).bind(spil, GEM_LAENGDE).run();
       return r.id;
     },
@@ -88,9 +104,10 @@ export async function haandterApi(request, lager) {
   if (!m) return url.pathname.startsWith('/api/') ? fejl(404, 'Ukendt API-sti') : null;
   const spil = m[1];
   if (!SPIL[spil]) return fejl(404, 'Ukendt spil');
+  const regler = reglerFor(spil);   // klienten får retning/min/maks med, så den kan afgøre om en score kvalificerer
 
   if (request.method === 'GET') {
-    return json({ spil, liste: await lager.top(spil, LISTE_LAENGDE) });
+    return json({ spil, ...regler, liste: await lager.top(spil, LISTE_LAENGDE, regler.retning) });
   }
 
   if (request.method === 'POST') {
@@ -101,10 +118,10 @@ export async function haandterApi(request, lager) {
     if (!navn) return fejl(400, 'Navnet mangler');
     if (score === null) return fejl(400, 'Ugyldig score');
 
-    const id = await lager.gem(spil, navn, score);
-    const liste = await lager.top(spil, LISTE_LAENGDE);
+    const id = await lager.gem(spil, navn, score, regler.retning);
+    const liste = await lager.top(spil, LISTE_LAENGDE, regler.retning);
     const idx = liste.findIndex(r => r.id === id);
-    return json({ ok: true, id, placering: idx === -1 ? null : idx + 1, liste });
+    return json({ ok: true, id, placering: idx === -1 ? null : idx + 1, ...regler, liste });
   }
 
   return fejl(405, 'Brug GET eller POST');

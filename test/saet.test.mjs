@@ -12,6 +12,25 @@ const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 
+// Mock af højscore-API'et (én liste pr. tilstand). Klassisk: asc, Blitz: desc. Min for klassisk sættes
+// højt (10 min.), så testens gennemspil aldrig kvalificerer, uanset hvor lang tid det tager.
+const regler = { 'saet-klassisk': { retning: 'asc', min: 600, maks: 10800 }, 'saet-blitz': { retning: 'desc', min: 1, maks: 60 } };
+const lister = { 'saet-klassisk': [{ id: 1, navn: 'Mor', score: 65, oprettet: '2026-09-12T10:00:00.000Z' }], 'saet-blitz': [] };
+const sendte = [];
+await page.route('**/api/highscore/**', async route => {
+  const req = route.request(), spil = new URL(req.url()).pathname.split('/').pop();
+  const r = regler[spil];
+  if (!r) return route.fulfill({ status: 404, json: { ok: false, fejl: 'Ukendt spil' } });
+  if (req.method() === 'POST') {
+    const krop = req.postDataJSON(); sendte.push({ spil, ...krop });
+    const ny = { id: 900 + sendte.length, navn: krop.navn, score: krop.score, oprettet: '2026-09-12T12:00:00.000Z' };
+    const tegn = r.retning === 'asc' ? 1 : -1;
+    lister[spil] = [...lister[spil], ny].sort((a, b) => tegn * (a.score - b.score)).slice(0, 10);
+    return route.fulfill({ json: { ok: true, id: ny.id, placering: lister[spil].indexOf(ny) + 1, ...r, liste: lister[spil] } });
+  }
+  return route.fulfill({ json: { spil, ...r, liste: lister[spil] } });
+});
+
 await page.goto(`${BASE}/spil/saet/?seed=1`);
 await page.waitForSelector('#start.on');
 
@@ -148,6 +167,11 @@ assert.ok(await page.locator('#confetti i').count() > 0, 'konfetti ved rekord');
 const best = await page.evaluate(() => localStorage.getItem('zydy.saet.bestKlassisk'));
 assert.ok(best != null && Number(best) >= 0, 'bedste tid gemt');
 assert.equal(await page.locator('#endHints').innerText(), '1', 'hints vises i resultatet');
+// Toplisten (Klassisk): testens tid er under mockens min, så ingen formular – bare listen med Mors tid som m:ss
+await page.waitForSelector('#end .hs-liste');
+assert.equal(await page.locator('#end .hs-form').count(), 0, 'for kort tid kvalificerer ikke');
+assert.equal(await page.locator('#end .hs-raekke .hs-score').first().innerText(), '1:05', 'tid formateres m:ss');
+assert.equal(await page.locator('#end .hs-titel').innerText(), 'Topliste · Klassisk');
 console.log(`  klassisk: ${st.found} sæt, ekstra kort set: ${sawExtra}, bedste=${best}s`);
 
 // Blitz: start, find ét sæt, tjek nedtælling og at slutskærmen gemmer bedste antal
@@ -168,11 +192,31 @@ await page.waitForSelector('#end.on', { timeout: 3000 });
 const bBest = await page.evaluate(() => localStorage.getItem('zydy.saet.bestBlitz'));
 assert.equal(bBest, '1', 'bedste blitz-antal gemt');
 assert.match(await page.locator('#end .panel').innerText(), /Tiden er gået/);
+// Toplisten (Blitz): tom liste → ét sæt kvalificerer → navn → gemt som nr. 1
+await page.waitForSelector('#end .hs-form');
+assert.equal(await page.locator('#end .hs-jubel').innerText(), 'Ny rekord – du er nr. 1!');
+await page.fill('#end .hs-input', 'Simon');
+await page.click('#end .hs-gem');
+await page.waitForSelector('#end .hs-mig');
+assert.deepEqual(sendte, [{ spil: 'saet-blitz', navn: 'Simon', score: 1 }], 'sendt til blitz-listen');
+assert.equal(await page.locator('#end .hs-titel').innerText(), 'Du er nr. 1!');
+assert.equal(await page.locator('#end .hs-mig .hs-score').innerText(), '1', 'antal sæt formateres ikke som tid');
 
 // Spil igen-knappen starter samme tilstand
 await page.click('#btnAgain');
 await page.waitForSelector('#game.on');
 assert.equal(await page.evaluate(() => GAME.state.mode), 'blitz');
+await noScroll();
+
+// Startskærmens "Topliste" viser begge lister
+await page.click('#btnStop');
+await page.waitForSelector('#start.on');
+await page.click('#btnListe');
+await page.waitForSelector('#hsK .hs-liste');
+await page.waitForSelector('#hsB .hs-liste');
+assert.equal(await page.locator('#hsK .hs-titel').innerText(), 'Klassisk · hurtigste tid');
+assert.equal(await page.locator('#hsB .hs-mig').count(), 0, 'ingen fremhævning uden ny score');
+assert.equal(await page.locator('#hsB .hs-navn').first().innerText(), 'Simon');
 await noScroll();
 
 assert.deepEqual(errors, [], 'ingen console-fejl');

@@ -22,7 +22,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Spil | Sti | Hvad |
 |---|---|---|
 | Tårn | `public/spil/taarn/` | Stack-arcade på canvas: tryk for at slippe blokken, overhæng skæres af, perfekte drops giver bonus. Et par sekunder efter slutskærmen svajer tårnet og falder fra hinanden (slås fra ved `prefers-reduced-motion`). Online topliste (top 10) med navn. |
-| Sæt | `public/spil/saet/` | Kortspillet Set på dansk: find tre kort hvor antal, form, farve og fyld er helt ens eller helt forskellige. Klassisk og Blitz. |
+| Sæt | `public/spil/saet/` | Kortspillet Set på dansk: find tre kort hvor antal, form, farve og fyld er helt ens eller helt forskellige. Klassisk og Blitz. Online topliste pr. tilstand (hurtigste tid / flest sæt). |
 | Farvesortering | `public/spil/farvesortering/` | Water sort: hæld farvet væske til hvert glas har én farve. Uendelige, solver-verificerede niveauer. |
 | Ordstige | `public/spil/ordstige/` | Word ladder: skift ét bogstav ad gangen til et rigtigt dansk ord. Dagens stige + tilfældige. Ordlisten er Ordles (Stavekontrolden, GPL/LGPL/MPL). |
 | Duel | `public/spil/duel/` | To spillere på én telefon, skærmen delt i to: fem reflex-minispil, først til 3/5/10 point. |
@@ -42,8 +42,8 @@ tre dele:
 | Del | Fil | Hvad |
 |---|---|---|
 | Database | Cloudflare **D1** `zydy-highscore` (SQLite), skema i `schema.sql` | Én tabel `scores(spil, navn, score, oprettet)`. Kun de bedste 100 pr. spil beholdes. |
-| API | `src/worker.mjs` → `src/highscore.mjs` | `GET /api/highscore/<spil>` giver top 10, `POST` med `{navn, score}` gemmer og svarer med placering. Navne renses og klippes til 12 tegn, scoren skal være et heltal under spillets maks (`SPIL` i `highscore.mjs`). |
-| Klient | `public/spil/highscore.js` | `Highscore.panel(el, { spil, score })` henter listen, viser navneformular hvis scoren kvalificerer, sender ind og viser listen med egen række fremhævet. Uden `score` vises bare listen. Navnet huskes i `localStorage` (`zydy.navn`) på tværs af spil. |
+| API | `src/worker.mjs` → `src/highscore.mjs` | `GET /api/highscore/<spil>` giver top 10 plus spillets regler (`retning`, `min`, `maks`), `POST` med `{navn, score}` gemmer og svarer med placering. Navne renses og klippes til 12 tegn, scoren skal være et heltal inden for grænserne i `SPIL`. `retning: 'asc'` bruges når laveste tal vinder (Sæt klassisk: tid i sekunder). Et spil med flere tilstande har én nøgle pr. tilstand (`saet-klassisk`, `saet-blitz`). |
+| Klient | `public/spil/highscore.js` | `Highscore.panel(el, { spil, score, format, titel })` henter listen, viser navneformular hvis scoren kvalificerer, sender ind og viser listen med egen række fremhævet. Uden `score` vises bare listen; `format` gør tal til tekst (fx tid som m:ss). Navnet huskes i `localStorage` (`zydy.navn`) på tværs af spil. |
 
 Worker'en rammer kun `/api/*` (`run_worker_first` i `wrangler.jsonc`); alt
 andet serveres som før direkte fra `public/`. API'et er åbent uden login –
@@ -55,10 +55,12 @@ npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM scores 
 ```
 
 **Tilføj topliste til et nyt spil:** (1) tilføj spillet i `SPIL` i
-`src/highscore.mjs` med en fornuftig maks-score, (2) indlæs
-`<script src="/spil/highscore.js"></script>` i spillet, (3) kald
-`Highscore.panel(...)` på slutskærmen og evt. uden score på startskærmen.
-Tårn er forbilledet. Skemaet skal kun køres én gang (er gjort):
+`src/highscore.mjs` med fornuftige grænser (og `retning: 'asc'` hvis laveste
+tal vinder), (2) indlæs `<script src="/spil/highscore.js"></script>` i spillet,
+(3) kald `Highscore.panel(...)` på slutskærmen og evt. uden score på
+startskærmen. Tårn er det enkle forbillede, Sæt viser to tilstande og
+tidsformatering. Spil med topliste: Tårn, Sæt, Dybet. Skemaet skal kun køres
+én gang (er gjort):
 
 ```bash
 npx wrangler@4 d1 execute zydy-highscore --remote --file schema.sql   # rigtig database

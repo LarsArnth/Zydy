@@ -3,16 +3,17 @@
 // d1Lager(). Kør:  node --test test/unit/highscore.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { haandterApi, rensNavn, rensScore, LISTE_LAENGDE } from '../../src/highscore.mjs';
+import { haandterApi, rensNavn, rensScore, reglerFor, LISTE_LAENGDE } from '../../src/highscore.mjs';
 
-/** Hukommelses-lager: samme sortering som SQL'en (score faldende, ældst først ved lighed). */
+/** Hukommelses-lager: samme sortering som SQL'en (bedste først efter retning, ældst først ved lighed). */
 function huskLager() {
   const rows = []; let naeste = 0;
   return {
     rows,
-    async top(spil, n) {
+    async top(spil, n, retning) {
+      const tegn = retning === 'asc' ? 1 : -1;
       return rows.filter(r => r.spil === spil)
-        .sort((a, b) => b.score - a.score || a.oprettet.localeCompare(b.oprettet))
+        .sort((a, b) => tegn * (a.score - b.score) || a.oprettet.localeCompare(b.oprettet))
         .slice(0, n)
         .map(({ id, navn, score, oprettet }) => ({ id, navn, score, oprettet }));
     },
@@ -46,7 +47,7 @@ test('GET på tomt spil giver tom liste', async () => {
   const r = await get('/api/highscore/taarn', huskLager());
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('cache-control'), 'no-store');
-  assert.deepEqual(await r.json(), { spil: 'taarn', liste: [] });
+  assert.deepEqual(await r.json(), { spil: 'taarn', retning: 'desc', min: 1, maks: 2000, liste: [] });
 });
 
 test('POST gemmer og svarer med placering og opdateret liste', async () => {
@@ -100,6 +101,22 @@ test('POST afviser ugyldigt navn og score', async () => {
   }
   assert.equal((await post('/api/highscore/taarn', '{ikke json', lager)).status, 400, 'kroppen er ikke JSON');
   assert.equal(lager.rows.length, 0, 'intet blev gemt');
+});
+
+test('asc-spil (Sæt klassisk): laveste tid vinder, og for korte tider afvises', async () => {
+  const lager = huskLager();
+  assert.deepEqual(reglerFor('saet-klassisk'), { retning: 'asc', min: 20, maks: 10800 });
+  await post('/api/highscore/saet-klassisk', { navn: 'Langsom', score: 300 }, lager);
+  await post('/api/highscore/saet-klassisk', { navn: 'Hurtig', score: 95 }, lager);
+  const r = await post('/api/highscore/saet-klassisk', { navn: 'Midt', score: 120 }, lager);
+  const svar = await r.json();
+  assert.equal(svar.retning, 'asc');
+  assert.equal(svar.placering, 2);
+  assert.deepEqual(svar.liste.map(x => x.navn), ['Hurtig', 'Midt', 'Langsom']);
+  assert.equal((await post('/api/highscore/saet-klassisk', { navn: 'Snyd', score: 5 }, lager)).status, 400, 'under min');
+  const g = await (await get('/api/highscore/saet-klassisk', lager)).json();
+  assert.equal(g.min, 20);
+  assert.equal(g.liste.length, 3);
 });
 
 test('andre metoder end GET/POST giver 405', async () => {

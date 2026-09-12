@@ -5,10 +5,14 @@
     ...
     Highscore.panel(document.getElementById('hs'), { spil: 'taarn', score });
 
-  panel() henter toplisten fra /api/highscore/<spil> (src/worker.mjs + D1),
+  panel() henter toplisten fra /api/highscore/<spil> (src/highscore.mjs + D1),
   viser en navneformular hvis scoren kommer på listen, sender den ind og
   viser listen med den nye række fremhævet. Navnet huskes i localStorage
   ('zydy.navn'), så det er udfyldt næste gang – også i de andre spil.
+
+  Retningen (flest point eller laveste tid) og grænserne for en gyldig score
+  bestemmes af serveren (SPIL i src/highscore.mjs) og følger med i svaret.
+  Options til panel(): { spil, score, format(score) → tekst, titel, knap, onGemt }.
 
   Stilen bruger spillenes CSS-variabler (--muted, --sun, --bg2, --text, --ink,
   --mint) med fornuftige fallbacks, og knappen får klassen `btn`, som alle spil
@@ -29,10 +33,11 @@ const navn = {
 };
 
 /* ---------- API ---------- */
+/** Henter { spil, retning, min, maks, liste }. */
 async function hent(spil) {
   const r = await fetch(API + spil, { cache: 'no-store' });
   if (!r.ok) throw new Error('Toplisten svarede ' + r.status);
-  return (await r.json()).liste;
+  return r.json();
 }
 
 async function send(spil, n, score) {
@@ -46,11 +51,18 @@ async function send(spil, n, score) {
   return data;                       // { ok, id, placering, liste }
 }
 
-/** Kommer scoren på listen? Ja hvis der er plads, eller den slår den nederste. */
-function kvalificerer(liste, score) {
-  if (!(score > 0)) return false;
+/** Er a bedre end b i den givne retning? */
+const bedre = (a, b, retning) => retning === 'asc' ? a < b : a > b;
+
+/**
+ * Kommer scoren på listen? `top` er serverens svar ({ retning, min, maks, liste }).
+ * Ja hvis scoren er gyldig, og der er plads eller den slår den nederste.
+ */
+function kvalificerer(top, score) {
+  if (!Number.isInteger(score) || score < (top.min == null ? 1 : top.min) || (top.maks != null && score > top.maks)) return false;
+  const liste = top.liste || [];
   if (liste.length < LAENGDE) return true;
-  return score > liste[liste.length - 1].score;
+  return bedre(score, liste[liste.length - 1].score, top.retning);
 }
 
 /* ---------- Tegning ---------- */
@@ -61,8 +73,8 @@ const el = (tag, cls, text) => {
   return e;
 };
 
-/** Tegner toplisten i `rod`. `fremhaevId` markerer spillerens egen række. */
-function tegnListe(rod, liste, fremhaevId, overskrift) {
+/** Tegner toplisten i `rod`. `fremhaevId` markerer spillerens egen række; `format` gør tal til tekst (fx tid). */
+function tegnListe(rod, liste, fremhaevId, overskrift, format) {
   rod.innerHTML = '';
   rod.appendChild(el('div', 'hs-titel', overskrift || 'Topliste'));
   if (!liste.length) {
@@ -74,7 +86,7 @@ function tegnListe(rod, liste, fremhaevId, overskrift) {
     const li = el('li', 'hs-raekke' + (r.id === fremhaevId ? ' hs-mig' : ''));
     li.appendChild(el('span', 'hs-nr', String(i + 1)));
     li.appendChild(el('span', 'hs-navn', r.navn));
-    li.appendChild(el('span', 'hs-score', String(r.score)));
+    li.appendChild(el('span', 'hs-score', format ? format(r.score) : String(r.score)));
     ol.appendChild(li);
   });
   rod.appendChild(ol);
@@ -87,21 +99,22 @@ function tegnFejl(rod, besked) {
 
 /**
  * Hele forløbet efter et spil. `score` udelades for bare at vise listen.
- * Options: { spil, score, knap = 'btn', onGemt(placering) }.
+ * Options: { spil, score, format(score), titel = 'Topliste', knap = 'btn', onGemt(placering) }.
  */
 async function panel(rod, opt) {
-  const spil = opt.spil, score = opt.score, knapKlasse = opt.knap || 'btn';
+  const spil = opt.spil, score = opt.score, knapKlasse = opt.knap || 'btn', format = opt.format;
   rod.innerHTML = '';
   rod.appendChild(el('p', 'hs-venter', 'Henter toplisten…'));
 
-  let liste;
-  try { liste = await hent(spil); } catch (e) { tegnFejl(rod); return; }
+  let top;
+  try { top = await hent(spil); } catch (e) { tegnFejl(rod); return; }
+  const liste = top.liste || [];
 
-  if (!kvalificerer(liste, score)) { tegnListe(rod, liste); return; }
+  if (!kvalificerer(top, score)) { tegnListe(rod, liste, null, opt.titel, format); return; }
 
   // Scoren kommer på listen: bed om navn.
   rod.innerHTML = '';
-  const erNr1 = !liste.length || score > liste[0].score;
+  const erNr1 = !liste.length || bedre(score, liste[0].score, top.retning);
   rod.appendChild(el('div', 'hs-titel hs-jubel', erNr1 ? 'Ny rekord – du er nr. 1!' : 'Du er på toplisten!'));
   const form = el('form', 'hs-form');
   form.setAttribute('autocomplete', 'off');
@@ -127,7 +140,7 @@ async function panel(rod, opt) {
       const svar = await send(spil, n, score);
       navn.gem(n);
       tegnListe(rod, svar.liste, svar.id,
-        svar.placering === 1 ? 'Du er nr. 1!' : svar.placering ? 'Gemt som nr. ' + svar.placering : 'Gemt');
+        svar.placering === 1 ? 'Du er nr. 1!' : svar.placering ? 'Gemt som nr. ' + svar.placering : 'Gemt', format);
       if (opt.onGemt) opt.onGemt(svar.placering);
     } catch (err) {
       gem.disabled = false; status.textContent = 'Kunne ikke gemme – prøv igen.';
