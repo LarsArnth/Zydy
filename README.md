@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; fjorten spil
+afhængigheder. De store apps bor i egne repoer og linkes til; femten spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet fjorten spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet femten spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder og Dybet, der er tre,
-og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat og Miskmask, der er to). De udrulles sammen
+og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask og Blokblast, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -38,6 +38,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Klodser | `public/spil/klodser/` | Selmas ønske om Roblox, oversat til noget der kan ligge her: en 3D-verden af klodser (WebGL på canvas, ingen biblioteker) med sin egen klodsefigur set bagfra. Verdenen er en ø på 40 × 40 klodser med bakker, søer, strande og træer, og havet uden om går ud til horisonten. Man løber rundt med joystick + HOP, kigger ved at trække på skærmen, bygger og river ned med ti farver klodser, og kan skifte til første person. 12 guldklodser er gemt rundt omkring – hver med en lysstråle op i luften, så de kan findes – og tiden det tager at samle dem alle er scoren på toplisten (laveste vinder). Verdenen gemmes i `localStorage` som «frø + de klodser du selv har ændret», så det man har bygget står der næste gang. Man træder automatisk op ad én klods, så bakker ikke kræver hop. To filer: `verden.mjs` (verden, fysik og sigte, enhedstestet) og `index.html`. |
 | Miskmask | `public/spil/miskmask/` | Selmas ønske om «en verity app» – en *variety* app, altså én app med mange forskellige småting i. Det er blevet til 13 bittesmå spil i en pose: tryk på knappen, find den anderledes, prik ballonerne, fang den, det største tal, passer regnestykket, find farven, find bogstavet, hvor mange, tag stjernerne (ikke bomben), tryk N gange, tryk tallene i rækkefølge – og «RØR IKKE!», som man vinder ved at holde fingrene i skødet. Ét ad gangen, med 5 sekunder i starten og 2,2 ved fuld fart (runde 21), og tre liv. Alle minispil deler den samme regel – nogle felter er rigtige, resten er fælder – så et nyt minispil kun skal beskrive, hvad der står på skærmen. Posen trækkes som sedler, så alle 13 kommer, før nogen kommer igen. Score = antal klarede minispil, online topliste. To filer: `mikro.mjs` (de 13 spil og reglerne, enhedstestet) og `index.html`. Se «Miskmask – kvadratet og de 13 minispil» nedenfor. |
 | Min kat | `public/spil/kat/` | Selmas ønske om «My Cat»: et kæledyr man passer. Man adopterer en killing, giver den et navn, og så har den fire behov – mæt, glad, ren og frisk – som siver nedad med tiden, også mens man er væk. Man giver mad i skålen, kaster garnnøglet (tryk på gulvet, katten løber efter det), børster pelsen med fingeren og putter den i kurven, hvor stuen bliver mørk og månen kommer frem. Katten tegnes på canvas (ingen billeder) og blinker, logrer, spinder når man klapper den, og får snavsede pletter, hvis den ikke bliver børstet. Man tjener mønter og erfaring for **det, man faktisk fylder op** – en mæt kat giver ingenting, så man kan ikke trykke sig til mønter – og køber pelse, hatte og halsbånd i butikken. Score = kattens niveau, online topliste. To filer: `kat.mjs` (behov, erfaring, butik og den gemte kat, enhedstestet) og `index.html`. |
+| Blokblast | `public/spil/blokblast/` | Selmas ønske om «Block blast»: et bræt på 8 × 8 og tre brikker ad gangen, som man trækker ned på brættet – ingen drejning, ingen tyngdekraft. Fylder man en hel række eller søjle, blæser den væk. Ét point pr. felt man lægger, 10 × linjer² for det man rydder, og en stime, der ganger op til ×2,5, hvis man rydder flere gange i træk. Nye brikker kommer først, når alle tre er brugt, og der trækkes om, indtil mindst én af dem kan være på brættet. Spillet er slut, når ingen af de tre kan ligge nogen steder; brættet gemmes undervejs, så man kan lukke fanen og fortsætte. Score = point, online topliste. To filer: `blokke.mjs` (bræt, brikker, rydning og point, enhedstestet) og `index.html`. Se «Blokblast – brikken over fingeren» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -313,6 +314,36 @@ træk, og så føles det ikke som en blandet pose.
 `window.GAME.tvingRunde('bombe')` sætter et bestemt minispil i gang – brugt af
 testen til at spille alle 13 igennem gennem skærmen og til at se på dem.
 
+### Blokblast – brikken over fingeren
+
+Spillet kom af Selmas ønske «Block blast» – mobilspillet, hvor man lægger
+brikker på et 8 × 8-bræt og rydder rækker og søjler. Reglerne er de samme, og
+de bor i `blokke.mjs`, som ikke rører DOM'en: `kanLægges`, `læg` (giver et nyt
+bræt, point og hvilke felter der forsvandt), `nogenPasser` (spillet er slut) og
+`trækBrikker`.
+
+**Brikken løftes op over fingeren, mens man trækker** (`LØFT`, halvanden
+feltbredde). Uden det ligger brikken under tommelfingeren, og på en telefon kan
+man så hverken se, hvad man har fat i, eller hvor den lander. Feltet, brikken
+lander på, regnes ud fra brikkens *øverste venstre hjørne*, ikke fra fingeren,
+og skyggen på brættet viser det hele tiden: farvet når den kan være der, rød
+ramme når den ikke kan. Slipper man et ulovligt sted, bliver brikken i bakken.
+
+**De rækker og søjler, der ville blive ryddet, lyser gult**, mens man holder
+brikken over dem. Det er den eneste hjælp i spillet – og den, der gør, at man
+tør satse på to linjer på én gang, som giver fire gange så meget (10 × linjer²).
+
+**Nye brikker først, når alle tre er brugt.** Sådan er det i forbilledet, og
+det er dét, der gør spillet til et puslespil: man skal have plads til alle tre.
+Der trækkes om op til 20 gange, indtil mindst én af de tre kan være på brættet,
+så spillet aldrig slutter i samme nu, brikkerne kommer.
+
+Brættet, brikkerne og pointene gemmes i `localStorage` (`zydy.blokblast.gem`)
+efter hvert træk, så startskærmen kan tilbyde «Fortsæt · 340 point». Ved
+slutskærmen ryddes det gemte spil væk. `bedsteTræk()` er en lille
+computerspiller (ryd linjer, luk ikke huller inde, pak brikkerne sammen); både
+enhedstesten og Playwright-testen spiller spillet igennem med den.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -337,7 +368,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, forsidens kort, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, forsidens kort, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter

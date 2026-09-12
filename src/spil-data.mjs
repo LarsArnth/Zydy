@@ -20,6 +20,7 @@ export const KORT = [
   { id: 'klodser', navn: 'Klodser', url: '/spil/klodser/' },
   { id: 'kat', navn: 'Min kat', url: '/spil/kat/' },
   { id: 'miskmask', navn: 'Miskmask', url: '/spil/miskmask/' },
+  { id: 'blokblast', navn: 'Blokblast', url: '/spil/blokblast/' },
   { id: 'klaver', navn: 'KlaverLær', url: 'https://klaver.zydy.dk/', ekstern: true },
 ];
 
@@ -41,4 +42,5 @@ export const SPIL = {
   klodser: { retning: 'asc', min: 10, maks: 3600 },
   kat: { maks: 50 },
   miskmask: { maks: 500, unik: true },
+  blokblast: { maks: 200000, unik: true },
 };
