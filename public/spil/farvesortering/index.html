@@ -21,6 +21,7 @@
     --tw:52px; --th:180px; /* glassenes størrelse, sættes af layout() */
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}   /* .btn/.rekord sætter display:block, og så gemmer hidden ikke af sig selv */
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
     -webkit-font-smoothing:antialiased;overscroll-behavior:none}
@@ -59,6 +60,20 @@
   .demo svg{width:220px;max-width:70%;height:auto;display:block}
   .startbtns{flex:0 0 auto;padding-bottom:6px}
   .hint{font-size:14px;text-align:center;margin:12px 0 0}
+
+  /* «Hvem har rekorden?» – én linje man kan trykke på for at se hele listen */
+  .rekord{display:block;width:100%;margin:10px 0 0;padding:12px 14px;border-radius:16px;
+    background:var(--bg2);color:var(--text);font-size:15px;font-weight:700;text-align:center;
+    line-height:1.3}
+  .rekord::after{content:" ›";color:var(--muted)}
+  .rekord:active{transform:scale(.98)}
+
+  /* Toplisteskærmen */
+  .liste-hero{flex:1;display:flex;flex-direction:column;min-height:0;padding-top:14px}
+  .liste-hero .hs-titel{text-align:center;font-size:24px;margin-top:0}
+  .liste-hero .hs-liste{max-height:56vh}
+  .liste-hero .hs-raekke{padding:11px 16px;font-size:17px}
+  .liste-hero .hint{margin-top:16px}
 
   /* Spillefladen */
   #board{flex:1;min-height:0;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;
@@ -104,6 +119,7 @@
   /* Toplisten (tegnes af /spil/highscore.js) */
   .card .hs{margin:0 0 12px}
   .card .hs-liste{max-height:30vh}
+  .card .rekord{margin:0;background:rgba(255,255,255,.07)}   /* skal kunne ses oven på kortet */
 
   /* Konfetti */
   #confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:15}
@@ -150,7 +166,23 @@
   <div class="startbtns">
     <button class="btn" id="btnContinue">Spil</button>
     <button class="btn ghost" id="btnFromOne" hidden>Start forfra</button>
+    <button class="rekord" id="rekordBtn" hidden></button>
     <p class="hint" id="startHint"></p>
+  </div>
+</section>
+
+<!-- Topliste: hvem har rekorden? -->
+<section id="liste" class="screen">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="name">Farvesortering</span>
+  </div>
+  <div class="liste-hero">
+    <div class="hs" id="hsListe"></div>
+    <p class="hint">Du kommer på listen ved at nå længere end de andre – listen viser det højeste niveau, hver spiller har løst.</p>
+  </div>
+  <div class="startbtns">
+    <button class="btn ghost" id="btnListeBack">Tilbage</button>
   </div>
 </section>
 
@@ -570,13 +602,52 @@ function showOverlay(){
   const best = bestFor(state.level);
   $('ovBest').innerHTML = 'Bedste: <b>' + (best ? best.moves : state.moves) + '</b>';
   $('ovNote').hidden = !state.helped;
-  // Online topliste: score = højeste niveau løst. Kun ved nyt personligt højeste
-  // sendes scoren ind; ellers fylder listen ikke overlayet hver eneste gang.
+  // Online topliste: score = højeste niveau løst. Ved nyt personligt højeste sendes
+  // scoren ind (hele listen vises). Ellers står der bare én linje om, hvem der har
+  // rekorden – den kan trykkes, hvis man vil se hele listen.
   const hs = $('hs');
-  if (state.rekord && window.Highscore) Highscore.panel(hs, { spil: 'farvesortering', titel: 'Højeste niveau', format: n => 'niveau ' + n, score: state.level });
-  else hs.innerHTML = '';
+  hs.innerHTML = '';
+  if (state.rekord && window.Highscore){
+    Highscore.panel(hs, { spil: SPIL, titel: 'Højeste niveau', format: fmtNiveau, score: state.level, onGemt: hentTop });
+  } else if (rekordTekst()){
+    const knap = document.createElement('button');
+    knap.className = 'rekord'; knap.id = 'ovRekord'; knap.type = 'button';
+    knap.textContent = rekordTekst();
+    knap.addEventListener('click', () => Highscore.panel(hs, { spil: SPIL, titel: 'Højeste niveau', format: fmtNiveau }));
+    hs.appendChild(knap);
+  }
   $('overlay').classList.add('on');
   navigator.vibrate && navigator.vibrate([40, 60, 40]);
+}
+
+// ---------- Hvem har rekorden? ----------
+const SPIL = 'farvesortering';
+const fmtNiveau = n => 'niveau ' + n;
+let top = null;                // seneste svar fra /api/highscore/farvesortering
+
+/** Henter toplisten. Fejler det (ingen forbindelse), siges der bare ingenting om rekorden. */
+async function hentTop(){
+  if (!window.Highscore) return null;
+  try { top = await Highscore.hent(SPIL); } catch (e) { top = null; }
+  visRekord();
+  return top;
+}
+
+/** «🏆 Sofie har rekorden · niveau 42» – tom tekst, hvis vi ikke har listen. */
+function rekordTekst(){
+  if (!top) return '';
+  const liste = top.liste || [];
+  if (!liste.length) return '🏆 Ingen har rekorden endnu – bliv den første!';
+  const bedst = liste[0];
+  const mit = Highscore.navn.hent();
+  const hvem = mit && bedst.navn.toLowerCase() === mit.toLowerCase() ? 'Du har rekorden' : bedst.navn + ' har rekorden';
+  return '🏆 ' + hvem + ' · ' + fmtNiveau(bedst.score);
+}
+
+function visRekord(){
+  const tekst = rekordTekst();
+  $('rekordBtn').textContent = tekst;
+  $('rekordBtn').hidden = !tekst;
 }
 
 // ---------- Skærme ----------
@@ -612,10 +683,16 @@ $('btnReset').addEventListener('click', () => start(state.level));
 $('btnExtra').addEventListener('click', extraTube);
 $('btnNext').addEventListener('click', () => start(state.level + 1));
 $('btnAgain').addEventListener('click', () => start(state.level));
+$('rekordBtn').addEventListener('click', () => {
+  show('liste');
+  if (window.Highscore) Highscore.panel($('hsListe'), { spil: SPIL, titel: 'Højeste niveau', format: fmtNiveau });
+});
+$('btnListeBack').addEventListener('click', () => { show('start'); visRekord(); });
 window.addEventListener('resize', layout);
 window.addEventListener('orientationchange', () => setTimeout(layout, 150));
 
 updateStart();
+hentTop();
 
 // ---------- Offentlig API til tests ----------
 window.GAME = {

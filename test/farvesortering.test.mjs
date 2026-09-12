@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const { chromium, devices } = await import(process.env.PLAYWRIGHT ?? 'playwright');
 import { mockApi } from './api-mock.mjs';
 const BASE = process.env.BASE ?? 'http://localhost:4183';
+const SHOTS = new URL('./shots/', import.meta.url).pathname;   // i den worktree testen køres fra
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
 const page = await ctx.newPage();
@@ -12,14 +13,40 @@ page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 
 // zydy.dk's API'er i hukommelsen (aktivitet + topliste). Registreres først, så en
-// mere specifik page.route nedenfor vinder over den.
-const api = await mockApi(page);
+// mere specifik page.route nedenfor vinder over den. To rækker på toplisten, så der
+// er en rekordholder at vise.
+const api = await mockApi(page, { scores: [
+  { spil: 'farvesortering', navn: 'Sofie', score: 42 },
+  { spil: 'farvesortering', navn: 'Selma', score: 30 },
+] });
 
 await page.goto(`${BASE}/spil/farvesortering/?seed=1`);
 await page.waitForFunction(() => window.GAME);
 
+// Hvem har rekorden? Linjen står på startskærmen og åbner hele listen
+await page.waitForSelector('#rekordBtn:not([hidden])');
+assert.match(await page.textContent('#rekordBtn'), /Sofie har rekorden · niveau 42/, 'rekordholderen står på startskærmen');
+const startGeom = await page.evaluate(() => ({
+  spil: document.getElementById('btnContinue').getBoundingClientRect().bottom,
+  rekord: document.getElementById('rekordBtn').getBoundingClientRect().bottom,
+  h: innerHeight,
+}));
+assert.ok(startGeom.spil <= startGeom.h, 'Spil-knappen kan nås uden at rulle');
+assert.ok(startGeom.rekord <= startGeom.h, 'rekordlinjen kan ses uden at rulle');
+
+await page.click('#rekordBtn');
+await page.waitForSelector('#liste.on .hs-raekke');
+const raekker = await page.locator('#hsListe .hs-raekke').allTextContents();
+assert.equal(raekker.length, 2, 'begge rækker på toplisten');
+assert.match(raekker[0], /Sofie/); assert.match(raekker[0], /niveau 42/);
+assert.match(raekker[1], /Selma/);
+await page.screenshot({ path: SHOTS + 'farvesortering-topliste.png' });
+await page.click('#btnListeBack');
+await page.waitForSelector('#start.on');
+
 // Startskærm → Spil
 assert.equal(await page.textContent('#btnContinue'), 'Spil', 'uden fremskridt hedder knappen "Spil"');
+assert.ok(await page.locator('#btnFromOne').isHidden(), '"Start forfra" er skjult uden fremskridt');
 await page.click('#btnContinue');
 await page.waitForSelector('#game.on');
 let st = await page.evaluate(() => JSON.parse(JSON.stringify(GAME.state)));
@@ -81,6 +108,15 @@ assert.ok(solved.allOk, 'alle solver-træk er lovlige');
 assert.ok(solved.solved && solved.flag, 'niveauet er løst');
 await page.waitForSelector('#overlay.on', { timeout: 5000 });
 assert.match(await page.textContent('#ovTitle'), /Niveau 1 løst/);
+
+// Nyt personligt højeste: hele listen vises, og navnet spørges (første gang)
+await page.waitForSelector('#hs .hs-input');
+await page.fill('#hs .hs-input', 'Emil');
+await page.click('#hs .hs-gem');
+await page.waitForSelector('#hs .hs-mig');
+assert.match(await page.textContent('#hs .hs-mig'), /Emil/, 'egen række fremhævet på listen');
+assert.match(await page.textContent('#hs .hs-raekke'), /Sofie/, 'Sofie står stadig øverst');
+
 const saved = await page.evaluate(() => ({
   level: localStorage.getItem('zydy.farvesortering.level'),
   best: JSON.parse(localStorage.getItem('zydy.farvesortering.best')),
@@ -97,6 +133,22 @@ await page.click('#btnNext');
 await page.waitForSelector('#game.on');
 assert.equal(await page.evaluate(() => GAME.state.level), 2);
 assert.equal(await page.locator('#overlay.on').count(), 0);
+
+// Løser man et niveau man har haft før (ingen ny rekord), står der én linje om
+// hvem der har rekorden – og trykker man på den, foldes hele listen ud
+await page.evaluate(() => { GAME.start(1); const s = GAME.solve(); s.forEach(([a, b]) => GAME.pour(a, b)); });
+await page.waitForSelector('#overlay.on', { timeout: 5000 });
+await page.waitForSelector('#ovRekord');
+assert.match(await page.textContent('#ovRekord'), /Sofie har rekorden · niveau 42/);
+assert.equal(await page.locator('#hs .hs-raekke').count(), 0, 'listen fylder ikke overlayet af sig selv');
+await page.click('#ovRekord');
+await page.waitForSelector('#hs .hs-raekke');
+assert.equal(await page.locator('#hs .hs-raekke').count(), 3, 'hele listen: Sofie, Selma og Emil');
+assert.equal(await page.locator('#hs .hs-mig').count(), 1, 'egen række fremhævet på navn');
+const gemte = api.scores.filter(r => r.spil === 'farvesortering' && r.navn === 'Emil');
+assert.equal(gemte.length, 1, 'et niveau uden rekord sender ikke en ny score ind');
+await page.click('#btnAgain');
+await page.waitForSelector('#game.on');
 
 // Niveau 12 genereres hurtigt
 const t12 = await page.evaluate(() => { const t0 = performance.now(); GAME.start(12); return performance.now() - t0; });
@@ -127,7 +179,7 @@ await page.evaluate(() => { const s = GAME.solve(); for (let i = 0; i < 6; i++) 
 await page.waitForTimeout(1100);
 await page.click('.tube[data-i="3"]'); // et valgt (løftet) glas på billedet
 await page.waitForTimeout(300);
-await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/farvesortering.png' });
+await page.screenshot({ path: SHOTS + 'farvesortering.png' });
 
 // Layout: glassene skal ligge inden for skærmen, ingen vandret scroll
 const geom = await page.evaluate(() => {
@@ -151,6 +203,12 @@ await page.goto(`${BASE}/spil/farvesortering/?seed=1`);
 await page.waitForFunction(() => window.GAME);
 assert.equal((await page.textContent('#btnContinue')).trim(), 'Fortsæt fra niveau 2');
 assert.ok(await page.locator('#btnFromOne').isVisible(), '"Start forfra" vises når der er fremskridt');
+
+// Har man selv rekorden, står der «Du har rekorden»
+await page.evaluate(() => localStorage.setItem('zydy.navn', 'Sofie'));
+await page.goto(`${BASE}/spil/farvesortering/?seed=1`);
+await page.waitForSelector('#rekordBtn:not([hidden])');
+assert.match(await page.textContent('#rekordBtn'), /Du har rekorden · niveau 42/);
 
 assert.deepEqual(errors, [], 'ingen console-fejl');
 await browser.close();

@@ -26,7 +26,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 |---|---|---|
 | Tårn | `public/spil/taarn/` | Stack-arcade på canvas: tryk for at slippe blokken, overhæng skæres af, perfekte drops giver bonus. Et par sekunder efter slutskærmen svajer tårnet og falder fra hinanden (slås fra ved `prefers-reduced-motion`). Online topliste (top 10) med navn. **Points** lægges sammen på tværs af alle spil (10 pr. blok, 20 mere pr. perfekt gange stimen, højst ×5) og gemmes i `zydy.taarn.point`; for hver hele tusinde er der konfetti. |
 | Sæt | `public/spil/saet/` | Kortspillet Set på dansk: find tre kort hvor antal, form, farve og fyld er helt ens eller helt forskellige. Klassisk og Blitz. Online topliste pr. tilstand (hurtigste tid / flest sæt). |
-| Farvesortering | `public/spil/farvesortering/` | Water sort: hæld farvet væske til hvert glas har én farve. Uendelige, solver-verificerede niveauer. Online topliste: højeste niveau løst, sendt ind når man når et nyt personligt højeste. |
+| Farvesortering | `public/spil/farvesortering/` | Water sort: hæld farvet væske til hvert glas har én farve. Uendelige, solver-verificerede niveauer. Online topliste: højeste niveau løst, sendt ind når man når et nyt personligt højeste. «🏆 Sofie har rekorden · niveau 42» står på startskærmen og på slutkortet, og trykker man på linjen, foldes hele top 10 ud. |
 | Ordstige | `public/spil/ordstige/` | Word ladder: skift ét bogstav ad gangen til et rigtigt dansk ord. Dagens stige + tilfældige. Ordlisten er Ordles (Stavekontrolden, GPL/LGPL/MPL). Online topliste: flest dage i træk med dagens stige. |
 | Duel | `public/spil/duel/` | To spillere på én telefon, skærmen delt i to: fem reflex-minispil, først til 3/5/10 point. Kan også spilles **alene mod botten** i tre sværhedsgrader – så vendes den øverste halvdel rigtigt, og man holder fingrene fra den. Bottens hoved bor i `bot.mjs` (enhedstestet). Online topliste: hurtigste reaktion i «Grønt lys», målt fra skærmen bliver grøn til trykket lander (under 80 ms tæller ikke) – bottens reaktioner tæller ikke med. |
 | Stenalder | `public/spil/stenalder/` | Hot-seat-udgave af brætspillet Stone Age for 2-4 spillere på én iPad. Tre filer uden build: `regler.mjs` (regelmotor, ren JS), `data.mjs` (kort og bygninger) og `index.html` (UI). Gemmer spillet i `localStorage`, så det kan genoptages. Online topliste: vinderens point, gemt under det navn spilleren selv skrev på startskærmen. |
@@ -83,8 +83,18 @@ startskærmen, og spillet sender selv rekorden ind (`unik` holder styr på, at
 hver spiller kun står én gang). Stenalder viser den tredje variant: dér kender
 spillet allerede spillerens rigtige navn fra startskærmen, så det bruger
 `Highscore.hent`/`send`/`tegnListe` direkte i stedet for `panel()` og spørger
-ikke om navn igen. Alle spil undtagen Kryds og bolle har topliste. Skemaet skal kun køres
-én gang (er gjort):
+ikke om navn igen. Alle spil undtagen Kryds og bolle har topliste.
+
+**Vis hvem der har rekorden.** Et spil, hvor listen kun dukker op, når man selv
+slår en rekord, kan man spille i ugevis uden at opdage, at der er andre med.
+Derfor henter Farvesortering listen ved indlæsning og skriver øverste række som
+én linje – «🏆 Sofie har rekorden · niveau 42», eller «Du har rekorden», hvis
+det er ens eget navn. Linjen står både på startskærmen og på kortet efter et
+løst niveau, og den er en knap: trykker man på den, tegnes hele top 10 med
+`panel()` uden score. Kan listen ikke hentes (ingen forbindelse), står der
+ingenting, og skærmen ser ud som før.
+
+Skemaet skal kun køres én gang (er gjort):
 
 ```bash
 npx wrangler@4 d1 execute zydy-highscore --remote --file schema.sql   # rigtig database
