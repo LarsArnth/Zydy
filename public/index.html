@@ -93,6 +93,10 @@
     <button id="navnKnap" class="navn-knap" type="button"></button>
   </header>
 
+  <!-- Venne-panelet. Fyldes af /venner.js ud fra /api/venner; tomt (og dermed
+       usynligt) indtil man har skrevet sit navn og svaret er hentet. -->
+  <section id="venner"></section>
+
   <ul class="apps" id="apps">
     <!-- Kortene herunder er genereret af scripts/byg-forside.mjs ud fra public/spil/*/kort.json — ret ikke i hånden. -->
 
@@ -614,6 +618,9 @@
         if (!svar || !svar.spil) return;
         tegn(svar.spil, svar.her);
         if (foerste) { foerste = false; sorter(svar.spil); }
+        // Venne-panelet (/venner.js) skal vide hvem der er hvor, og behøver
+        // derfor ikke hente det samme en gang til.
+        document.dispatchEvent(new CustomEvent('zydy:oversigt', { detail: svar }));
       })
       .catch(function () { /* ingen forbindelse – siden virker uden */ });
   }
@@ -631,5 +638,10 @@
 <!-- Navnet i toppen, "Mangler der noget?" under hvert kort og "Nyt spil?"-kortet nederst.
      Knapperne og kortet laves i JS, så nye kort her i filen automatisk får dem med. -->
 <script src="/ideer.js" defer></script>
+
+<!-- Venne-panelet øverst: dine venner og om de er her lige nu, spørgsmål fra
+     andre, og "Find en ven". Skal stå efter /ideer.js, som ejer navnet og stilen
+     til dialogen. -->
+<script src="/venner.js" defer></script>
 </body>
 </html>

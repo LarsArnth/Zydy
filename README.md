@@ -3,9 +3,10 @@
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
 afhængigheder. De store apps bor i egne repoer og linkes til; elleve spil
-ligger direkte her under `public/spil/`. Den eneste server-kode er to små
-API'er (`src/`): en [online topliste](#online-topliste) og
-[hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu).
+ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
+API'er (`src/`): en [online topliste](#online-topliste),
+[hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
+og [venner](#venner).
 
 | App | Hvor den kører | Kode |
 |---|---|---|
@@ -133,8 +134,8 @@ en frisk oversigt (`zydy:aktivitet`), så man ikke skal vente et halvt minut.
 Alt fejler stille: uden forbindelse ser siden og spillene ud præcis som før.
 
 Selma spurgte gennem «Nyt spil?» både om at kunne se hvem der er på siden **og
-om venner**. Venner kræver rigtige konti og login, som siden bevidst ikke har —
-det er ikke bygget.
+om venner**. Begge dele er nu bygget — venner uden konti og login, se
+[Venner](#venner).
 
 Apps der bor et andet sted (Ordle, Taltræf, Imposter, KlaverLær) kan ikke
 melde til selv, for de ligger på et andet domæne. For dem tæller forsiden i
@@ -192,6 +193,40 @@ man kan se hvad der er svaret på hvad:
 ```bash
 node ../zydy-feedback-loop.mjs --loest 42 "kort beskrivelse af hvad der blev lavet"
 node ../zydy-feedback-loop.mjs --afvist 42 "hvorfor det ikke kan lade sig gøre"
+```
+
+<a id="venner"></a>
+
+### Venner
+
+Øverst på forsiden står **«Dine venner»**: hvem du er venner med, og om de er
+på zydy.dk lige nu («Selma spiller Obby»). Spørger nogen, om I skal være
+venner, står spørgsmålet samme sted med *Ja tak* / *Nej*. Trykker man på en
+ven, kan man se hvor hen er — og hoppe direkte med ind i det spil, hen er i
+gang med.
+
+Der er **ingen konti og intet login** på zydy.dk, og det bliver der ikke. Man
+er det navn, man har skrevet på forsiden (`zydy.navn`), så et venskab er en
+aftale mellem to *navne*. Det er nok her: navnene står i forvejen offentligt på
+toplisterne, familien kender hinanden, og alternativet — rigtige brugerkonti —
+ville gøre siden meget tungere at bruge for et barn med en iPad.
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Database | tabellen `venner` i `schema.sql` | Én række pr. par: `venner(fra, til, fra_navn, til_navn, oprettet, svaret)`. `fra`/`til` er navnet med små bogstaver (nøglen), `fra_navn`/`til_navn` er stavemåden til visning. `svaret` er tomt, indtil den anden har sagt ja. |
+| API | `src/worker.mjs` → `src/venner.mjs` | `GET /api/venner?navn=Sofie` giver `venner`, `venter` (de har spurgt mig), `sendt` (jeg har spurgt dem) og `kendte` (navne vi har set på siden, som forslag). `POST /api/venner` med `{navn, ven, handling}`: `'spoerg'` (standard), `'ja'` og `'nej'` (som også fjerner en ven igen). |
+| Klient | `public/venner.js` + `<section id="venner">` i `public/index.html` | Tegner panelet og henter listen hvert minut. Hvem der er online, kommer gratis fra forsidens eget kald til `/api/oversigt`, som sendes videre som hændelsen `zydy:oversigt` — så det samme ikke hentes to gange. Dialogen genbruger stilen fra `/ideer.js`, der altid indlæses først. |
+
+Værnet mod pjat er, at **begge** skal sige ja, at man ikke kan være ven med sig
+selv, og at ingen kan have mere end 50 rækker (`VENNER_MAKS`). Store og små
+bogstaver er samme person, og siger man ja, retter det samtidig navnet til den
+stavemåde, personen selv bruger. Uden navn viser panelet bare en opfordring til
+at skrive et; uden forbindelse står der det, vi så sidst.
+
+Skulle der komme skrald ind:
+
+```bash
+npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM venner WHERE fra='pjat' OR til='pjat'"
 ```
 
 ### Feedback-loopet
@@ -259,7 +294,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Gulvet er lavas bane, forsidens kort, højscore-, aktivitets- og idé-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Gulvet er lavas bane, forsidens kort, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
@@ -271,10 +306,15 @@ så testene ser de samme svar som i drift. Hver test begynder med
 const api = await mockApi(page);    // før testens egen page.route, som så vinder
 ```
 
-og kan bagefter kigge i `api.log.aktivitet` og `api.scores`. Tårn, Sæt, Dybet
+og kan bagefter kigge i `api.log.aktivitet`, `api.scores`, `api.ideer.rows` og
+`api.venner.rows`. Tårn, Sæt, Dybet
 og Obby lægger deres egen `page.route('**/api/highscore/**')` ovenpå, når de
 har brug for en bestemt startliste. API'erne testes desuden hver for sig i
-`test/unit/highscore.test.mjs` og `test/unit/aktivitet.test.mjs`. Vil man prøve
+`test/unit/highscore.test.mjs`, `test/unit/aktivitet.test.mjs`,
+`test/unit/ideer.test.mjs` og `test/unit/venner.test.mjs`. Forsiden har to
+browser-tests: `test/forside.test.mjs` (navn, ønsker, «hvem er her») og
+`test/venner.test.mjs` (spørg, sig ja, se hvem der spiller hvad, fjern en ven —
+den anden part spilles af testen selv gennem `api.venner`). Vil man prøve
 hele kæden lokalt mod en lokal D1-database:
 
 ```bash

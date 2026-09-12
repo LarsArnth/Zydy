@@ -10,11 +10,13 @@
 //   api.log.aktivitet   → [{ spil, ny?, klient?, slut? }, …]
 //   api.scores          → rækkerne i højscore-lageret
 //   api.ideer.rows      → de idéer og ønsker der er sendt ind
+//   api.venner.rows     → venskaberne, [{ fra, til, fraNavn, tilNavn, svaret }]
 //
 // Options: { scores: [{ spil, navn, score }] } lægger startrækker på toplisterne.
 import { haandterApi } from '../src/highscore.mjs';
 import { haandterAktivitet } from '../src/aktivitet.mjs';
 import { haandterIdeer } from '../src/ideer.mjs';
+import { haandterVenner } from '../src/venner.mjs';
 
 /** Højscore-lager i hukommelsen – samme seks metoder som d1Lager(). */
 export function huskLager(start = []) {
@@ -88,11 +90,38 @@ export function huskIdeer() {
   };
 }
 
+/** Venne-lager i hukommelsen – samme metoder som d1Venner(). `hs`/`akt` er de
+ *  to andre lagre, som navneforslagene hentes fra (toplisterne og dem der er her nu). */
+export function huskVenner(hs, akt) {
+  const rows = [];
+  let n = 0;
+  const find = (a, b) => rows.find(r => (r.fra === a && r.til === b) || (r.fra === b && r.til === a));
+  return {
+    rows,
+    async mine(k) { return rows.filter(r => r.fra === k || r.til === k); },
+    async par(a, b) { return find(a, b) || null; },
+    async spoerg(fra, til, fraNavn, tilNavn) {
+      if (!find(fra, til)) rows.push({ fra, til, fraNavn, tilNavn, svaret: null });
+    },
+    async sigJa(fra, til, tilNavn) {
+      const r = rows.find(x => x.fra === fra && x.til === til && !x.svaret);
+      if (r) { r.svaret = new Date(Date.UTC(2026, 0, 1, 0, 0, ++n)).toISOString(); r.tilNavn = tilNavn; }
+    },
+    async slet(a, b) { const i = rows.indexOf(find(a, b)); if (i >= 0) rows.splice(i, 1); },
+    async kendteNavne() {
+      const nu = akt ? [...akt.aktive.values()].map(v => v.navn).filter(Boolean) : [];
+      const fra = hs ? hs.rows.slice().reverse().map(r => r.navn) : [];
+      return [...nu, ...fra];
+    },
+  };
+}
+
 /** Sætter mocken op på `page`. Returnerer lagrene og en log over aktivitets-kald. */
 export async function mockApi(page, opt = {}) {
   const hs = huskLager(opt.scores || []);
   const akt = huskAktivitet();
   const ideer = huskIdeer();
+  const venner = huskVenner(hs, akt);
   const log = { aktivitet: [], highscore: [] };
 
   // Cloudflare Web Analytics-beaconen holdes ude af testene. Den hører ikke til
@@ -119,6 +148,7 @@ export async function mockApi(page, opt = {}) {
     const request = new Request(req.url(), { method: metode, headers: req.headers(), body: krop });
     const svar = (await haandterAktivitet(request, akt, hs))
       || (await haandterIdeer(request, ideer))
+      || (await haandterVenner(request, venner))
       || (await haandterApi(request, hs));
     if (!svar) return route.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"fejl":"Ikke API (mock)"}' });
     return route.fulfill({
@@ -128,5 +158,5 @@ export async function mockApi(page, opt = {}) {
     });
   });
 
-  return { hs, akt, ideer, log, get scores() { return hs.rows; } };
+  return { hs, akt, ideer, venner, log, get scores() { return hs.rows; } };
 }

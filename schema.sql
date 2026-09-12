@@ -34,6 +34,21 @@ CREATE TABLE IF NOT EXISTS aktive (
 --   npx wrangler@4 d1 execute zydy-highscore --remote --command "ALTER TABLE aktive ADD COLUMN navn TEXT"
 CREATE INDEX IF NOT EXISTS aktive_sidst ON aktive (sidst);
 
+-- Venner (src/venner.mjs): hvem der har sagt ja til hinanden på forsiden.
+-- Én række pr. par. Der er ingen login på zydy.dk, så et venskab er en aftale
+-- mellem to navne: `fra`/`til` er navnet med små bogstaver (nøglen), og
+-- `fra_navn`/`til_navn` er navnet som det blev skrevet, til visning.
+CREATE TABLE IF NOT EXISTS venner (
+  fra        TEXT    NOT NULL,             -- den der spurgte (nøgle, små bogstaver)
+  til        TEXT    NOT NULL,             -- den der blev spurgt
+  fra_navn   TEXT    NOT NULL,             -- som skrevet, fx 'Sofie'
+  til_navn   TEXT    NOT NULL,
+  oprettet   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  svaret     TEXT,                         -- tidsstempel for ja'et (NULL = der er ikke svaret endnu)
+  PRIMARY KEY (fra, til)
+);
+CREATE INDEX IF NOT EXISTS venner_til ON venner (til);
+
 -- Idéer og ønsker (src/ideer.mjs): forslag til nye spil og ting der mangler i
 -- dem der findes. Hentes ned med `npm run ideer`.
 CREATE TABLE IF NOT EXISTS ideer (
