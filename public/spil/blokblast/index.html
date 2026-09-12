@@ -1,0 +1,641 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#151038">
+<meta name="description" content="Blokblast: træk brikkerne ned på brættet og fyld hele rækker og søjler, så de blæser væk. Spillet slutter, når der ikke er plads til flere brikker.">
+<title>Blokblast – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23151038'/%3E%3Crect x='10' y='10' width='16' height='16' rx='4' fill='%23ffd447'/%3E%3Crect x='28' y='10' width='16' height='16' rx='4' fill='%233ddc84'/%3E%3Crect x='46' y='10' width='8' height='16' rx='3' fill='%234d8dff'/%3E%3Crect x='10' y='28' width='16' height='16' rx='4' fill='%23ff4d5e'/%3E%3Crect x='28' y='28' width='16' height='16' rx='4' fill='%23a97bff'/%3E%3Crect x='10' y='46' width='16' height='8' rx='3' fill='%23ff8a3d'/%3E%3C/svg%3E">
+<style>
+  /*
+    Blokblast – Selmas ønske «Block blast».
+
+    Otte gange otte felter, tre brikker ad gangen, ingen drejning: man trækker
+    brikken derhen, hvor den skal ligge. Fylder man en hel række eller søjle,
+    blæser den væk. Reglerne bor i blokke.mjs; denne fil tegner dem og tager
+    imod fingrene.
+
+    To greb er værd at huske:
+      1) Brikken løftes op over fingeren, mens man trækker (LØFT). Ellers ligger
+         den under tommelfingeren, og man kan ikke se, hvor den lander.
+      2) Brættet får den plads, der er, og bakken resten. Alt regnes ud fra én
+         feltstørrelse i resize(), så det passer både på en iPhone på højkant
+         og en iPad på tværs.
+  */
+  :root{
+    --bg:#151038; --bg2:#221a56; --bg3:#2e2470; --text:#fff7e6; --muted:#aca6dd;
+    --sun:#ffd447; --coral:#ff4d5e; --mint:#3ddc84; --sky:#4d8dff;
+    --ink:#1c1440; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}          /* .btn sætter display:block, og så gemmer hidden ikke af sig selv */
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 12px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:42px;line-height:1;margin:0 0 8px;letter-spacing:-1.6px;font-weight:800}
+  p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:17px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;text-align:center;text-decoration:none;color:var(--ink);transition:transform .08s}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--text);font-variant-numeric:tabular-nums}
+
+  .wrap{width:100%;max-width:760px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .brand{flex:1;text-align:center;font-weight:800;font-size:20px;letter-spacing:-.4px}
+
+  /* Linjen over brættet: rekord til venstre, stimen til højre */
+  .hud{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:24px;padding:6px 4px 2px;
+    font-size:14px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px}
+  .hud b{color:var(--text);font-variant-numeric:tabular-nums}
+  #stimeVal{color:var(--sun);letter-spacing:.4px}
+  #stimeVal[hidden]{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;margin-top:6px;
+    background:linear-gradient(180deg,#2a2170,#1b1450)}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+  .stage.ryst{animation:ryst .3s}
+  @keyframes ryst{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  /* Start- og slutskærm oven på fladen */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:16px 18px 22px;background:rgba(21,16,56,.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .lavet{margin:0 0 12px;font-size:14px;color:var(--muted);line-height:1.4}
+  .lavet b{color:var(--text)}
+  .rekord-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:12px 0 6px}
+  .rekord-row span{color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:14px}
+  .rekord-row b{font-size:32px;font-weight:800;color:var(--sun);letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  .slutscore{font-size:74px;font-weight:900;line-height:1;letter-spacing:-3px;margin:2px 0 4px;
+    color:var(--sun);font-variant-numeric:tabular-nums}
+  .slutsub{font-size:17px;color:var(--muted);margin:0 0 10px}
+  .ny{color:var(--mint);font-weight:800;font-size:19px;margin:0 0 8px}
+  #nameBtn{position:relative}
+  #nameBtn small{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-top:2px}
+  #nameBtn.tom{color:var(--muted)}
+  #nameForm{margin-top:10px}
+  #nameForm input{width:100%;padding:15px;border-radius:var(--r);border:2px solid var(--bg3);background:var(--bg2);
+    color:var(--text);font:inherit;font-size:18px;text-align:center}
+  .hint{font-size:15px;margin:12px 0 0}
+
+  /* Toplisten (fælles klient) */
+  .hs{margin-bottom:12px}
+  .hs-titel{font-size:21px;margin:0 0 8px;letter-spacing:-.5px;font-weight:800}
+  .hs-liste{list-style:none;margin:0;padding:0;max-height:26vh;overflow-y:auto}
+  .hs-raekke{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:12px;font-size:16px}
+  .hs-raekke:nth-child(odd){background:rgba(255,255,255,.05)}
+  .hs-mig{background:rgba(255,212,71,.18)!important;font-weight:800}
+  .hs-nr{width:22px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+  .hs-navn{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hs-score{font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums}
+  .hs-tom,.hs-fejl,.hs-venter{font-size:15px;color:var(--muted);margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="brand">Blokblast</div>
+    <div class="pill">Point <b id="scoreVal">0</b></div>
+  </div>
+
+  <div class="hud">
+    <div>Bedste <b id="bedsteVal">0</b></div>
+    <div id="stimeVal" hidden></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Blokblast</h1>
+        <div class="lavet"><b>Selma</b> ønskede sig spillet · <b>Far</b> og <b>Claude</b> byggede det</div>
+        <div class="hs" id="hsListe"></div>
+        <div class="rekord-row"><span>Bedste</span><b id="rekordVal">0</b></div>
+        <button class="btn ghost tom" id="nameBtn">Skriv dit navn</button>
+        <form id="nameForm" hidden autocomplete="off">
+          <input id="nameInput" type="text" maxlength="12" placeholder="Skriv dit navn" aria-label="Dit navn"
+            enterkeyhint="done" autocapitalize="words" spellcheck="false">
+          <button class="btn" type="submit">OK</button>
+        </form>
+        <button class="btn" id="startBtn">Spil</button>
+        <button class="btn ghost" id="nytBtn" hidden>Start forfra</button>
+        <p class="hint">Træk brikkerne ned på brættet. Fylder du en hel række eller søjle, blæser den væk.
+          Rydder du to på én gang – eller flere gange i træk – giver det ekstra mange point.</p>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1>Brættet er fyldt</h1>
+        <div class="slutscore" id="slutScore">0</div>
+        <p class="slutsub" id="slutSub">point</p>
+        <p class="ny" id="nyRekord" hidden>Ny rekord!</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Spil igen</button>
+        <button class="btn ghost" id="menuBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="blokblast"></script>
+<script type="module">
+import {
+  SIDE, BAKKE, FORM, nytBræt, kanLægges, læg, nogenPasser, trækBrikker, bedsteTræk, fuldeLinjer,
+} from './blokke.mjs';
+
+/* ---------- Seedbar tilfældighed (?seed=123 giver de samme brikker) ---------- */
+const params = new URLSearchParams(location.search);
+let seed = parseInt(params.get('seed'), 10);
+if (!Number.isFinite(seed)) seed = (Math.random() * 4294967296) >>> 0;
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let rnd = mulberry32(seed);
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), g = canvas.getContext('2d');
+if (!g.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const scoreVal = $('scoreVal'), bedsteVal = $('bedsteVal'), stimeVal = $('stimeVal'), rekordVal = $('rekordVal');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen');
+const nameBtn = $('nameBtn'), nameForm = $('nameForm'), nameInput = $('nameInput');
+const startBtn = $('startBtn'), nytBtn = $('nytBtn');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Lagring ---------- */
+const KEY_BEST = 'zydy.blokblast.best';
+const KEY_GEM = 'zydy.blokblast.gem';
+const hentBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const gemBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+
+/** Gemmer det igangværende spil, så man kan lukke fanen og komme tilbage. */
+function gemSpil() {
+  try {
+    if (fase !== 'spil') { localStorage.removeItem(KEY_GEM); return; }
+    localStorage.setItem(KEY_GEM, JSON.stringify({
+      bræt, brikker: brikker.map(b => (b ? b.id : null)), score, stime,
+    }));
+  } catch (e) {}
+}
+function hentGemtSpil() {
+  try {
+    const gemt = JSON.parse(localStorage.getItem(KEY_GEM) || 'null');
+    if (!gemt || !Array.isArray(gemt.bræt) || gemt.bræt.length !== SIDE * SIDE) return null;
+    const b = gemt.brikker.map(id => (id ? FORM[id] || null : null));
+    if (b.length !== BAKKE) return null;
+    return { bræt: gemt.bræt, brikker: b, score: Math.max(0, gemt.score | 0), stime: Math.max(0, gemt.stime | 0) };
+  } catch (e) { return null; }
+}
+
+/* ---------- Mål: brættet øverst, bakken nedenunder ---------- */
+let W = 1, H = 1, dpr = 1;
+let felt = 20, bx = 0, by = 0, brætSide = 160;       // brættets felt og hjørne
+let bakkeY = 0, bakkeH = 40, båsBredde = 60;
+const MARGEN = 10;
+const BAKKE_ANDEL = 2.6;      // bakken fylder som ~2,6 rækker på brættet
+
+function resize() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  felt = Math.max(8, Math.floor(Math.min((W - 2 * MARGEN) / SIDE, (H - 3 * MARGEN) / (SIDE + BAKKE_ANDEL))));
+  brætSide = felt * SIDE;
+  bx = Math.round((W - brætSide) / 2);
+  by = Math.round(Math.max(MARGEN, (H - MARGEN - brætSide - felt * BAKKE_ANDEL) / 2 + MARGEN / 2));
+  bakkeY = by + brætSide + MARGEN;
+  bakkeH = Math.max(felt, H - bakkeY - MARGEN / 2);
+  båsBredde = (W - 2 * MARGEN) / BAKKE;
+}
+
+/** Feltstørrelsen for en brik i bakken: lidt mindre end på brættet, men aldrig
+ *  større, end at den kan være i sin bås — ellers ville en 5'er flyde over. */
+const båsFelt = form => Math.max(6, Math.floor(Math.min(
+  felt * 0.6, (båsBredde - 16) / form.bredde, (bakkeH - 12) / form.højde,
+)));
+resize();
+addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 60));
+if ('ResizeObserver' in window) new ResizeObserver(resize).observe(stage);
+
+/** Skærmpunkt → punkt på canvas. */
+function tilCanvas(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  return [clientX - r.left, clientY - r.top];
+}
+/** Båsens firkant i bakken. */
+const bås = nr => ({ x: MARGEN + nr * båsBredde, y: bakkeY, w: båsBredde, h: bakkeH });
+
+/* ---------- Spillets tilstand ---------- */
+let fase = 'menu';                    // menu | spil | slut
+let bræt = nytBræt();
+let brikker = [null, null, null];
+let score = 0, stime = 0, best = hentBest();
+let træk = null;                      // den brik, fingeren har fat i
+const blink = [];                     // felter der lige er blæst væk
+const tekster = [];                   // «+40» der flyver op
+let sidsteT = 0;
+
+const LØFT = () => felt * 1.45;       // brikken holdes over fingeren, så man kan se den
+
+function start(genoptag) {
+  const gemt = genoptag ? hentGemtSpil() : null;
+  if (gemt) {
+    bræt = gemt.bræt.slice(); brikker = gemt.brikker.slice(); score = gemt.score; stime = gemt.stime;
+    if (!brikker.some(Boolean)) brikker = trækBrikker(bræt, rnd);
+  } else {
+    bræt = nytBræt(); score = 0; stime = 0;
+    brikker = trækBrikker(bræt, rnd);
+  }
+  fase = 'spil'; træk = null;
+  blink.length = 0; tekster.length = 0;
+  startScreen.classList.remove('on');
+  slutScreen.classList.remove('on');
+  $('nyRekord').hidden = true;
+  gemSpil(); visHud();
+}
+
+/** Lægger brik nr. `nr` med hjørnet i feltet (x, y). Sand, hvis det lykkedes. */
+function lægBrik(nr, x, y) {
+  if (fase !== 'spil') return false;
+  const form = brikker[nr];
+  const r = form && læg(bræt, form, x, y, stime);
+  if (!r) return false;
+
+  bræt = r.bræt; stime = r.stime; score += r.point;
+  brikker[nr] = null;
+
+  // Pynt: de ryddede felter popper, og pointene flyver op fra brikken.
+  for (const c of r.ryddede) blink.push({ x: c.x, y: c.y, farve: c.farve, t: 0 });
+  const midtX = bx + (x + form.bredde / 2) * felt;
+  const midtY = by + (y + form.højde / 2) * felt;
+  tekster.push({ px: midtX, py: midtY, tekst: '+' + r.point, t: 0, farve: r.antalLinjer ? '#3ddc84' : '#fff7e6' });
+  if (r.antalLinjer >= 2) tekster.push({ px: W / 2, py: by + brætSide / 2, tekst: r.antalLinjer + ' LINJER!', t: -0.15, stor: true, farve: '#ffd447' });
+  else if (r.stime >= 2) tekster.push({ px: W / 2, py: by + brætSide / 2, tekst: 'STIME ×' + r.stime, t: -0.15, stor: true, farve: '#ffd447' });
+  if (tekster.length > 6) tekster.splice(0, tekster.length - 6);   // ingen tekstsalat, hvis der lægges hurtigt
+  if (r.antalLinjer) {
+    navigator.vibrate && navigator.vibrate(r.antalLinjer >= 2 ? 40 : 15);
+    if (!roligt && r.antalLinjer >= 2) { stage.classList.remove('ryst'); void stage.offsetWidth; stage.classList.add('ryst'); }
+  }
+
+  if (!brikker.some(Boolean)) brikker = trækBrikker(bræt, rnd);   // bakken fyldes først, når alle tre er brugt
+  gemSpil(); visHud();
+  if (!nogenPasser(bræt, brikker)) slut();
+  return true;
+}
+
+function slut() {
+  fase = 'slut'; træk = null;
+  const rekord = score > best;
+  if (rekord) { best = score; gemBest(best); }
+  try { localStorage.removeItem(KEY_GEM); } catch (e) {}
+  $('slutScore').textContent = String(score);
+  $('nyRekord').hidden = !rekord;
+  slutScreen.classList.add('on');
+  visHud(); tegnListe(); sendRekord(score);
+}
+
+function tilMenu() {
+  fase = 'menu'; træk = null;
+  slutScreen.classList.remove('on');
+  startScreen.classList.add('on');
+  visHud(); visStartKnap(); hentListe();
+}
+
+/* ---------- HUD og knapper ---------- */
+function visHud() {
+  scoreVal.textContent = String(score);
+  bedsteVal.textContent = String(best);
+  rekordVal.textContent = String(best);
+  stimeVal.hidden = !(fase === 'spil' && stime >= 2);
+  if (!stimeVal.hidden) stimeVal.textContent = '🔥 Stime ×' + stime;
+}
+
+/** «Spil» eller «Fortsæt», alt efter om der ligger et halvt spil og venter. */
+function visStartKnap() {
+  const gemt = hentGemtSpil();
+  startBtn.textContent = gemt ? `Fortsæt · ${gemt.score} point` : 'Spil';
+  nytBtn.hidden = !gemt;
+}
+
+/* ---------- Tegning ---------- */
+function rundRekt(x, y, w, h, rad) { g.beginPath(); g.roundRect(x, y, w, h, rad); }
+
+/** Én klods. */
+function tegnKlods(px, py, s, farve, alpha = 1) {
+  const m = Math.max(1, s * 0.055), rad = s * 0.24;
+  g.globalAlpha = alpha;
+  g.fillStyle = 'rgba(0,0,0,.3)';
+  rundRekt(px + m, py + m + s * 0.06, s - 2 * m, s - 2 * m, rad); g.fill();
+  g.fillStyle = farve;
+  rundRekt(px + m, py + m, s - 2 * m, s - 2 * m, rad); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.3)';
+  rundRekt(px + m * 2.2, py + m * 2.2, s - 4.4 * m, (s - 4.4 * m) * 0.34, rad * 0.7); g.fill();
+  g.globalAlpha = 1;
+}
+
+function tegnBræt() {
+  g.fillStyle = 'rgba(0,0,0,.22)';
+  rundRekt(bx - 5, by - 5, brætSide + 10, brætSide + 10, 16); g.fill();
+
+  // Hvilke linjer ville blive ryddet, hvis brikken slap her? De lyser op.
+  let lys = null;
+  if (træk && træk.gyldig) {
+    const prøve = læg(bræt, træk.form, træk.gx, træk.gy, stime);
+    if (prøve && prøve.antalLinjer) lys = prøve.linjer;
+  }
+  for (let y = 0; y < SIDE; y++)
+    for (let x = 0; x < SIDE; x++) {
+      const px = bx + x * felt, py = by + y * felt;
+      const iLys = lys && (lys.rækker.includes(y) || lys.søjler.includes(x));
+      g.fillStyle = iLys ? 'rgba(255,212,71,.22)' : 'rgba(255,255,255,.055)';
+      rundRekt(px + felt * 0.06, py + felt * 0.06, felt * 0.88, felt * 0.88, felt * 0.22); g.fill();
+      const farve = bræt[y * SIDE + x];
+      if (farve) tegnKlods(px, py, felt, farve);
+    }
+
+  // Skyggen af den brik, fingeren holder – grøn ramme når den kan være der
+  if (træk) {
+    for (const [cx, cy] of træk.form.celler) {
+      const x = træk.gx + cx, y = træk.gy + cy;
+      if (x < 0 || y < 0 || x >= SIDE || y >= SIDE) continue;
+      const px = bx + x * felt, py = by + y * felt;
+      if (træk.gyldig) tegnKlods(px, py, felt, træk.form.farve, 0.42);
+      else { g.strokeStyle = 'rgba(255,77,94,.5)'; g.lineWidth = 2; rundRekt(px + 3, py + 3, felt - 6, felt - 6, felt * 0.22); g.stroke(); }
+    }
+  }
+}
+
+function tegnBakke() {
+  for (let nr = 0; nr < BAKKE; nr++) {
+    const b = bås(nr), form = brikker[nr];
+    if (!form || (træk && træk.nr === nr)) continue;
+    const s = båsFelt(form);
+    const px = b.x + (b.w - form.bredde * s) / 2, py = b.y + (b.h - form.højde * s) / 2;
+    const kan = fase !== 'spil' || bakkeKan[nr];
+    for (const [cx, cy] of form.celler) tegnKlods(px + cx * s, py + cy * s, s, form.farve, kan ? 1 : 0.3);
+  }
+}
+
+/** Brikken i hånden – tegnet i fuld størrelse, så man kan se hvad man får. */
+function tegnTræk() {
+  if (!træk) return;
+  for (const [cx, cy] of træk.form.celler)
+    tegnKlods(træk.px + cx * felt, træk.py + cy * felt, felt, træk.form.farve, 0.95);
+}
+
+function tegnPynt() {
+  for (const b of blink) {
+    const a = Math.max(0, 1 - b.t / 0.45), vokse = 1 + b.t * 1.6;
+    const s = felt * vokse;
+    g.globalAlpha = a;
+    g.fillStyle = b.farve;
+    const px = bx + b.x * felt + (felt - s) / 2, py = by + b.y * felt + (felt - s) / 2;
+    rundRekt(px, py, s, s, s * 0.24); g.fill();
+    g.globalAlpha = 1;
+  }
+  for (const t of tekster) {
+    if (t.t < 0) continue;
+    const a = Math.max(0, 1 - t.t / 1.0);
+    g.globalAlpha = a;
+    g.fillStyle = t.farve;
+    const px = Math.round(t.stor ? 34 : Math.max(16, felt * 0.62));
+    g.font = `900 ${px}px -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", Roboto, sans-serif`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 8;
+    g.fillText(t.tekst, t.px, t.py - t.t * 46);
+    g.shadowBlur = 0;
+    g.globalAlpha = 1;
+  }
+}
+
+// Hvilke brikker i bakken der overhovedet kan lægges – de andre tones ned.
+let bakkeKan = [true, true, true];
+function opdaterBakkeKan() {
+  bakkeKan = brikker.map(f => !!f && nogenPasser(bræt, [f]));
+}
+
+function tegn() {
+  g.clearRect(0, 0, W, H);
+  if (fase === 'menu') return;        // startskærmen dækker alligevel
+  tegnBræt();
+  tegnBakke();
+  tegnTræk();
+  tegnPynt();
+}
+
+function frame(nu) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (nu - sidsteT) / 1000 || 0);
+  sidsteT = nu;
+  for (let i = blink.length - 1; i >= 0; i--) { blink[i].t += dt; if (blink[i].t > 0.45) blink.splice(i, 1); }
+  for (let i = tekster.length - 1; i >= 0; i--) { tekster[i].t += dt; if (tekster[i].t > 1.0) tekster.splice(i, 1); }
+  opdaterBakkeKan();
+  tegn();
+}
+requestAnimationFrame(frame);
+
+/* ---------- Fingeren ---------- */
+/** Hvilken bås ligger punktet i? */
+function båsVed(px, py) {
+  for (let nr = 0; nr < BAKKE; nr++) {
+    const b = bås(nr);
+    if (px >= b.x && px <= b.x + b.w && py >= b.y - felt * 0.3 && py <= b.y + b.h) return nr;
+  }
+  return -1;
+}
+
+function opdaterTræk(clientX, clientY) {
+  const [mx, my] = tilCanvas(clientX, clientY);
+  const w = træk.form.bredde * felt, h = træk.form.højde * felt;
+  træk.px = mx - w / 2;
+  træk.py = my - LØFT() - h / 2;
+  træk.gx = Math.round((træk.px - bx) / felt);
+  træk.gy = Math.round((træk.py - by) / felt);
+  træk.gyldig = kanLægges(bræt, træk.form, træk.gx, træk.gy);
+}
+
+canvas.addEventListener('pointerdown', e => {
+  if (fase !== 'spil') return;
+  e.preventDefault();
+  const [mx, my] = tilCanvas(e.clientX, e.clientY);
+  const nr = båsVed(mx, my);
+  if (nr < 0 || !brikker[nr]) return;
+  træk = { nr, form: brikker[nr], px: 0, py: 0, gx: -9, gy: -9, gyldig: false };
+  opdaterTræk(e.clientX, e.clientY);
+  canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (!træk) return;
+  e.preventDefault();
+  opdaterTræk(e.clientX, e.clientY);
+});
+function slip(e) {
+  if (!træk) return;
+  if (e && e.clientX != null) opdaterTræk(e.clientX, e.clientY);
+  const t = træk;
+  træk = null;                        // brikken slipper hånden, uanset om den landede
+  if (t.gyldig) lægBrik(t.nr, t.gx, t.gy);
+}
+canvas.addEventListener('pointerup', slip);
+canvas.addEventListener('pointercancel', () => { træk = null; });
+
+/* ---------- Topliste (navnet skrives på startskærmen som i Obby) ---------- */
+const SPIL = 'blokblast';
+const navn = () => Highscore.navn.hent();
+const KEY_MIN = 'zydy.blokblast.min';
+let top = null;
+const minRække = {
+  hent() { try { return JSON.parse(localStorage.getItem(KEY_MIN)) || null; } catch (e) { return null; } },
+  gem(v) { try { localStorage.setItem(KEY_MIN, JSON.stringify(v)); } catch (e) {} },
+};
+
+function visNavn() {
+  const n = navn();
+  nameBtn.classList.toggle('tom', !n);
+  nameBtn.innerHTML = '';
+  if (n) {
+    nameBtn.appendChild(document.createTextNode(n));
+    const s = document.createElement('small');
+    s.textContent = 'Tryk for at ændre navn';
+    nameBtn.appendChild(s);
+  } else nameBtn.textContent = 'Skriv dit navn';
+}
+
+function tegnListe() {
+  if (!top) return;
+  const liste = top.liste || [], mig = navn() || null;
+  Highscore.tegnListe($('hsListe'), liste, mig, 'Topliste');
+  Highscore.tegnListe($('hsSlut'), liste, mig, 'Topliste');
+}
+
+async function hentListe() {
+  const rod = $('hsListe');
+  if (!top) rod.innerHTML = '<p class="hs-venter">Henter toplisten…</p>';
+  try { top = await Highscore.hent(SPIL); tegnListe(); }
+  catch (e) { if (!top) Highscore.tegnFejl(rod); }
+}
+
+async function sendRekord(point) {
+  const n = navn();
+  if (!n || !top || !Highscore.kvalificerer(top, point)) return;
+  try {
+    const svar = await Highscore.send(SPIL, n, point);
+    if (svar.token) minRække.gem({ id: svar.id, token: svar.token });
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { /* toplisten er pynt – spillet kører videre */ }
+}
+
+async function omdøbMigSelv(nyt) {
+  const m = minRække.hent();
+  if (!m || !m.id || !m.token) return;
+  try {
+    const svar = await Highscore.omdoeb(SPIL, m.id, m.token, nyt);
+    if (svar.id !== m.id) minRække.gem(null);
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { minRække.gem(null); }
+}
+
+/* ---------- Knapper ---------- */
+startBtn.addEventListener('click', () => start(true));
+nytBtn.addEventListener('click', () => start(false));
+$('igenBtn').addEventListener('click', () => start(false));
+$('menuBtn').addEventListener('click', tilMenu);
+nameBtn.addEventListener('click', () => {
+  nameBtn.hidden = true; nameForm.hidden = false;
+  nameInput.value = navn();
+  setTimeout(() => nameInput.focus({ preventScroll: true }), 30);
+});
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const n = nameInput.value.replace(/\s+/g, ' ').trim().slice(0, 12);
+  const før = navn();
+  if (n) Highscore.navn.gem(n);
+  nameForm.hidden = true; nameBtn.hidden = false;
+  visNavn(); tegnListe();
+  if (n && før && n !== før) omdøbMigSelv(n);
+});
+
+/* ---------- Start ---------- */
+visNavn(); visHud(); visStartKnap(); hentListe();
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  seed, tilMenu, bedsteTræk,
+  start: () => start(false),
+  fortsaet: () => start(true),
+  laeg: lægBrik,
+  /** Spiller ét fornuftigt træk. Falsk, hvis der ikke er nogen. */
+  bot() {
+    const t = bedsteTræk(bræt, brikker);
+    if (!t) return false;
+    return lægBrik(t.nr, t.x, t.y);
+  },
+  /** Spiller indtil brættet er fyldt, eller `maks` træk er gået. */
+  botSpiller(maks = 300) {
+    let n = 0;
+    while (fase === 'spil' && n < maks && this.bot()) n++;
+    return n;
+  },
+  /** Skærmkoordinater: midten af en bås, og hvor man skal slippe for at ramme (x, y). */
+  baasPx(nr) {
+    const r = canvas.getBoundingClientRect(), b = bås(nr);
+    return { x: r.left + b.x + b.w / 2, y: r.top + b.y + b.h / 2 };
+  },
+  slipPunkt(nr, x, y) {
+    const r = canvas.getBoundingClientRect(), form = brikker[nr];
+    if (!form) return null;
+    return {
+      x: r.left + bx + (x + form.bredde / 2) * felt,
+      y: r.top + by + (y + form.højde / 2) * felt + LØFT(),
+    };
+  },
+  /** Stiller et bestemt bræt, bestemte brikker og evt. en score op (bruges af testene). */
+  saetOp(fyldte, brikIder, startScore = 0) {
+    bræt = nytBræt();
+    for (const [x, y] of fyldte) bræt[y * SIDE + x] = '#4d8dff';
+    if (brikIder) brikker = brikIder.map(id => (id ? FORM[id] || null : null));
+    fase = 'spil'; træk = null; score = startScore; stime = 0;
+    startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+    gemSpil(); visHud();
+    return this.state;
+  },
+  get state() {
+    return {
+      fase, score, best, stime, seed,
+      bræt: bræt.slice(),
+      fyldte: bræt.reduce((n, c) => n + (c ? 1 : 0), 0),
+      brikker: brikker.map(b => (b ? { id: b.id, bredde: b.bredde, højde: b.højde, celler: b.celler } : null)),
+      fulde: fuldeLinjer(bræt),
+      træk: træk ? { nr: træk.nr, gx: træk.gx, gy: træk.gy, gyldig: træk.gyldig } : null,
+    };
+  },
+};
+</script>
+</body></html>
