@@ -3,7 +3,8 @@
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
 afhængigheder. De store apps bor i egne repoer og linkes til; otte spil
-ligger direkte her under `public/spil/`.
+ligger direkte her under `public/spil/`. Den eneste server-kode er et lille
+højscore-API (`src/`), se [Online topliste](#online-topliste).
 
 | App | Hvor den kører | Kode |
 |---|---|---|
@@ -20,7 +21,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
 |---|---|---|
-| Tårn | `public/spil/taarn/` | Stack-arcade på canvas: tryk for at slippe blokken, overhæng skæres af, perfekte drops giver bonus. Et par sekunder efter slutskærmen svajer tårnet og falder fra hinanden (slås fra ved `prefers-reduced-motion`). |
+| Tårn | `public/spil/taarn/` | Stack-arcade på canvas: tryk for at slippe blokken, overhæng skæres af, perfekte drops giver bonus. Et par sekunder efter slutskærmen svajer tårnet og falder fra hinanden (slås fra ved `prefers-reduced-motion`). Online topliste (top 10) med navn. |
 | Sæt | `public/spil/saet/` | Kortspillet Set på dansk: find tre kort hvor antal, form, farve og fyld er helt ens eller helt forskellige. Klassisk og Blitz. |
 | Farvesortering | `public/spil/farvesortering/` | Water sort: hæld farvet væske til hvert glas har én farve. Uendelige, solver-verificerede niveauer. |
 | Ordstige | `public/spil/ordstige/` | Word ladder: skift ét bogstav ad gangen til et rigtigt dansk ord. Dagens stige + tilfældige. Ordlisten er Ordles (Stavekontrolden, GPL/LGPL/MPL). |
@@ -31,6 +32,38 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
+
+### Online topliste
+
+Slår man sig ind i top 10, kan man skrive sit navn og komme permanent på
+listen, som alle kan se. Det kører på Cloudflares gratis tier og består af
+tre dele:
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Database | Cloudflare **D1** `zydy-highscore` (SQLite), skema i `schema.sql` | Én tabel `scores(spil, navn, score, oprettet)`. Kun de bedste 100 pr. spil beholdes. |
+| API | `src/worker.mjs` → `src/highscore.mjs` | `GET /api/highscore/<spil>` giver top 10, `POST` med `{navn, score}` gemmer og svarer med placering. Navne renses og klippes til 12 tegn, scoren skal være et heltal under spillets maks (`SPIL` i `highscore.mjs`). |
+| Klient | `public/spil/highscore.js` | `Highscore.panel(el, { spil, score })` henter listen, viser navneformular hvis scoren kvalificerer, sender ind og viser listen med egen række fremhævet. Uden `score` vises bare listen. Navnet huskes i `localStorage` (`zydy.navn`) på tværs af spil. |
+
+Worker'en rammer kun `/api/*` (`run_worker_first` i `wrangler.jsonc`); alt
+andet serveres som før direkte fra `public/`. API'et er åbent uden login –
+det er et familie-site – så værnet mod pjat er kun validering og trimning.
+Skulle listen blive fyldt med skrald:
+
+```bash
+npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM scores WHERE spil='taarn'"
+```
+
+**Tilføj topliste til et nyt spil:** (1) tilføj spillet i `SPIL` i
+`src/highscore.mjs` med en fornuftig maks-score, (2) indlæs
+`<script src="/spil/highscore.js"></script>` i spillet, (3) kald
+`Highscore.panel(...)` på slutskærmen og evt. uden score på startskærmen.
+Tårn er forbilledet. Skemaet skal kun køres én gang (er gjort):
+
+```bash
+npx wrangler@4 d1 execute zydy-highscore --remote --file schema.sql   # rigtig database
+npx wrangler@4 d1 execute zydy-highscore --local  --file schema.sql   # til wrangler dev
+```
 
 ### Stenalder – regelvalg
 
@@ -56,7 +89,16 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor (ingen browser, ~1 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor + højscore-API'et (ingen browser, ~1 sek.)
+```
+
+Tårn-testen mocker højscore-API'et med `page.route`, så den kører uden
+Cloudflare. API'et selv testes i `test/unit/highscore.test.mjs` med et
+hukommelses-lager i stedet for D1. Vil man prøve hele kæden lokalt mod en
+lokal D1-database:
+
+```bash
+npx wrangler@4 dev --port 8790      # http://localhost:8790/spil/taarn/  (kør schema.sql --local først)
 ```
 
 `test/run.mjs` starter en lokal server og kører `test/*.test.mjs` i headless
@@ -73,20 +115,22 @@ ikon, navn og undertekst. Push til `main` — så er den live.
 ## Kør lokalt
 
 ```bash
-npm run serve      # http://localhost:4175
+npm run serve      # http://localhost:4175  (kun filerne; toplisten fejler pænt uden API)
+npm run dev        # http://localhost:8787  (wrangler dev: filer + API mod lokal D1)
 ```
 
 ## Udrulning
 
-Siden kører som en **Cloudflare Worker** med statiske filer (`wrangler.jsonc`),
-samme opsætning som KlaverApp — men **uden** Cloudflare Access, for siden skal
-være åben. Custom domains `zydy.dk` og `www.zydy.dk` peger på workeren `zydy`;
+Siden kører som en **Cloudflare Worker** med statiske filer og et lille
+script til højscore-API'et (`wrangler.jsonc`), samme opsætning som KlaverApp —
+men **uden** Cloudflare Access, for siden skal være åben. Custom domains `zydy.dk` og `www.zydy.dk` peger på workeren `zydy`;
 DNS-records oprettes automatisk af wrangler.
 
 **Automatisk:** hvert push til `main` kører
 [.github/workflows/deploy.yml](.github/workflows/deploy.yml). Kræver
 `CLOUDFLARE_API_TOKEN` som GitHub-secret — samme smalle token som KlaverApp
-(Workers Scripts: Edit + Workers Routes: Edit på zonen zydy.dk):
+(Workers Scripts: Edit + Workers Routes: Edit på zonen zydy.dk). Fejler
+udrulningen på D1-bindingen, så giv tokenet også `D1: Edit`:
 
 ```bash
 gh secret set CLOUDFLARE_API_TOKEN --repo LarsArnth/Zydy

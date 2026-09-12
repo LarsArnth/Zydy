@@ -59,11 +59,14 @@
   .stage.over .hud{opacity:0}
 
   /* Skærme (start/slut) ligger som overlays over canvas. */
-  .screen{display:none;position:absolute;inset:0;flex-direction:column;justify-content:center;align-items:center;
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
     padding:24px 20px;background:rgba(17,20,42,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
   #overScreen{background:rgba(17,20,42,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
   .screen.on{display:flex}
-  .card{width:100%;max-width:400px;text-align:center}
+  .card{width:100%;max-width:400px;text-align:center;margin:auto}
+  /* Toplisten (tegnes af /spil/highscore.js) */
+  .hs{margin-bottom:4px}
+  #listScreen .hs-titel{font-size:30px;margin:0 0 12px;letter-spacing:-.8px}
   .card h1{margin-bottom:10px}
   .demo{display:block;width:150px;height:auto;margin:0 auto 14px}
   .hint{font-size:15px;margin-top:12px}
@@ -111,6 +114,7 @@
         <p>En blok glider hen over tårnet. Tryk for at slippe den. Det, der hænger ud over kanten, skæres af – og tårnet bliver smallere.</p>
         <p>Land <strong style="color:var(--mint)">perfekt</strong> tre gange i træk, og blokken vokser igen. Hvor højt kan du bygge?</p>
         <button class="btn" id="startBtn">Spil</button>
+        <button class="btn ghost" id="listeBtn">Topliste</button>
         <p class="hint">Tryk hvor som helst på spilfladen – eller brug mellemrum.</p>
       </div>
     </div>
@@ -121,13 +125,22 @@
         <h2>Spillet er slut</h2>
         <div class="big" id="overScore">0</div>
         <div class="over-best" id="overBest">Bedste: 0</div>
+        <div class="hs" id="hs"></div>
         <button class="btn" id="againBtn">Spil igen</button>
         <a class="btn ghost" href="/">Tilbage til zydy.dk</a>
+      </div>
+    </div>
+
+    <div class="screen" id="listScreen">
+      <div class="card">
+        <div class="hs" id="hsListe"></div>
+        <button class="btn ghost" id="listeTilbageBtn">Tilbage</button>
       </div>
     </div>
   </div>
 </div>
 
+<script src="/spil/highscore.js"></script>
 <script>
 (() => {
 'use strict';
@@ -157,7 +170,7 @@ const saveBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch
 const $ = id => document.getElementById(id);
 const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
 const scoreEl = $('score'), streakEl = $('streak'), bestPill = $('bestPill');
-const startScreen = $('startScreen'), overScreen = $('overScreen');
+const startScreen = $('startScreen'), overScreen = $('overScreen'), listScreen = $('listScreen');
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- Mål ---------- */
@@ -238,7 +251,8 @@ function start() {
   tumble = null; overT = 0;
   newMoving(W0, HUE0 + HUE_STEP);
   phase = 'playing'; startedAt = performance.now();
-  startScreen.classList.remove('on'); overScreen.classList.remove('on'); stage.classList.remove('over');
+  startScreen.classList.remove('on'); overScreen.classList.remove('on'); listScreen.classList.remove('on');
+  stage.classList.remove('over');
   updateHud();
   document.activeElement && document.activeElement.blur && document.activeElement.blur();
 }
@@ -341,6 +355,8 @@ function gameOver() {
   overScreen.classList.add('on');
   stage.classList.add('over');
   updateHud();
+  // Online topliste (zydy.dk/api/highscore/taarn): viser navneformular hvis scoren er blandt de 10 bedste.
+  Highscore.panel($('hs'), { spil: 'taarn', score });
 }
 
 /* ---------- Væltet ---------- */
@@ -576,6 +592,7 @@ canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false 
 canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;   // man skriver sit navn
   if (e.code === 'Space' || e.key === ' ') {
     e.preventDefault();
     if (phase === 'playing') drop();
@@ -584,6 +601,13 @@ addEventListener('keydown', e => {
 });
 $('startBtn').addEventListener('click', start);
 $('againBtn').addEventListener('click', start);
+$('listeBtn').addEventListener('click', () => {
+  startScreen.classList.remove('on'); listScreen.classList.add('on');
+  Highscore.panel($('hsListe'), { spil: 'taarn' });
+});
+$('listeTilbageBtn').addEventListener('click', () => {
+  listScreen.classList.remove('on'); startScreen.classList.add('on');
+});
 
 /* ---------- Test-API ---------- */
 window.GAME = {

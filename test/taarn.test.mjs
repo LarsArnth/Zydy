@@ -1,5 +1,7 @@
 // Kør:  PLAYWRIGHT=/Users/lars/Projekter/DungeonCrawler/node_modules/playwright/index.mjs node test/taarn.test.mjs
 // (kræver at en lokal server kører: python3 -m http.server <PORT> -d public)
+// Højscore-API'et (/api/highscore/taarn) mockes med page.route, så testen ikke
+// kræver wrangler dev eller netværk. Selve API'et testes i test/unit/highscore.test.mjs.
 import assert from 'node:assert/strict';
 const { chromium, devices } = await import(process.env.PLAYWRIGHT ?? 'playwright');
 const BASE = process.env.BASE ?? 'http://localhost:4181';
@@ -7,8 +9,29 @@ const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
 const page = await ctx.newPage();
 const errors = [];
+let forventetFejl = false;   // sættes når testen selv lader API'et svare 500
 page.on('pageerror', e => errors.push(String(e)));
-page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+page.on('console', m => {
+  if (m.type() !== 'error') return;
+  if (forventetFejl && m.text().includes('500')) return;   // browserens egen "Failed to load resource"
+  errors.push(m.text());
+});
+
+// Mock af højscore-API'et: starter med en fuld top 10 (scores 200..191), så score 4 ikke kvalificerer.
+let liste = Array.from({ length: 10 }, (_, i) => ({ id: 100 + i, navn: 'Spiller ' + (i + 1), score: 200 - i, oprettet: '2026-09-12T10:00:00.000Z' }));
+const sendte = [];
+await page.route('**/api/highscore/**', async route => {
+  const req = route.request();
+  if (req.method() === 'POST') {
+    const krop = req.postDataJSON(); sendte.push(krop);
+    const ny = { id: 999, navn: krop.navn, score: krop.score, oprettet: '2026-09-12T12:00:00.000Z' };
+    liste = [...liste, ny].sort((a, b) => b.score - a.score || a.oprettet.localeCompare(b.oprettet)).slice(0, 10);
+    const idx = liste.findIndex(r => r.id === 999);
+    return route.fulfill({ json: { ok: true, id: 999, placering: idx === -1 ? null : idx + 1, liste } });
+  }
+  return route.fulfill({ json: { spil: 'taarn', liste } });
+});
+
 await page.goto(`${BASE}/spil/taarn/?seed=1`);
 
 // Startskærm og "Spil"
@@ -59,11 +82,12 @@ const noScroll = await page.evaluate(() => document.documentElement.scrollWidth 
 assert.ok(noScroll, 'ingen vandret scroll');
 
 // Et drop helt forbi → game over, best gemt
-await page.evaluate(() => {
+const miss = () => page.evaluate(() => {
   const s = window.GAME.state, top = s.blocks[s.blocks.length - 1];
   window.GAME.setMovingX(top.x + top.w + 60);
   window.GAME.drop();
 });
+await miss();
 s = await state();
 assert.equal(s.running, false, 'spillet kører ikke efter miss');
 assert.equal(s.score, 4, 'score uændret ved miss');
@@ -75,18 +99,12 @@ const stored = await page.evaluate(() => localStorage.getItem('zydy.taarn.best')
 assert.equal(stored, '4', 'highscore gemt i localStorage');
 assert.equal(await page.locator('#bestPill').textContent(), 'Bedste: 4');
 
-// Efter et par sekunder vælter tårnet: det svajer, og blokkene falder fra hinanden.
-// tumbleNow() springer ventetiden over, så testen ikke skal vente 3 s.
-assert.equal((await state()).tumble, null, 'tårnet står stille lige efter game over');
-await page.evaluate(() => window.GAME.tumbleNow());
-await page.waitForFunction(() => window.GAME.state.tumble === 'wobble', null, { timeout: 2000 });
-await page.waitForFunction(() => window.GAME.state.tumble === 'fall', null, { timeout: 4000 });
-await page.waitForTimeout(500);
-await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/taarn-vaelter.png' });
-s = await state();
-assert.equal(s.score, 4, 'score uændret mens tårnet vælter');
-assert.equal(s.blocks.length, 5, 'blokkene i state er uændrede');
-await page.waitForFunction(() => window.GAME.state.tumble === 'done', null, { timeout: 8000 });
+// Toplisten er fuld med højere scorer → ingen navneformular, bare listen med 10 rækker
+await page.waitForSelector('#hs .hs-liste');
+assert.equal(await page.locator('#hs .hs-raekke').count(), 10, 'top 10 vises');
+assert.equal(await page.locator('#hs .hs-form').count(), 0, 'score 4 kvalificerer ikke til en fuld liste');
+assert.equal(await page.locator('#hs .hs-raekke').first().locator('.hs-navn').textContent(), 'Spiller 1');
+assert.equal(sendte.length, 0, 'intet sendt til API\'et');
 
 // Spil igen → nyt spil, best bevaret
 await page.getByRole('button', { name: 'Spil igen' }).click();
@@ -95,11 +113,56 @@ s = await state();
 assert.equal(s.score, 0);
 assert.equal(s.best, 4);
 assert.equal(s.blocks.length, 1);
-assert.equal(s.tumble, null, 'væltet er nulstillet ved nyt spil');
 
-// Genindlæs: best læses fra localStorage
+// Runde 2 med kun tre på listen: score 2 kvalificerer → navneformular → gem → fremhævet på listen
+liste = liste.slice(0, 3);
+await page.waitForTimeout(200);
+for (let i = 0; i < 2; i++) {
+  await page.evaluate(() => {
+    const s = window.GAME.state, top = s.blocks[s.blocks.length - 1];
+    window.GAME.setMovingX(top.x);
+    window.GAME.drop();
+  });
+}
+await miss();
+await page.waitForSelector('#overScreen.on', { timeout: 4000 });
+assert.equal(await page.locator('#overScore').textContent(), '2');
+assert.equal(await page.locator('#rekord.on').count(), 0, 'ikke personlig rekord (best er 4)');
+await page.waitForSelector('#hs .hs-form');
+assert.ok((await page.locator('#hs .hs-titel').textContent()).includes('toplisten'), 'forklarer at man er på listen');
+const input = page.locator('#hs .hs-input');
+assert.equal(await input.inputValue(), '', 'intet navn husket endnu');
+await input.fill('Sofie');
+// Mellemrum i feltet må ikke starte et nyt spil
+await input.press('Space');
+assert.equal((await state()).running, false, 'mellemrum i navnefeltet starter ikke spillet');
+await input.fill('Sofie');
+await page.getByRole('button', { name: 'Gem på listen' }).click();
+await page.waitForSelector('#hs .hs-mig');
+assert.deepEqual(sendte, [{ navn: 'Sofie', score: 2 }], 'navn og score sendt til API\'et');
+assert.equal(await page.locator('#hs .hs-mig .hs-navn').textContent(), 'Sofie');
+assert.equal(await page.locator('#hs .hs-mig .hs-nr').textContent(), '4', 'nr. 4 efter de tre på 200, 199, 198');
+assert.equal(await page.locator('#hs .hs-titel').textContent(), 'Gemt som nr. 4');
+assert.equal(await page.locator('#hs .hs-raekke').count(), 4);
+assert.equal(await page.evaluate(() => localStorage.getItem('zydy.navn')), 'Sofie', 'navnet huskes til næste gang');
+await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/taarn-topliste.png' });
+
+// Genindlæs: best læses fra localStorage; "Topliste" på startskærmen viser listen (nu 4 rækker)
 await page.reload();
 assert.equal(await page.locator('#bestPill').textContent(), 'Bedste: 4');
+await page.getByRole('button', { name: 'Topliste' }).click();
+await page.waitForSelector('#listScreen.on .hs-liste');
+assert.equal(await page.locator('#hsListe .hs-raekke').count(), 4);
+assert.equal(await page.locator('#hsListe .hs-form').count(), 0, 'ingen formular uden score');
+await page.getByRole('button', { name: 'Tilbage' }).click();
+assert.ok(await page.locator('#startScreen.on').isVisible(), 'tilbage på startskærmen');
+
+// Fejl fra API'et må ikke vælte spillet
+forventetFejl = true;
+await page.unroute('**/api/highscore/**');
+await page.route('**/api/highscore/**', route => route.fulfill({ status: 500, json: { ok: false, fejl: 'test' } }));
+await page.getByRole('button', { name: 'Topliste' }).click();
+await page.waitForSelector('#hsListe .hs-fejl');
 
 assert.deepEqual(errors, [], 'ingen console-fejl');
 await browser.close();

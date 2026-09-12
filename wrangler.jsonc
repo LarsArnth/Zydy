@@ -1,18 +1,28 @@
 {
-  // Overblikssiden på https://zydy.dk. Ren statisk HTML fra ./public, ingen
-  // server-kode. Samme opsætning som KlaverApp, bare uden Cloudflare Access —
-  // siden er offentlig, den linker kun videre til apps.
+  // Overblikssiden på https://zydy.dk: statisk HTML fra ./public plus et lille
+  // højscore-API (src/worker.mjs) med data i Cloudflare D1. Samme opsætning som
+  // KlaverApp, bare uden Cloudflare Access — siden er offentlig.
   //
   // Udrulning:  npm run deploy   (kræver Cloudflare-legitimation, se README.md)
+  // Database:   npx wrangler@4 d1 execute zydy-highscore --remote --file schema.sql
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "zydy",
+  "main": "src/worker.mjs",
   "compatibility_date": "2026-09-01",
   "account_id": "f4da3a9d6a35690a095dd88f07d2433c",
 
   "assets": {
     "directory": "./public",
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Kun /api/* går til Worker-koden først; alt andet serveres direkte som filer.
+    "run_worker_first": ["/api/*"]
   },
+
+  // Højscorelisten. Gratis tier: 5 GB, 5 mio. læsninger og 100.000 skrivninger om dagen.
+  "d1_databases": [
+    { "binding": "DB", "database_name": "zydy-highscore", "database_id": "ce9da531-9fba-412b-8466-ebe62e9901bd" }
+  ],
 
   // Custom domains: Cloudflare opretter selv DNS-records for begge.
   "routes": [
