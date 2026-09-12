@@ -1,0 +1,865 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1030">
+<meta name="description" content="Gulvet er lava: lavaen stiger i stuen, og du skal klatre op ad sofaen, bordet og reolen. Hvor højt når du, før den tager dig?">
+<title>Gulvet er lava – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232a1a3e'/%3E%3Crect x='8' y='16' width='24' height='6' rx='2' fill='%23c98a4b'/%3E%3Crect x='34' y='30' width='22' height='7' rx='2' fill='%236c5ce7'/%3E%3Crect x='10' y='36' width='20' height='8' rx='3' fill='%232ec9c9'/%3E%3Cpath d='M0 46h64v18H0z' fill='%23ff6a2a'/%3E%3Crect x='14' y='6' width='9' height='11' rx='3' fill='%23ffd447'/%3E%3C/svg%3E">
+<style>
+  /*
+    «Gulvet er lava» – Selmas spilidé, bygget som et klatrespil.
+
+    Stuen ses fra siden og bliver ved opad: nogen har stablet møblerne, og
+    lavaen stiger nedefra. Man går til venstre og højre og hopper fra møbel til
+    møbel. Scoren er, hvor højt man nåede, før lavaen tog en.
+
+    Til forskel fra Obby (ét knaptryk, banen kører af sig selv) bestemmer man
+    selv farten her – men lavaen giver tidspresset, og man kan bevæge sig i to
+    retninger. Derfor tre knapper i bunden i stedet for ét tryk.
+
+    Verdenen regnes i enheder, hvor 1 enhed = 1 meter: stuen er 9 m bred, og
+    skærmen viser omkring 13 m ad gangen. Banen og fysikken bor i bane.mjs, så
+    den kan enhedstestes uden browser.
+  */
+  :root{
+    --bg:#14102b; --bg2:#241a44; --bg3:#3a2a5e; --text:#fff4e2; --muted:#b5a8d6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --is:#7fe6ff;
+    --lava:#ff6a2a; --ink:#20143a; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 10px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  button.pill{color:var(--text);font-weight:700;min-height:36px}
+
+  .wrap{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.4px}
+  #menuBtn[hidden]{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#1a1233}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Højden i venstre hjørne, rekorden i højre */
+  .hud{position:absolute;left:14px;top:12px;pointer-events:none;text-shadow:0 3px 14px rgba(0,0,0,.6);
+    opacity:0;transition:opacity .25s}
+  .stage.igang .hud{opacity:1}
+  .hud .lbl{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  #hoejde{display:block;font-size:52px;font-weight:800;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums;
+    transition:transform .12s}
+  #hoejde.bump{transform:scale(1.14)}
+  #hoejde small{font-size:22px;font-weight:700;color:var(--muted);letter-spacing:0}
+  .hud.hoejre{left:auto;right:14px;text-align:right}
+  #rekHud{display:block;font-size:26px;font-weight:800;line-height:1.1;color:var(--sun);font-variant-numeric:tabular-nums}
+
+  /* Rød kant når lavaen er lige i hælene */
+  .fare{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;
+    box-shadow:inset 0 -60px 70px -30px rgba(255,60,0,.85),inset 0 0 60px rgba(255,60,0,.35)}
+
+  /* Styringen: to gå-knapper til venstre tommel, en stor hop-knap til højre */
+  .styring{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between;
+    padding:12px 14px 14px;gap:12px;pointer-events:none}
+  .styring[hidden]{display:none}
+  .gaa{display:flex;gap:10px}
+  .knap{pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,244,226,.14);border:2px solid rgba(255,244,226,.25);color:var(--text);
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);font-weight:800;transition:transform .06s,background .1s}
+  .knap.tryk{background:rgba(255,212,71,.5);transform:scale(.94)}
+  .gaa .knap{width:74px;height:74px;border-radius:24px;font-size:30px}
+  .hopknap{width:100px;height:100px;border-radius:50%;font-size:19px;letter-spacing:.5px}
+  @media (max-width:360px){ .gaa .knap{width:64px;height:64px} .hopknap{width:86px;height:86px;font-size:17px} }
+
+  /* Beskeder midt på fladen */
+  .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .3s}
+  .msg.on{opacity:1}
+  #raab .big{font-size:clamp(30px,10vw,62px);font-weight:900;letter-spacing:-1.5px;line-height:1.05;color:#fff;
+    text-shadow:0 0 26px var(--lava),0 6px 0 #a5112f,0 10px 30px rgba(0,0,0,.6);transform:rotate(-3deg)}
+  #raab.on .big{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+  #raab .sub{margin-top:16px;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(20,16,43,.65);border-radius:999px;padding:8px 16px}
+  @keyframes pop{from{transform:scale(.3) rotate(-3deg);opacity:0}to{transform:scale(1) rotate(-3deg);opacity:1}}
+
+  /* Start- og slutskærm */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:18px 20px 24px;background:rgba(20,16,43,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .regler{display:flex;flex-direction:column;gap:7px;margin:0 0 14px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:9px 13px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .hs{margin-bottom:6px}
+  .hs .hs-liste{max-height:30vh}
+  .stor{font-size:64px;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--sun);
+    font-variant-numeric:tabular-nums;margin:2px 0 2px}
+  .stor small{font-size:26px;color:var(--muted);letter-spacing:0}
+  .under{font-size:15px;color:var(--muted);margin:0 0 8px}
+  .hint{font-size:15px;margin:14px 0 0}
+
+  @media (max-height:660px){
+    h1{font-size:30px} #hoejde{font-size:40px} .stor{font-size:48px} .hs .hs-liste{max-height:24vh}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+  }
+  @media (max-width:380px){ .top .name{display:none} }
+  @media (prefers-reduced-motion:reduce){
+    .btn,#hoejde,.knap{transition:none} #raab.on .big{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Gulvet er lava</div>
+    <button class="pill" id="menuBtn" hidden>Menu</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Stuen med lava"></canvas>
+
+    <div class="hud" aria-live="polite">
+      <span class="lbl">Højde</span>
+      <b id="hoejde">0<small> m</small></b>
+    </div>
+    <div class="hud hoejre">
+      <span class="lbl">Rekord</span>
+      <b id="rekHud">0 m</b>
+    </div>
+
+    <div class="fare" id="fare"></div>
+
+    <div class="styring" id="styring" hidden>
+      <div class="gaa">
+        <button class="knap" id="vBtn" aria-label="Gå til venstre">◀</button>
+        <button class="knap" id="hBtn" aria-label="Gå til højre">▶</button>
+      </div>
+      <button class="knap hopknap" id="hopBtn" aria-label="Hop">HOP</button>
+    </div>
+
+    <div class="msg" id="raab">
+      <div class="big" id="raabTekst">GULVET ER LAVA!</div>
+      <div class="sub" id="raabUnder">Klatr op ad møblerne</div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Gulvet er lava</h1>
+        <div class="regler" aria-hidden="true">
+          <span>🌋 <b>Lavaen stiger</b> – bliv aldrig stående</span>
+          <span>🛋️ <b>Hop op ad møblerne</b>, så højt du kan</span>
+          <span>❄️ <b>Isterninger</b> holder lavaen nede et øjeblik</span>
+        </div>
+        <div class="hs" id="hsStart"></div>
+        <button class="btn" id="startBtn">Spil</button>
+        <p class="hint">◀ ▶ for at gå, den store knap for at hoppe. På computer: piletaster og mellemrum.</p>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Lavaen tog dig!</h1>
+        <div class="stor" id="slutHoejde">0<small> m</small></div>
+        <p class="under" id="slutUnder">Din rekord er 0 m</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Spil igen</button>
+        <button class="btn ghost" id="tilbageBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="lava"></script>
+<script type="module">
+import {
+  RUM, KANT, SP_B, SP_H, VX, H_HOP, G, VJ, TRAMPOLIN, COYOTE, BUFFER,
+  KASSE_TID, FRYS_TID, IS_HOEJDE, LAVA_START, LAVA_HALE,
+  lavaFart, opretBane, mulberry32,
+} from './bane.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const harFastSeed = Number.isFinite(fastSeed);
+let seed = harFastSeed ? fastSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
+// Ældre Safari mangler roundRect
+if (!ctx.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const hoejdeEl = $('hoejde'), rekHud = $('rekHud'), fareEl = $('fare');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen'), styring = $('styring');
+const raab = $('raab'), raabTekst = $('raabTekst'), raabUnder = $('raabUnder'), menuBtn = $('menuBtn');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY_BEST = 'zydy.lava.best';
+const hentBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const gemBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+
+const DT = 1 / 120;                 // fast fysik-trin
+const HU_ONSKE = 13.5;              // så mange meter af stuen vil vi helst se ad gangen
+const HU_MIN = 11;                  // … men på en bred skærm må stuen hellere fylde mere
+const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1, dpr = 1, u = 30, Hu = HU_ONSKE, x0 = 0;
+function maal() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // En telefon på højkant har præcis den form, stuen har – dér fylder den hele
+  // bredden. En iPad på langs er for bred, og så zoomer vi lidt ind, så stuen
+  // ikke bliver en tynd strimmel; resten bliver til mørke sidevægge.
+  u = Math.min(W / RUM, H / HU_ONSKE);
+  u = Math.max(12, u, Math.min(W / RUM, H / HU_MIN));
+  Hu = H / u;
+  x0 = (W - RUM * u) / 2;           // stuen centreres; udenfor er der mørkt
+}
+maal();
+addEventListener('resize', maal);
+addEventListener('orientationchange', () => setTimeout(maal, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';                  // menu | spil | doed
+let bane = opretBane(seed);
+let T = 0, camY = -Hu * 0.42, lava = LAVA_START, frys = 0;
+let bedsteY = 0, hoejde = 0, best = hentBest();
+let ryst = 0, iLav = 0, faldne = [], stumper = [];
+let paused = false, lavaFrossen = false, acc = 0, sidst = 0;
+
+const spiller = { x: RUM / 2 - SP_B / 2, y: 0, vy: 0, paa: null, coyote: 0, buf: 0, vend: 1, gang: 0, gaar: false };
+const ind = { v: false, h: false };
+
+/* ---------- Banen ---------- */
+/** Sørger for at der er møbler op til højden y. */
+function sikrTil(y) { while (bane.top[0].y < y) bane.voksTil(bane.raekker.length); }
+
+/** Rækkerne der er værd at tegne og støde ind i lige nu. */
+function naere() {
+  while (iLav + 1 < bane.raekker.length && bane.raekker[iLav + 1][0].y < camY - 3) iLav++;
+  return bane.raekker.slice(iLav);
+}
+
+function nulstil() {
+  if (!harFastSeed) seed = (Math.random() * 4294967296) >>> 0;
+  bane = opretBane(seed);
+  iLav = 0; faldne = []; stumper = [];
+  T = 0; lava = LAVA_START; frys = 0; bedsteY = 0; hoejde = 0; ryst = 0;
+  spiller.x = RUM / 2 - SP_B / 2; spiller.y = 0; spiller.vy = 0; spiller.paa = bane.raekker[0][0];
+  spiller.coyote = 0; spiller.buf = 0; spiller.vend = 1; spiller.gang = 0; spiller.gaar = false;
+  camY = -Hu * 0.42;
+  sikrTil(camY + Hu + 6);
+  visHud();
+}
+
+/* ---------- Fysik ---------- */
+function hop() {
+  if (fase !== 'spil') return;
+  if (spiller.paa || spiller.coyote > 0) {
+    const puf = spiller.paa && spiller.paa.hopper;
+    spiller.vy = VJ * (puf ? TRAMPOLIN : 1);
+    if (puf) { skub(spiller.paa, '#5ee0a8', 10); rumler(6); }
+    spiller.paa = null; spiller.coyote = 0; spiller.buf = 0;
+  } else {
+    spiller.buf = BUFFER;             // trykket gemmes til landingen
+  }
+}
+
+/** Står spilleren stadig på møblet? */
+const overlapper = (p, x) => x + SP_B > p.x + 0.02 && x < p.x + p.w - 0.02;
+
+function skridt(dt) {
+  const s = spiller;
+  const naerv = naere().flat();
+  const retning = (ind.h ? 1 : 0) - (ind.v ? 1 : 0);
+  s.gaar = retning !== 0;
+  if (retning) s.vend = retning;
+  s.x = klem(s.x + retning * VX * dt, 0.02, RUM - SP_B - 0.02);
+  s.gang += (s.paa && s.gaar ? 1 : 0) * dt * 9;
+  s.coyote = Math.max(0, s.coyote - dt);
+  s.buf = Math.max(0, s.buf - dt);
+
+  if (s.paa) {
+    s.y = s.paa.y;
+    s.vy = 0;
+    if (!overlapper(s.paa, s.x) || s.paa.faldet) { s.paa = null; s.coyote = COYOTE; }
+  } else {
+    const y0 = s.y;
+    s.vy -= G * dt;
+    s.y += s.vy * dt;
+    if (s.vy <= 0) {
+      for (const p of naerv) {
+        if (p.faldet || !overlapper(p, s.x)) continue;
+        if (y0 >= p.y - 0.02 && s.y <= p.y) { land(p); break; }
+      }
+    }
+  }
+
+  // Flyttekasser tæller ned, når man har stået på dem
+  if (s.paa && s.paa.styrter && s.paa.tik == null) s.paa.tik = KASSE_TID;
+  for (const p of naerv) {
+    if (p.tik == null || p.faldet) continue;
+    p.tik -= dt;
+    if (p.tik <= 0) {
+      p.faldet = true;
+      faldne.push({ p, y: p.y, vy: 0 });
+      if (s.paa === p) { s.paa = null; s.coyote = 0; }
+    }
+  }
+
+  // Isterninger
+  for (const p of naerv) {
+    if (!p.is || p.isTaget) continue;
+    const ix = p.x + p.w / 2, iy = p.y + IS_HOEJDE;
+    if (Math.abs(ix - (s.x + SP_B / 2)) < 0.75 && Math.abs(iy - (s.y + SP_H / 2)) < 0.9) {
+      p.isTaget = true; frys = FRYS_TID;
+      skub(p, '#7fe6ff', 14);
+      navigator.vibrate && navigator.vibrate(15);
+      sigTil('IS!', 'Lavaen står stille et øjeblik', 1.1);
+    }
+  }
+
+  // Lavaen
+  if (frys > 0) frys = Math.max(0, frys - dt);
+  else lava += lavaFart(bedsteY) * dt;
+  lava = Math.max(lava, bedsteY - LAVA_HALE);     // den sakker aldrig helt bagud
+
+  bedsteY = Math.max(bedsteY, s.y);
+  const nyHoejde = Math.max(0, Math.floor(bedsteY));
+  if (nyHoejde !== hoejde) { hoejde = nyHoejde; visHud(); }
+
+  if (s.y <= lava) doed();
+}
+
+function land(p) {
+  const s = spiller;
+  s.y = p.y; s.vy = 0; s.paa = p; s.coyote = 0;
+  if (!roligt) skub(p, '#d8c6a8', 4);
+  if (s.buf > 0) { s.buf = 0; hop(); }
+}
+
+/* ---------- Pynt ---------- */
+function skub(p, farve, n) {
+  if (roligt) return;
+  for (let i = 0; i < n; i++) {
+    stumper.push({
+      x: p.x + p.w / 2 + (Math.random() - 0.5) * p.w * 0.8, y: p.y + 0.1,
+      vx: (Math.random() - 0.5) * 4, vy: 1 + Math.random() * 4,
+      s: 0.06 + Math.random() * 0.12, t: 0, liv: 0.5 + Math.random() * 0.5, farve,
+    });
+  }
+}
+function rumler(styrke) { if (!roligt) ryst = Math.max(ryst, styrke / 30); }
+
+let raabTil = 0;
+function sigTil(stor, lille, sek) {
+  raabTekst.textContent = stor; raabUnder.textContent = lille;
+  raab.classList.add('on'); raabTil = T + sek;
+}
+
+/* ---------- Skærmene ---------- */
+function visHud() {
+  hoejdeEl.innerHTML = hoejde + '<small> m</small>';
+  hoejdeEl.classList.add('bump'); setTimeout(() => hoejdeEl.classList.remove('bump'), 120);
+  rekHud.textContent = best + ' m';
+}
+
+function start() {
+  nulstil();
+  fase = 'spil';
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  styring.hidden = false; menuBtn.hidden = false; stage.classList.add('igang');
+  sigTil('GULVET ER LAVA!', 'Klatr op ad møblerne', 1.8);
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+function doed() {
+  if (fase !== 'spil') return;
+  fase = 'doed';
+  spiller.doedT = T;
+  ind.v = ind.h = false;
+  for (const el of [$('vBtn'), $('hBtn'), $('hopBtn')]) el.classList.remove('tryk');
+  rumler(18);
+  navigator.vibrate && navigator.vibrate([60, 40, 60]);
+  if (!roligt) skub({ x: spiller.x - 0.4, w: SP_B + 0.8, y: spiller.y }, '#ff7a2a', 22);
+  const ny = hoejde > best;
+  if (ny) { best = hoejde; gemBest(best); }
+  styring.hidden = true; stage.classList.remove('igang');
+  raab.classList.remove('on');
+  $('slutTitel').textContent = ny && hoejde > 0 ? 'Ny rekord!' : 'Lavaen tog dig!';
+  $('slutHoejde').innerHTML = hoejde + '<small> m</small>';
+  $('slutUnder').textContent = ny && hoejde > 0 ? 'Så højt er du aldrig nået før.' : 'Din rekord er ' + best + ' m';
+  slutScreen.classList.add('on');
+  visHud();
+  Highscore.panel($('hsSlut'), { spil: 'lava', score: hoejde, format: v => v + ' m' });
+}
+
+function tilMenu() {
+  fase = 'menu';
+  nulstil();
+  slutScreen.classList.remove('on'); startScreen.classList.add('on');
+  styring.hidden = true; menuBtn.hidden = true; raab.classList.remove('on'); stage.classList.remove('igang');
+  Highscore.panel($('hsStart'), { spil: 'lava', format: v => v + ' m' });
+}
+
+/* ---------- Løkken ---------- */
+function tik(dt) {
+  T += dt;
+  if (fase === 'spil') skridt(dt);
+  else if (fase === 'doed') lava += 0.5 * dt;        // lavaen fylder billedet bag slutskærmen
+  else if (fase === 'menu') lava = LAVA_START;
+
+  if (raabTil && T > raabTil) { raab.classList.remove('on'); raabTil = 0; }
+
+  const maalY = (fase === 'menu' ? 0 : spiller.y) - Hu * 0.42;
+  camY += (maalY - camY) * Math.min(1, dt * 6);
+  camY = Math.max(camY, lava - Hu * 0.75);           // lavaen skal kunne ses komme
+  sikrTil(camY + Hu + 6);
+
+  ryst = Math.max(0, ryst - dt * 1.5);
+  for (const q of stumper) { q.t += dt; q.vy -= G * 0.5 * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
+  stumper = stumper.filter(q => q.t < q.liv);
+  for (const f of faldne) { f.vy -= G * 0.7 * dt; f.y += f.vy * dt; }
+  faldne = faldne.filter(f => f.y > lava - 2);
+
+  // Fare-glød når lavaen er tæt på
+  const naer = fase === 'spil' && spiller.y - lava < 3.2;
+  fareEl.style.opacity = naer ? String(klem(1 - (spiller.y - lava) / 3.2, 0.15, 0.9)) : '0';
+}
+
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!sidst) sidst = nu;
+  let dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  if (!paused) { acc += dt; while (acc >= DT) { tik(DT); acc -= DT; } }
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ---------- Tegning ---------- */
+const sx = wx => x0 + wx * u;
+const sy = wy => H - (wy - camY) * u;
+const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
+const fyld = (x, y, w, h, r, farve) => { ctx.fillStyle = farve; rr(x, y, w, h, r || 0); ctx.fill(); };
+
+/** Møbeltegninger. x/y/w/k er i px: (x,y) er øverste venstre hjørne af oversiden, k er kroppens højde. */
+const TEGN = {
+  gulv(x, y, w, k, p) {
+    fyld(x, y, w, k, 0, '#7a4f2c');
+    fyld(x, y, w, k * 0.16, 0, '#9c6a3c');
+    ctx.fillStyle = 'rgba(0,0,0,.22)';
+    for (let i = 1; i < 10; i++) ctx.fillRect(x + (w * i) / 10, y, Math.max(1, u * 0.03), k);
+  },
+  sofa(x, y, w, k, p) {
+    const f = 200 + Math.floor(p.f * 130);
+    fyld(x, y, w, k, k * 0.28, `hsl(${f},38%,44%)`);                 // ryglæn
+    fyld(x, y, w, k * 0.34, [k * 0.28, k * 0.28, 0, 0], `hsl(${f},40%,54%)`);
+    fyld(x + w * 0.05, y + k * 0.42, w * 0.42, k * 0.5, k * 0.16, `hsl(${f},34%,38%)`);
+    fyld(x + w * 0.53, y + k * 0.42, w * 0.42, k * 0.5, k * 0.16, `hsl(${f},34%,38%)`);
+    fyld(x, y + k * 0.34, w * 0.11, k * 0.66, k * 0.2, `hsl(${f},38%,48%)`);
+    fyld(x + w * 0.89, y + k * 0.34, w * 0.11, k * 0.66, k * 0.2, `hsl(${f},38%,48%)`);
+    ben(x, y + k, w, '#5a3a22');
+  },
+  seng(x, y, w, k, p) {
+    fyld(x, y, w, k, k * 0.2, '#e9e2d2');                            // madras
+    fyld(x + w * 0.28, y, w * 0.72, k * 0.62, k * 0.2, `hsl(${190 + p.f * 140},45%,52%)`);   // dyne
+    fyld(x + w * 0.03, y + k * 0.06, w * 0.24, k * 0.4, k * 0.18, '#fff');                   // pude
+    fyld(x, y + k * 0.62, w, k * 0.38, 0, '#8b5e34');
+    ben(x, y + k, w, '#6b451f');
+  },
+  bord(x, y, w, k, p) {
+    fyld(x, y, w, k * 0.17, u * 0.06, '#b57c46');
+    fyld(x, y, w, k * 0.06, 0, '#d09a5f');
+    const b = w * 0.07;
+    for (const t of [0.08, 0.85]) fyld(x + w * t, y + k * 0.17, b, k * 0.83, 0, '#8b5e34');
+  },
+  reol(x, y, w, k, p) {
+    fyld(x, y, w, k, u * 0.05, '#8b5e34');
+    fyld(x + u * 0.08, y + u * 0.08, w - u * 0.16, k - u * 0.16, 0, '#5e3d21');
+    const hylder = Math.max(2, Math.round(k / (u * 0.62)));
+    const r = mulberry32(Math.round(p.x * 1000) + p.nr * 97);
+    for (let i = 0; i < hylder; i++) {
+      const hy = y + u * 0.08 + ((k - u * 0.16) / hylder) * i;
+      const hh = (k - u * 0.16) / hylder;
+      fyld(x + u * 0.08, hy + hh - u * 0.07, w - u * 0.16, u * 0.07, 0, '#8b5e34');
+      let bx = x + u * 0.18;
+      while (bx < x + w - u * 0.3) {
+        const bw = u * (0.1 + r() * 0.1), bh = hh * (0.5 + r() * 0.35);
+        fyld(bx, hy + hh - u * 0.07 - bh, bw, bh, u * 0.02, `hsl(${Math.floor(r() * 360)},52%,${45 + r() * 18}%)`);
+        bx += bw + u * 0.04;
+      }
+    }
+  },
+  kommode(x, y, w, k, p) {
+    fyld(x, y, w, k, u * 0.06, '#a8703f');
+    fyld(x, y, w, k * 0.09, u * 0.06, '#c78d54');
+    for (let i = 0; i < 3; i++) {
+      const sy2 = y + k * (0.14 + i * 0.28);
+      fyld(x + w * 0.07, sy2, w * 0.86, k * 0.22, u * 0.05, '#8b5e34');
+      fyld(x + w * 0.45, sy2 + k * 0.09, w * 0.1, k * 0.05, u * 0.03, '#ffd447');
+    }
+  },
+  tvbord(x, y, w, k, p) {
+    fyld(x, y, w, k, u * 0.06, '#4a3b62');
+    fyld(x + w * 0.08, y + k * 0.18, w * 0.84, k * 0.55, u * 0.05, '#12101f');
+    fyld(x + w * 0.12, y + k * 0.24, w * 0.76, k * 0.43, u * 0.03, `hsl(${200 + p.f * 60},60%,${28 + p.f * 20}%)`);
+    ben(x, y + k, w, '#2f2542');
+  },
+  klaver(x, y, w, k, p) {
+    fyld(x, y, w, k, u * 0.05, '#241a2e');
+    fyld(x, y, w, k * 0.1, u * 0.05, '#3b2c4a');
+    const ty = y + k * 0.46, th = k * 0.22;
+    fyld(x + w * 0.06, ty, w * 0.88, th, u * 0.03, '#f6f1e4');
+    ctx.fillStyle = '#1a1420';
+    const n = Math.max(6, Math.round(w / (u * 0.22)));
+    for (let i = 1; i < n; i++) if (i % 7 !== 3 && i % 7 !== 0) ctx.fillRect(x + w * 0.06 + (w * 0.88 * i) / n, ty, u * 0.07, th * 0.6);
+    ben(x, y + k, w, '#1a1420');
+  },
+  stol(x, y, w, k, p) {                                              // skammel
+    fyld(x, y, w, k * 0.2, u * 0.07, `hsl(${20 + p.f * 30},45%,52%)`);
+    for (const t of [0.1, 0.78]) {
+      ctx.fillStyle = '#7a5230';
+      ctx.beginPath();
+      ctx.moveTo(x + w * t, y + k * 0.2); ctx.lineTo(x + w * (t + 0.12), y + k * 0.2);
+      ctx.lineTo(x + w * (t + 0.2 - 0.1 * t), y + k); ctx.lineTo(x + w * (t + 0.08 - 0.1 * t), y + k);
+      ctx.closePath(); ctx.fill();
+    }
+  },
+  hylde(x, y, w, k, p) {
+    fyld(x, y, w, Math.max(k, u * 0.18), u * 0.04, '#c08a52');
+    fyld(x, y, w, u * 0.05, 0, '#dda86c');
+    ctx.fillStyle = '#6b4a2a';
+    for (const t of [0.12, 0.76]) {
+      ctx.beginPath();
+      ctx.moveTo(x + w * t, y + Math.max(k, u * 0.18));
+      ctx.lineTo(x + w * (t + 0.12), y + Math.max(k, u * 0.18));
+      ctx.lineTo(x + w * t, y + Math.max(k, u * 0.18) + u * 0.3);
+      ctx.closePath(); ctx.fill();
+    }
+  },
+  puf(x, y, w, k, p) {                                               // trampolin-puf: springer man højere fra
+    fyld(x, y, w, k * 0.42, u * 0.2, '#3fae76');
+    fyld(x, y, w, k * 0.18, u * 0.2, '#7ff0b6');
+    ctx.strokeStyle = '#2a7d55'; ctx.lineWidth = Math.max(2, u * 0.08); ctx.lineCap = 'round';
+    ctx.beginPath();
+    const fjy = y + k * 0.42, fjh = k * 0.58, trin = 5;
+    for (const t of [0.22, 0.78]) {
+      ctx.moveTo(x + w * t, fjy);
+      for (let i = 1; i <= trin; i++) ctx.lineTo(x + w * t + (i % 2 ? u * 0.16 : -u * 0.16), fjy + (fjh * i) / trin);
+    }
+    ctx.stroke();
+    ctx.fillStyle = '#0f2f22'; ctx.textAlign = 'center'; ctx.font = `800 ${Math.round(u * 0.35)}px sans-serif`;
+    ctx.fillText('▲', x + w / 2, y - u * 0.12);
+  },
+  kasse(x, y, w, k, p) {
+    const rystet = p.tik != null && !p.faldet;
+    const dx = rystet && !roligt ? Math.sin(T * 40) * u * 0.06 : 0;
+    fyld(x + dx, y, w, k, u * 0.04, rystet ? '#c98a4b' : '#b57b3f');
+    fyld(x + dx, y, w, k * 0.12, u * 0.04, '#d9a163');
+    ctx.fillStyle = '#8a5a2b';
+    ctx.fillRect(x + dx + w * 0.46, y, u * 0.1, k);
+    ctx.fillRect(x + dx, y + k * 0.3, w, u * 0.09);
+    if (rystet) { ctx.fillStyle = 'rgba(255,80,40,.35)'; rr(x + dx, y, w, k, u * 0.04); ctx.fill(); }
+  },
+};
+
+function ben(x, yb, w, farve) {
+  ctx.fillStyle = farve;
+  for (const t of [0.06, 0.88]) ctx.fillRect(x + w * t, yb - u * 0.02, w * 0.06, u * 0.22);
+}
+
+/** Pynt på væggen: billeder, vinduer og lamper, fast pr. 3 meter. */
+function tegnVaeg() {
+  const fra = Math.floor(camY / 3) - 1, til = Math.ceil((camY + Hu) / 3) + 1;
+  for (let b = fra; b <= til; b++) {
+    const r = mulberry32(b * 7919 + 13);
+    const antal = r() < 0.4 ? 0 : 1;
+    for (let i = 0; i < antal; i++) {
+      const slags = r();
+      const wx = KANT + r() * (RUM - 2 * KANT - 1.4), wy = b * 3 + 0.6 + r() * 1.4;
+      const px = sx(wx), py = sy(wy + 1.1), bw = u * (0.9 + r() * 0.6), bh = u * (0.7 + r() * 0.6);
+      if (py > H + 40 || py + bh < -40) continue;
+      if (slags < 0.42) {                       // indrammet billede
+        fyld(px, py, bw, bh, u * 0.04, '#6b4a2a');
+        fyld(px + u * 0.08, py + u * 0.08, bw - u * 0.16, bh - u * 0.16, 0, `hsl(${Math.floor(r() * 360)},35%,42%)`);
+      } else if (slags < 0.72) {                // vindue med nat udenfor
+        fyld(px, py, bw, bh * 1.2, u * 0.06, '#4a3a63');
+        fyld(px + u * 0.07, py + u * 0.07, bw - u * 0.14, bh * 1.2 - u * 0.14, u * 0.03, '#1a2450');
+        ctx.fillStyle = 'rgba(255,255,255,.45)';
+        for (let s = 0; s < 3; s++) { ctx.beginPath(); ctx.arc(px + bw * (0.2 + r() * 0.6), py + bh * (0.2 + r() * 0.7), u * 0.04, 0, 6.283); ctx.fill(); }
+        ctx.fillStyle = '#4a3a63';
+        ctx.fillRect(px + bw / 2 - u * 0.03, py, u * 0.06, bh * 1.2);
+      } else {                                  // væglampe
+        fyld(px + bw * 0.35, py + bh * 0.4, bw * 0.3, bh * 0.5, u * 0.03, '#5a4a72');
+        ctx.fillStyle = 'rgba(255,212,71,.85)';
+        ctx.beginPath();
+        ctx.moveTo(px + bw * 0.2, py + bh * 0.42); ctx.lineTo(px + bw * 0.8, py + bh * 0.42);
+        ctx.lineTo(px + bw * 0.66, py + bh * 0.1); ctx.lineTo(px + bw * 0.34, py + bh * 0.1);
+        ctx.closePath(); ctx.fill();
+        const g = ctx.createRadialGradient(px + bw / 2, py + bh * 0.3, 0, px + bw / 2, py + bh * 0.3, u * 2.4);
+        g.addColorStop(0, 'rgba(255,212,71,.28)'); g.addColorStop(1, 'rgba(255,212,71,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px + bw / 2, py + bh * 0.3, u * 2.4, 0, 6.283); ctx.fill();
+      }
+    }
+  }
+}
+
+function tegnSpiller() {
+  const s = spiller;
+  const px = sx(s.x), py = sy(s.y + SP_H), pw = SP_B * u, ph = SP_H * u;
+  const iLuft = !s.paa;
+  const sving = s.paa && s.gaar ? Math.sin(s.gang) : iLuft ? 0.6 : 0;
+  ctx.save();
+  ctx.translate(px + pw / 2, py + ph);
+  ctx.scale(s.vend, 1);
+  ctx.translate(-pw / 2, -ph);
+  // ben
+  ctx.fillStyle = '#3a4a8c';
+  for (const [i, t] of [[0, 0.18], [1, 0.56]]) {
+    const off = sving * (i ? -1 : 1) * pw * 0.22;
+    ctx.save(); ctx.translate(pw * t + pw * 0.13, ph * 0.72);
+    ctx.rotate(off * 0.06);
+    ctx.beginPath(); ctx.roundRect(-pw * 0.13, 0, pw * 0.26, ph * 0.29, pw * 0.1); ctx.fill();
+    ctx.restore();
+  }
+  // krop
+  fyld(pw * 0.1, ph * 0.4, pw * 0.8, ph * 0.36, pw * 0.2, '#ffd447');
+  // arme (op over hovedet, når man er i luften)
+  ctx.fillStyle = '#f2b06a';
+  ctx.save(); ctx.translate(pw * 0.06, ph * 0.44); ctx.rotate(iLuft ? -0.9 : sving * 0.5);
+  ctx.beginPath(); ctx.roundRect(-pw * 0.07, 0, pw * 0.16, ph * 0.3, pw * 0.08); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.translate(pw * 0.86, ph * 0.44); ctx.rotate(iLuft ? 0.9 : -sving * 0.5);
+  ctx.beginPath(); ctx.roundRect(-pw * 0.07, 0, pw * 0.16, ph * 0.3, pw * 0.08); ctx.fill(); ctx.restore();
+  // hoved
+  ctx.fillStyle = '#f6c48c';
+  ctx.beginPath(); ctx.arc(pw * 0.5, ph * 0.24, pw * 0.33, 0, 6.283); ctx.fill();
+  ctx.fillStyle = '#5a3a22';                                    // hår
+  ctx.beginPath(); ctx.arc(pw * 0.5, ph * 0.2, pw * 0.34, Math.PI * 1.05, Math.PI * 2.05); ctx.fill();
+  ctx.fillStyle = '#20143a';                                    // øjne
+  ctx.beginPath(); ctx.arc(pw * 0.62, ph * 0.24, pw * 0.06, 0, 6.283); ctx.fill();
+  ctx.beginPath(); ctx.arc(pw * 0.38, ph * 0.24, pw * 0.06, 0, 6.283); ctx.fill();
+  ctx.strokeStyle = '#20143a'; ctx.lineWidth = Math.max(1.5, pw * 0.05); ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (iLuft) ctx.arc(pw * 0.5, ph * 0.3, pw * 0.11, 0.15, Math.PI - 0.15);      // åben mund
+  else ctx.arc(pw * 0.5, ph * 0.29, pw * 0.12, 0.25, Math.PI - 0.25);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function tegnIsterning(p) {
+  const ix = sx(p.x + p.w / 2), iy = sy(p.y + IS_HOEJDE + Math.sin(T * 2.5 + p.f * 6) * 0.08);
+  const s = u * 0.42;
+  ctx.save(); ctx.translate(ix, iy); ctx.rotate(Math.sin(T * 1.4 + p.f * 6) * 0.15);
+  ctx.shadowColor = '#7fe6ff'; ctx.shadowBlur = 16;
+  fyld(-s / 2, -s / 2, s, s, s * 0.22, 'rgba(127,230,255,.9)');
+  ctx.shadowBlur = 0;
+  fyld(-s * 0.3, -s * 0.34, s * 0.28, s * 0.24, s * 0.1, 'rgba(255,255,255,.75)');
+  ctx.restore();
+}
+
+function tegn() {
+  ctx.save();
+  if (ryst > 0) ctx.translate((Math.random() - 0.5) * ryst * 26, (Math.random() - 0.5) * ryst * 26);
+
+  // Uden for stuen (en iPad på langs er bredere end stuen): tyk mørk mur
+  ctx.fillStyle = '#0d0a1c'; ctx.fillRect(-30, -30, W + 60, H + 60);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0, -40, RUM * u, H + 80); ctx.clip();
+
+  // Væggen bag stuen
+  const vg = ctx.createLinearGradient(0, 0, 0, H);
+  vg.addColorStop(0, '#251a44'); vg.addColorStop(1, '#3a2450');
+  ctx.fillStyle = vg; ctx.fillRect(-30, -30, W + 60, H + 60);
+  // Tapetstriber
+  ctx.fillStyle = 'rgba(255,255,255,.035)';
+  for (let i = 0; i < RUM; i += 0.9) ctx.fillRect(sx(i), -30, u * 0.45, H + 60);
+  tegnVaeg();
+
+  const raekker = naere();
+  // Faldende flyttekasser
+  for (const f of faldne) {
+    const p = f.p;
+    ctx.save(); ctx.translate(sx(p.x + p.w / 2), sy(f.y));
+    ctx.rotate((f.y - p.y) * 0.5);
+    TEGN.kasse(-p.w * u / 2, 0, p.w * u, p.krop * u, { ...p, tik: null });
+    ctx.restore();
+  }
+  // Møblerne
+  for (const raekke of raekker) {
+    for (const p of raekke) {
+      if (p.faldet) continue;
+      const py = sy(p.y);
+      if (py < -80 || py > H + 120) continue;
+      (TEGN[p.slags] || TEGN.kommode)(sx(p.x), py, p.w * u, Math.max(u * 0.2, p.krop * u), p);
+      if (p.is && !p.isTaget) tegnIsterning(p);
+    }
+  }
+
+  if (fase !== 'menu') tegnSpiller();
+
+  // Stumper
+  for (const q of stumper) {
+    ctx.globalAlpha = Math.max(0, 1 - q.t / q.liv);
+    ctx.fillStyle = q.farve;
+    ctx.fillRect(sx(q.x), sy(q.y), q.s * u, q.s * u);
+  }
+  ctx.globalAlpha = 1;
+
+  tegnLava();
+
+  // Skygge langs væggene, så stuen ser ud til at have dybde
+  const sk = ctx.createLinearGradient(x0, 0, x0 + u * 0.9, 0);
+  sk.addColorStop(0, 'rgba(0,0,0,.45)'); sk.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sk; ctx.fillRect(x0, -30, u * 0.9, H + 60);
+  const sh = ctx.createLinearGradient(x0 + RUM * u, 0, x0 + RUM * u - u * 0.9, 0);
+  sh.addColorStop(0, 'rgba(0,0,0,.45)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sh; ctx.fillRect(x0 + RUM * u - u * 0.9, -30, u * 0.9, H + 60);
+  ctx.restore();
+  ctx.restore();
+}
+
+function tegnLava() {
+  const ly = sy(lava);
+  if (ly < -40) return;
+  const frossen = frys > 0;
+  // Glød over overfladen
+  const gl = ctx.createLinearGradient(0, ly - 2.2 * u, 0, ly);
+  gl.addColorStop(0, frossen ? 'rgba(127,230,255,0)' : 'rgba(255,110,40,0)');
+  gl.addColorStop(1, frossen ? 'rgba(127,230,255,.35)' : 'rgba(255,110,40,.5)');
+  ctx.fillStyle = gl; ctx.fillRect(-30, ly - 2.2 * u, W + 60, 2.2 * u);
+
+  const lg = ctx.createLinearGradient(0, ly, 0, H);
+  if (frossen) { lg.addColorStop(0, '#9fdfff'); lg.addColorStop(0.3, '#4b7fb5'); lg.addColorStop(1, '#5a2a2a'); }
+  else { lg.addColorStop(0, '#ffd06a'); lg.addColorStop(0.22, '#ff6a2a'); lg.addColorStop(1, '#a3101c'); }
+  ctx.fillStyle = lg;
+  ctx.beginPath(); ctx.moveTo(-30, H + 40); ctx.lineTo(-30, ly);
+  for (let px = -30; px <= W + 30; px += 6) {
+    const wx = (px - x0) / u;
+    ctx.lineTo(px, ly + Math.sin(wx * 1.6 + T * 2.1) * 0.11 * u + Math.sin(wx * 0.55 - T * 1.2) * 0.09 * u);
+  }
+  ctx.lineTo(W + 30, H + 40); ctx.fill();
+
+  if (frossen) {                                    // isskorpe
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = Math.max(2, u * 0.07);
+    ctx.beginPath();
+    for (let px = -30; px <= W + 30; px += 6) {
+      const wx = (px - x0) / u, yy = ly + Math.sin(wx * 1.6 + T * 2.1) * 0.11 * u;
+      px === -30 ? ctx.moveTo(px, yy) : ctx.lineTo(px, yy);
+    }
+    ctx.stroke();
+  } else {                                          // bobler
+    ctx.fillStyle = 'rgba(255,232,140,.6)';
+    for (let n = 0; n < 8; n++) {
+      const f = (T * 0.32 + n * 0.125) % 1;
+      const bx = ((n * 137.5) % (W + 40)) - 20;
+      ctx.beginPath(); ctx.arc(bx, ly + 0.35 * u + f * Math.max(0, H - ly), (0.05 + (1 - f) * 0.1) * u, 0, 6.283); ctx.fill();
+    }
+  }
+}
+
+/* ---------- Styring ---------- */
+/*
+  Tre faste knapper i bunden: ◀ ▶ under venstre tommel og en stor HOP under
+  højre. Tommelfingrene hviler i bunden både på iPhone og iPad, og på en iPad
+  kan man slet ikke nå toppen af skærmen, mens man holder den – derfor ikke
+  "tryk øverst for at hoppe". Knapperne er gennemsigtige, så stuen kan ses.
+*/
+function knap(el, ned, op) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    el.setPointerCapture && el.setPointerCapture(e.pointerId);
+    el.classList.add('tryk'); ned();
+  });
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) {
+    el.addEventListener(t, () => { el.classList.remove('tryk'); op && op(); });
+  }
+}
+knap($('vBtn'), () => { ind.v = true; }, () => { ind.v = false; });
+knap($('hBtn'), () => { ind.h = true; }, () => { ind.h = false; });
+knap($('hopBtn'), () => hop());
+
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') { ind.v = true; e.preventDefault(); }
+  else if (e.code === 'ArrowRight' || e.code === 'KeyD') { ind.h = true; e.preventDefault(); }
+  else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+    e.preventDefault();
+    if (!e.repeat) { if (fase === 'spil') hop(); else if (fase === 'menu') start(); }
+  }
+});
+addEventListener('keyup', e => {
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') ind.v = false;
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') ind.h = false;
+});
+addEventListener('blur', () => { ind.v = ind.h = false; });
+
+$('startBtn').addEventListener('click', start);
+$('igenBtn').addEventListener('click', start);
+$('tilbageBtn').addEventListener('click', tilMenu);
+menuBtn.addEventListener('click', tilMenu);
+
+/* ---------- Start ---------- */
+nulstil();
+visHud();
+Highscore.panel($('hsStart'), { spil: 'lava', format: v => v + ' m' });
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  seed, start, tilMenu, hop, tik,
+  styr(r) { ind.v = r < 0; ind.h = r > 0; },
+  pause() { paused = true; }, resume() { paused = false; sidst = 0; acc = 0; },
+  doedNu() { doed(); },
+  /** Møblerne i række nr. n (banen vokser om nødvendigt). */
+  raekke(n) { bane.voksTil(n); return bane.raekker[n].map(p => ({ ...p })); },
+  /** Stiller spilleren midt på møbel nr. i i række nr. n (tests). */
+  placer(n, i = 0) {
+    bane.voksTil(n);
+    const p = bane.raekker[n][Math.min(i, bane.raekker[n].length - 1)];
+    spiller.x = klem(p.x + p.w / 2 - SP_B / 2, 0.02, RUM - SP_B - 0.02);
+    spiller.y = p.y; spiller.vy = 0; spiller.paa = p; spiller.coyote = 0; spiller.buf = 0;
+    bedsteY = Math.max(bedsteY, p.y);
+    lava = Math.min(lava, p.y - 6);
+    camY = p.y - Hu * 0.42;
+    sikrTil(camY + Hu + 6);
+    return { nr: p.nr, x: p.x, w: p.w, y: p.y, slags: p.slags, is: !!p.is, styrter: !!p.styrter };
+  },
+  /** Til test: lad lavaen stå stille, så generatoren kan afprøves i ro. */
+  frysLava(v) { lavaFrossen = !!v; if (v) frys = Infinity; else frys = 0; },
+  get state() {
+    return {
+      fase, hoejde, best, lava, frys, T, camY, seed, lavaFrossen,
+      spiller: {
+        x: spiller.x, y: spiller.y, vy: spiller.vy, vend: spiller.vend,
+        paa: spiller.paa ? { ...spiller.paa } : null,
+      },
+      ind: { ...ind },
+      raekker: bane.raekker.length,
+      naere: naere().flat().map(p => ({ nr: p.nr, x: p.x, w: p.w, y: p.y, slags: p.slags, faldet: !!p.faldet, is: p.is, isTaget: !!p.isTaget })),
+      konst: { RUM, SP_B, SP_H, VX, H_HOP, VJ, G, FRYS_TID },
+    };
+  },
+};
+</script>
+</body></html>
