@@ -1,0 +1,752 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#131a2e">
+<meta name="description" content="Slotskamp: sæt riddere, bueskytter og kæmper ind for magi, send dem over broen og vælt modstanderens tårne, før tiden løber ud.">
+<title>Slotskamp – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23131a2e'/%3E%3Crect x='12' y='26' width='16' height='26' fill='%234d8dff'/%3E%3Crect x='36' y='26' width='16' height='26' fill='%23ff5c66'/%3E%3Cpath d='M12 26l4-8 4 6 4-6 4 8z' fill='%23ffd447'/%3E%3Cpath d='M36 26l4-8 4 6 4-6 4 8z' fill='%23ffd447'/%3E%3C/svg%3E">
+<style>
+  /*
+    Slotskamp – Selmas ønske «Clash royale».
+
+    Banen er 100 × 180 enheder (kamp.mjs) og tegnes i midten af fladen, så den
+    er lige høj som bred på både en iPhone på højkant og en iPad på tværs.
+    Hånden med de fire kort ligger nedenunder — uden for fladen, så fingeren
+    aldrig skygger for det, man skal ramme.
+
+    Tre greb er værd at huske:
+      1) Man vælger et kort og trykker (eller trækker) derhen, hvor troppen skal
+         ned. Mens et kort er valgt, lyser ens egen halvdel op — dét er den
+         eneste regel for, hvor man må sætte noget.
+      2) Kampen kører i kamp.mjs; her tegnes den bare. Derfor kan testen spole
+         to minutter frem på et øjeblik med GAME.frem().
+      3) Modstanderen bliver hårdere for hver anden sejr i træk, og det er
+         sejre i træk, der står på toplisten.
+  */
+  :root{
+    --bg:#131a2e; --bg2:#1d2745; --bg3:#2a3760; --text:#f2f6ff; --muted:#9fb0d6;
+    --sun:#ffd447; --coral:#ff4d5e; --mint:#3ddc84; --sky:#4d8dff; --magi:#c56cf0;
+    --ink:#101728; --r:20px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}          /* .btn sætter display:block, og så gemmer hidden ikke af sig selv */
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 10px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:40px;line-height:1;margin:0 0 8px;letter-spacing:-1.6px;font-weight:800}
+  p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:16px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;text-align:center;text-decoration:none;color:var(--ink);transition:transform .08s}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:7px 13px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--text);font-variant-numeric:tabular-nums}
+  .pill.haster b{color:var(--coral)}
+
+  .wrap{width:100%;max-width:760px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;min-height:42px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .brand{flex:1;text-align:center;font-weight:800;font-size:20px;letter-spacing:-.4px}
+
+  /* Kronerne: modstanderen til venstre, en selv til højre */
+  .hud{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:26px;padding:4px 2px 2px;
+    font-size:14px;font-weight:700;color:var(--muted)}
+  .hud b{font-size:17px;font-variant-numeric:tabular-nums}
+  #kronerOp b{color:var(--coral)}
+  #kronerNed b{color:var(--sky)}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;margin-top:4px;background:#1b2a22}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+  .stage.ryst{animation:ryst .35s}
+  @keyframes ryst{0%,100%{transform:none}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+
+  /* Beskeden midt på fladen («Kun på din egen halvdel», «Dobbelt magi!») */
+  #besked{position:absolute;left:0;right:0;top:38%;text-align:center;pointer-events:none;font-weight:800;
+    font-size:22px;letter-spacing:-.5px;color:var(--sun);text-shadow:0 2px 10px rgba(0,0,0,.7);opacity:0;transition:opacity .2s}
+  #besked.vis{opacity:1}
+
+  /* Hånden under fladen */
+  .haand{margin-top:8px}
+  .magirække{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .naeste{display:flex;align-items:center;gap:5px;background:var(--bg2);border-radius:12px;padding:4px 8px;
+    font-size:13px;color:var(--muted);white-space:nowrap;flex:none}
+  .naeste span.t{font-size:17px}
+  .magibar{position:relative;flex:1;height:22px;border-radius:999px;background:var(--bg2);overflow:hidden}
+  .magifyld{position:absolute;inset:0;width:50%;background:linear-gradient(90deg,#9b4ddb,var(--magi));transition:width .1s linear}
+  .magibar .streger{position:absolute;inset:0;display:flex}
+  .magibar .streger i{flex:1;border-right:1px solid rgba(19,26,46,.55)}
+  .magibar .streger i:last-child{border:0}
+  .magital{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;
+    font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);font-variant-numeric:tabular-nums}
+  .kortrække{display:flex;gap:7px}
+  .kortknap{flex:1;min-width:0;background:var(--bg2);border-radius:14px;padding:7px 2px 6px;color:var(--text);
+    display:flex;flex-direction:column;align-items:center;gap:1px;border:2px solid transparent;transition:transform .08s}
+  .kortknap .t{font-size:26px;line-height:1.1}
+  .kortknap .n{font-size:12px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .kortknap .p{font-size:12px;font-weight:800;color:var(--magi);font-variant-numeric:tabular-nums}
+  .kortknap.dyr{opacity:.42}
+  .kortknap.valgt{border-color:var(--sun);background:var(--bg3);transform:translateY(-4px)}
+
+  /* Start- og slutskærm oven på fladen */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:14px 16px 20px;background:rgba(19,26,46,.9);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .lavet{margin:0 0 10px;font-size:14px;color:var(--muted);line-height:1.4}
+  .lavet b{color:var(--text)}
+  .modstander{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 4px;
+    font-size:15px;color:var(--muted);font-weight:700}
+  .modstander b{color:var(--coral);font-size:19px}
+  .rekord-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:6px 0}
+  .rekord-row span{color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:13px}
+  .rekord-row b{font-size:30px;font-weight:800;color:var(--sun);letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  .slutkroner{font-size:52px;line-height:1.1;margin:2px 0 4px;letter-spacing:2px}
+  .slutsub{font-size:17px;color:var(--muted);margin:0 0 10px}
+  .ny{color:var(--mint);font-weight:800;font-size:19px;margin:0 0 8px}
+  #nameBtn{position:relative}
+  #nameBtn small{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-top:2px}
+  #nameBtn.tom{color:var(--muted)}
+  #nameForm{margin-top:10px}
+  #nameForm input{width:100%;padding:14px;border-radius:var(--r);border:2px solid var(--bg3);background:var(--bg2);
+    color:var(--text);font:inherit;font-size:18px;text-align:center}
+  .hint{font-size:15px;margin:12px 0 0}
+  .kortliste{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 0;text-align:left}
+  .kortliste div{background:var(--bg2);border-radius:12px;padding:7px 9px;font-size:13px;color:var(--muted);line-height:1.25}
+  .kortliste b{color:var(--text);font-size:14px}
+  .kortliste i{font-style:normal;color:var(--magi);font-weight:800}
+
+  /* Toplisten (fælles klient) */
+  .hs{margin-bottom:10px}
+  .hs-titel{font-size:20px;margin:0 0 8px;letter-spacing:-.5px;font-weight:800}
+  .hs-liste{list-style:none;margin:0;padding:0;max-height:24vh;overflow-y:auto}
+  .hs-raekke{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:12px;font-size:16px}
+  .hs-raekke:nth-child(odd){background:rgba(255,255,255,.05)}
+  .hs-mig{background:rgba(255,212,71,.18)!important;font-weight:800}
+  .hs-nr{width:22px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+  .hs-navn{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hs-score{font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums}
+  .hs-tom,.hs-fejl,.hs-venter{font-size:15px;color:var(--muted);margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="brand">Slotskamp</div>
+    <div class="pill" id="tidPill">Tid <b id="tidVal">2:00</b></div>
+  </div>
+
+  <div class="hud">
+    <div id="kronerOp">🤖 Modstander <b>0</b> 👑</div>
+    <div id="kronerNed">👑 <b>0</b> Dig</div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <div id="besked"></div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Slotskamp</h1>
+        <div class="lavet"><b>Selma</b> ønskede sig spillet · <b>Far</b> og <b>Claude</b> byggede det</div>
+        <div class="hs" id="hsListe"></div>
+        <div class="modstander">Din modstander: <b id="modstanderVal">Nybegynder</b></div>
+        <div class="rekord-row"><span>Sejre i træk</span><b id="stimeVal">0</b><span>Bedste</span><b id="rekordVal">0</b></div>
+        <button class="btn ghost tom" id="nameBtn">Skriv dit navn</button>
+        <form id="nameForm" hidden autocomplete="off">
+          <input id="nameInput" type="text" maxlength="12" placeholder="Skriv dit navn" aria-label="Dit navn"
+            enterkeyhint="done" autocapitalize="words" spellcheck="false">
+          <button class="btn" type="submit">OK</button>
+        </form>
+        <button class="btn" id="startBtn">Spil</button>
+        <p class="hint">Vælg et kort og tryk på din egen halvdel. Tropperne går selv over broen og vælter
+          modstanderens tårne. Et vagttårn giver én krone, kongetårnet vinder kampen med det samme.
+          Magien fylder op af sig selv – og dobbelt så hurtigt til sidst.</p>
+        <div class="kortliste" id="kortliste"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Du vandt!</h1>
+        <div class="slutkroner" id="slutKroner">👑 0 – 0 👑</div>
+        <p class="slutsub" id="slutSub">Sejre i træk: 1</p>
+        <p class="ny" id="nyRekord" hidden>Ny rekord!</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Spil igen</button>
+        <button class="btn ghost" id="menuBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="haand" id="haand" hidden>
+    <div class="magirække">
+      <div class="naeste">Næste <span class="t" id="naesteTegn">💀</span></div>
+      <div class="magibar">
+        <div class="magifyld" id="magiFyld"></div>
+        <div class="streger"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="magital" id="magiTal">5</div>
+      </div>
+    </div>
+    <div class="kortrække" id="kortRow"></div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="slotskamp"></script>
+<script type="module">
+import {
+  BREDDE, HØJDE, FLOD_Y, FLOD_H, BRO_X, MAGI_MAKS, DOBBELT_FRA, TÅRN, KORT, KORT_VED,
+  BOT_NIVEAUER, niveauFraStime, nytSpil, spilKort, tik, kanPlacere, næsteKort,
+} from './kamp.mjs';
+
+/* ---------- Seedbar tilfældighed (?seed=123 giver den samme kamp) ---------- */
+const params = new URLSearchParams(location.search);
+let seed = parseInt(params.get('seed'), 10);
+if (!Number.isFinite(seed)) seed = (Math.random() * 4294967296) >>> 0;
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), g = canvas.getContext('2d');
+if (!g.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const haand = $('haand'), kortRow = $('kortRow'), magiFyld = $('magiFyld'), magiTal = $('magiTal');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen'), besked = $('besked');
+const nameBtn = $('nameBtn'), nameForm = $('nameForm'), nameInput = $('nameInput');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Lagring: sejre i træk og den bedste stime ---------- */
+const KEY_STIME = 'zydy.slotskamp.stime';
+const KEY_BEST = 'zydy.slotskamp.best';
+const tal = (nøgle) => { try { return Math.max(0, parseInt(localStorage.getItem(nøgle), 10) || 0); } catch (e) { return 0; } };
+const gem = (nøgle, v) => { try { localStorage.setItem(nøgle, String(v)); } catch (e) {} };
+let stime = tal(KEY_STIME), best = tal(KEY_BEST);
+
+/* ---------- Fladen ---------- */
+let W = 1, H = 1, dpr = 1, skala = 1, ox = 0, oy = 0;
+function resize() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  skala = Math.min(W / BREDDE, H / HØJDE);
+  ox = (W - BREDDE * skala) / 2;
+  oy = (H - HØJDE * skala) / 2;
+}
+const px = x => ox + x * skala;
+const py = y => oy + y * skala;
+/** Skærmpunkt → punkt på banen. */
+function tilBane(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  return { x: (clientX - r.left - ox) / skala, y: (clientY - r.top - oy) / skala };
+}
+resize();
+addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 60));
+if ('ResizeObserver' in window) new ResizeObserver(resize).observe(stage);
+
+/* ---------- Kampen ---------- */
+let stand = nytSpil({ seed, niveau: niveauFraStime(stime) });
+let fase = 'menu';                 // menu | kamp | slut
+let valgt = null;                  // det kort, der er valgt i hånden (id)
+let sigte = null;                  // hvor fingeren peger, mens man trækker
+let sidsteT = 0, beskedUr = 0;
+
+function visBesked(tekst, sek = 1.4) {
+  besked.textContent = tekst;
+  besked.classList.add('vis');
+  beskedUr = sek;
+}
+
+function start() {
+  stime = tal(KEY_STIME);
+  stand = nytSpil({ seed: (seed + stime * 7919) >>> 0, niveau: niveauFraStime(stime) });
+  fase = 'kamp'; valgt = null; sigte = null;
+  startScreen.classList.remove('on');
+  slutScreen.classList.remove('on');
+  haand.hidden = false;
+  $('nyRekord').hidden = true;
+  tegnHånd(); visHud();
+}
+
+function tilMenu() {
+  fase = 'menu'; valgt = null; sigte = null;
+  slutScreen.classList.remove('on');
+  startScreen.classList.add('on');
+  haand.hidden = true;
+  visHud(); visStart(); hentListe();
+}
+
+/** Spiller et kort. Giver en besked, hvis det ikke kan lade sig gøre. */
+function spil(kortId, x, y) {
+  const svar = spilKort(stand, 'ned', kortId, x, y);
+  if (!svar.ok) {
+    if (svar.fejl === 'Kun på din egen halvdel') visBesked('Kun på din egen halvdel');
+    else if (svar.fejl === 'Ikke magi nok') visBesked('Ikke magi nok');
+    return false;
+  }
+  valgt = null;
+  tegnHånd(); visHud();          // magien skal falde med det samme, man slipper
+  return true;
+}
+
+/* ---------- Slutningen ---------- */
+function slut() {
+  fase = 'slut';
+  valgt = null; sigte = null;
+  haand.hidden = true;
+  const vinder = stand.slut.vinder;
+  const k = stand.kroner;
+  if (vinder === 'ned') stime += 1;
+  else if (vinder === 'op') stime = 0;
+  gem(KEY_STIME, stime);
+  const rekord = stime > best;
+  if (rekord) { best = stime; gem(KEY_BEST, best); }
+
+  $('slutTitel').textContent = vinder === 'ned' ? 'Du vandt!' : vinder === 'op' ? 'Du tabte' : 'Uafgjort';
+  $('slutKroner').textContent = `👑 ${k.ned} – ${k.op} 👑`;
+  $('slutSub').textContent = vinder === 'ned'
+    ? `Sejre i træk: ${stime}` + (stime >= 2 && niveauFraStime(stime) > niveauFraStime(stime - 1)
+      ? ` · nu møder du ${BOT_NIVEAUER[niveauFraStime(stime)].navn}` : '')
+    : vinder === 'op' ? 'Stimen starter forfra' : 'Ingen af jer væltede noget';
+  $('nyRekord').hidden = !rekord;
+  slutScreen.classList.add('on');
+  visHud(); tegnListe();
+  if (rekord) sendRekord(stime);
+  if (!roligt && vinder === 'ned') navigator.vibrate && navigator.vibrate([30, 60, 30]);
+}
+
+/* ---------- HUD ---------- */
+function tidTekst(t) {
+  const s = Math.max(0, Math.ceil(t));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+// HUD'en tegnes i hvert billede, men DOM'en skal kun røres, når tallene skifter.
+let sidsteHud = '';
+function visHud() {
+  const m = stand.spillere.ned.magi;
+  magiFyld.style.width = (m / MAGI_MAKS * 100) + '%';
+  const nøgle = [tidTekst(stand.tid), stand.fase, stand.kroner.op, stand.kroner.ned,
+    Math.floor(m), næsteKort(stand.spillere.ned)].join('|');
+  if (nøgle === sidsteHud) return;
+  sidsteHud = nøgle;
+  $('tidVal').textContent = tidTekst(stand.tid);
+  $('tidPill').classList.toggle('haster', stand.fase !== 'slut' && stand.tid <= DOBBELT_FRA);
+  $('tidPill').firstChild.nodeValue = stand.fase === 'forlænget' ? 'Forlænget ' : 'Tid ';
+  $('kronerOp').querySelector('b').textContent = String(stand.kroner.op);
+  $('kronerNed').querySelector('b').textContent = String(stand.kroner.ned);
+  magiTal.textContent = String(Math.floor(m));
+  $('naesteTegn').textContent = KORT_VED[næsteKort(stand.spillere.ned)].tegn;
+}
+
+function visStart() {
+  $('stimeVal').textContent = String(stime);
+  $('rekordVal').textContent = String(best);
+  $('modstanderVal').textContent = BOT_NIVEAUER[niveauFraStime(stime)].navn;
+}
+
+/* ---------- Hånden ---------- */
+let sidsteHånd = '';
+function tegnHånd() {
+  const hånd = stand.spillere.ned.hånd;
+  // Samme kneb som i HUD'en: kun rør knapperne, når der faktisk er sket noget.
+  const nøgle = hånd.join(',') + '|' + valgt + '|' + hånd.map(id => KORT_VED[id].magi <= stand.spillere.ned.magi).join('');
+  if (nøgle === sidsteHånd) return;
+  sidsteHånd = nøgle;
+  if (kortRow.children.length !== hånd.length) {
+    kortRow.innerHTML = '';
+    hånd.forEach((_, nr) => {
+      const b = document.createElement('button');
+      b.className = 'kortknap'; b.dataset.nr = String(nr);
+      b.innerHTML = '<span class="t"></span><span class="n"></span><span class="p"></span>';
+      kortRow.appendChild(b);
+    });
+  }
+  hånd.forEach((id, nr) => {
+    const k = KORT_VED[id], b = kortRow.children[nr];
+    b.querySelector('.t').textContent = k.tegn;
+    b.querySelector('.n').textContent = k.navn;
+    b.querySelector('.p').textContent = '⬡ ' + k.magi;
+    b.classList.toggle('valgt', valgt === id);
+    b.classList.toggle('dyr', stand.spillere.ned.magi < k.magi);
+    b.setAttribute('aria-label', `${k.navn}, ${k.magi} magi`);
+  });
+}
+
+kortRow.addEventListener('pointerdown', e => {
+  const knap = e.target.closest('.kortknap');
+  if (!knap || fase !== 'kamp') return;
+  const id = stand.spillere.ned.hånd[+knap.dataset.nr];
+  if (!id) return;
+  valgt = valgt === id ? null : id;
+  sigte = null;
+  tegnHånd();
+});
+
+/* ---------- Fingeren på banen ---------- */
+function peg(e) {
+  if (fase !== 'kamp' || !valgt) return;
+  sigte = tilBane(e.clientX, e.clientY);
+}
+canvas.addEventListener('pointerdown', e => {
+  if (fase !== 'kamp') return;
+  e.preventDefault();
+  if (!valgt) { visBesked('Vælg et kort først'); return; }
+  peg(e);
+  canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => { if (sigte) { e.preventDefault(); peg(e); } });
+canvas.addEventListener('pointerup', e => {
+  if (fase !== 'kamp' || !valgt) return;
+  peg(e);
+  const p = sigte; sigte = null;
+  if (p) spil(valgt, p.x, p.y);
+});
+canvas.addEventListener('pointercancel', () => { sigte = null; });
+
+/* ---------- Tegning ---------- */
+const FARVE = {
+  ned: '#4d8dff', op: '#ff5c66',
+  nedMørk: '#2c5fb8', opMørk: '#c03844',
+};
+function rundRekt(x, y, w, h, rad) { g.beginPath(); g.roundRect(x, y, w, h, rad); }
+
+function tegnBane() {
+  // Græs: modstanderens halvdel er en anelse koldere end ens egen
+  g.fillStyle = '#3c7a4b'; g.fillRect(px(0), py(0), BREDDE * skala, (FLOD_Y) * skala);
+  g.fillStyle = '#42874f'; g.fillRect(px(0), py(FLOD_Y), BREDDE * skala, (HØJDE - FLOD_Y) * skala);
+  // Lyse striber, så man kan se, at man bevæger sig
+  g.fillStyle = 'rgba(255,255,255,.035)';
+  for (let y = 0; y < HØJDE; y += 12) g.fillRect(px(0), py(y), BREDDE * skala, 6 * skala);
+
+  // Floden med de to broer
+  g.fillStyle = '#2f6fb3';
+  g.fillRect(px(0), py(FLOD_Y - FLOD_H / 2), BREDDE * skala, FLOD_H * skala);
+  g.fillStyle = 'rgba(255,255,255,.18)';
+  g.fillRect(px(0), py(FLOD_Y - FLOD_H / 2), BREDDE * skala, 1.2 * skala);
+  for (const bx of BRO_X) {
+    g.fillStyle = '#8a6440';
+    rundRekt(px(bx - 7), py(FLOD_Y - FLOD_H / 2 - 2), 14 * skala, (FLOD_H + 4) * skala, 3 * skala); g.fill();
+    g.fillStyle = 'rgba(0,0,0,.18)';
+    for (let i = 0; i < 4; i++) g.fillRect(px(bx - 7), py(FLOD_Y - FLOD_H / 2 - 1 + i * 3.2), 14 * skala, 1.2 * skala);
+  }
+
+  // Egen halvdel lyser, mens man har et kort i hånden
+  if (fase === 'kamp' && valgt && KORT_VED[valgt].slags !== 'trylle') {
+    g.fillStyle = 'rgba(77,141,255,.16)';
+    g.fillRect(px(4), py(FLOD_Y + 6), (BREDDE - 8) * skala, (HØJDE - FLOD_Y - 10) * skala);
+  }
+}
+
+function livBjælke(x, y, b, h, andel, farve) {
+  g.fillStyle = 'rgba(0,0,0,.55)';
+  rundRekt(x, y, b, h, h / 2); g.fill();
+  g.fillStyle = farve;
+  rundRekt(x + 1, y + 1, Math.max(0, (b - 2) * andel), h - 2, (h - 2) / 2); g.fill();
+}
+
+function tegnTårne() {
+  for (const t of stand.tårne) {
+    const s = TÅRN[t.slags], b = s.radius * 2 * skala;
+    const x = px(t.x) - b / 2, y = py(t.y) - b / 2;
+    if (t.hp <= 0) {                         // ruin
+      g.fillStyle = 'rgba(30,30,30,.55)';
+      rundRekt(x + b * 0.1, y + b * 0.35, b * 0.8, b * 0.6, 4); g.fill();
+      g.globalAlpha = 0.5; g.font = `${Math.round(b * 0.5)}px serif`;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = '#fff'; g.fillText('💥', px(t.x), py(t.y));
+      g.globalAlpha = 1;
+      continue;
+    }
+    g.fillStyle = 'rgba(0,0,0,.28)';
+    rundRekt(x + b * 0.08, y + b * 0.12, b, b, 5); g.fill();
+    g.fillStyle = t.side === 'ned' ? FARVE.nedMørk : FARVE.opMørk;
+    rundRekt(x, y, b, b, 5); g.fill();
+    g.fillStyle = t.side === 'ned' ? FARVE.ned : FARVE.op;
+    rundRekt(x + b * 0.12, y + b * 0.12, b * 0.76, b * 0.76, 4); g.fill();
+    // Murtinder
+    g.fillStyle = t.side === 'ned' ? FARVE.nedMørk : FARVE.opMørk;
+    for (let i = 0; i < 3; i++) g.fillRect(x + b * (0.08 + i * 0.3), y - b * 0.1, b * 0.18, b * 0.16);
+    if (t.slags === 'konge') {
+      g.font = `${Math.round(b * 0.5)}px serif`;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(t.vågen ? '👑' : '😴', px(t.x), py(t.y));
+    }
+    const bb = b * 1.15;
+    livBjælke(px(t.x) - bb / 2, y - b * 0.42, bb, Math.max(4, 2.2 * skala), t.hp / t.maxHp,
+      t.side === 'ned' ? FARVE.ned : FARVE.op);
+  }
+}
+
+function tegnEnheder() {
+  for (const e of stand.enheder) {
+    const r = e.radius * skala * 1.4;
+    const x = px(e.x), y = py(e.y);
+    const farve = e.side === 'ned' ? FARVE.ned : FARVE.op;
+    if (e.venter > 0) {                      // lander stadig
+      g.strokeStyle = farve; g.lineWidth = 2; g.globalAlpha = 0.8;
+      g.beginPath(); g.arc(x, y, r * (1.8 - e.venter), 0, Math.PI * 2); g.stroke();
+      g.globalAlpha = 0.45;
+    }
+    g.fillStyle = 'rgba(0,0,0,.3)';
+    g.beginPath(); g.ellipse(x, y + r * 0.75, r * 0.85, r * 0.35, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = farve;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1.5; g.stroke();
+    g.font = `${Math.round(r * 1.25)}px serif`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(e.tegn, x, y + r * 0.06);
+    g.globalAlpha = 1;
+    if (e.hp < e.maxHp) livBjælke(x - r, y - r * 1.75, r * 2, Math.max(3, 1.6 * skala), e.hp / e.maxHp, farve);
+  }
+}
+
+function tegnEffekter() {
+  for (const f of stand.effekter) {
+    const a = Math.max(0, 1 - f.t / 0.6);
+    g.globalAlpha = a;
+    if (f.slags === 'skud') {
+      g.strokeStyle = f.side === 'ned' ? FARVE.ned : FARVE.op;
+      g.lineWidth = Math.max(1.5, skala * 0.5);
+      g.beginPath(); g.moveTo(px(f.fra.x), py(f.fra.y)); g.lineTo(px(f.x), py(f.y)); g.stroke();
+    } else if (f.slags === 'ildkugle') {
+      g.fillStyle = '#ff8a3d';
+      g.beginPath(); g.arc(px(f.x), py(f.y), f.r * skala * (0.6 + f.t), 0, Math.PI * 2); g.fill();
+    } else if (f.slags === 'lyn') {
+      g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(2, skala);
+      g.beginPath(); g.arc(px(f.x), py(f.y), f.r * skala * (0.6 + f.t), 0, Math.PI * 2); g.stroke();
+    } else if (f.slags === 'landing') {
+      g.strokeStyle = '#fff7c2'; g.lineWidth = 2;
+      g.beginPath(); g.arc(px(f.x), py(f.y), f.r * skala * (0.4 + f.t * 1.4), 0, Math.PI * 2); g.stroke();
+    } else if (f.slags === 'væltet') {
+      g.strokeStyle = '#ffd447'; g.lineWidth = 3;
+      g.beginPath(); g.arc(px(f.x), py(f.y), f.r * skala * (0.5 + f.t * 2), 0, Math.PI * 2); g.stroke();
+    } else if (f.slags === 'død') {
+      g.fillStyle = 'rgba(255,255,255,.7)';
+      g.beginPath(); g.arc(px(f.x), py(f.y), f.r * skala * (0.6 + f.t), 0, Math.PI * 2); g.fill();
+    } else {                                  // almindeligt slag
+      g.fillStyle = '#fff7c2';
+      g.beginPath(); g.arc(px(f.x), py(f.y), Math.max(2, f.r * skala * 0.6), 0, Math.PI * 2); g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+}
+
+/** Der hvor troppen lander, mens fingeren er nede. */
+function tegnSigte() {
+  if (!sigte || !valgt) return;
+  const k = KORT_VED[valgt];
+  const ok = kanPlacere('ned', valgt, sigte.x, sigte.y);
+  const r = (k.slags === 'trylle' ? k.område : 5) * skala;
+  g.strokeStyle = ok ? '#ffd447' : '#ff4d5e';
+  g.lineWidth = 2.5;
+  g.setLineDash([6, 5]);
+  g.beginPath(); g.arc(px(sigte.x), py(sigte.y), r, 0, Math.PI * 2); g.stroke();
+  g.setLineDash([]);
+  g.font = `${Math.round(Math.max(16, r * 0.9))}px serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.globalAlpha = ok ? 0.95 : 0.5;
+  g.fillText(k.tegn, px(sigte.x), py(sigte.y));
+  g.globalAlpha = 1;
+}
+
+function tegn() {
+  g.clearRect(0, 0, W, H);
+  tegnBane();
+  tegnTårne();
+  tegnEnheder();
+  tegnEffekter();
+  if (fase === 'kamp') tegnSigte();
+}
+
+/* ---------- Hændelser fra motoren (rysten, beskeder) ---------- */
+function tømHændelser() {
+  for (const h of stand.hændelser) {
+    if (h.slags === 'tårn-væltet') {
+      navigator.vibrate && navigator.vibrate(h.side === 'op' ? 60 : 25);
+      if (!roligt) { stage.classList.remove('ryst'); void stage.offsetWidth; stage.classList.add('ryst'); }
+      if (h.tårn === 'vagt') visBesked(h.side === 'op' ? 'Tårnet er væltet! 👑' : 'De væltede dit tårn');
+    } else if (h.slags === 'forlænget') {
+      visBesked('Forlænget – første tårn vinder!', 2.5);
+    }
+  }
+  stand.hændelser.length = 0;
+}
+
+/** Et skridt frem i kampen (bruges både af billedsløjfen og af GAME.frem). */
+let dobbeltMeldt = false;
+function opdater(dt) {
+  if (fase !== 'kamp') return;
+  const før = stand.tid;
+  tik(stand, dt);
+  tømHændelser();
+  if (!dobbeltMeldt && før > DOBBELT_FRA && stand.tid <= DOBBELT_FRA && stand.fase === 'kamp') {
+    dobbeltMeldt = true;
+    visBesked('Dobbelt magi! ⬡⬡', 2);
+  }
+  tegnHånd(); visHud();
+  if (stand.fase === 'slut') slut();
+}
+
+function frame(nu) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (nu - sidsteT) / 1000 || 0);
+  sidsteT = nu;
+  if (beskedUr > 0) { beskedUr -= dt; if (beskedUr <= 0) besked.classList.remove('vis'); }
+  if (!document.hidden) opdater(dt);
+  tegn();
+}
+requestAnimationFrame(frame);
+
+/* ---------- Topliste (navnet skrives på startskærmen som i Obby) ---------- */
+const SPIL = 'slotskamp';
+const navn = () => Highscore.navn.hent();
+const KEY_MIN = 'zydy.slotskamp.min';
+let top = null;
+const minRække = {
+  hent() { try { return JSON.parse(localStorage.getItem(KEY_MIN)) || null; } catch (e) { return null; } },
+  gem(v) { try { localStorage.setItem(KEY_MIN, JSON.stringify(v)); } catch (e) {} },
+};
+
+function visNavn() {
+  const n = navn();
+  nameBtn.classList.toggle('tom', !n);
+  nameBtn.innerHTML = '';
+  if (n) {
+    nameBtn.appendChild(document.createTextNode(n));
+    const s = document.createElement('small');
+    s.textContent = 'Tryk for at ændre navn';
+    nameBtn.appendChild(s);
+  } else nameBtn.textContent = 'Skriv dit navn';
+}
+
+const formatSejre = v => v + (v === 1 ? ' sejr' : ' sejre');
+
+function tegnListe() {
+  if (!top) return;
+  const liste = top.liste || [], mig = navn() || null;
+  Highscore.tegnListe($('hsListe'), liste, mig, 'Flest sejre i træk', formatSejre);
+  Highscore.tegnListe($('hsSlut'), liste, mig, 'Flest sejre i træk', formatSejre);
+}
+
+async function hentListe() {
+  const rod = $('hsListe');
+  if (!top) rod.innerHTML = '<p class="hs-venter">Henter toplisten…</p>';
+  try { top = await Highscore.hent(SPIL); tegnListe(); }
+  catch (e) { if (!top) Highscore.tegnFejl(rod); }
+}
+
+async function sendRekord(sejre) {
+  const n = navn();
+  if (!n || !top || !Highscore.kvalificerer(top, sejre)) return;
+  try {
+    const svar = await Highscore.send(SPIL, n, sejre);
+    if (svar.token) minRække.gem({ id: svar.id, token: svar.token });
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { /* toplisten er pynt – spillet kører videre */ }
+}
+
+async function omdøbMigSelv(nyt) {
+  const m = minRække.hent();
+  if (!m || !m.id || !m.token) return;
+  try {
+    const svar = await Highscore.omdoeb(SPIL, m.id, m.token, nyt);
+    if (svar.id !== m.id) minRække.gem(null);
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { minRække.gem(null); }
+}
+
+/* ---------- Knapper ---------- */
+$('startBtn').addEventListener('click', () => { dobbeltMeldt = false; start(); });
+$('igenBtn').addEventListener('click', () => { dobbeltMeldt = false; start(); });
+$('menuBtn').addEventListener('click', tilMenu);
+nameBtn.addEventListener('click', () => {
+  nameBtn.hidden = true; nameForm.hidden = false;
+  nameInput.value = navn();
+  setTimeout(() => nameInput.focus({ preventScroll: true }), 30);
+});
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const n = nameInput.value.replace(/\s+/g, ' ').trim().slice(0, 12);
+  const før = navn();
+  if (n) Highscore.navn.gem(n);
+  nameForm.hidden = true; nameBtn.hidden = false;
+  visNavn(); tegnListe();
+  if (n && før && n !== før) omdøbMigSelv(n);
+});
+
+/* ---------- Kortene forklaret på startskærmen ---------- */
+$('kortliste').innerHTML = KORT.map(k =>
+  `<div><b>${k.tegn} ${k.navn}</b> <i>⬡${k.magi}</i><br>${k.om}</div>`).join('');
+
+/* ---------- Start ---------- */
+visNavn(); visStart(); visHud(); hentListe();
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  seed, KORT, BOT_NIVEAUER, niveauFraStime, tilMenu,
+  start: () => { dobbeltMeldt = false; start(); },
+  /** Vælger et kort i hånden (nummer 0-3). */
+  vaelg(nr) { valgt = stand.spillere.ned.hånd[nr] || null; tegnHånd(); return valgt; },
+  /** Spiller et kort direkte på banen. */
+  spil,
+  /** Spoler kampen frem uden at vente. */
+  frem(sek) {
+    let rest = sek;
+    while (rest > 0 && fase === 'kamp') { const d = Math.min(0.1, rest); opdater(d); rest -= d; }
+    return this.state;
+  },
+  /** Banepunkt → skærmpunkt, så testen kan trykke rigtigt. */
+  banePx(x, y) {
+    const r = canvas.getBoundingClientRect();
+    return { x: r.left + px(x), y: r.top + py(y) };
+  },
+  /** Midten af kort nr. `nr` i hånden. */
+  kortPx(nr) {
+    const r = kortRow.children[nr].getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  },
+  /** Stiller kampen op til en bestemt situation (bruges af testene). */
+  saetOp(opt = {}) {
+    if (opt.magi != null) stand.spillere.ned.magi = opt.magi;
+    if (opt.magiOp != null) stand.spillere.op.magi = opt.magiOp;
+    if (opt.tid != null) stand.tid = opt.tid;
+    if (opt.stime != null) { stime = opt.stime; gem(KEY_STIME, stime); visStart(); }
+    if (opt.kroner) Object.assign(stand.kroner, opt.kroner);
+    if (opt.hånd) stand.spillere.ned.hånd = opt.hånd.slice();
+    if (opt.bot === false) stand.bot = null;
+    for (const t of stand.tårne) {
+      if (opt.kongeHp != null && t.slags === 'konge' && t.side === opt.side) t.hp = opt.kongeHp;
+      if (opt.vagtHp != null && t.slags === 'vagt' && t.side === opt.side) t.hp = opt.vagtHp;
+    }
+    tegnHånd(); visHud();
+    return this.state;
+  },
+  get state() {
+    return {
+      fase, kampFase: stand.fase, tid: stand.tid, valgt, stime, best,
+      niveau: stand.bot ? stand.bot.niveau : null,
+      magi: stand.spillere.ned.magi, magiOp: stand.spillere.op.magi,
+      hånd: stand.spillere.ned.hånd.slice(), næste: næsteKort(stand.spillere.ned),
+      kroner: { ...stand.kroner },
+      slut: stand.slut,
+      enheder: stand.enheder.map(e => ({ kort: e.kort, side: e.side, x: e.x, y: e.y, hp: e.hp })),
+      tårne: stand.tårne.map(t => ({ side: t.side, slags: t.slags, bane: t.bane, hp: t.hp, vågen: t.vågen })),
+    };
+  },
+};
+</script>
+</body></html>

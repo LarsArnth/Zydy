@@ -1,0 +1,10 @@
+{
+  "navn": "Slotskamp",
+  "beskrivelse": "Sæt riddere, bueskytter og kæmper ind for magi, send dem over broen og vælt modstanderens tårne, før tiden løber ud.",
+  "url": "/spil/slotskamp/",
+  "orden": 142,
+  "højscore": {
+    "maks": 200,
+    "unik": true
+  }
+}
