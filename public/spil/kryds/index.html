@@ -1,0 +1,435 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Kryds og bolle: spil mod en ven på samme telefon eller mod computeren i tre sværhedsgrader.">
+<title>Kryds og bolle – zydy.dk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Cg fill='none' stroke-linecap='round' stroke-width='7'%3E%3Cpath d='M14 14 L30 30 M30 14 L14 30' stroke='%235b8cff'/%3E%3Ccircle cx='42' cy='42' r='9' stroke='%23ff5c7a'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+  /*
+    Kryds og bolle – to spillere på én enhed eller mod computeren (nem/mellem/svær).
+    Reglerne og computerspilleren bor i motor.mjs; her er kun skærm og input.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --ink:#1c1f4a; --r:22px;
+    --x:var(--sky); --o:var(--coral);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:42px;line-height:1;margin:0 0 8px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;min-height:44px}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted)}
+
+  .screen{display:none;flex-direction:column;flex:1;width:100%;max-width:560px;margin:0 auto}
+  .screen.on{display:flex}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;min-height:44px}
+  .back{color:var(--muted);text-decoration:none;font-size:17px;font-weight:700;display:inline-flex;
+    align-items:center;min-height:44px;min-width:44px;padding:0 6px 0 2px;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .brand{font-weight:800;font-size:18px;letter-spacing:-.3px}
+  .content{flex:1;display:flex;flex-direction:column;justify-content:center}
+
+  /* Valg af tilstand og sværhedsgrad */
+  .label{font-weight:700;font-size:16px;margin:14px 0 6px}
+  .seg{display:flex;background:var(--bg2);border-radius:999px;padding:4px;gap:4px}
+  .seg button{flex:1;padding:12px 0;border-radius:999px;background:transparent;color:var(--muted);
+    font-weight:700;font-size:17px;min-height:44px}
+  .seg button.on{background:var(--sun);color:var(--ink)}
+  #niveauBoks[hidden]{display:none}
+  .forklaring{margin:8px 2px 0;font-size:15px;min-height:21px}
+
+  /* Stilling */
+  .stilling{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+  .stilling .pill b{color:var(--text)}
+  .stilling .pill.x b{color:var(--x)} .stilling .pill.o b{color:var(--o)}
+
+  /* ======== Spilskærmen ======== */
+  #status{text-align:center;font-size:24px;font-weight:800;letter-spacing:-.5px;margin:0 0 14px;
+    min-height:30px;display:flex;align-items:center;justify-content:center;gap:10px}
+  #status .mark{width:26px;height:26px;flex:0 0 26px}
+  #status .mark [data-tegn]{animation:none;stroke-dashoffset:0;stroke-width:15}
+  #status.slut{font-size:30px}
+  #status.x{color:var(--x)} #status.o{color:var(--o)} #status.lige{color:var(--sun)}
+
+  .braet{position:relative;width:min(86vw,58dvh,420px);aspect-ratio:1;margin:0 auto;
+    display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:10px}
+  .felt{background:var(--bg2);border-radius:20px;padding:12%;display:grid;place-items:center;
+    transition:background .15s,transform .08s;min-height:44px}
+  .felt:not(:disabled):active{transform:scale(.96)}
+  .felt:not(:disabled):hover{background:var(--bg3)}
+  .felt:disabled{cursor:default}
+  .felt.sidst{box-shadow:inset 0 0 0 3px rgba(255,212,71,.5)}
+  .felt svg{width:100%;height:100%;display:block;overflow:visible}
+  .felt svg [data-tegn]{fill:none;stroke-width:13;stroke-linecap:round;
+    stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:tegn .28s ease-out forwards}
+  .felt svg [data-tegn]:nth-child(2){animation-delay:.11s}
+  @keyframes tegn{to{stroke-dashoffset:0}}
+  .braet.slut .felt{opacity:.55} .braet.slut .felt.vind{opacity:1}
+
+  /* Stregen gennem de tre vindende felter */
+  #streg{position:absolute;height:10px;border-radius:5px;background:var(--sun);
+    transform-origin:0 50%;pointer-events:none;box-shadow:0 0 16px rgba(255,212,71,.6);
+    transition:width .35s ease-out}
+  #streg[hidden]{display:none}
+
+  .knapper{margin-top:20px}
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+
+  @media (min-width:600px){ h1{font-size:52px} #status{font-size:28px} }
+  @media (max-height:520px){   /* liggende telefon */
+    .braet{width:min(86vw,66dvh,360px);gap:8px}
+    #status{font-size:19px;margin-bottom:8px;min-height:24px}
+    .knapper{margin-top:10px} .btn{padding:13px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .felt,.btn,#streg{transition:none}
+    .felt svg [data-tegn]{animation:none;stroke-dashoffset:0}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Startskærm ===== -->
+<div class="screen on" id="start">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Kryds og bolle</span>
+    <span class="pill" id="startPill">0 partier</span>
+  </div>
+  <div class="content">
+    <h1>Kryds og bolle</h1>
+    <p>Tre på stribe – vandret, lodret eller skråt. Kryds starter, og bagefter skiftes I til at begynde.</p>
+
+    <div class="label">Hvem spiller?</div>
+    <div class="seg" id="tilstandSeg" role="radiogroup" aria-label="Hvem spiller">
+      <button data-tilstand="pvp" role="radio" aria-checked="false">To spillere</button>
+      <button data-tilstand="ai" class="on" role="radio" aria-checked="true">Mod computeren</button>
+    </div>
+
+    <div id="niveauBoks">
+      <div class="label">Hvor svær skal computeren være?</div>
+      <div class="seg" id="niveauSeg" role="radiogroup" aria-label="Sværhedsgrad">
+        <button data-niveau="nem" role="radio" aria-checked="false">Nem</button>
+        <button data-niveau="mellem" class="on" role="radio" aria-checked="true">Mellem</button>
+        <button data-niveau="svaer" role="radio" aria-checked="false">Svær</button>
+      </div>
+    </div>
+    <p class="forklaring" id="forklaring"></p>
+
+    <button class="btn" id="spilBtn">Spil</button>
+    <div class="stilling" id="startStilling"></div>
+  </div>
+</div>
+
+<!-- ===== Spilskærm ===== -->
+<div class="screen" id="spil">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Kryds og bolle</span>
+    <span class="pill" id="spilPill">Mod computeren</span>
+  </div>
+  <div class="content">
+    <div id="status" aria-live="polite"></div>
+    <div class="braet" id="braet" role="group" aria-label="Brættet"></div>
+    <div class="stilling" id="spilStilling"></div>
+    <div class="knapper">
+      <button class="btn" id="igenBtn">Nyt spil</button>
+      <button class="btn ghost" id="menuBtn">Til start</button>
+    </div>
+  </div>
+</div>
+<canvas id="confetti" hidden></canvas>
+
+<script src="/spil/aktivitet.js" data-spil="kryds"></script>
+<script type="module">
+import { nytBraet, vinder, resultat, ledige, modstander, bedsteTraek, NIVEAUER } from './motor.mjs';
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+/* ---------- Seedbar PRNG (mulberry32), så tests kan gentage et parti ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const params = new URLSearchParams(location.search);
+const seed = parseInt(params.get('seed'), 10) || ((Math.random() * 2 ** 31) | 0);
+const rnd = mulberry32(seed);
+
+/* ---------- Navne og tekster ---------- */
+const NAVN = { x: 'Kryds', o: 'Bolle' };
+const TUR = { x: "Kryds' tur", o: 'Bolles tur' };
+const NIVEAUNAVN = { nem: 'Nem', mellem: 'Mellem', svaer: 'Svær' };
+const FORKLARING = {
+  nem: 'Computeren spiller løs uden at tænke sig så godt om. God til de mindste.',
+  mellem: 'Computeren blokerer og vinder, når den kan se det – men den kan snydes.',
+  svaer: 'Computeren spiller perfekt. Det bedste du kan opnå, er uafgjort.',
+};
+const MENNESKE = 'x';   // mod computeren er du altid kryds
+
+/* ---------- Tilstand ---------- */
+const state = {
+  tilstand: 'ai', niveau: 'mellem',
+  braet: nytBraet(), tur: 'x', starter: 'x',
+  faerdig: false, resultat: null, linje: null, sidst: null,
+  venter: false,                 // computeren er ved at trække
+  stilling: { x: 0, o: 0, lige: 0 },
+};
+const GAME = window.GAME = { state, fast: false, seed };
+let aiTimer = null;
+
+/* ---------- Samlet statistik i localStorage ---------- */
+const KEY = 'zydy.kryds.stats';
+function loadStats(){
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s.partier === 'number') return s; } catch (e) {}
+  return { partier: 0, sejre: 0, tab: 0, lige: 0 };   // sejre/tab er set fra mennesket mod computeren
+}
+function saveStats(){ try { localStorage.setItem(KEY, JSON.stringify(stats)); } catch (e) {} }
+let stats = loadStats();
+
+/* ---------- Symbolerne ---------- */
+function mark(s, klasse = ''){
+  const farve = s === 'x' ? 'var(--x)' : 'var(--o)';
+  const krop = s === 'x'
+    ? `<path data-tegn d="M20 20 L80 80" stroke="${farve}" style="--len:85"/><path data-tegn d="M80 20 L20 80" stroke="${farve}" style="--len:85"/>`
+    : `<circle data-tegn cx="50" cy="50" r="31" stroke="${farve}" style="--len:195" transform="rotate(-90 50 50)"/>`;
+  return `<svg class="${klasse}" viewBox="0 0 100 100" aria-hidden="true">${krop}</svg>`;
+}
+
+/* ---------- Tegn brættet ---------- */
+const braetEl = $('#braet');
+braetEl.innerHTML = Array.from({ length: 9 }, (_, i) =>
+  `<button class="felt" data-i="${i}" aria-label="Felt ${i + 1}"></button>`).join('')
+  + '<div id="streg" hidden></div>';
+const felter = $$('#braet .felt');
+const stregEl = $('#streg');
+
+function tegn(){
+  felter.forEach((el, i) => {
+    const v = state.braet[i];
+    // Tegn kun feltet om, når det har ændret sig – ellers ville alle brikker
+    // animere forfra ved hvert træk.
+    if (el.dataset.v !== v) { el.dataset.v = v; el.innerHTML = v ? mark(v) : ''; }
+    el.disabled = !!v || state.faerdig || state.venter;
+    el.classList.toggle('sidst', i === state.sidst && !state.faerdig);
+    el.classList.toggle('vind', !!state.linje && state.linje.includes(i));
+    el.setAttribute('aria-label', `Felt ${i + 1}${v ? ': ' + NAVN[v] : ': tomt'}`);
+  });
+  braetEl.classList.toggle('slut', state.faerdig);
+  tegnStreg();
+  tegnStatus();
+  tegnStilling();
+}
+
+/* Stregen lægges hen over de tre felter ud fra deres faktiske placering,
+   så den også passer efter et skift mellem stående og liggende skærm. */
+function tegnStreg(){
+  if (!state.linje) { stregEl.hidden = true; stregEl.style.width = '0px'; return; }
+  const boks = braetEl.getBoundingClientRect();
+  const midt = i => {
+    const r = felter[i].getBoundingClientRect();
+    return { x: r.left - boks.left + r.width / 2, y: r.top - boks.top + r.height / 2 };
+  };
+  const a = midt(state.linje[0]), b = midt(state.linje[2]);
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const laengde = Math.hypot(dx, dy) * 1.12;                 // lidt ud over felterne i hver ende
+  const vinkel = Math.atan2(dy, dx);
+  const start = { x: a.x - Math.cos(vinkel) * laengde * .06, y: a.y - Math.sin(vinkel) * laengde * .06 };
+  stregEl.hidden = false;
+  stregEl.style.left = `${start.x}px`;
+  stregEl.style.top = `${start.y - 5}px`;
+  stregEl.style.transform = `rotate(${vinkel}rad)`;
+  stregEl.style.background = state.resultat === 'x' ? 'var(--x)' : 'var(--o)';
+  requestAnimationFrame(() => { stregEl.style.width = `${laengde}px`; });
+}
+addEventListener('resize', () => { if (state.linje) tegnStreg(); });
+
+function tegnStatus(){
+  const el = $('#status');
+  const modAI = state.tilstand === 'ai';
+  el.className = '';
+  if (state.faerdig) {
+    el.classList.add('slut', state.resultat);
+    if (state.resultat === 'lige') el.textContent = 'Uafgjort!';
+    else if (modAI) el.textContent = state.resultat === MENNESKE ? 'Du vandt!' : 'Computeren vandt';
+    else el.innerHTML = `${mark(state.resultat, 'mark')} ${NAVN[state.resultat]} vandt!`;
+    return;
+  }
+  el.classList.add(state.tur);
+  if (modAI) el.innerHTML = `${mark(state.tur, 'mark')} ` + (state.tur === MENNESKE ? 'Din tur' : 'Computeren tænker…');
+  else el.innerHTML = `${mark(state.tur, 'mark')} ${TUR[state.tur]}`;
+}
+
+function tegnStilling(){
+  const s = state.stilling;
+  const html = state.tilstand === 'ai'
+    ? `<span class="pill x">Dig <b>${s.x}</b></span><span class="pill o">Computer <b>${s.o}</b></span><span class="pill">Uafgjort <b>${s.lige}</b></span>`
+    : `<span class="pill x">Kryds <b>${s.x}</b></span><span class="pill o">Bolle <b>${s.o}</b></span><span class="pill">Uafgjort <b>${s.lige}</b></span>`;
+  $('#spilStilling').innerHTML = html;
+  const alt = stats.partier === 1 ? '1 parti' : `${stats.partier} partier`;
+  $('#startPill').textContent = alt;
+  $('#spilPill').textContent = state.tilstand === 'ai' ? `Computer · ${NIVEAUNAVN[state.niveau]}` : 'To spillere';
+  $('#startStilling').innerHTML = stats.partier
+    ? `<span class="pill">Partier <b>${stats.partier}</b></span><span class="pill x">Vundet mod computeren <b>${stats.sejre}</b></span><span class="pill">Uafgjort <b>${stats.lige}</b></span>`
+    : '';
+}
+
+/* ---------- Spilforløb ---------- */
+function nytParti(skiftStarter = true){
+  clearTimeout(aiTimer); aiTimer = null;
+  if (skiftStarter) state.starter = modstander(state.starter);
+  state.braet = nytBraet();
+  state.tur = state.starter;
+  state.faerdig = false; state.resultat = null; state.linje = null; state.sidst = null; state.venter = false;
+  stregEl.style.transition = 'none'; stregEl.style.width = '0px';
+  requestAnimationFrame(() => { stregEl.style.transition = ''; });
+  tegn();
+  maaskeComputer();
+}
+
+function start(tilstand = state.tilstand, niveau = state.niveau){
+  state.tilstand = tilstand;
+  if (NIVEAUER.includes(niveau)) state.niveau = niveau;
+  state.stilling = { x: 0, o: 0, lige: 0 };
+  state.starter = 'x';
+  $('#start').classList.remove('on'); $('#spil').classList.add('on');
+  nytParti(false);
+}
+
+/** Sæt et mærke i felt i. Returnerer true hvis trækket blev udført. */
+function traek(i){
+  if (state.faerdig || state.braet[i] || i == null) return false;
+  if (state.tilstand === 'ai' && state.venter && state.tur !== MENNESKE) return false;
+  state.braet[i] = state.tur;
+  state.sidst = i;
+  const v = vinder(state.braet);
+  const r = resultat(state.braet);
+  if (r) {
+    state.faerdig = true; state.resultat = r; state.linje = v ? v.linje : null;
+    state.venter = false;
+    afslut(r);
+  } else {
+    state.tur = modstander(state.tur);
+  }
+  tegn();
+  if (!state.faerdig) maaskeComputer();
+  return true;
+}
+
+function afslut(r){
+  state.stilling[r]++;
+  stats.partier++;
+  if (state.tilstand === 'ai') {
+    if (r === MENNESKE) stats.sejre++;
+    else if (r === 'lige') stats.lige++;
+    else stats.tab++;
+  } else if (r === 'lige') stats.lige++;
+  saveStats();
+  navigator.vibrate?.(r === 'lige' ? 40 : [40, 60, 40]);
+  if (r !== 'lige' && (state.tilstand === 'pvp' || r === MENNESKE)) konfetti(r);
+}
+
+/** Er det computerens tur, så lad den trække efter en lille tænkepause. */
+function maaskeComputer(){
+  if (state.tilstand !== 'ai' || state.faerdig || state.tur === MENNESKE) return;
+  state.venter = true;
+  tegn();
+  const pause = GAME.fast ? 0 : 380 + Math.floor(rnd() * 320);
+  aiTimer = setTimeout(computerTraekker, pause);
+}
+
+function computerTraekker(){
+  aiTimer = null;
+  if (state.faerdig || state.tilstand !== 'ai' || state.tur === MENNESKE) return;
+  const felt = bedsteTraek(state.braet, state.tur, state.niveau, rnd);
+  state.venter = false;
+  if (felt != null) traek(felt);
+}
+
+function tilStart(){
+  clearTimeout(aiTimer); aiTimer = null;
+  state.venter = false;
+  $('#spil').classList.remove('on'); $('#start').classList.add('on');
+  tegnStilling();
+}
+
+/* ---------- Input ---------- */
+braetEl.addEventListener('click', e => {
+  const el = e.target.closest('.felt');
+  if (!el || el.disabled) return;
+  traek(parseInt(el.dataset.i, 10));
+});
+$('#igenBtn').addEventListener('click', () => nytParti(true));
+$('#menuBtn').addEventListener('click', tilStart);
+
+function vaelg(seg, knap, felt){
+  $$(`#${seg} button`).forEach(b => { b.classList.toggle('on', b === knap); b.setAttribute('aria-checked', b === knap ? 'true' : 'false'); });
+  state[felt] = knap.dataset[felt];
+}
+$('#tilstandSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tilstand]'); if (!b) return;
+  vaelg('tilstandSeg', b, 'tilstand');
+  opdaterStartskaerm();
+});
+$('#niveauSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-niveau]'); if (!b) return;
+  vaelg('niveauSeg', b, 'niveau');
+  opdaterStartskaerm();
+});
+function opdaterStartskaerm(){
+  const modAI = state.tilstand === 'ai';
+  $('#niveauBoks').hidden = !modAI;
+  $('#forklaring').textContent = modAI ? FORKLARING[state.niveau] : 'To spillere om den samme skærm – kryds og bolle på skift.';
+}
+$('#spilBtn').addEventListener('click', () => start(state.tilstand, state.niveau));
+
+/* ---------- Konfetti ---------- */
+function konfetti(vinderSymbol){
+  if (matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  const cv = $('#confetti');
+  const ctx = cv.getContext('2d'); const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = innerWidth, H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); cv.hidden = false;
+  const base = vinderSymbol === 'x' ? ['#5b8cff', '#8fb0ff', '#ffd447', '#fff7e6'] : ['#ff5c7a', '#ff8ea3', '#ffd447', '#fff7e6'];
+  const ps = Array.from({ length: 110 }, () => ({
+    x: W / 2 + (Math.random() - .5) * 60, y: H * 0.4, vx: (Math.random() - .5) * 13, vy: -Math.random() * 13 - 4,
+    w: 6 + Math.random() * 8, h: 4 + Math.random() * 6, rot: Math.random() * 6.3, vr: (Math.random() - .5) * .3,
+    c: base[Math.floor(Math.random() * base.length)],
+  }));
+  const t0 = performance.now();
+  function frame(now){
+    const t = (now - t0) / 1000; ctx.clearRect(0, 0, W, H);
+    ps.forEach(p => {
+      p.vy += .35; p.x += p.vx; p.y += p.vy; p.vx *= .99; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.max(0, 1 - Math.max(0, t - 1.8) / .8);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+    });
+    if (t < 2.6 && state.faerdig) requestAnimationFrame(frame);
+    else { ctx.clearRect(0, 0, W, H); cv.hidden = true; }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Til test ---------- */
+Object.assign(GAME, {
+  start, traek, nytParti, tilStart,
+  ledige: () => ledige(state.braet),
+  computerTraekker,                 // udfør computerens ventende træk med det samme
+});
+
+opdaterStartskaerm();
+tegnStilling();
+</script>
+</body></html>
