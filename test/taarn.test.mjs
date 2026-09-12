@@ -75,6 +75,19 @@ const stored = await page.evaluate(() => localStorage.getItem('zydy.taarn.best')
 assert.equal(stored, '4', 'highscore gemt i localStorage');
 assert.equal(await page.locator('#bestPill').textContent(), 'Bedste: 4');
 
+// Efter et par sekunder vælter tårnet: det svajer, og blokkene falder fra hinanden.
+// tumbleNow() springer ventetiden over, så testen ikke skal vente 3 s.
+assert.equal((await state()).tumble, null, 'tårnet står stille lige efter game over');
+await page.evaluate(() => window.GAME.tumbleNow());
+await page.waitForFunction(() => window.GAME.state.tumble === 'wobble', null, { timeout: 2000 });
+await page.waitForFunction(() => window.GAME.state.tumble === 'fall', null, { timeout: 4000 });
+await page.waitForTimeout(500);
+await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/taarn-vaelter.png' });
+s = await state();
+assert.equal(s.score, 4, 'score uændret mens tårnet vælter');
+assert.equal(s.blocks.length, 5, 'blokkene i state er uændrede');
+await page.waitForFunction(() => window.GAME.state.tumble === 'done', null, { timeout: 8000 });
+
 // Spil igen → nyt spil, best bevaret
 await page.getByRole('button', { name: 'Spil igen' }).click();
 await page.waitForFunction(() => window.GAME.state.running);
@@ -82,6 +95,7 @@ s = await state();
 assert.equal(s.score, 0);
 assert.equal(s.best, 4);
 assert.equal(s.blocks.length, 1);
+assert.equal(s.tumble, null, 'væltet er nulstillet ved nyt spil');
 
 // Genindlæs: best læses fra localStorage
 await page.reload();

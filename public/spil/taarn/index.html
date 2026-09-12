@@ -200,6 +200,12 @@ let debris = [], rings = [], popups = [], confetti = [];
 let flash = 0, shake = 0, shakeX = 0, shakeY = 0;
 let lastT = 0;
 
+/* Væltet: nogle sekunder efter "Spillet er slut" svajer tårnet og falder fra hinanden. */
+const TUMBLE_WAIT = 3.0;     // sekunder efter slutskærmen før det begynder at svaje
+const WOBBLE = 1.4;          // hvor længe det svajer, før blokkene slipper
+let overT = 0;               // tid siden slutskærmen kom frem
+let tumble = null;           // null | { t, stage: 'wobble'|'fall'|'done', sway, dir, pieces }
+
 bestPill.textContent = 'Bedste: ' + best;
 
 const camMin = zoom => (Hs * 0.45 - BOTTOM) / zoom;
@@ -229,6 +235,7 @@ function start() {
   blocks = [{ x: -W0 / 2, w: W0, hue: HUE0 }];
   score = 0; streak = 0; recordShown = false; prevBest = best;
   debris = []; rings = []; popups = []; confetti = []; flash = 0; shake = 0;
+  tumble = null; overT = 0;
   newMoving(W0, HUE0 + HUE_STEP);
   phase = 'playing'; startedAt = performance.now();
   startScreen.classList.remove('on'); overScreen.classList.remove('on'); stage.classList.remove('over');
@@ -324,7 +331,7 @@ function drop() {
 
 function gameOver() {
   if (phase !== 'dying') return;
-  phase = 'over';
+  phase = 'over'; overT = 0; tumble = null;
   saveBest(best);
   const isRecord = score > 0 && score > prevBest;
   if (isRecord && !recordShown) { recordShown = true; celebrateRecord(); }
@@ -334,6 +341,53 @@ function gameOver() {
   overScreen.classList.add('on');
   stage.classList.add('over');
   updateHud();
+}
+
+/* ---------- Væltet ---------- */
+/* Hvor meget lag i er skubbet sidelæns (verden-px) under svajet: toppen svinger mest. */
+const swayAt = (i, sway) => sway * Math.pow(i / Math.max(1, blocks.length - 1), 1.6);
+
+function updateTumble(dt) {
+  const T = tumble, n = blocks.length;
+  T.t += dt;
+  if (T.stage === 'wobble') {
+    // Et svaj der tager til, som når man skubber til et tårn af klodser.
+    const p = Math.min(1, T.t / WOBBLE);
+    const amp = BH * (0.12 + 1.1 * p * p);
+    T.sway = Math.sin(T.t * (9 + 5 * p)) * amp;
+    if (T.t < WOBBLE) return;
+    // Slip blokkene – i den retning tårnet hælder lige nu. Toppen først, bunden sidst.
+    T.dir = Math.abs(T.sway) > 1 ? Math.sign(T.sway) : (rnd() < 0.5 ? -1 : 1);
+    T.stage = 'fall';
+    for (let i = 1; i < n; i++) {
+      const b = blocks[i], f = i / n;
+      T.pieces.push({
+        i, x: b.x + swayAt(i, T.sway), y: i * BH, w: b.w, hue: b.hue,
+        vx: T.dir * (30 + f * 220 + rnd() * 80), vy: 40 + f * 180 + rnd() * 80,
+        rot: 0, vr: T.dir * (1.2 + rnd() * 3.5) * (rnd() < 0.8 ? 1 : -1),
+        delay: (1 - f) * 0.45 + rnd() * 0.08, t: 0, loose: false
+      });
+    }
+    navigator.vibrate && navigator.vibrate([20, 50, 20]);
+    return;
+  }
+  if (T.stage !== 'fall') return;
+  const base = blocks[0], ground = BH;   // nederste blok bliver stående som sokkel
+  for (const q of T.pieces) {
+    q.t += dt;
+    if (q.t < q.delay) continue;
+    q.loose = true;
+    q.vy -= 1300 * dt; q.y += q.vy * dt; q.x += q.vx * dt; q.rot += q.vr * dt;
+    // Lander en blok på soklen, hopper den og glider af kanten.
+    const cx = q.x + q.w / 2;
+    if (q.y < ground && q.vy < 0 && cx > base.x && cx < base.x + base.w) {
+      q.y = ground;
+      q.vy = Math.abs(q.vy) > 90 ? -q.vy * 0.3 : 0;
+      q.vx += T.dir * 90; q.vr *= 0.5;
+    }
+  }
+  T.pieces = T.pieces.filter(q => sy(q.y + BH) < Hs + 80 && Math.abs(q.x) < W * 2);
+  if (!T.pieces.length) T.stage = 'done';
 }
 
 /* ---------- Opdatering ---------- */
@@ -357,6 +411,13 @@ function update(dt) {
     if (moving.x > r.max) { moving.x = r.max; moving.dir = -1; }
     if (moving.x < r.min) { moving.x = r.min; moving.dir = 1; }
   }
+
+  // Væltet efter slutskærmen
+  if (phase === 'over' && !reduceMotion && blocks.length > 1) {
+    overT += dt;
+    if (!tumble && overT >= TUMBLE_WAIT) tumble = { t: 0, stage: 'wobble', sway: 0, dir: 1, pieces: [] };
+  }
+  if (tumble) updateTumble(dt);
 
   // Afskårne stykker
   for (const d of debris) {
@@ -433,12 +494,27 @@ function draw() {
     // fundament under nederste blok
     const b0 = blocks[0];
     drawPrism(b0.x, -4000, b0.w, 4000, b0.hue, 1, 0, -14);
-    for (let i = 0; i < n; i++) {
-      const b = blocks[i];
-      const topScreen = sy((i + 1) * BH + DY);
-      if (topScreen > Hs + 10) continue;        // uden for skærmen
-      if (sy(i * BH) < -10) continue;
-      drawPrism(b.x, i * BH, b.w, BH, b.hue, 1, 0, 0);
+    if (!tumble) {
+      for (let i = 0; i < n; i++) {
+        const b = blocks[i];
+        const topScreen = sy((i + 1) * BH + DY);
+        if (topScreen > Hs + 10) continue;        // uden for skærmen
+        if (sy(i * BH) < -10) continue;
+        drawPrism(b.x, i * BH, b.w, BH, b.hue, 1, 0, 0);
+      }
+    } else {
+      drawPrism(b0.x, 0, b0.w, BH, b0.hue, 1, 0, 0);
+      if (tumble.stage === 'wobble') {
+        for (let i = 1; i < n; i++) {
+          const b = blocks[i], off = swayAt(i, tumble.sway);
+          drawPrism(b.x + off, i * BH, b.w, BH, b.hue, 1, off / BH * 0.05, 0);
+        }
+      } else {
+        for (const q of tumble.pieces) {
+          if (q.loose) drawPrism(q.x, q.y, q.w, BH, q.hue, 1, q.rot, 0);
+          else drawPrism(q.x, q.y, q.w, BH, q.hue, 1, tumble.sway / BH * 0.05 * (q.i / n), 0);
+        }
+      }
     }
   }
   if (phase === 'playing' && moving) {
@@ -513,9 +589,11 @@ $('againBtn').addEventListener('click', start);
 window.GAME = {
   start, drop,
   setMovingX(x) { if (moving) moving.x = x; },
+  tumbleNow() { if (phase === 'over') overT = TUMBLE_WAIT; },   // spring ventetiden over (tests)
   get state() {
     return {
       phase, running: phase === 'playing', score, best, streak, seed,
+      tumble: tumble ? tumble.stage : null,
       blocks: blocks.map(b => ({ x: b.x, w: b.w })),
       moving: moving ? { x: moving.x, w: moving.w, dir: moving.dir } : null,
       startWidth: W0, blockHeight: BH
