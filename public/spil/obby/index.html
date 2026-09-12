@@ -169,7 +169,7 @@
       <b id="coins">0</b>
     </div>
 
-    <div class="msg" id="readyHint"><div class="sub">Tryk for at hoppe</div></div>
+    <div class="msg" id="readyHint"><div class="sub">Tryk for at starte</div></div>
 
     <div class="msg" id="tryAgain">
       <div class="big">TRY AGAIN</div>
@@ -271,6 +271,7 @@ const VJ = G * T_UP;         // afsæt
 const LASER_H = 0.7, LASER_W = 0.16;   // laserstrålens højde over platformen og bredde
 const PLAT_T = 0.75;         // platformens tykkelse
 const COYOTE = 0.08;         // sekunder man stadig må hoppe efter kanten
+const REAKTION = 0.85;       // sekunders løb man mindst har på et checkpoint, før kanten
 const BUFFER = 0.12;         // tryk lige før landing gemmes og udløses ved landing
 const Y_MIN = 3, Y_MAX = 8;  // båndet platformenes overside ligger i (lava-toppen er y = 0)
 const DY_MAX = 1.4;          // højeste opadgående forskel man skal kunne nå (hophøjden er 2.0)
@@ -333,7 +334,10 @@ function gen(prev) {
   // hop tages med farten *på* platformen og er længst, når platformen synker
   // under en imens – derfor skal laserplatforme være bredere, jo hurtigere man løber.
   const selvHop = fartVed(i) * tLand(-2 * amp);
-  let w = isCheckpoint ? 4.5 + rnd()
+  // Et checkpoint er også startstedet efter en død: der skal være tid til at
+  // reagere (REAKTION sekunders løb), og et hop derfra skal kunne lande på
+  // platformen igen. Begge dele vokser med farten.
+  let w = isCheckpoint ? Math.max(4.5 + rnd(), 1.5 + Math.max(selvHop, REAKTION * fartVed(i)))
     : laser ? Math.max(7.5, landing + selvHop + P + 1.2) + rnd() * 1.2
     : Math.max(2.4, 4.4 - 1.6 * diff + rnd() * 1.2);
   w = Math.max(w, landing + 0.6);                         // et hop fra kanten må ikke flyve forbi
@@ -346,7 +350,8 @@ function gen(prev) {
 }
 
 function nyBane() {
-  platforms = [{ i: 0, x: 0, w: 5, y: 4, amp: 0, freq: 1, phase: 0, laser: false, checkpoint: true, active: true, hue: 150 }];
+  const w0 = Math.max(5, 1.5 + Math.max(fartVed(0) * tLand(0), REAKTION * fartVed(0)));
+  platforms = [{ i: 0, x: 0, w: w0, y: 4, amp: 0, freq: 1, phase: 0, laser: false, checkpoint: true, active: true, hue: 150 }];
   checkpoint = platforms[0];
 }
 
@@ -591,7 +596,10 @@ function doJump() {
 /** Et tryk (mellemrum eller finger). */
 function jump() {
   if (butikAaben || shopScreen.classList.contains('on')) return;   // man kigger på skins
-  if (phase === 'ready') { phase = 'run'; player.running = true; readyHint.classList.remove('on'); doJump(); return; }
+  // Første tryk sætter kun figuren i gang. Hoppede den med det samme, ville et
+  // genstartet spil ved høj fart sende den direkte i lavaen, fordi hoppet er
+  // længere end den checkpoint-platform, man står på.
+  if (phase === 'ready') { phase = 'run'; player.running = true; readyHint.classList.remove('on'); return; }
   if (phase === 'run') {
     if (player.on || player.coyote > 0) doJump(); else player.jumpBuf = BUFFER;
     return;

@@ -79,7 +79,7 @@ for (const pl of st0.platforms) {
   else if (pl.i >= 3) assert.equal(pl.laser, pl.i % 2 === 1, `laser på hver anden (platform ${pl.i})`);
   assert.ok(pl.y >= 3 && pl.y <= 8, 'platformen ligger i båndet over lavaen');
 }
-assert.ok(st0.platforms.some(pl => pl.laser), 'der er lasere i banen');
+// (om der faktisk *er* lasere, tjekkes efter bot-turen, hvor mange flere platforme er set)
 
 /* ---------- Spil: bot hopper sig gennem 120 platforme ---------- */
 await page.getByRole('button', { name: 'Spil', exact: true }).click();
@@ -91,21 +91,24 @@ assert.ok(!(await page.locator('#menuBtn').isHidden()), 'Menu-knappen vises unde
 
 const bot = (maal) => page.evaluate(({ maal }) => {
   const G = window.GAME, DT = 1 / 120;
+  const lasere = new Set(), checkpoints = new Set();
   G.pause();
   if (G.state.phase === 'ready') G.jump();
   for (let n = 0; n < 400000; n++) {
     const s = G.state;
-    if (s.phase === 'dead') return { doed: true, paa: s.player.on, streak: s.streak, x: s.player.x };
-    if (s.player.on !== null && s.player.on >= maal) return { doed: false, paa: s.player.on, streak: s.streak, checkpoint: s.checkpoint };
+    if (s.phase === 'dead') return { doed: true, paa: s.player.on, streak: s.streak, x: s.player.x, lasere: [...lasere], checkpoints: [...checkpoints] };
+    if (s.player.on !== null && s.player.on >= maal) return { doed: false, paa: s.player.on, streak: s.streak, checkpoint: s.checkpoint, lasere: [...lasere], checkpoints: [...checkpoints] };
     if (s.player.on !== null) {
       const cur = s.platforms.find(p => p.i === s.player.on);
+      if (cur.laser) lasere.add(cur.i);
+      if (cur.checkpoint) checkpoints.add(cur.i);
       const land = G.simJump();
       const laserForan = cur.laser && s.player.x + 1 < cur.x + cur.w / 2;
       if (land && (land.i > s.player.on || (laserForan && land.i === s.player.on && land.x > cur.x + cur.w / 2))) G.jump();
     }
     G.tick(DT);
   }
-  return { timeout: true };
+  return { timeout: true, lasere: [...lasere], checkpoints: [...checkpoints] };
 }, { maal });
 
 const fart0 = (await page.evaluate(() => window.GAME.state)).fart;
@@ -114,6 +117,9 @@ assert.ok(!r.timeout, 'botten blev færdig');
 assert.ok(!r.doed, `botten døde på vej til platform ${r.paa} (x=${r.x}) – banen skal altid kunne gennemføres`);
 assert.ok(r.streak >= 120, `mindst 120 hop talt (fik ${r.streak})`);
 assert.equal(r.checkpoint, 120, 'seneste checkpoint er platform 120');
+assert.ok(r.lasere.length > 20, `botten kom forbi mange laserplatforme (${r.lasere.length})`);
+assert.ok(r.lasere.every(i => i % 2 === 1 && i % 5 !== 0), 'lasere sidder på hver anden, aldrig på et checkpoint');
+assert.ok(r.checkpoints.every(i => i % 5 === 0), 'checkpoints er hver femte');
 assert.equal(await page.locator('#hop').textContent(), String(r.streak), 'tælleren øverst til venstre følger med');
 await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/obby.png' });
 
@@ -262,7 +268,31 @@ assert.equal(r.streak, 0, 'tælleren starter fra 0');
 assert.equal(await page.locator('#hop').textContent(), '0');
 assert.ok(!(await page.locator('#tryAgain').evaluate(el => el.classList.contains('on'))));
 
-// Lava: hop ud i det tomme fra klar-tilstand og lad være med at hoppe igen
+// Det første tryk starter kun løbet – det må ikke også hoppe. Hoppede det, ville
+// et genstartet spil ved høj fart ende i lavaen med det samme, fordi hoppet er
+// længere end den checkpoint-platform, man står på.
+r = await page.evaluate(() => {
+  const G = window.GAME;
+  G.jump();                                   // ét tryk
+  const straks = G.state;
+  let paaPlatform = 0;
+  for (let n = 0; n < 1000; n++) {            // hvor længe kan man løbe, før kanten?
+    if (G.state.player.on === null || G.state.phase === 'dead') break;
+    G.tick(1 / 120); paaPlatform++;
+  }
+  return { straks, sekunder: paaPlatform / 120, slut: G.state };
+});
+assert.equal(r.straks.phase, 'run', 'første tryk sætter spillet i gang');
+assert.equal(r.straks.player.on, 120, 'man står stadig på platformen efter første tryk');
+assert.equal(r.straks.player.vy, 0, 'første tryk hopper ikke');
+assert.ok(r.straks.fart > 9, 'farten er høj på et checkpoint så langt inde');
+assert.ok(r.sekunder > 0.8, `der er tid til at nå at trykke igen (${r.sekunder.toFixed(2)} sek.)`);
+assert.ok(r.slut.phase !== 'dead', 'man dør ikke af selve starten');
+
+// Tilbage til klar-tilstand for resten af testen
+await page.evaluate(() => window.GAME.spawn());
+
+// Lava: løb ud over kanten fra klar-tilstand og lad være med at hoppe
 r = await page.evaluate(() => {
   const G = window.GAME; G.jump();
   for (let n = 0; n < 1200; n++) { G.tick(1 / 120); if (G.state.phase === 'dead') return G.state; }
