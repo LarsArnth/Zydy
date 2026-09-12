@@ -168,7 +168,7 @@ Samme sted kan man **foreslå spil og ønske sig ting**:
 
 | Del | Fil | Hvad |
 |---|---|---|
-| Database | tabellen `ideer` i `schema.sql` | `ideer(slags, spil, navn, tekst, oprettet)`. `slags` er `'nyt'` (forslag til et helt nyt spil, `spil` er tom) eller `'oenske'` (ønske til et spil, der findes). Kun de nyeste 500 beholdes. |
+| Database | tabellen `ideer` i `schema.sql` | `ideer(slags, spil, navn, tekst, oprettet, loest, loesning)`. `slags` er `'nyt'` (forslag til et helt nyt spil, `spil` er tom) eller `'oenske'` (ønske til et spil, der findes). Kun de nyeste 500 beholdes. `loest` er tom, indtil ønsket er bygget færdig; så står tidsstemplet dér og `loesning` fortæller hvad der blev lavet (eller `afvist: …`). |
 | API | `src/worker.mjs` → `src/ideer.mjs` | `POST /api/ideer` med `{slags, spil?, navn, tekst}`. Navnet renses som på toplisten (12 tegn), teksten til 3-600 tegn, og `spil` skal være et kendt spil. |
 | Klient | `public/ideer.js` | Navneknappen i toppen, «Mangler der noget?» under hvert spilkort og «Nyt spil?»-kortet nederst. Knapperne og kortet laves i JS, så nye kort i `index.html` automatisk får dem. Kender vi ikke navnet, spørges der først, og formularen fortsætter bagefter. |
 
@@ -177,7 +177,8 @@ Hent det ind, når der skal bygges videre:
 ```bash
 export CLOUDFLARE_EMAIL=larsarnth@outlook.com          # se ~/.dsh/skills/cloudflare/SKILL.md
 export CLOUDFLARE_API_KEY=<global API key>
-npm run ideer                 # pænt overblik, nyeste først
+npm run ideer                 # pænt overblik over de uløste, nyeste først
+npm run ideer -- --alle       # også dem der er løst, med ✓ og hvad der blev lavet
 npm run ideer -- --json       # rå JSON, fx til at give videre til en AI
 npm run ideer -- --nyt        # kun forslag til nye spil
 npm run ideer -- --oensker    # kun ønsker til de spil der findes
@@ -185,11 +186,23 @@ npm run ideer -- --oensker    # kun ønsker til de spil der findes
 
 `scripts/ideer.mjs` spørger databasen direkte gennem wrangler, så der ikke
 findes et offentligt endepunkt, som kan læse dem — man kan kun skrive. Er en
-idé bygget færdig eller bare pjat, så slet den:
+idé bygget færdig eller bare pjat, så markér den i stedet for at slette den, så
+man kan se hvad der er svaret på hvad:
 
 ```bash
-npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM ideer WHERE id = 42"
+node ../zydy-feedback-loop.mjs --loest 42 "kort beskrivelse af hvad der blev lavet"
+node ../zydy-feedback-loop.mjs --afvist 42 "hvorfor det ikke kan lade sig gøre"
 ```
+
+### Feedback-loopet
+
+`../zydy-feedback-loop.mjs` (i `Projekter/`, ikke i dette repo) kan stå og køre
+i baggrunden: hvert 5. minut spørger den databasen om uløste ønsker, og er der
+et, laver den en git-worktree ud fra `origin/main` og sætter en Claude-arbejder
+til at bygge, teste, committe og pushe det — og først derefter markere ønsket
+som løst. Det er arbejderen, ikke loopet, der sætter `loest`, og loopet tjekker
+bagefter i databasen, om det rent faktisk skete; gjorde det ikke, prøver den
+igen (tre gange, så springer den ønsket over). Se filens hoved for flag.
 
 ### Gulvet er lava – styring og bane
 

@@ -1,10 +1,14 @@
 // Henter idéer og ønsker fra zydy.dk ned i terminalen:
 //
-//   npm run ideer                 pænt overblik, nyeste først
+//   npm run ideer                 pænt overblik over de uløste, nyeste først
+//   npm run ideer -- --alle       også dem der er løst (med ✓ og hvad der blev lavet)
 //   npm run ideer -- --json       rå JSON (fx til at give videre til en AI)
 //   npm run ideer -- --nyt        kun forslag til nye spil
 //   npm run ideer -- --oensker    kun ønsker til de spil der findes
 //   npm run ideer -- --antal 50   højst 50 (standard: alle, dvs. op til 500)
+//
+// Kolonnen `loest` sættes af feedback-loopet i rodmappen (../zydy-feedback-loop.mjs),
+// som selv sender en Claude-arbejder afsted på de uløste ønsker.
 //
 // Data kommer fra tabellen `ideer` i D1-databasen zydy-highscore (skrevet af
 // src/ideer.mjs). Scriptet går uden om Worker'en og spørger databasen direkte
@@ -25,8 +29,13 @@ const vaerdi = (f, standard) => { const i = args.indexOf(f); return i === -1 ? s
 const antal = Math.max(1, Math.min(500, Number(vaerdi('--antal', 500)) || 500));
 const kunNyt = har('--nyt');
 const kunOensker = har('--oensker') || har('--ønsker');
-const hvor = kunNyt ? "WHERE slags = 'nyt' " : kunOensker ? "WHERE slags = 'oenske' " : '';
-const sql = `SELECT id, slags, spil, navn, tekst, oprettet FROM ideer ${hvor}ORDER BY id DESC LIMIT ${antal}`;
+const ogsaaLoeste = har('--alle');
+const krav = [];
+if (kunNyt) krav.push("slags = 'nyt'");
+if (kunOensker) krav.push("slags = 'oenske'");
+if (!ogsaaLoeste) krav.push('loest IS NULL');
+const hvor = krav.length ? `WHERE ${krav.join(' AND ')} ` : '';
+const sql = `SELECT id, slags, spil, navn, tekst, oprettet, loest, loesning FROM ideer ${hvor}ORDER BY id DESC LIMIT ${antal}`;
 
 let ud;
 try {
@@ -66,6 +75,7 @@ function skriv(titel, liste, medSpil) {
     const hoved = [medSpil ? stort(r.spil || '?') : null, r.navn, dato(r.oprettet)].filter(Boolean).join(' · ');
     console.log(`\n  \x1b[33m#${r.id}\x1b[0m  ${hoved}`);
     for (const linje of String(r.tekst).split('\n')) console.log('    ' + linje);
+    if (r.loest) console.log(`    \x1b[32m✓ ${dato(r.loest)}: ${r.loesning || 'løst'}\x1b[0m`);
   }
 }
 

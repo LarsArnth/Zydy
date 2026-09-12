@@ -42,6 +42,12 @@ CREATE TABLE IF NOT EXISTS ideer (
   spil       TEXT,                         -- kun ved 'oenske', fx 'taarn'
   navn       TEXT    NOT NULL,             -- 1-12 tegn, renset i Worker'en
   tekst      TEXT    NOT NULL,             -- 3-600 tegn
-  oprettet   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  oprettet   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  loest      TEXT,                         -- tidsstempel, når ønsket er håndteret (NULL = uløst)
+  loesning   TEXT                          -- hvad der blev lavet, eller 'afvist: …'
 );
 CREATE INDEX IF NOT EXISTS ideer_slags ON ideer (slags, id DESC);
+-- loest/loesning kom til 2026-09-12 sammen med feedback-loopet i rodmappen
+-- (../zydy-feedback-loop.mjs). Loopet tilføjer dem selv, hvis de mangler:
+--   npx wrangler@4 d1 execute zydy-highscore --remote --command "ALTER TABLE ideer ADD COLUMN loest TEXT"
+--   npx wrangler@4 d1 execute zydy-highscore --remote --command "ALTER TABLE ideer ADD COLUMN loesning TEXT"
