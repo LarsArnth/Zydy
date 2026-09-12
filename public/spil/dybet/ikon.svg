@@ -1,0 +1,14 @@
+<svg viewBox="0 0 512 512"><defs>
+  <linearGradient id="dyb-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2f5a"/><stop offset="1" stop-color="#0b0c14"/></linearGradient>
+  <linearGradient id="dyb-lys" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#e9a020"/></linearGradient>
+</defs>
+  <rect width="512" height="512" fill="url(#dyb-bg)"/>
+  <path d="M0 0 L512 0 L340 170 L172 170 Z" fill="#3a3f6a"/>
+  <path d="M0 0 L172 170 L172 342 L0 512 Z" fill="#5a5f88"/>
+  <path d="M512 0 L340 170 L340 342 L512 512 Z" fill="#4a4f78"/>
+  <path d="M0 512 L172 342 L340 342 L512 512 Z" fill="#232860"/>
+  <rect x="172" y="170" width="168" height="172" fill="#0b0c14"/>
+  <rect x="196" y="260" width="120" height="82" fill="url(#dyb-lys)"/>
+  <rect x="216" y="300" width="80" height="42" fill="#c97a12" opacity=".6"/>
+  <g fill="#ff3b3b"><circle cx="236" cy="226" r="9"/><circle cx="276" cy="226" r="9"/></g>
+</svg>

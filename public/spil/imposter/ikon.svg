@@ -1,0 +1,8 @@
+<svg viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1c1f4a"/>
+  <rect x="96" y="76" width="320" height="360" rx="40" fill="#fff7e6" transform="rotate(-6 256 256)"/>
+  <circle cx="256" cy="200" r="70" fill="#1c1f4a"/>
+  <rect x="176" y="150" width="160" height="34" rx="17" fill="#ff5c7a"/>
+  <circle cx="226" cy="208" r="12" fill="#fff7e6"/><circle cx="286" cy="208" r="12" fill="#fff7e6"/>
+  <text x="256" y="378" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-size="110" font-weight="900" text-anchor="middle" fill="#1c1f4a">?</text>
+</svg>

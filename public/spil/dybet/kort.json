@@ -1,0 +1,9 @@
+{
+  "navn": "Dybet",
+  "beskrivelse": "Dungeon crawler i gammeldags 3D: udforsk labyrinten, find skatte, slå monstre i turbaseret kamp. Hvor dybt tør du gå?",
+  "url": "/spil/dybet/",
+  "orden": 110,
+  "højscore": {
+    "maks": 500
+  }
+}

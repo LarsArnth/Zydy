@@ -1,0 +1,11 @@
+{
+  "navn": "Duel",
+  "beskrivelse": "To spillere, én telefon: hurtige reflex-runder mod hinanden – først til 5 point vinder.",
+  "url": "/spil/duel/",
+  "orden": 80,
+  "højscore": {
+    "retning": "asc",
+    "min": 80,
+    "maks": 2000
+  }
+}

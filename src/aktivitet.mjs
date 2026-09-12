@@ -19,10 +19,12 @@
 // Imposter, KlaverLær) kan ikke sende heartbeats herfra; for dem tæller
 // forsiden et tryk på kortet som en start.
 import { SPIL as HS_SPIL, reglerFor } from './highscore.mjs';
+import { KORT } from './spil-data.mjs';
 
-/** Spil på forsiden der må tælles. Spil med topliste (SPIL i highscore.mjs) er automatisk med. */
-export const FORSIDE_SPIL = ['ordle', 'taltraef', 'imposter', 'klaver',
-  'taarn', 'saet', 'farvesortering', 'ordstige', 'duel', 'helteriget', 'stenalder', 'dybet', 'kryds'];
+/** Spil på forsiden der må tælles — alle kort, i forsidens rækkefølge. Listen
+ *  er genereret ud fra public/spil/<id>/kort.json, så et nyt kort tæller med
+ *  af sig selv. */
+export const FORSIDE_SPIL = KORT.map(k => k.id);
 
 export const AKTIV_TIMEOUT_MS = 90_000;   // uden heartbeat i 90 sek. regnes man for gået (klienten sender hvert 30. sek.)
 export const NYLIG_DAGE = 30;

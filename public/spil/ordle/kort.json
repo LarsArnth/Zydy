@@ -1,0 +1,7 @@
+{
+  "navn": "Ordle",
+  "beskrivelse": "Gæt dagens danske ord på fem bogstaver. Du har seks forsøg.",
+  "url": "https://larsarnth.github.io/ordle/",
+  "orden": 10,
+  "ekstern": true
+}

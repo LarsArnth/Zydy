@@ -1,0 +1,9 @@
+{
+  "navn": "Ordstige",
+  "beskrivelse": "Skift ét bogstav ad gangen og nå målordet på færrest trin. Ny stige hver dag.",
+  "url": "/spil/ordstige/",
+  "orden": 70,
+  "højscore": {
+    "maks": 5000
+  }
+}

@@ -21,25 +21,18 @@
 //   npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM scores WHERE spil='taarn'"
 
 /**
- * Spil der må gemme højscore. Nye spil: tilføj en linje.
+ * Spil der må gemme højscore. Listen er genereret ud fra `højscore` i hvert
+ * spils `public/spil/<id>/kort.json`, så et nyt spil kun skal røre sin egen
+ * mappe (kør `node scripts/byg-forside.mjs` bagefter). Felterne i kort.json:
  *   maks/min  – grænser for en gyldig score (min er 1, hvis den udelades)
  *   retning   – 'desc' (flest point vinder, standard) eller 'asc' (laveste tal vinder, fx tid i sekunder)
  *   unik      – kun én række pr. navn, den bedste (standard: true, fordi klienten gemmer automatisk
  *               efter hvert spil). Sæt unik: false hvis samme spiller må stå flere gange.
- * Et spil med flere tilstande bruger én nøgle pr. tilstand (saet-klassisk / saet-blitz).
+ * Et spil med flere tilstande får én nøgle pr. tilstand (saet-klassisk / saet-blitz)
+ * ved at lade `højscore` i kort.json indeholde et objekt pr. tilstand.
  */
-export const SPIL = {
-  taarn: { maks: 2000 },
-  dybet: { maks: 500 },                                             // score = dybde (niveau) nået
-  obby: { maks: 10000, unik: true },                                // hop i træk uden at dø
-  'saet-klassisk': { retning: 'asc', min: 20, maks: 3 * 3600 },   // sekunder for hele bunken
-  'saet-blitz': { maks: 60 },                                       // sæt fundet på 2 minutter
-  farvesortering: { maks: 10000 },                                  // højeste niveau løst
-  ordstige: { maks: 5000 },                                         // dagens stige løst flest dage i træk
-  duel: { retning: 'asc', min: 80, maks: 2000 },                    // hurtigste reaktion i ms (runden "Grønt lys")
-  helteriget: { retning: 'asc', maks: 300 },                        // vandt på færrest ture
-  stenalder: { maks: 2000 },                                        // vinderens point
-};
+import { SPIL } from './spil-data.mjs';
+export { SPIL };
 
 /** Regler for et spil med standardværdier udfyldt. */
 export function reglerFor(spil) {

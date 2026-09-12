@@ -1,0 +1,18 @@
+<svg viewBox="0 0 512 512"><defs>
+  <linearGradient id="farvesortering-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
+  <linearGradient id="farvesortering-glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset=".5" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#fff" stop-opacity=".3"/></linearGradient>
+  <clipPath id="farvesortering-c1"><path d="M76 96h100v276a50 50 0 0 1-100 0z"/></clipPath>
+  <clipPath id="farvesortering-c2"><path d="M206 96h100v276a50 50 0 0 1-100 0z"/></clipPath>
+  <clipPath id="farvesortering-c3"><path d="M336 96h100v276a50 50 0 0 1-100 0z"/></clipPath>
+</defs>
+  <rect width="512" height="512" fill="url(#farvesortering-bg)"/>
+  <g clip-path="url(#farvesortering-c1)"><rect x="76" y="96" width="100" height="330" fill="#ff5c7a"/><rect x="76" y="96" width="100" height="82" fill="#ffd447"/></g>
+  <g clip-path="url(#farvesortering-c2)"><rect x="206" y="178" width="100" height="250" fill="#5ee0a8"/><rect x="206" y="178" width="100" height="82" fill="#5b8cff"/></g>
+  <g clip-path="url(#farvesortering-c3)"><rect x="336" y="260" width="100" height="170" fill="#8f6bff"/></g>
+  <g clip-path="url(#farvesortering-c1)"><rect x="76" y="96" width="100" height="330" fill="url(#farvesortering-glass)" opacity=".5"/></g>
+  <g clip-path="url(#farvesortering-c2)"><rect x="206" y="96" width="100" height="330" fill="url(#farvesortering-glass)" opacity=".5"/></g>
+  <g clip-path="url(#farvesortering-c3)"><rect x="336" y="96" width="100" height="330" fill="url(#farvesortering-glass)" opacity=".5"/></g>
+  <g fill="none" stroke="#fff7e6" stroke-opacity=".55" stroke-width="10" stroke-linecap="round"><path d="M76 96v276a50 50 0 0 0 100 0V96"/><path d="M206 96v276a50 50 0 0 0 100 0V96"/><path d="M336 96v276a50 50 0 0 0 100 0V96"/></g>
+  <g stroke="#fff7e6" stroke-opacity=".8" stroke-width="14" stroke-linecap="round"><path d="M66 92h120"/><path d="M196 92h120"/><path d="M326 92h120"/></g>
+  <path d="M300 60c40-30 90-20 118 20" fill="none" stroke="#ffd447" stroke-width="20" stroke-linecap="round"/>
+</svg>

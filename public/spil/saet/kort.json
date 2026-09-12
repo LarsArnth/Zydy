@@ -1,0 +1,16 @@
+{
+  "navn": "Sæt",
+  "beskrivelse": "Find tre kort, hvor antal, form, farve og fyld er helt ens eller helt forskellige.",
+  "url": "/spil/saet/",
+  "orden": 50,
+  "højscore": {
+    "klassisk": {
+      "retning": "asc",
+      "min": 20,
+      "maks": 10800
+    },
+    "blitz": {
+      "maks": 60
+    }
+  }
+}

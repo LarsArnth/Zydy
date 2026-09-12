@@ -65,9 +65,11 @@ Skulle listen blive fyldt med skrald:
 npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM scores WHERE spil='taarn'"
 ```
 
-**Tilføj topliste til et nyt spil:** (1) tilføj spillet i `SPIL` i
-`src/highscore.mjs` med fornuftige grænser (og `retning: 'asc'` hvis laveste
-tal vinder), (2) indlæs `<script src="/spil/highscore.js"></script>` i spillet,
+**Tilføj topliste til et nyt spil:** (1) sæt `"højscore"` i spillets
+[`kort.json`](#tilføj-en-app--et-nyt-kort-på-forsiden) med fornuftige grænser
+(og `"retning": "asc"` hvis laveste tal vinder) og kør
+`node scripts/byg-forside.mjs`, så `SPIL` bliver opdateret,
+(2) indlæs `<script src="/spil/highscore.js"></script>` i spillet,
 (3) kald `Highscore.panel(...)` på slutskærmen og evt. uden score på
 startskærmen. Tårn er det enkle forbillede, Sæt viser to tilstande og
 tidsformatering. Obby viser varianten uden formular: navnet skrives på
@@ -180,7 +182,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, højscore-, aktivitets- og idé-API'et (ingen browser, ~3 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, forsidens kort, højscore-, aktivitets- og idé-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
@@ -208,10 +210,50 @@ Chromium med iPhone 13-profil: hvert spil spilles igennem via UI og
 screenshot i `test/shots/`. Har man `playwright` i `node_modules`, kan
 `PLAYWRIGHT` udelades.
 
-## Tilføj en app
+## Tilføj en app — et nyt kort på forsiden
 
-Åbn `public/index.html`, kopiér en `<a class="app">…</a>`-blok og ret href,
-ikon, navn og undertekst. Push til `main` — så er den live.
+Et kort beskriver sig selv i sin egen mappe, og forsiden bygges ud fra
+mapperne. Tilføj derfor **ingenting i hånden i `public/index.html`**:
+
+```
+public/spil/<id>/kort.json    navn, beskrivelse, url, orden, evt. topliste-regler
+public/spil/<id>/ikon.svg     ikonet (ét <svg viewBox="0 0 512 512">)
+public/spil/<id>/index.html   selve spillet (kun spil der bor her)
+```
+
+```bash
+node scripts/byg-forside.mjs    # skriver kortene ind i public/index.html og src/spil-data.mjs
+```
+
+```jsonc
+{
+  "navn": "Tårn",
+  "beskrivelse": "Slip blokken i det rigtige øjeblik og byg tårnet så højt du kan.",
+  "url": "/spil/taarn/",       // absolut https://… for apps der bor et andet sted, sammen med "ekstern": true
+  "orden": 40,                 // placering før popularitets-sorteringen; vælg et tal ingen andre har
+  "højscore": { "maks": 2000 } // udelad, hvis spillet ikke har en topliste
+}
+```
+
+Generatoren skriver to filer, som **ikke må rettes i hånden**:
+
+| Genereret | Bruges til |
+|---|---|
+| kort-listen i `public/index.html` (alt mellem markøren og `</ul>`) | selve forsiden |
+| `src/spil-data.mjs` (`KORT` + `SPIL`) | Workerens topliste (`SPIL`) og aktivitetstælling (`FORSIDE_SPIL`) |
+
+Før stod det samme spil tre steder i hånden — forsiden, `SPIL` i
+`src/highscore.mjs` og `FORSIDE_SPIL` i `src/aktivitet.mjs`. Fordi flere
+Claude-sessioner arbejder i repoet samtidig, stødte de hele tiden sammen i
+præcis de tre filer, og et nyt spil kunne nå at være halvt tilføjet. Nu rører
+et nyt spil kun sin egen mappe. Rammer to grene alligevel hinanden i en
+genereret fil, tager man bare den ene side (`git checkout --theirs`) og kører
+scriptet igen.
+
+`test/unit/kort.test.mjs` fejler, hvis man har glemt at køre generatoren, hvis
+et `kort.json` mangler noget, eller hvis et spil her på sitet ikke har en
+`index.html` at linke til. `node scripts/byg-forside.mjs --tjek` svarer på det
+samme uden at skrive noget.
 
 ## Kør lokalt
 
