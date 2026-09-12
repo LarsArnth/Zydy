@@ -3,8 +3,9 @@
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
 afhængigheder. De store apps bor i egne repoer og linkes til; ni spil
-ligger direkte her under `public/spil/`. Den eneste server-kode er et lille
-højscore-API (`src/`), se [Online topliste](#online-topliste).
+ligger direkte her under `public/spil/`. Den eneste server-kode er to små
+API'er (`src/`): en [online topliste](#online-topliste) og
+[hvor tit spillene spilles](#populaere-spil-og-spiller-nu).
 
 | App | Hvor den kører | Kode |
 |---|---|---|
@@ -23,11 +24,11 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 |---|---|---|
 | Tårn | `public/spil/taarn/` | Stack-arcade på canvas: tryk for at slippe blokken, overhæng skæres af, perfekte drops giver bonus. Et par sekunder efter slutskærmen svajer tårnet og falder fra hinanden (slås fra ved `prefers-reduced-motion`). Online topliste (top 10) med navn. |
 | Sæt | `public/spil/saet/` | Kortspillet Set på dansk: find tre kort hvor antal, form, farve og fyld er helt ens eller helt forskellige. Klassisk og Blitz. Online topliste pr. tilstand (hurtigste tid / flest sæt). |
-| Farvesortering | `public/spil/farvesortering/` | Water sort: hæld farvet væske til hvert glas har én farve. Uendelige, solver-verificerede niveauer. |
-| Ordstige | `public/spil/ordstige/` | Word ladder: skift ét bogstav ad gangen til et rigtigt dansk ord. Dagens stige + tilfældige. Ordlisten er Ordles (Stavekontrolden, GPL/LGPL/MPL). |
-| Duel | `public/spil/duel/` | To spillere på én telefon, skærmen delt i to: fem reflex-minispil, først til 3/5/10 point. |
-| Stenalder | `public/spil/stenalder/` | Hot-seat-udgave af brætspillet Stone Age for 2-4 spillere på én iPad. Tre filer uden build: `regler.mjs` (regelmotor, ren JS), `data.mjs` (kort og bygninger) og `index.html` (UI). Gemmer spillet i `localStorage`, så det kan genoptages. |
-| Helteriget | `public/spil/helteriget/` | Deck-building-kortspil for to på én iPad (Hero Realms-mekanik, egne danske kort): 80 markedskort i fire fraktioner, helte med vagter, allierede og ofringer. Hot-seat med overleveringsskærm, så hænderne forbliver hemmelige; igangværende spil gemmes i `localStorage`. |
+| Farvesortering | `public/spil/farvesortering/` | Water sort: hæld farvet væske til hvert glas har én farve. Uendelige, solver-verificerede niveauer. Online topliste: højeste niveau løst, sendt ind når man når et nyt personligt højeste. |
+| Ordstige | `public/spil/ordstige/` | Word ladder: skift ét bogstav ad gangen til et rigtigt dansk ord. Dagens stige + tilfældige. Ordlisten er Ordles (Stavekontrolden, GPL/LGPL/MPL). Online topliste: flest dage i træk med dagens stige. |
+| Duel | `public/spil/duel/` | To spillere på én telefon, skærmen delt i to: fem reflex-minispil, først til 3/5/10 point. Online topliste: hurtigste reaktion i «Grønt lys», målt fra skærmen bliver grøn til trykket lander (under 80 ms tæller ikke). |
+| Stenalder | `public/spil/stenalder/` | Hot-seat-udgave af brætspillet Stone Age for 2-4 spillere på én iPad. Tre filer uden build: `regler.mjs` (regelmotor, ren JS), `data.mjs` (kort og bygninger) og `index.html` (UI). Gemmer spillet i `localStorage`, så det kan genoptages. Online topliste: vinderens point, gemt under det navn spilleren selv skrev på startskærmen. |
+| Helteriget | `public/spil/helteriget/` | Deck-building-kortspil for to på én iPad (Hero Realms-mekanik, egne danske kort): 80 markedskort i fire fraktioner, helte med vagter, allierede og ofringer. Hot-seat med overleveringsskærm, så hænderne forbliver hemmelige; igangværende spil gemmes i `localStorage`. Online topliste: vundet på færrest ture. |
 | Dybet | `public/spil/dybet/` | Dungeon crawler i Wolfenstein-3D-stil (raycaster på canvas) med Pokémon-agtig turbaseret kamp. Procedurelt genererede labyrinter (altid en vej til trappen), monstre der står stille og spærrer gange, kister med udstyr, evner og potioner; minimap viser kun det udforskede. Spillet går selv, indtil vejen deler sig, og viser så flydende valgknapper. Score = dybde nået, online topliste. Tre filer: `motor.mjs` (regler, enhedstestet), `sprites.mjs` (pixel-art som tekst), `index.html`. |
 | Obby | `public/spil/obby/` | One-button-platformspil på canvas: hop fra flyvende firkant til flyvende firkant med mellemrum eller et tryk. Rød laser på hver anden firkant, lava i bunden, checkpoint på hver femte, og TRY AGAIN når man dør. Banen er uendelig og genereres, så hvert spring kan nås (bot-testet i `test/obby.test.mjs`). Score = hop i træk uden at dø; navnet skrives på startskærmen, og en ny rekord ryger selv på toplisten. |
 
@@ -69,13 +70,45 @@ tal vinder), (2) indlæs `<script src="/spil/highscore.js"></script>` i spillet,
 startskærmen. Tårn er det enkle forbillede, Sæt viser to tilstande og
 tidsformatering. Obby viser varianten uden formular: navnet skrives på
 startskærmen, og spillet sender selv rekorden ind (`unik` holder styr på, at
-hver spiller kun står én gang). Spil med topliste: Tårn, Sæt, Dybet, Obby. Skemaet skal kun køres
+hver spiller kun står én gang). Stenalder viser den tredje variant: dér kender
+spillet allerede spillerens rigtige navn fra startskærmen, så det bruger
+`Highscore.hent`/`send`/`tegnListe` direkte i stedet for `panel()` og spørger
+ikke om navn igen. Alle spil har nu topliste. Skemaet skal kun køres
 én gang (er gjort):
 
 ```bash
 npx wrangler@4 d1 execute zydy-highscore --remote --file schema.sql   # rigtig database
 npx wrangler@4 d1 execute zydy-highscore --local  --file schema.sql   # til wrangler dev
 ```
+
+<a id="populaere-spil-og-spiller-nu"></a>
+
+### Populære spil og «spiller nu»
+
+Forsiden sorterer kortene efter, hvad der bliver spillet mest, og viser for
+hvert spil hvor mange der er i gang lige nu og hvem der har rekorden. Det
+bruger samme D1-database som toplisten:
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Database | `starter(spil, dag, antal)` og `aktive(klient, spil, sidst)` i `schema.sql` | `starter` tæller ét tal pr. spil pr. UTC-døgn. `aktive` har én række pr. åben fane med et tidsstempel; rækker uden livstegn i 90 sekunder ryddes ved næste kald, så tabellen aldrig vokser. |
+| API | `src/worker.mjs` → `src/aktivitet.mjs` | `POST /api/aktivitet/<spil>` med `{ny: true}` tæller en start, `{klient}` melder «jeg spiller nu», `{slut: true}` melder fra. `GET /api/oversigt` giver for hvert spil `starter` (i alt), `nylig` (30 dage), `aktive` og `top` (rekordholderen fra toplisten). |
+| Klient i spillene | `public/spil/aktivitet.js` | Ét script-tag pr. spil: `<script src="/spil/aktivitet.js" data-spil="taarn"></script>`. Tæller én start ved indlæsning og sender livstegn hvert 30. sekund, så længe fanen er synlig. |
+| Klient på forsiden | scriptet nederst i `public/index.html` | Henter `/api/oversigt`, sorterer kortene (mest spillet de sidste 30 dage øverst) og tegner mærkaterne. Rækkefølgen sættes kun én gang pr. indlæsning; derefter opdateres tallene hvert halve minut, så kortene ikke hopper, mens man kigger. |
+
+Klient-id'et er et tilfældigt tal i `sessionStorage` (`zydy.klient`). Der
+gemmes hverken navne eller andet om spilleren, og alt fejler stille: uden
+forbindelse ser siden og spillene ud præcis som før.
+
+Apps der bor et andet sted (Ordle, Taltræf, Imposter, KlaverLær) kan ikke
+melde til selv, for de ligger på et andet domæne. For dem tæller forsiden i
+stedet trykket på kortet, og de har ingen rekordholder at vise. Skal de med
+på toplisterne, kræver det CORS på API'et og en ændring i deres egne repoer.
+
+**Tilføj et nyt spil:** tilføj `<script src="/spil/aktivitet.js" data-spil="<navn>">`
+i spillet og `data-spil="<navn>"` på kortets `<li>` i `public/index.html`.
+Spil med topliste er automatisk kendt; ellers skriv navnet i `FORSIDE_SPIL` i
+`src/aktivitet.mjs`.
 
 ### Stenalder – regelvalg
 
@@ -101,13 +134,23 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor + højscore-API'et (ingen browser, ~1 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, højscore- og aktivitets-API'et (ingen browser, ~3 sek.)
 ```
 
-Tårn-testen mocker højscore-API'et med `page.route`, så den kører uden
-Cloudflare. API'et selv testes i `test/unit/highscore.test.mjs` med et
-hukommelses-lager i stedet for D1. Vil man prøve hele kæden lokalt mod en
-lokal D1-database:
+Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
+serveren op i hukommelsen: den kalder den **rigtige** Worker-kode
+(`haandterApi` og `haandterAktivitet`) med lagre i hukommelsen i stedet for D1,
+så testene ser de samme svar som i drift. Hver test begynder med
+
+```js
+const api = await mockApi(page);    // før testens egen page.route, som så vinder
+```
+
+og kan bagefter kigge i `api.log.aktivitet` og `api.scores`. Tårn, Sæt, Dybet
+og Obby lægger deres egen `page.route('**/api/highscore/**')` ovenpå, når de
+har brug for en bestemt startliste. API'erne testes desuden hver for sig i
+`test/unit/highscore.test.mjs` og `test/unit/aktivitet.test.mjs`. Vil man prøve
+hele kæden lokalt mod en lokal D1-database:
 
 ```bash
 npx wrangler@4 dev --port 8790      # http://localhost:8790/spil/taarn/  (kør schema.sql --local først)
