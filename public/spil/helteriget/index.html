@@ -89,9 +89,8 @@
   .sec .label .meta{text-transform:none;letter-spacing:0;font-weight:600}
   .row{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 6px;-webkit-overflow-scrolling:touch;min-height:calc(var(--ch) + 8px)}
   .row::-webkit-scrollbar{display:none}
-  .row.short{min-height:0}
   .row.wrap{flex-wrap:wrap;overflow:visible;justify-content:center;min-height:0}
-  .empty{color:var(--muted);font-size:14px;padding:10px 4px;align-self:center;font-weight:600}
+  .empty{color:var(--muted);font-size:14px;padding:10px 4px;align-self:center;font-weight:600;flex:1;text-align:center}
   .opp{border:2px solid var(--pc);background:linear-gradient(180deg,var(--bg2),var(--bg3))}
   .opp .label{text-transform:none;letter-spacing:0}
   .opp .pname{font-size:18px}
@@ -211,7 +210,7 @@
 
   <section class="sec opp" id="opp" aria-label="Modstander">
     <div class="label"><span><span class="pname" id="oppName">Blå</span> <span class="hp" id="oppHp">❤ 50</span></span><span class="meta" id="oppMeta"></span></div>
-    <div class="row short" id="oppChamps"></div>
+    <div class="row" id="oppChamps"></div>
     <button class="btn sm face" id="attackBtn">Angrib</button>
   </section>
 
@@ -222,7 +221,7 @@
 
   <section class="sec" aria-label="Dit bord">
     <div class="label"><span><span class="pname" id="mineName">Rød</span> · dit bord</span><span class="meta">Tryk på en helt for at bruge den</span></div>
-    <div class="row short" id="inplay"></div>
+    <div class="row" id="inplay"></div>
   </section>
 
   <div class="res">

@@ -50,8 +50,12 @@ await page.click('#showBtn');
 assert.equal((await S()).phase, 'play');
 assert.equal(await page.evaluate(() => document.getElementById('table').classList.contains('on')), true);
 assert.equal(await page.locator('#hand .card').count(), 3);
+// Hånden må ikke flytte sig, når første kort lander på det (tomme) bord
+const handTop = () => page.evaluate(() => document.getElementById('hand').getBoundingClientRect().top + scrollY);
+const topBefore = await handTop();
 await page.locator('#hand .card').first().click();          // tryk på et kort spiller det
 assert.equal(await page.locator('#hand .card').count(), 2);
+assert.equal(await handTop(), topBefore, 'hånden bliver hvor den er, når bordet får sit første kort');
 await page.click('#playAll');
 assert.equal(await page.locator('#hand .card').count(), 0);
 {
