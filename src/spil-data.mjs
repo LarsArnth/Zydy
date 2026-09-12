@@ -22,6 +22,7 @@ export const KORT = [
   { id: 'miskmask', navn: 'Miskmask', url: '/spil/miskmask/' },
   { id: 'blokblast', navn: 'Blokblast', url: '/spil/blokblast/' },
   { id: 'klaver', navn: 'KlaverLær', url: 'https://klaver.zydy.dk/', ekstern: true },
+  { id: 'slotskamp', navn: 'Slotskamp', url: '/spil/slotskamp/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -43,4 +44,5 @@ export const SPIL = {
   kat: { maks: 50 },
   miskmask: { maks: 500, unik: true },
   blokblast: { maks: 200000, unik: true },
+  slotskamp: { maks: 200, unik: true },
 };

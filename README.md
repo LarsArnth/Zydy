@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; femten spil
+afhængigheder. De store apps bor i egne repoer og linkes til; seksten spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet femten spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet seksten spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder og Dybet, der er tre,
-og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask og Blokblast, der er to). De udrulles sammen
+og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask, Blokblast og Slotskamp, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -39,6 +39,8 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Miskmask | `public/spil/miskmask/` | Selmas ønske om «en verity app» – en *variety* app, altså én app med mange forskellige småting i. Det er blevet til 13 bittesmå spil i en pose: tryk på knappen, find den anderledes, prik ballonerne, fang den, det største tal, passer regnestykket, find farven, find bogstavet, hvor mange, tag stjernerne (ikke bomben), tryk N gange, tryk tallene i rækkefølge – og «RØR IKKE!», som man vinder ved at holde fingrene i skødet. Ét ad gangen, med 5 sekunder i starten og 2,2 ved fuld fart (runde 21), og tre liv. Alle minispil deler den samme regel – nogle felter er rigtige, resten er fælder – så et nyt minispil kun skal beskrive, hvad der står på skærmen. Posen trækkes som sedler, så alle 13 kommer, før nogen kommer igen. Score = antal klarede minispil, online topliste. To filer: `mikro.mjs` (de 13 spil og reglerne, enhedstestet) og `index.html`. Se «Miskmask – kvadratet og de 13 minispil» nedenfor. |
 | Min kat | `public/spil/kat/` | Selmas ønske om «My Cat»: et kæledyr man passer. Man adopterer en killing, giver den et navn, og så har den fire behov – mæt, glad, ren og frisk – som siver nedad med tiden, også mens man er væk. Man giver mad i skålen, kaster garnnøglet (tryk på gulvet, katten løber efter det), børster pelsen med fingeren og putter den i kurven, hvor stuen bliver mørk og månen kommer frem. Katten tegnes på canvas (ingen billeder) og blinker, logrer, spinder når man klapper den, og får snavsede pletter, hvis den ikke bliver børstet. Man tjener mønter og erfaring for **det, man faktisk fylder op** – en mæt kat giver ingenting, så man kan ikke trykke sig til mønter – og køber pelse, hatte og halsbånd i butikken. Score = kattens niveau, online topliste. To filer: `kat.mjs` (behov, erfaring, butik og den gemte kat, enhedstestet) og `index.html`. |
 | Blokblast | `public/spil/blokblast/` | Selmas ønske om «Block blast»: et bræt på 8 × 8 og tre brikker ad gangen, som man trækker ned på brættet – ingen drejning, ingen tyngdekraft. Fylder man en hel række eller søjle, blæser den væk. Ét point pr. felt man lægger, 10 × linjer² for det man rydder, og en stime, der ganger op til ×2,5, hvis man rydder flere gange i træk. Nye brikker kommer først, når alle tre er brugt, og der trækkes om, indtil mindst én af dem kan være på brættet. Spillet er slut, når ingen af de tre kan ligge nogen steder; brættet gemmes undervejs, så man kan lukke fanen og fortsætte. Score = point, online topliste. To filer: `blokke.mjs` (bræt, brikker, rydning og point, enhedstestet) og `index.html`. Se «Blokblast – brikken over fingeren» nedenfor. |
+
+| Slotskamp | `public/spil/slotskamp/` | Selmas ønske om «Clash royale»: en kamp på to minutter mod en computermodstander. Banen er delt af en flod med to broer, og hver side har et kongetårn og to vagttårne. Man har otte kort i bunken, fire på hånden, og magi, der fylder op af sig selv (dobbelt de sidste 40 sekunder). Tropperne går selv frem, slår på det, de møder, og går efter tårnene; Kæmpen går udenom alt andet, Kanonen står stille, og Ildkugle og Lyn kan kastes hvor som helst. Et vagttårn giver én krone, kongetårnet vinder med det samme, og står det lige, spilles der forlænget, hvor det første tårn afgør det. Modstanderen bliver hårdere for hver anden sejr i træk (Nybegynder → Øvet → Skarp → Mester). Score = **sejre i træk**, online topliste. To filer: `kamp.mjs` (bane, kort, tropper, tårne og modstanderen, enhedstestet) og `index.html`. Se «Slotskamp – kampen og modstanderen» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -392,6 +394,47 @@ slutskærmen ryddes det gemte spil væk. `bedsteTræk()` er en lille
 computerspiller (ryd linjer, luk ikke huller inde, pak brikkerne sammen); både
 enhedstesten og Playwright-testen spiller spillet igennem med den.
 
+### Slotskamp – kampen og modstanderen
+
+Spillet kom af Selmas ønske «Clash royale». Det er ikke en kopi – der er ingen
+konti, ingen kister og ingen at spille mod online – men de fem ting, spillet
+handler om, er der: **magi der fylder op**, **fire kort på hånden**, **tropper
+der går selv**, **broerne** og **tårnene**. Reglerne bor i `kamp.mjs`, som ikke
+rører DOM'en; `index.html` tegner dem og tager imod fingeren.
+
+**Alt går gennem `spilKort()` – også modstanderen.** Botten har sin egen hånd,
+sin egen magi og sin egen halvdel, og den spiller ved at kalde den samme
+funktion som et menneske. Derfor kan den ikke snyde, og derfor kan den spille
+mod sig selv: `botTræk(stand, side, niveau, bane)` er skrevet for begge sider,
+og enhedstesten bruger netop det til at måle, at Mester slår Nybegynder klart
+oftere end omvendt. Sværhedsgraderne er skruet sammen af fire tal: hvor længe
+den nøler, hvor tit den svarer på et angreb, hvor tit den **sjusker** (smider et
+tilfældigt kort et tilfældigt sted hen), og hvor meget magi den vil have, før
+den selv angriber. Det er sjusket, der gør Nybegynder til en modstander, man kan
+vinde over — en bot, der bare reagerer langsomt, spiller stadig rigtigt.
+
+**Modstanderen følger stimen.** Man vælger ikke sværhedsgrad: den stiger for
+hver anden sejr i træk (`niveauFraStime`), og det er også sejre i træk, der står
+på toplisten. Taber man, starter stimen forfra – så er man tilbage ved
+Nybegynder, og det er meningen: det er dér, man kan vinde igen.
+
+**`tik(stand, dt)` deler tiden op i faste skridt på 0,05 sekunder.** Derfor
+forløber kampen ens, uanset om der tegnes 60 gange i sekundet eller spoles to
+minutter frem på et øjeblik i en test (`GAME.frem(sek)`). Den, der tegner, skal
+selv sørge for ikke at komme med et kæmpe spring – billedsløjfen klipper `dt`
+til 0,1 sekund og står stille, mens fanen er skjult.
+
+**Pathing uden pathfinding:** en tropp går lige mod sit mål, med én undtagelse –
+ligger målet på den anden side af floden, går den først mod broen i sin egen
+bane. Det er hele forklaringen på, hvorfor tropperne klumper sig sammen ved
+broerne, præcis som i forbilledet. En tropp går efter vagttårnet i sin egen
+bane; er det væltet, går den efter kongen.
+
+**Tiden:** 2 minutter, dobbelt magi de sidste 40 sekunder. Står det lige, når
+uret er ude, spilles der forlænget i 60 sekunder, hvor det første tårn, der
+falder, afgør det. Falder der intet, vinder den, hvis mest forslåede tårn står
+bedst – ellers ville alt for mange kampe ende i ingenting.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -416,7 +459,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
