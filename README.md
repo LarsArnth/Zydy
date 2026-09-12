@@ -197,7 +197,7 @@ node ../zydy-feedback-loop.mjs --afvist 42 "hvorfor det ikke kan lade sig gøre"
 ### Feedback-loopet
 
 `../zydy-feedback-loop.mjs` (i `Projekter/`, ikke i dette repo) kan stå og køre
-i baggrunden: hvert 5. minut spørger den databasen om uløste ønsker, og er der
+i baggrunden: hvert 30. sekund spørger den databasen om uløste ønsker, og er der
 et, laver den en git-worktree ud fra `origin/main` og sætter en Claude-arbejder
 til at bygge, teste, committe og pushe det — og først derefter markere ønsket
 som løst. Det er arbejderen, ikke loopet, der sætter `loest`, og loopet tjekker
