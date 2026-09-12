@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; ti spil
+afhængigheder. De store apps bor i egne repoer og linkes til; elleve spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er to små
 API'er (`src/`): en [online topliste](#online-topliste) og
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu).
@@ -16,9 +16,9 @@ API'er (`src/`): en [online topliste](#online-topliste) og
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet ti spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet elleve spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder og Dybet, der er tre,
-og Kryds og bolle, der er to). De udrulles sammen
+og Kryds og bolle og Gulvet er lava, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -32,6 +32,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Helteriget | `public/spil/helteriget/` | Deck-building-kortspil for to på én iPad (Hero Realms-mekanik, egne danske kort): 80 markedskort i fire fraktioner, helte med vagter, allierede og ofringer. Hot-seat med overleveringsskærm, så hænderne forbliver hemmelige; igangværende spil gemmes i `localStorage`. Online topliste: vundet på færrest ture. |
 | Dybet | `public/spil/dybet/` | Dungeon crawler i Wolfenstein-3D-stil (raycaster på canvas) med Pokémon-agtig turbaseret kamp. Procedurelt genererede labyrinter (altid en vej til trappen), monstre der står stille og spærrer gange, kister med udstyr, evner og potioner; minimap viser kun det udforskede. Spillet går selv, indtil vejen deler sig, og viser så flydende valgknapper. Score = dybde nået, online topliste. Tre filer: `motor.mjs` (regler, enhedstestet), `sprites.mjs` (pixel-art som tekst), `index.html`. |
 | Kryds og bolle | `public/spil/kryds/` | Klassisk tre på stribe, hot-seat for to på samme skærm eller mod computeren i tre sværhedsgrader: Nem (spiller mest tilfældigt og overser trusler), Mellem (vinder og blokerer, men vælger hvert andet træk tilfældigt) og Svær (perfekt minimax – kan ikke slås). Startspilleren skifter for hvert parti, så begge får fordelen. To filer: `motor.mjs` (regler + computerspiller, enhedstestet) og `index.html`. Ingen topliste – der er ikke noget at måle i. |
+| Gulvet er lava | `public/spil/lava/` | Selmas idé: stuen set fra siden, hvor gulvet bliver til lava, og lavaen stiger nedefra. Man går til venstre og højre og hopper op ad sofaen, bordet, reolen, klaveret og flyttekasserne, mens de bliver smallere og længere fra hinanden. Trampolinpuffen skyder en ekstra højt op, flyttekasser styrter i lavaen kort efter man er landet på dem, og isterninger holder lavaen nede i tre sekunder. Score = hvor højt man nåede i meter, online topliste. To filer: `bane.mjs` (fysik og banegenerator, enhedstestet) og `index.html`. Se «Gulvet er lava – styring og bane» nedenfor. |
 | Obby | `public/spil/obby/` | One-button-platformspil på canvas: hop fra flyvende firkant til flyvende firkant med mellemrum eller et tryk. Rød laser på hver anden firkant, lava i bunden, checkpoint på hver femte, og TRY AGAIN når man dør. Banen er uendelig og genereres, så hvert spring kan nås (bot-testet i `test/obby.test.mjs`) — også ved den høje fart, for farten stiger, jo længere man kommer, og banen genereres ud fra netop den fart. Checkpointet har en høj flagstang (blå = ikke nået, grøn med flueben = nået), og både TRY AGAIN og «tryk for at starte» skriver hvilket checkpoint man fortsætter fra — før stod figuren oven på et lillebitte mærke, så det så ud som om checkpointet ikke gjorde noget. **Coins får man kun på checkpoints** (3 pr. nyt checkpoint, dvs. 3 for hver 5. firkant) og kan købe blandt 14 skins til højst 100 coins, nogle med hat; butikken kan åbnes midt i et løb og fryser spillet imens. Tallet 3 er valgt, så et godt løb til firkant 50 giver 30 coins og et langt løb til 100 giver 60: en dyr skin kan spares op på et par gode løb, men aldrig på ét. Score = hop i træk uden at dø (uafhængig af coins); navnet skrives på startskærmen, og en ny rekord ryger selv på toplisten. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
@@ -77,7 +78,7 @@ startskærmen, og spillet sender selv rekorden ind (`unik` holder styr på, at
 hver spiller kun står én gang). Stenalder viser den tredje variant: dér kender
 spillet allerede spillerens rigtige navn fra startskærmen, så det bruger
 `Highscore.hent`/`send`/`tegnListe` direkte i stedet for `panel()` og spørger
-ikke om navn igen. Alle spil har nu topliste. Skemaet skal kun køres
+ikke om navn igen. Alle spil undtagen Kryds og bolle har topliste. Skemaet skal kun køres
 én gang (er gjort):
 
 ```bash
@@ -155,8 +156,8 @@ toppen, hvor det kan skiftes. Siger man nej tak, huskes det i
 andre ser i «Sofie er her nu» (se afsnittet ovenfor); skiftes det, sendes
 hændelsen `zydy:navn`, så aktivitets-klienten melder det med det samme.
 
-Hvor virker navnet? Tårn, Sæt, Farvesortering, Ordstige, Duel, Helteriget og
-Dybet bruger `Highscore.panel()` og får det gratis. Obby og Stenalder har deres
+Hvor virker navnet? Tårn, Sæt, Farvesortering, Ordstige, Duel, Helteriget,
+Dybet og Gulvet er lava bruger `Highscore.panel()` og får det gratis. Obby og Stenalder har deres
 eget navnefelt på startskærmen, som nu står udfyldt med navnet fra forsiden
 (Stenalder kun for spiller 1, og skriver man et navn dér uden at have et i
 forvejen, læres det til resten af siden). Kryds og bolle har ingen topliste, og
@@ -190,6 +191,37 @@ idé bygget færdig eller bare pjat, så slet den:
 npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM ideer WHERE id = 42"
 ```
 
+### Gulvet er lava – styring og bane
+
+Spillet er bygget efter et forslag fra Selma gennem «Nyt spil?»-kortet, hvor
+hele beskrivelsen lød «Floor is lava». To valg er værd at kende:
+
+**Styringen er tre faste knapper i bunden** – ◀ ▶ i venstre hjørne og en stor
+rund HOP i højre. Alternativet var «tryk øverst på skærmen for at hoppe», men
+på en iPad kan man slet ikke nå toppen af skærmen, mens man holder den, og på
+en telefon hviler tommelfingrene i forvejen i de nederste hjørner. Knapperne er
+halvgennemsigtige, så man kan se stuen bagved, og mindst 74 × 74 px. Piletaster
+og mellemrum gør det samme, så spillet også kan prøves på en computer.
+
+**Banen kan altid klatres.** `bane.mjs` regner ud, hvor langt et hop rækker:
+man lander, når man falder ned gennem den nye højde, så rækkevidden er
+`VX · tNed(dy)`. Spillerens egen bredde går fra (man skal fri af den ene kant
+og helt ind over den næste), og af resten bruges kun 75 %. Rækkerne ligger
+1,45–2,15 m fra hinanden, altid under hoppets 2,6 m, så et lodret hop også
+virker. Er der to møbler i en række, må der højst være 3,8 m mellem dem – ikke
+pynt, men netop den grænse der sikrer, at næste række kan stå et sted, hvor
+begge kan nå den. `test/unit/lava.test.mjs` går 40 stuer × 200 rækker igennem
+og tjekker løftet, og `test/lava.test.mjs` lader en bot klatre 80 m op med den
+rigtige fysik.
+
+Lavaen sakker aldrig mere end 5,5 m bagud (`LAVA_HALE`). Det er både spænding
+og tydelighed: den skal blive ved med at kunne ses i bunden af skærmen. Prisen
+er, at et fald på mere end et par møbler koster livet.
+
+Flyttekassen styrter i lavaen 1,15 sekund efter, man er landet på den. Derfor
+laver generatoren den kun i en række med to møbler – ellers kunne den fjerne
+den eneste vej videre.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -214,7 +246,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, forsidens kort, højscore-, aktivitets- og idé-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Gulvet er lavas bane, forsidens kort, højscore-, aktivitets- og idé-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter

@@ -15,6 +15,7 @@ export const KORT = [
   { id: 'stenalder', navn: 'Stenalder', url: '/spil/stenalder/' },
   { id: 'dybet', navn: 'Dybet', url: '/spil/dybet/' },
   { id: 'obby', navn: 'Obby', url: '/spil/obby/' },
+  { id: 'lava', navn: 'Gulvet er lava', url: '/spil/lava/' },
   { id: 'kryds', navn: 'Kryds og bolle', url: '/spil/kryds/' },
   { id: 'klaver', navn: 'KlaverLær', url: 'https://klaver.zydy.dk/', ekstern: true },
 ];
@@ -33,4 +34,5 @@ export const SPIL = {
   stenalder: { maks: 2000 },
   dybet: { maks: 500 },
   obby: { maks: 10000, unik: true },
+  lava: { maks: 3000 },
 };
