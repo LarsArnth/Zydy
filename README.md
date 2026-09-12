@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; elleve spil
+afhængigheder. De store apps bor i egne repoer og linkes til; tolv spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet elleve spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet tolv spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder og Dybet, der er tre,
-og Kryds og bolle og Gulvet er lava, der er to). De udrulles sammen
+og Kryds og bolle, Gulvet er lava og Klodser, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -35,6 +35,8 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Kryds og bolle | `public/spil/kryds/` | Klassisk tre på stribe, hot-seat for to på samme skærm eller mod computeren i tre sværhedsgrader: Nem (spiller mest tilfældigt og overser trusler), Mellem (vinder og blokerer, men vælger hvert andet træk tilfældigt) og Svær (perfekt minimax – kan ikke slås). Startspilleren skifter for hvert parti, så begge får fordelen. To filer: `motor.mjs` (regler + computerspiller, enhedstestet) og `index.html`. Ingen topliste – der er ikke noget at måle i. |
 | Gulvet er lava | `public/spil/lava/` | Selmas idé: stuen set fra siden, hvor gulvet bliver til lava, og lavaen stiger nedefra. Man går til venstre og højre og hopper op ad sofaen, bordet, reolen, klaveret og flyttekasserne, mens de bliver smallere og længere fra hinanden. Trampolinpuffen skyder en ekstra højt op, flyttekasser styrter i lavaen kort efter man er landet på dem, og isterninger holder lavaen nede i tre sekunder. Score = hvor højt man nåede i meter, online topliste. To filer: `bane.mjs` (fysik og banegenerator, enhedstestet) og `index.html`. Se «Gulvet er lava – styring og bane» nedenfor. |
 | Obby | `public/spil/obby/` | One-button-platformspil på canvas: hop fra flyvende firkant til flyvende firkant med mellemrum eller et tryk. Rød laser på hver anden firkant, lava i bunden, checkpoint på hver femte, og TRY AGAIN når man dør. Banen er uendelig og genereres, så hvert spring kan nås (bot-testet i `test/obby.test.mjs`) — også ved den høje fart, for farten stiger, jo længere man kommer, og banen genereres ud fra netop den fart. Checkpointet har en høj flagstang (blå = ikke nået, grøn med flueben = nået), og både TRY AGAIN og «tryk for at starte» skriver hvilket checkpoint man fortsætter fra — før stod figuren oven på et lillebitte mærke, så det så ud som om checkpointet ikke gjorde noget. **Coins får man kun på checkpoints** (3 pr. nyt checkpoint, dvs. 3 for hver 5. firkant) og kan købe blandt 14 skins til højst 100 coins, nogle med hat; butikken kan åbnes midt i et løb og fryser spillet imens. Tallet 3 er valgt, så et godt løb til firkant 50 giver 30 coins og et langt løb til 100 giver 60: en dyr skin kan spares op på et par gode løb, men aldrig på ét. Score = hop i træk uden at dø (uafhængig af coins); navnet skrives på startskærmen, og en ny rekord ryger selv på toplisten. |
+
+| Klodser | `public/spil/klodser/` | Selmas ønske om Roblox, oversat til noget der kan ligge her: en 3D-verden af klodser (WebGL på canvas, ingen biblioteker) med sin egen klodsefigur set bagfra. Verdenen er en ø på 40 × 40 klodser med bakker, søer, strande og træer, og havet uden om går ud til horisonten. Man løber rundt med joystick + HOP, kigger ved at trække på skærmen, bygger og river ned med ti farver klodser, og kan skifte til første person. 12 guldklodser er gemt rundt omkring – hver med en lysstråle op i luften, så de kan findes – og tiden det tager at samle dem alle er scoren på toplisten (laveste vinder). Verdenen gemmes i `localStorage` som «frø + de klodser du selv har ændret», så det man har bygget står der næste gang. Man træder automatisk op ad én klods, så bakker ikke kræver hop. To filer: `verden.mjs` (verden, fysik og sigte, enhedstestet) og `index.html`. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -158,7 +160,7 @@ andre ser i «Sofie er her nu» (se afsnittet ovenfor); skiftes det, sendes
 hændelsen `zydy:navn`, så aktivitets-klienten melder det med det samme.
 
 Hvor virker navnet? Tårn, Sæt, Farvesortering, Ordstige, Duel, Helteriget,
-Dybet og Gulvet er lava bruger `Highscore.panel()` og får det gratis. Obby og Stenalder har deres
+Dybet, Gulvet er lava og Klodser bruger `Highscore.panel()` og får det gratis. Obby og Stenalder har deres
 eget navnefelt på startskærmen, som nu står udfyldt med navnet fra forsiden
 (Stenalder kun for spiller 1, og skriver man et navn dér uden at have et i
 forvejen, læres det til resten af siden). Kryds og bolle har ingen topliste, og
@@ -294,7 +296,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Gulvet er lavas bane, forsidens kort, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Gulvet er lavas bane, Klodsers verden og fysik, forsidens kort, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter

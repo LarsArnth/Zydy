@@ -1,0 +1,984 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#8ecbff">
+<meta name="description" content="Klodser: en 3D-verden af klodser, du kan løbe rundt i, bygge i og rive ned i. Find de 12 guldklodser så hurtigt du kan.">
+<title>Klodser – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238ecbff'/%3E%3Cpath d='M12 30l20-10 20 10-20 10z' fill='%2363b356'/%3E%3Cpath d='M12 30v14l20 10V40z' fill='%237a5a34'/%3E%3Cpath d='M52 30v14L32 54V40z' fill='%235d4327'/%3E%3Crect x='26' y='6' width='12' height='12' rx='2' fill='%23ffd447'/%3E%3C/svg%3E">
+<style>
+  /*
+    «Klodser» – Selmas ønske om Roblox, oversat til noget der kan ligge på
+    zydy.dk: en 3D-verden bygget af klodser, som man render rundt i med sin
+    egen klodsefigur, bygger i og river ned i.
+
+    Roblox selv er et helt univers af spil, servere og konti – det kan vi ikke
+    lave. Men det, børnene faktisk gør derinde, er at løbe rundt i en klodset
+    3D-verden, bygge noget og lede efter ting. Det er dét, der er her: en
+    verden på 40 × 40 klodser, en figur man selv vælger tøj til, ti farver at
+    bygge med, og 12 guldklodser gemt rundt omkring – tiden det tager at finde
+    dem alle er scoren på toplisten. Verdenen (og det man har bygget) gemmes i
+    localStorage, så den står der næste gang.
+
+    Verdenen, fysikken og sigtet bor i verden.mjs, så de kan enhedstestes uden
+    browser. Her i filen er der tre ting: en lille WebGL-motor (klodserne
+    bliver til trekanter), styringen (joystick + knapper til tommelfingrene)
+    og skærmene.
+  */
+  :root{
+    --bg:#14102b; --bg2:#241a44; --bg3:#3a2a5e; --text:#fff4e2; --muted:#b5a8d6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --ink:#20143a; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 10px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn[hidden]{display:none}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  button.pill{color:var(--text);font-weight:700;min-height:36px}
+
+  .wrap{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.4px}
+  #menuBtn[hidden]{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#8ecbff;
+    touch-action:none}
+  #c{display:block;position:absolute;inset:0;width:100%;height:100%}
+
+  /* HUD: guldklodser til venstre, tiden til højre */
+  .hud{position:absolute;top:12px;pointer-events:none;text-shadow:0 2px 10px rgba(0,0,0,.45);
+    opacity:0;transition:opacity .25s;font-variant-numeric:tabular-nums}
+  .stage.igang .hud{opacity:1}
+  .hud.venstre{left:14px} .hud.hoejre{right:14px;text-align:right}
+  .hud .lbl{display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px}
+  .hud b{font-size:30px;font-weight:800;line-height:1;color:#fff}
+  #guldHud.bump{animation:bump .3s}
+  @keyframes bump{50%{transform:scale(1.25);color:var(--sun)}}
+
+  /* Sigtekornet midt på skærmen */
+  .sigte{position:absolute;left:50%;top:50%;width:24px;height:24px;margin:-12px 0 0 -12px;pointer-events:none;
+    opacity:0;transition:opacity .25s}
+  .stage.igang .sigte{opacity:.85}
+  .sigte::before,.sigte::after{content:"";position:absolute;background:#fff;box-shadow:0 0 3px rgba(0,0,0,.6)}
+  .sigte::before{left:11px;top:2px;width:2px;height:20px}
+  .sigte::after{top:11px;left:2px;height:2px;width:20px}
+
+  /* Paletten: hvilken klods bygger man med? Øverst, så den ikke er i vejen for tommelfingrene. */
+  .palet{position:absolute;left:50%;transform:translateX(-50%);top:70px;display:flex;gap:6px;padding:6px;
+    background:rgba(20,16,43,.42);border-radius:999px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+    max-width:calc(100% - 24px);overflow-x:auto;scrollbar-width:none}
+  .palet::-webkit-scrollbar{display:none}
+  .palet[hidden]{display:none}
+  .palet button{width:34px;height:34px;min-width:34px;border-radius:11px;border:2px solid rgba(255,255,255,.35);
+    padding:0;transition:transform .08s}
+  .palet button[aria-pressed="true"]{border-color:#fff;transform:scale(1.14);box-shadow:0 2px 10px rgba(0,0,0,.4)}
+
+  /* Styringen: joystick til venstre tommel, knapper til højre */
+  .joyzone{position:absolute;left:0;bottom:0;width:48%;height:62%;touch-action:none}
+  .joyzone[hidden]{display:none}
+  .joy{position:absolute;width:118px;height:118px;margin:-59px 0 0 -59px;border-radius:50%;
+    background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.35);opacity:0;transition:opacity .15s;
+    pointer-events:none}
+  .joy.on{opacity:1}
+  .joy i{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;
+    background:rgba(255,255,255,.55);box-shadow:0 2px 10px rgba(0,0,0,.3)}
+
+  .styring{position:absolute;right:0;bottom:0;display:flex;flex-direction:column;align-items:flex-end;gap:10px;
+    padding:12px 14px 14px;pointer-events:none}
+  .styring[hidden]{display:none}
+  .raekke{display:flex;gap:10px}
+  .knap{pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.4);color:#fff;font-weight:800;
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);text-shadow:0 2px 6px rgba(0,0,0,.4);
+    transition:transform .06s,background .1s}
+  .knap.tryk{background:rgba(255,212,71,.6);transform:scale(.94)}
+  .raekke .knap{width:62px;height:62px;border-radius:20px;font-size:26px}
+  .hopknap{width:94px;height:94px;border-radius:50%;font-size:18px;letter-spacing:.5px}
+  @media (max-width:360px){ .raekke .knap{width:54px;height:54px;font-size:22px} .hopknap{width:82px;height:82px;font-size:16px} }
+
+  /* Beskeder midt på fladen */
+  .msg{position:absolute;left:0;right:0;top:34%;display:flex;flex-direction:column;align-items:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .3s}
+  .msg.on{opacity:1}
+  .msg .big{font-size:clamp(26px,8vw,46px);font-weight:900;letter-spacing:-1px;line-height:1.05;color:#fff;
+    text-shadow:0 0 20px rgba(255,212,71,.8),0 5px 0 #b07a00,0 8px 24px rgba(0,0,0,.5)}
+  .msg .sub{margin-top:12px;font-size:16px;font-weight:700;color:var(--text);
+    background:rgba(20,16,43,.6);border-radius:999px;padding:7px 15px}
+
+  /* Start-, pause- og slutskærm */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:18px 20px 24px;background:rgba(20,16,43,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .regler{display:flex;flex-direction:column;gap:7px;margin:0 0 14px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:9px 13px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .hs{margin-bottom:6px}
+  .hs .hs-liste{max-height:26vh}
+  .stor{font-size:58px;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--sun);
+    font-variant-numeric:tabular-nums;margin:2px 0}
+  .under{font-size:15px;color:var(--muted);margin:0 0 8px}
+  .hint{font-size:14px;margin:14px 0 0}
+
+  /* Tøjvalg på startskærmen */
+  .toej{margin:0 0 14px}
+  .toej .lbl{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;
+    display:block;margin-bottom:8px}
+  .toej .raekke2{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  .toej button{width:44px;height:52px;border-radius:14px;background:var(--bg2);border:2px solid transparent;
+    padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .toej button[aria-pressed="true"]{border-color:var(--sun)}
+  .toej .hoved{width:18px;height:18px;border-radius:5px}
+  .toej .krop{width:26px;height:16px;border-radius:5px}
+  .toej .ben{width:22px;height:8px;border-radius:3px}
+
+  @media (max-height:660px){
+    h1{font-size:30px} .stor{font-size:44px} .hs .hs-liste{max-height:22vh}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+  }
+</style>
+</head><body>
+
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Klodser</div>
+    <button class="pill" id="menuBtn" hidden>Menu</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Klodseverdenen i 3D"></canvas>
+
+    <div class="hud venstre" aria-live="polite">
+      <span class="lbl">Guldklodser</span>
+      <b id="guldHud">0/12</b>
+    </div>
+    <div class="hud hoejre">
+      <span class="lbl">Tid</span>
+      <b id="tidHud">0:00</b>
+    </div>
+
+    <div class="sigte" aria-hidden="true"></div>
+    <div class="palet" id="palet" hidden></div>
+
+    <div class="joyzone" id="joyzone" hidden>
+      <div class="joy" id="joy"><i></i></div>
+    </div>
+
+    <div class="styring" id="styring" hidden>
+      <div class="raekke">
+        <button class="knap" id="oejeBtn" aria-label="Skift mellem at se dig selv og at se med dine egne øjne">👁</button>
+        <button class="knap" id="fjernBtn" aria-label="Fjern klodsen du kigger på">⛏</button>
+        <button class="knap" id="bygBtn" aria-label="Sæt en klods">🧱</button>
+      </div>
+      <button class="knap hopknap" id="hopBtn" aria-label="Hop">HOP</button>
+    </div>
+
+    <div class="msg" id="raab">
+      <div class="big" id="raabTekst">GULDKLODS!</div>
+      <div class="sub" id="raabUnder">Der er 11 tilbage</div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Klodser</h1>
+        <div class="regler" aria-hidden="true">
+          <span>🕹️ <b>Løb rundt</b> i din egen 3D-verden</span>
+          <span>🧱 <b>Byg og riv ned</b> med ti farver klodser</span>
+          <span>🟨 <b>Find de 12 guldklodser</b> – tiden er din score</span>
+        </div>
+        <div class="toej">
+          <span class="lbl">Sådan ser du ud</span>
+          <div class="raekke2" id="toejValg"></div>
+        </div>
+        <div class="hs" id="hsStart"></div>
+        <button class="btn" id="startBtn">Spil</button>
+        <button class="btn ghost" id="nyBtn" hidden>Ny verden</button>
+        <p class="hint">Venstre tommel styrer. Træk på skærmen for at kigge. På computer: WASD, mellemrum hopper, E bygger, Q fjerner.</p>
+      </div>
+    </div>
+
+    <div class="screen" id="pauseScreen">
+      <div class="card">
+        <h1>Pause</h1>
+        <p class="under" id="pauseUnder">Din verden bliver gemt.</p>
+        <button class="btn" id="fortsaetBtn">Spil videre</button>
+        <button class="btn ghost" id="nyMenuBtn">Ny verden</button>
+        <a class="btn ghost" href="/">Tilbage til zydy.dk</a>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1>Alle guldklodser fundet!</h1>
+        <div class="stor" id="slutTid">0:00</div>
+        <p class="under" id="slutUnder">Så hurtigt fandt du alle 12.</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="byggeBtn">Byg videre</button>
+        <button class="btn ghost" id="nySlutBtn">Ny verden</button>
+      </div>
+    </div>
+
+    <div class="screen" id="fejlScreen">
+      <div class="card">
+        <h1>Ingen 3D her</h1>
+        <p>Den her browser kan ikke tegne 3D (WebGL). Prøv Safari eller Chrome på en nyere telefon eller iPad.</p>
+        <a class="btn" href="/">Tilbage til zydy.dk</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="klodser"></script>
+<script type="module">
+import {
+  BREDDE, HOEJDE, BLOKKE, PALET, LUFT, VAND, VAND_NIVEAU, GULD_ANTAL,
+  SP_B, SP_H, OEJE, VJ, rgb, erFast, erVaeske, erGennemsigtig,
+  lavVerden, blok, saetBlok, sigt, flyt, nySpiller, kigRetning, kanBygge, iVand,
+  serialiser, genskab,
+} from './verden.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const harFastSeed = Number.isFinite(fastSeed);
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c');
+const guldHud = $('guldHud'), tidHud = $('tidHud');
+const startScreen = $('startScreen'), pauseScreen = $('pauseScreen'), slutScreen = $('slutScreen');
+const styring = $('styring'), joyzone = $('joyzone'), joy = $('joy'), palet = $('palet');
+const raab = $('raab'), raabTekst = $('raabTekst'), raabUnder = $('raabUnder'), menuBtn = $('menuBtn');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY_VERDEN = 'zydy.klodser.verden';
+const KEY_TOEJ = 'zydy.klodser.toej';
+const gem = (n, v) => { try { localStorage.setItem(n, v); } catch (e) {} };
+const hent = n => { try { return localStorage.getItem(n); } catch (e) { return null; } };
+
+const DT = 1 / 60;                       // fast fysik-trin
+const RAEKKEVIDDE = 5.5;                 // så langt kan man bygge
+const tidTekst = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+
+/* ---------- Tøjet ---------- */
+const TOEJ = [
+  { hud: '#f6c48c', troeje: '#ffd447', bukser: '#3a4a8c', haar: '#5a3a22' },
+  { hud: '#8d5524', troeje: '#5ee0a8', bukser: '#2a2438', haar: '#1a1220' },
+  { hud: '#f6c48c', troeje: '#ff7ab8', bukser: '#f2f0ff', haar: '#c96a2a' },
+  { hud: '#c68642', troeje: '#4a7cf0', bukser: '#8e9099', haar: '#2a2438' },
+  { hud: '#ffdbac', troeje: '#bd5040', bukser: '#3f9a4e', haar: '#ffd447' },
+  { hud: '#8d5524', troeje: '#f2f0ff', bukser: '#4a7cf0', haar: '#5a3a22' },
+  { hud: '#f6c48c', troeje: '#2a2438', bukser: '#bd5040', haar: '#7a5a34' },
+  { hud: '#c68642', troeje: '#5ee0a8', bukser: '#ff7ab8', haar: '#f2f0ff' },
+];
+let toejNr = Math.max(0, Math.min(TOEJ.length - 1, parseInt(hent(KEY_TOEJ), 10) || 0));
+
+/* ---------- WebGL ---------- */
+const gl = canvas.getContext('webgl', { antialias: true, alpha: false }) ||
+           canvas.getContext('experimental-webgl', { antialias: true, alpha: false });
+if (!gl) {
+  startScreen.classList.remove('on');
+  $('fejlScreen').classList.add('on');
+}
+
+const HIMMEL = [0.557, 0.796, 1.0];      // samme blå som .stage, så kanterne flyder sammen
+
+const VS = `
+  attribute vec3 aPos; attribute vec3 aFarve; attribute float aLys;
+  uniform mat4 uPV; uniform mat4 uModel; uniform vec3 uOeje;
+  varying vec3 vFarve; varying float vTaage;
+  void main() {
+    vec4 p = uModel * vec4(aPos, 1.0);
+    gl_Position = uPV * p;
+    vFarve = aFarve * aLys;
+    vTaage = clamp((length(p.xyz - uOeje) - 22.0) / 26.0, 0.0, 1.0);
+  }`;
+const FS = `
+  precision mediump float;
+  uniform vec3 uHimmel; uniform float uAlfa;
+  varying vec3 vFarve; varying float vTaage;
+  void main() {
+    gl_FragColor = vec4(mix(vFarve, uHimmel, vTaage), uAlfa);
+  }`;
+
+let prog = null, attr = {}, uni = {};
+if (gl) {
+  const skab = (type, kilde) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, kilde); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  };
+  prog = gl.createProgram();
+  gl.attachShader(prog, skab(gl.VERTEX_SHADER, VS));
+  gl.attachShader(prog, skab(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+  for (const n of ['aPos', 'aFarve', 'aLys']) attr[n] = gl.getAttribLocation(prog, n);
+  for (const n of ['uPV', 'uModel', 'uOeje', 'uHimmel', 'uAlfa']) uni[n] = gl.getUniformLocation(prog, n);
+  gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.CULL_FACE);
+  gl.clearColor(HIMMEL[0], HIMMEL[1], HIMMEL[2], 1);
+  gl.uniform3fv(uni.uHimmel, HIMMEL);
+}
+
+/* ---------- Matricer (kolonne-ordnet, som WebGL vil have dem) ---------- */
+const enhed = () => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+function gang(a, b) {                     // a · b
+  const ud = new Float32Array(16);
+  for (let c = 0; c < 4; c++) {
+    for (let r = 0; r < 4; r++) {
+      ud[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+    }
+  }
+  return ud;
+}
+function perspektiv(fov, forhold, naer, fjern) {
+  const f = 1 / Math.tan(fov / 2), nf = 1 / (naer - fjern);
+  return new Float32Array([
+    f / forhold, 0, 0, 0,
+    0, f, 0, 0,
+    0, 0, (fjern + naer) * nf, -1,
+    0, 0, 2 * fjern * naer * nf, 0,
+  ]);
+}
+const flyt3 = (x, y, z) => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1]);
+function drejX(a) {
+  const c = Math.cos(a), s = Math.sin(a);
+  return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]);
+}
+function drejY(a) {
+  const c = Math.cos(a), s = Math.sin(a);
+  return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]);
+}
+const skaler = s => new Float32Array([s,0,0,0, 0,s,0,0, 0,0,s,0, 0,0,0,1]);
+
+/* ---------- Klodsernes sider ---------- */
+// Hjørnerne står mod uret set udefra, så bagsider kan kasseres (CULL_FACE).
+const FLADER = [
+  { n: [0, 1, 0], lys: 1.00, h: [[0,1,0],[0,1,1],[1,1,1],[1,1,0]] },
+  { n: [0,-1, 0], lys: 0.52, h: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]] },
+  { n: [1, 0, 0], lys: 0.74, h: [[1,0,0],[1,1,0],[1,1,1],[1,0,1]] },
+  { n: [-1,0, 0], lys: 0.74, h: [[0,0,0],[0,0,1],[0,1,1],[0,1,0]] },
+  { n: [0, 0, 1], lys: 0.88, h: [[0,0,1],[1,0,1],[1,1,1],[0,1,1]] },
+  { n: [0, 0,-1], lys: 0.88, h: [[0,0,0],[0,1,0],[1,1,0],[1,0,0]] },
+];
+const FARVER = BLOKKE.map(b => rgb(b.farve));
+const SIDEFARVER = BLOKKE.map(b => (b.side ? rgb(b.side) : null));
+
+/** Lidt tilfældig lysning pr. klods, så en stor flade ikke bliver helt død. */
+function plet(x, y, z) {
+  let h = (x * 374761393 + y * 668265263 + z * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return 0.93 + ((h >>> 0) % 1000) / 1000 * 0.12;
+}
+
+/** Lægger én side ind i listen af trekanter. */
+function laegFlade(ud, f, x, y, z, farve, lys, hoejde = 1) {
+  const t = [f.h[0], f.h[1], f.h[2], f.h[0], f.h[2], f.h[3]];
+  for (const h of t) {
+    ud.push(x + h[0], y + h[1] * hoejde, z + h[2], farve[0], farve[1], farve[2], lys);
+  }
+}
+
+/** Bygger hele verdenen om til trekanter: én liste til det faste, én til vandet. */
+function bygVerden(v) {
+  const fast = [], vand = [];
+  for (let y = 0; y < HOEJDE; y++) {
+    for (let z = 0; z < BREDDE; z++) {
+      for (let x = 0; x < BREDDE; x++) {
+        const t = v.b[(y * BREDDE + z) * BREDDE + x];
+        if (t === LUFT) continue;
+        const flydende = erVaeske(t);
+        const p = plet(x, y, z);
+        for (const f of FLADER) {
+          const nb = blok(v, x + f.n[0], y + f.n[1], z + f.n[2]);
+          if (flydende ? !(nb === LUFT) : !erGennemsigtig(nb)) continue;
+          const farve = (f.n[1] === 1 || !SIDEFARVER[t]) ? FARVER[t] : SIDEFARVER[t];
+          // Vandets overflade ligger lidt under klodsens top, så man kan se ned i det
+          const h = flydende && f.n[1] !== -1 ? 0.88 : 1;
+          laegFlade(flydende ? vand : fast, f, x, y, z, farve, f.lys * p, h);
+        }
+      }
+    }
+  }
+  return { fast, vand };
+}
+
+/**
+ * Havet uden for verdenen: fire store flader i vandhøjde, der går ud til
+ * horisonten. Uden dem ender verdenen i den bare himmel, når man står ude ved
+ * kanten – med dem ligner det en ø. Tågen i shaderen tager resten.
+ */
+function lavHav() {
+  const y = VAND_NIVEAU + 0.88, u = 220, f = rgb(BLOKKE[VAND].farve), lys = 0.96;
+  const ud = [];
+  const flade = (x0, z0, x1, z1) => {
+    for (const [x, z] of [[x0, z0], [x0, z1], [x1, z1], [x0, z0], [x1, z1], [x1, z0]]) {
+      ud.push(x, y, z, f[0], f[1], f[2], lys);
+    }
+  };
+  flade(-u, -u, BREDDE + u, 0);
+  flade(-u, BREDDE, BREDDE + u, BREDDE + u);
+  flade(-u, 0, 0, BREDDE);
+  flade(BREDDE, 0, BREDDE + u, BREDDE);
+  return ud;
+}
+
+/** En kasse (til figuren og guldklodserne), målt fra et hjørne. */
+function lavBoks(x, y, z, b, h, d, farve, lysning = 1) {
+  const ud = [];
+  const f = typeof farve === 'string' ? rgb(farve) : farve;
+  for (const side of FLADER) {
+    const t = [side.h[0], side.h[1], side.h[2], side.h[0], side.h[2], side.h[3]];
+    for (const p of t) ud.push(x + p[0] * b, y + p[1] * h, z + p[2] * d, f[0], f[1], f[2], Math.min(1, side.lys * lysning));
+  }
+  return ud;
+}
+
+/* ---------- Buffere ---------- */
+function lavBuffer(liste) {
+  if (!gl) return { buf: null, antal: 0 };
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(liste), gl.STATIC_DRAW);
+  return { buf, antal: liste.length / 7 };
+}
+function tegnBuffer(b, model, alfa = 1, slags = null) {
+  if (!gl || !b.buf || !b.antal) return;
+  gl.bindBuffer(gl.ARRAY_BUFFER, b.buf);
+  const stride = 7 * 4;
+  gl.enableVertexAttribArray(attr.aPos); gl.vertexAttribPointer(attr.aPos, 3, gl.FLOAT, false, stride, 0);
+  gl.enableVertexAttribArray(attr.aFarve); gl.vertexAttribPointer(attr.aFarve, 3, gl.FLOAT, false, stride, 12);
+  gl.enableVertexAttribArray(attr.aLys); gl.vertexAttribPointer(attr.aLys, 1, gl.FLOAT, false, stride, 24);
+  gl.uniformMatrix4fv(uni.uModel, false, model || enhed());
+  gl.uniform1f(uni.uAlfa, alfa);
+  gl.drawArrays(slags ?? gl.TRIANGLES, 0, b.antal);
+}
+
+/* ---------- Figuren ---------- */
+// Hver del har sit eget lille net og et haengsel, så arme og ben kan svinge.
+function lavFigur(t) {
+  const dele = [];
+  const put = (hx, hy, hz, sving, liste) => dele.push({ haengsel: [hx, hy, hz], sving, ...lavBuffer(liste) });
+  put(-0.16, 0.60, 0, 1, lavBoks(-0.12, -0.60, -0.14, 0.24, 0.60, 0.28, t.bukser));
+  put(0.16, 0.60, 0, -1, lavBoks(-0.12, -0.60, -0.14, 0.24, 0.60, 0.28, t.bukser));
+  put(0, 0.60, 0, 0, lavBoks(-0.31, 0, -0.17, 0.62, 0.58, 0.34, t.troeje));
+  put(-0.42, 1.14, 0, -1, lavBoks(-0.11, -0.54, -0.12, 0.22, 0.54, 0.24, t.hud));
+  put(0.42, 1.14, 0, 1, lavBoks(-0.11, -0.54, -0.12, 0.22, 0.54, 0.24, t.hud));
+  const hoved = [
+    ...lavBoks(-0.23, 0, -0.21, 0.46, 0.42, 0.42, t.hud),
+    ...lavBoks(-0.24, 0.40, -0.22, 0.48, 0.09, 0.44, t.haar),
+    ...lavBoks(-0.15, 0.22, -0.235, 0.08, 0.08, 0.03, '#20143a'),     // øjne (figuren kigger mod -z)
+    ...lavBoks(0.07, 0.22, -0.235, 0.08, 0.08, 0.03, '#20143a'),
+    ...lavBoks(-0.08, 0.10, -0.235, 0.16, 0.04, 0.03, '#20143a'),     // mund
+  ];
+  put(0, 1.18, 0, 0, hoved);
+  return dele;
+}
+
+/* ---------- Tilstand ---------- */
+let v = null, spiller = null;
+let netFast = { buf: null, antal: 0 }, netVand = { buf: null, antal: 0 };
+let figur = null, netGuld = null, netStraale = null, netRamme = null, netHav = null;
+let fase = 'menu';                       // menu | spil | pause | faerdig
+let tid = 0, taget = 0, T = 0, valgt = PALET[0], person = 3;
+let paused = false, acc = 0, sidst = 0, billeder = 0;
+let sigtet = null, raabTil = 0, gemTaeller = 0, netBygget = 0;
+const ind = { frem: 0, side: 0, hop: false };
+const taster = new Set();
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1;
+function maal() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
+}
+
+/* ---------- Verdenen ---------- */
+function nyVerden(seed) {
+  v = lavVerden(seed);
+  spiller = nySpiller(v);
+  tid = 0; taget = 0;
+  efterVerden();
+}
+
+function laesGemt() {
+  const raa = hent(KEY_VERDEN);
+  if (!raa) return false;
+  try {
+    const gemt = JSON.parse(raa);
+    v = genskab(gemt);
+    spiller = nySpiller(v);
+    tid = Number.isFinite(gemt.tid) ? gemt.tid : 0;
+    taget = v.guld.filter(g => g.taget).length;
+    efterVerden();
+    return true;
+  } catch (e) { return false; }
+}
+
+function efterVerden() {
+  byggeNet();
+  figur = lavFigur(TOEJ[toejNr]);
+  netGuld = lavBuffer(lavBoks(-0.22, -0.22, -0.22, 0.44, 0.44, 0.44, '#ffd447', 1.25));
+  // En lysstråle op i luften over hver guldklods – ellers kan de ikke findes i en hel verden
+  netStraale = lavBuffer(lavBoks(-0.15, -0.2, -0.15, 0.3, 8, 0.3, '#ffe07a', 1.4));
+  netRamme = lavBuffer(rammeLinjer());
+  if (!netHav) netHav = lavBuffer(lavHav());
+  visHud();
+}
+
+function byggeNet() {
+  const { fast, vand } = bygVerden(v);
+  netBygget++;
+  if (gl) {
+    if (netFast.buf) gl.deleteBuffer(netFast.buf);
+    if (netVand.buf) gl.deleteBuffer(netVand.buf);
+  }
+  netFast = lavBuffer(fast);
+  netVand = lavBuffer(vand);
+}
+
+/** De 12 kanter på en klods – rammen om den, man sigter på. */
+function rammeLinjer() {
+  const ud = [], f = [1, 1, 1], k = -0.005, s = 1.01;
+  const p = (a, b, c) => ud.push(k + a * s, k + b * s, k + c * s, f[0], f[1], f[2], 1);
+  for (const [a, b] of [[0,0],[1,0],[1,1],[0,1]]) { p(a, 0, b); p(a, 1, b); }        // lodrette
+  for (const y of [0, 1]) {
+    p(0, y, 0); p(1, y, 0); p(1, y, 0); p(1, y, 1);
+    p(1, y, 1); p(0, y, 1); p(0, y, 1); p(0, y, 0);
+  }
+  return ud;
+}
+
+function gemVerden() {
+  if (!v) return;
+  try { gem(KEY_VERDEN, JSON.stringify(serialiser(v, { tid }))); } catch (e) {}
+}
+
+/* ---------- Tegning ---------- */
+function kameraPunkt() {
+  const oeje = { x: spiller.x, y: spiller.y - (spiller.trin || 0) + OEJE, z: spiller.z };
+  if (person === 1) return oeje;
+  // Tredje person: bagud langs kigretningen og lidt over hovedet, så figuren
+  // står i den nederste del af billedet og man kan se, hvor man er på vej hen.
+  oeje.y += 0.35;
+  const r = kigRetning(spiller.yaw, spiller.pitch);
+  let afstand = 5;
+  for (let d = 0.4; d <= afstand; d += 0.2) {
+    if (erFast(blok(v, oeje.x - r.x * d, oeje.y - r.y * d, oeje.z - r.z * d))) { afstand = Math.max(0.6, d - 0.35); break; }
+  }
+  return { x: oeje.x - r.x * afstand, y: oeje.y - r.y * afstand, z: oeje.z - r.z * afstand };
+}
+
+function tegn() {
+  if (!gl) return;
+  const kam = kameraPunkt();
+  const pv = gang(
+    perspektiv(1.15, W / H, 0.1, 90),
+    gang(drejX(-spiller.pitch), gang(drejY(-spiller.yaw), flyt3(-kam.x, -kam.y, -kam.z))),
+  );
+  gl.uniformMatrix4fv(uni.uPV, false, pv);
+  gl.uniform3f(uni.uOeje, kam.x, kam.y, kam.z);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.disable(gl.BLEND);
+  gl.depthMask(true);
+
+  tegnBuffer(netHav, enhed());
+  tegnBuffer(netFast, enhed());
+
+  // Figuren (kun når man ser sig selv)
+  if (person === 3 && fase !== 'menu') {
+    const grund = gang(flyt3(spiller.x, spiller.y - (spiller.trin || 0), spiller.z), drejY(spiller.yaw));
+    const fart = Math.hypot(ind.frem, ind.side);
+    const sving = Math.sin(spiller.gang) * 0.55 * Math.min(1, fart) * (spiller.paaJorden ? 1 : 0.3);
+    for (const del of figur) {
+      const [hx, hy, hz] = del.haengsel;
+      const model = gang(gang(grund, flyt3(hx, hy, hz)), del.sving ? drejX(sving * del.sving) : enhed());
+      tegnBuffer(del, model);
+    }
+  }
+
+  // Guldklodserne: de svæver og drejer, så de er til at få øje på
+  for (const g of v.guld) {
+    if (g.taget) continue;
+    const bob = roligt ? 0 : Math.sin(T * 2 + g.x) * 0.12;
+    const model = gang(gang(flyt3(g.x, g.y + bob, g.z), drejY(T * 1.6)), skaler(1 + (roligt ? 0 : Math.sin(T * 3) * 0.05)));
+    tegnBuffer(netGuld, model);
+  }
+
+  // Rammen om klodsen man sigter på
+  if (sigtet && fase === 'spil') {
+    tegnBuffer(netRamme, flyt3(sigtet.x, sigtet.y, sigtet.z), 1, gl.LINES);
+  }
+
+  // Det gennemsigtige til sidst: lysstrålerne over guldet og vandet, så man
+  // kan se klodserne bagved og under.
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.depthMask(false);
+  gl.disable(gl.CULL_FACE);
+  for (const g of v.guld) {
+    if (g.taget) continue;
+    tegnBuffer(netStraale, flyt3(g.x, g.y, g.z), 0.3);
+  }
+  if (netVand.antal) tegnBuffer(netVand, enhed(), 0.72);
+  gl.enable(gl.CULL_FACE);
+  gl.depthMask(true);
+  gl.disable(gl.BLEND);
+  billeder++;
+}
+
+/* ---------- Spillets gang ---------- */
+function tik(dt) {
+  T += dt;
+  if (fase === 'spil' || fase === 'faerdig') {
+    flyt(v, spiller, ind, dt);
+    samlGuld();
+  }
+  if (fase === 'spil') {
+    if (taget < v.guld.length) tid += dt;          // uret stopper, når alle er fundet – så er det byggetid
+    gemTaeller += dt;
+    if (gemTaeller > 10) { gemTaeller = 0; gemVerden(); }
+    if (Math.floor(tid) !== Math.floor(tid - dt)) tidHud.textContent = tidTekst(tid);
+  }
+  if (raabTil && T > raabTil) { raab.classList.remove('on'); raabTil = 0; }
+  const oeje = { x: spiller.x, y: spiller.y + OEJE, z: spiller.z };
+  sigtet = fase === 'spil' ? sigt(v, oeje, kigRetning(spiller.yaw, spiller.pitch), RAEKKEVIDDE) : null;
+}
+
+function samlGuld() {
+  for (const g of v.guld) {
+    if (g.taget) continue;
+    const dx = g.x - spiller.x, dy = g.y - (spiller.y + SP_H / 2), dz = g.z - spiller.z;
+    if (dx * dx + dy * dy + dz * dz > 1.3 * 1.3) continue;
+    g.taget = true; taget++;
+    navigator.vibrate && navigator.vibrate(20);
+    visHud();
+    guldHud.classList.add('bump'); setTimeout(() => guldHud.classList.remove('bump'), 300);
+    gemVerden();
+    if (taget >= v.guld.length) faerdig();
+    else sigTil('GULDKLODS!', taget === v.guld.length - 1 ? 'Én tilbage!' : `Der er ${v.guld.length - taget} tilbage`, 1.6);
+  }
+}
+
+function sigTil(stor, lille, sek) {
+  raabTekst.textContent = stor; raabUnder.textContent = lille;
+  raab.classList.add('on'); raabTil = T + sek;
+}
+
+function visHud() {
+  guldHud.textContent = `${taget}/${v ? v.guld.length : GULD_ANTAL}`;
+  tidHud.textContent = tidTekst(tid);
+}
+
+/* ---------- Bygge og rive ned ---------- */
+function byg() {
+  if (fase !== 'spil' || !sigtet) return false;
+  const x = sigtet.x + sigtet.nx, y = sigtet.y + sigtet.ny, z = sigtet.z + sigtet.nz;
+  if (!kanBygge(v, spiller, x, y, z)) return false;
+  if (!saetBlok(v, x, y, z, valgt)) return false;
+  byggeNet();
+  navigator.vibrate && navigator.vibrate(8);
+  return true;
+}
+
+function fjern() {
+  if (fase !== 'spil' || !sigtet) return false;
+  if (!saetBlok(v, sigtet.x, sigtet.y, sigtet.z, LUFT)) return false;
+  byggeNet();
+  navigator.vibrate && navigator.vibrate(8);
+  return true;
+}
+
+/* ---------- Skærmene ---------- */
+function start() {
+  fase = 'spil';
+  paused = false; acc = 0; sidst = 0;
+  for (const s of [startScreen, pauseScreen, slutScreen]) s.classList.remove('on');
+  styring.hidden = false; joyzone.hidden = false; palet.hidden = false;
+  menuBtn.hidden = false; stage.classList.add('igang');
+  if (taget < v.guld.length) sigTil('LED EFTER GULD!', `Se efter lysstrålerne – der er ${v.guld.length - taget} tilbage`, 2.2);
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+function tilPause() {
+  if (fase !== 'spil' && fase !== 'faerdig') return;
+  fase = 'pause';
+  slipStyring();
+  gemVerden();
+  styring.hidden = true; joyzone.hidden = true; palet.hidden = true;
+  stage.classList.remove('igang');
+  $('pauseUnder').textContent = taget >= (v ? v.guld.length : GULD_ANTAL)
+    ? 'Din verden er gemt – byg løs.' : `Du mangler ${v.guld.length - taget} guldklodser. Din verden bliver gemt.`;
+  pauseScreen.classList.add('on');
+}
+
+function faerdig() {
+  fase = 'faerdig';
+  slipStyring();
+  gemVerden();
+  styring.hidden = true; joyzone.hidden = true; palet.hidden = true;
+  stage.classList.remove('igang');
+  raab.classList.remove('on'); raabTil = 0;
+  const sek = Math.max(1, Math.round(tid));
+  $('slutTid').textContent = tidTekst(sek);
+  $('slutUnder').textContent = `Så hurtigt fandt du alle ${v.guld.length}.`;
+  slutScreen.classList.add('on');
+  navigator.vibrate && navigator.vibrate([40, 60, 40]);
+  Highscore.panel($('hsSlut'), { spil: 'klodser', score: sek, format: tidTekst });
+}
+
+function fraStart() {
+  nyVerden(harFastSeed ? fastSeed : (Math.random() * 4294967296) >>> 0);
+  gemVerden();
+  start();
+}
+
+function slipStyring() {
+  ind.frem = 0; ind.side = 0; ind.hop = false;
+  taster.clear();
+  joy.classList.remove('on');
+  for (const id of ['hopBtn', 'bygBtn', 'fjernBtn', 'oejeBtn']) $(id).classList.remove('tryk');
+}
+
+/* ---------- Paletten og tøjet ---------- */
+function tegnPalet() {
+  palet.innerHTML = '';
+  for (const t of PALET) {
+    const b = document.createElement('button');
+    b.style.background = BLOKKE[t].farve;
+    b.setAttribute('aria-label', BLOKKE[t].navn);
+    b.setAttribute('aria-pressed', String(t === valgt));
+    b.addEventListener('click', () => { valgt = t; tegnPalet(); });
+    palet.appendChild(b);
+  }
+}
+
+function tegnToejValg() {
+  const rod = $('toejValg');
+  rod.innerHTML = '';
+  TOEJ.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.setAttribute('aria-label', 'Tøj nummer ' + (i + 1));
+    b.setAttribute('aria-pressed', String(i === toejNr));
+    for (const [klasse, farve] of [['hoved', t.hud], ['krop', t.troeje], ['ben', t.bukser]]) {
+      const d = document.createElement('div');
+      d.className = klasse; d.style.background = farve;
+      b.appendChild(d);
+    }
+    b.addEventListener('click', () => {
+      toejNr = i; gem(KEY_TOEJ, String(i));
+      figur = lavFigur(TOEJ[toejNr]);
+      tegnToejValg();
+    });
+    rod.appendChild(b);
+  });
+}
+
+/* ---------- Styring: joystick, træk og knapper ---------- */
+let joyId = null, joyMidte = { x: 0, y: 0 };
+joyzone.addEventListener('pointerdown', e => {
+  if (fase !== 'spil') return;
+  joyId = e.pointerId;
+  joyzone.setPointerCapture(e.pointerId);
+  const r = joyzone.getBoundingClientRect();
+  joyMidte = { x: e.clientX, y: e.clientY };
+  joy.style.left = (e.clientX - r.left) + 'px';
+  joy.style.top = (e.clientY - r.top) + 'px';
+  joy.classList.add('on');
+  joyTraek(e);
+  e.preventDefault();
+});
+function joyTraek(e) {
+  const dx = e.clientX - joyMidte.x, dy = e.clientY - joyMidte.y;
+  const maks = 52, l = Math.hypot(dx, dy);
+  const k = l > maks ? maks / l : 1;
+  joy.querySelector('i').style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+  const doedzone = 8;
+  ind.side = l < doedzone ? 0 : Math.max(-1, Math.min(1, dx / maks));
+  ind.frem = l < doedzone ? 0 : Math.max(-1, Math.min(1, -dy / maks));
+}
+joyzone.addEventListener('pointermove', e => { if (e.pointerId === joyId) { joyTraek(e); e.preventDefault(); } });
+for (const h of ['pointerup', 'pointercancel']) {
+  joyzone.addEventListener(h, e => {
+    if (e.pointerId !== joyId) return;
+    joyId = null; ind.frem = 0; ind.side = 0;
+    joy.classList.remove('on');
+    joy.querySelector('i').style.transform = '';
+  });
+}
+
+// Træk hvor som helst andet på fladen = kig dig omkring
+let kigId = null, kigSidst = null;
+stage.addEventListener('pointerdown', e => {
+  if (fase !== 'spil' || kigId !== null) return;
+  if (e.target.closest('.styring, .joyzone, .palet, .screen')) return;
+  kigId = e.pointerId;
+  kigSidst = { x: e.clientX, y: e.clientY };
+  stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener('pointermove', e => {
+  if (e.pointerId !== kigId) return;
+  kig((e.clientX - kigSidst.x) * -0.005, (e.clientY - kigSidst.y) * -0.005);
+  kigSidst = { x: e.clientX, y: e.clientY };
+  e.preventDefault();
+});
+for (const h of ['pointerup', 'pointercancel']) {
+  stage.addEventListener(h, e => { if (e.pointerId === kigId) kigId = null; });
+}
+function kig(dyaw, dpitch) {
+  spiller.yaw += dyaw;
+  spiller.pitch = Math.max(-1.45, Math.min(1.45, spiller.pitch + dpitch));
+}
+
+/** Knap der skal kunne holdes nede (hop) eller bare trykkes. */
+function knap(id, ned, op) {
+  const el = $(id);
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault(); el.classList.add('tryk'); ned && ned();
+  });
+  for (const h of ['pointerup', 'pointercancel', 'pointerleave']) {
+    el.addEventListener(h, () => { el.classList.remove('tryk'); op && op(); });
+  }
+}
+knap('hopBtn', () => { ind.hop = true; }, () => { ind.hop = false; });
+knap('bygBtn', byg);
+knap('fjernBtn', fjern);
+knap('oejeBtn', () => { person = person === 3 ? 1 : 3; });
+
+/* ---------- Tastatur (computer) ---------- */
+const TASTER = {
+  KeyW: 'frem', ArrowUp: 'frem', KeyS: 'tilbage', ArrowDown: 'tilbage',
+  KeyA: 'venstre', ArrowLeft: 'venstre', KeyD: 'hoejre', ArrowRight: 'hoejre',
+};
+function fraTaster() {
+  ind.frem = (taster.has('frem') ? 1 : 0) - (taster.has('tilbage') ? 1 : 0);
+  ind.side = (taster.has('hoejre') ? 1 : 0) - (taster.has('venstre') ? 1 : 0);
+}
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (fase === 'spil' && TASTER[e.code]) { taster.add(TASTER[e.code]); fraTaster(); e.preventDefault(); return; }
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (fase === 'spil') ind.hop = true;
+    else if (startScreen.classList.contains('on')) $('startBtn').click();
+    return;
+  }
+  if (fase !== 'spil') return;
+  if (e.code === 'KeyE' || e.code === 'Enter') { byg(); e.preventDefault(); }
+  else if (e.code === 'KeyQ' || e.code === 'Backspace') { fjern(); e.preventDefault(); }
+  else if (e.code === 'KeyF') person = person === 3 ? 1 : 3;
+  else if (e.code === 'Escape') tilPause();
+  else if (/^Digit[1-9]$/.test(e.code)) {
+    const n = parseInt(e.code.slice(5), 10) - 1;
+    if (PALET[n] != null) { valgt = PALET[n]; tegnPalet(); }
+  }
+});
+addEventListener('keyup', e => {
+  if (TASTER[e.code]) { taster.delete(TASTER[e.code]); fraTaster(); }
+  if (e.code === 'Space') ind.hop = false;
+});
+addEventListener('blur', slipStyring);
+
+/* ---------- Løkken ---------- */
+function ramme(nu) {
+  requestAnimationFrame(ramme);
+  if (!sidst) sidst = nu;
+  let dt = (nu - sidst) / 1000;
+  sidst = nu;
+  if (!paused) {
+    acc += Math.min(0.25, dt);
+    let n = 0;
+    while (acc >= DT && n++ < 8) { tik(DT); acc -= DT; }
+  }
+  tegn();
+}
+
+/* ---------- Knapper på skærmene ---------- */
+$('startBtn').addEventListener('click', start);
+$('nyBtn').addEventListener('click', fraStart);
+$('nyMenuBtn').addEventListener('click', fraStart);
+$('nySlutBtn').addEventListener('click', fraStart);
+$('fortsaetBtn').addEventListener('click', start);
+$('byggeBtn').addEventListener('click', start);
+menuBtn.addEventListener('click', tilPause);
+addEventListener('pagehide', gemVerden);
+document.addEventListener('visibilitychange', () => { if (document.hidden) gemVerden(); });
+
+/* ---------- Start ---------- */
+maal();
+addEventListener('resize', maal);
+addEventListener('orientationchange', () => setTimeout(maal, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
+
+const fortsatte = !harFastSeed && laesGemt();
+if (!fortsatte) nyVerden(harFastSeed ? fastSeed : (Math.random() * 4294967296) >>> 0);
+if (fortsatte) {
+  $('startBtn').textContent = taget >= v.guld.length ? 'Byg videre' : 'Spil videre';
+  $('nyBtn').hidden = false;
+}
+tegnPalet();
+tegnToejValg();
+visHud();
+Highscore.panel($('hsStart'), { spil: 'klodser', format: tidTekst });
+if (gl) requestAnimationFrame(ramme);
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  start, tilPause, faerdig, byg, fjern, tik, kig,
+  nyVerden(seed) { nyVerden(seed); },
+  pause() { paused = true; }, resume() { paused = false; sidst = 0; acc = 0; },
+  styr(s = {}) { ind.frem = s.frem || 0; ind.side = s.side || 0; ind.hop = !!s.hop; },
+  hop() { ind.hop = true; setTimeout(() => { ind.hop = false; }, 120); },
+  vaelg(t) { valgt = t; tegnPalet(); },
+  person(p) { if (p) person = p; return person; },
+  blok: (x, y, z) => blok(v, x, y, z),
+  /** Stiller spilleren et bestemt sted (til tests). */
+  placer(x, y, z, yaw = spiller.yaw, pitch = spiller.pitch) {
+    spiller.x = x; spiller.y = y; spiller.z = z; spiller.vy = 0; spiller.trin = 0;
+    spiller.yaw = yaw; spiller.pitch = pitch;
+  },
+  /** Teleporterer hen til guldklods nr. n, så tests kan samle dem. */
+  tilGuld(n) {
+    const g = v.guld[n];
+    if (!g) return null;
+    this.placer(g.x, g.y - 0.5, g.z);
+    return { ...g };
+  },
+  get state() {
+    return {
+      fase, tid, taget, ialt: v.guld.length, seed: v.seed, valgt, person, billeder,
+      spiller: { x: spiller.x, y: spiller.y, z: spiller.z, vy: spiller.vy, yaw: spiller.yaw, pitch: spiller.pitch, paaJorden: spiller.paaJorden, iVand: iVand(v, spiller) },
+      sigtet: sigtet ? { ...sigtet } : null,
+      guld: v.guld.map(g => ({ x: g.x, y: g.y, z: g.z, taget: g.taget })),
+      net: { fast: netFast.antal, vand: netVand.antal, bygget: netBygget },
+      webgl: !!gl,
+      konst: { BREDDE, HOEJDE, SP_H, SP_B, VJ },
+    };
+  },
+};
+</script>
+</body></html>
