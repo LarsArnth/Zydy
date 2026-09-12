@@ -18,6 +18,7 @@ export const KORT = [
   { id: 'lava', navn: 'Gulvet er lava', url: '/spil/lava/' },
   { id: 'kryds', navn: 'Kryds og bolle', url: '/spil/kryds/' },
   { id: 'klodser', navn: 'Klodser', url: '/spil/klodser/' },
+  { id: 'kat', navn: 'Min kat', url: '/spil/kat/' },
   { id: 'klaver', navn: 'KlaverLær', url: 'https://klaver.zydy.dk/', ekstern: true },
 ];
 
@@ -37,4 +38,5 @@ export const SPIL = {
   obby: { maks: 10000, unik: true },
   lava: { maks: 3000 },
   klodser: { retning: 'asc', min: 10, maks: 3600 },
+  kat: { maks: 50 },
 };

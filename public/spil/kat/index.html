@@ -1,0 +1,1120 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Min kat: adopter din egen killing, giv den mad, leg med garnnøglet, børst pelsen og put den om aftenen.">
+<title>Min kat – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Cpath d='M16 26 L18 12 L29 21 A16 13 0 0 1 35 21 L46 12 L48 26 A17 15 0 1 1 16 26 Z' fill='%23f0994a'/%3E%3Ccircle cx='25' cy='33' r='3.4' fill='%231c1f4a'/%3E%3Ccircle cx='39' cy='33' r='3.4' fill='%231c1f4a'/%3E%3Cpath d='M32 40 l-3 -3 h6 z' fill='%23ff8fb0'/%3E%3C/svg%3E">
+<style>
+  /*
+    Min kat – et kæledyr man passer: mad, leg, børstning og søvn.
+    Reglerne (behov, erfaring, mønter og butikken) bor i kat.mjs;
+    her er stuen, tegningen af katten og fingrene på skærmen.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --ink:#1c1f4a; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none;overflow:hidden}
+  body{display:flex;flex-direction:column;height:100vh;height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 12px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:40px;line-height:1;margin:0 0 8px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{width:100%;padding:17px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;min-height:44px}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn:disabled{opacity:.45}
+  .pill{background:var(--bg2);border-radius:999px;padding:7px 13px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--text)}
+
+  .screen{display:none;flex-direction:column;flex:1;width:100%;max-width:620px;margin:0 auto;min-height:0}
+  .screen.on{display:flex}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;min-height:44px}
+  .back{color:var(--muted);text-decoration:none;font-size:17px;font-weight:700;display:inline-flex;
+    align-items:center;min-height:44px;min-width:44px;padding:0 6px 0 2px;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .brand{font-weight:800;font-size:18px;letter-spacing:-.3px}
+
+  /* ======== Startskærm ======== */
+  #start .indhold{flex:1;display:flex;flex-direction:column;justify-content:center;overflow-y:auto}
+  .killinger{display:flex;gap:10px;margin:6px 0 4px}
+  .killing{flex:1;background:var(--bg2);border-radius:var(--r);padding:10px 6px 8px;display:flex;
+    flex-direction:column;align-items:center;gap:4px;border:3px solid transparent;color:var(--muted);font-weight:700;font-size:14px}
+  .killing.on{border-color:var(--sun);color:var(--text)}
+  .killing canvas{width:100%;max-width:96px;aspect-ratio:1;display:block}
+  .navnefelt{font:inherit;font-size:20px;font-weight:700;text-align:center;padding:14px;border-radius:16px;
+    border:2px solid transparent;background:var(--bg2);color:var(--text);outline:none;width:100%;
+    -webkit-user-select:text;user-select:text;margin-top:4px}
+  .navnefelt:focus{border-color:var(--sun)}
+  .navnefelt::placeholder{color:var(--muted);font-weight:500}
+  .label{font-weight:700;font-size:16px;margin:12px 0 4px}
+
+  /* ======== Spilskærm ======== */
+  #spil{min-height:0}
+  .status{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .status .navn{font-weight:800;font-size:17px;flex:none}
+  .xpspor{flex:1;height:12px;border-radius:999px;background:var(--bg2);overflow:hidden}
+  .xpspor i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--mint),var(--sun));
+    border-radius:999px;transition:width .3s}
+  .stue{flex:1;min-height:0;position:relative;border-radius:var(--r);overflow:hidden;background:#2a2350}
+  .stue canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #besked{position:absolute;left:10px;right:10px;bottom:8px;text-align:center;font-size:15px;font-weight:700;
+    color:var(--text);text-shadow:0 2px 8px rgba(0,0,0,.55);pointer-events:none}
+  #legStop{position:absolute;top:8px;right:8px;background:rgba(17,20,42,.72);color:var(--text);
+    border-radius:999px;padding:8px 14px;font-size:15px;font-weight:700;min-height:40px}
+  #legStop[hidden]{display:none}
+
+  .behov{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 2px}
+  .maaler{background:var(--bg2);border-radius:14px;padding:6px 8px 7px;text-align:center}
+  .maaler .hoved{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.2px}
+  .maaler .spor{display:block;height:9px;border-radius:999px;background:rgba(255,255,255,.10);margin-top:5px;overflow:hidden}
+  .maaler .spor i{display:block;height:100%;width:50%;border-radius:999px;background:var(--mint);transition:width .25s,background .25s}
+  .maaler.lav .spor i{background:var(--coral)}
+  .maaler.halv .spor i{background:var(--sun)}
+
+  .knapper{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+  .knapper button{background:var(--bg2);color:var(--text);border-radius:18px;padding:9px 2px 7px;
+    font-size:13px;font-weight:700;min-height:62px;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:3px;transition:transform .08s,background .15s}
+  .knapper button .em{font-size:23px;line-height:1}
+  .knapper button:active{transform:scale(.96)}
+  .knapper button.on{background:var(--sun);color:var(--ink)}
+  .knapper button:disabled{opacity:.4}
+  .smaa{display:flex;gap:8px;margin-top:8px}
+  .smaa button{flex:1;background:var(--bg2);color:var(--text);border-radius:16px;padding:11px;font-size:15px;font-weight:700;min-height:44px}
+
+  /* ======== Ark der glider op (butik og topliste) ======== */
+  .ark{position:fixed;inset:0;background:rgba(9,11,26,.72);display:none;align-items:flex-end;z-index:40}
+  .ark.on{display:flex}
+  .ark .kort{background:var(--bg);width:100%;max-width:620px;margin:0 auto;border-radius:26px 26px 0 0;
+    padding:16px 16px calc(env(safe-area-inset-bottom) + 16px);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .ark h2{margin:0;font-size:24px;letter-spacing:-.5px}
+  .arkTop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .luk{background:var(--bg2);color:var(--text);border-radius:999px;width:44px;height:44px;font-size:20px;flex:none}
+  .hylde{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 4px}
+  .vare{background:var(--bg2);border-radius:18px;padding:8px 6px 9px;display:flex;flex-direction:column;
+    align-items:center;gap:4px;border:3px solid transparent;color:var(--text);font-size:13px;font-weight:700;text-align:center}
+  .vare canvas{width:100%;max-width:84px;aspect-ratio:1;display:block}
+  .vare .pris{color:var(--sun);font-size:13px;font-weight:800}
+  .vare .pris.ejet{color:var(--muted)}
+  .vare.paa{border-color:var(--sun)}
+  .vare.dyr{opacity:.5}
+  @media (min-width:520px){ .hylde{grid-template-columns:repeat(4,1fr)} }
+
+  @media (max-height:560px){
+    h1{font-size:32px} .knapper button{min-height:54px} .behov{margin-top:6px}
+  }
+  @media (prefers-reduced-motion:reduce){ .btn,.knapper button,.xpspor i,.maaler .spor i{transition:none} }
+</style>
+</head>
+<body>
+
+<!-- ===== Startskærm: vælg en killing ===== -->
+<div class="screen on" id="start">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Min kat</span>
+    <span class="pill" id="startPill">Ny killing</span>
+  </div>
+  <div class="indhold">
+    <h1>Min kat</h1>
+    <p id="startTekst">Vælg en killing, giv den et navn – og pas godt på den.</p>
+
+    <div class="killinger" id="killinger"></div>
+    <div class="label">Hvad skal den hedde?</div>
+    <input class="navnefelt" id="katNavn" type="text" maxlength="12" placeholder="Fx Mis"
+           enterkeyhint="done" autocapitalize="words" spellcheck="false" autocomplete="off" aria-label="Kattens navn">
+    <button class="btn" id="adopterBtn">Adopter killingen</button>
+    <button class="btn ghost" id="fortsaetBtn" hidden>Tilbage til katten</button>
+    <div id="hsStart"></div>
+  </div>
+</div>
+
+<!-- ===== Spilskærm ===== -->
+<div class="screen" id="spil">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand" id="katBrand">Min kat</span>
+    <span class="pill" id="moentPill">🪙 <b>0</b></span>
+  </div>
+
+  <div class="status">
+    <span class="navn" id="niveauTekst">Niveau 1</span>
+    <span class="xpspor" aria-hidden="true"><i id="xpBar"></i></span>
+    <span class="pill" id="alderPill">0 dage</span>
+  </div>
+
+  <div class="stue" id="stue">
+    <canvas id="laerred"></canvas>
+    <div id="besked"></div>
+    <button id="legStop" hidden>Færdig</button>
+  </div>
+
+  <div class="behov" id="behov"></div>
+
+  <div class="knapper">
+    <button id="madBtn"><span class="em">🍲</span>Mad</button>
+    <button id="legBtn"><span class="em">🧶</span>Leg</button>
+    <button id="vaskBtn"><span class="em">🧼</span>Børst</button>
+    <button id="sovBtn"><span class="em">😴</span>Sov</button>
+  </div>
+  <div class="smaa">
+    <button id="butikBtn">🎩 Butik</button>
+    <button id="toplisteBtn">🏆 Topliste</button>
+  </div>
+</div>
+
+<!-- ===== Butikken ===== -->
+<div class="ark" id="butik">
+  <div class="kort">
+    <div class="arkTop">
+      <h2>Butik</h2>
+      <span class="pill" id="butikMoent">🪙 <b>0</b></span>
+      <button class="luk" id="butikLuk" aria-label="Luk butikken">✕</button>
+    </div>
+    <p id="butikTekst">Tjen mønter ved at passe katten. Tryk på noget, du ejer, for at tage det på eller af.</p>
+    <div class="label">Pels</div>
+    <div class="hylde" id="hyldePels"></div>
+    <div class="label">Hatte</div>
+    <div class="hylde" id="hyldeHat"></div>
+    <div class="label">Halsbånd</div>
+    <div class="hylde" id="hyldeBaand"></div>
+  </div>
+</div>
+
+<!-- ===== Toplisten ===== -->
+<div class="ark" id="toplisteArk">
+  <div class="kort">
+    <div class="arkTop">
+      <h2 id="hsTitel">Topliste</h2>
+      <button class="luk" id="hsLuk" aria-label="Luk toplisten">✕</button>
+    </div>
+    <p>Jo bedre du passer katten, jo højere niveau når den op på.</p>
+    <div id="hsPanel"></div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="kat"></script>
+<script type="module">
+import {
+  BEHOV, BEHOV_NAVN, TING, GRATIS_PELSE, MAD_PR_MAALTID, LEG_PR_FANGST, VASK_PR_STROEG,
+  nyKat, laes, serialiser, forfald, plej, klap, beloen, koeb, tagPaa, ejer, tingen,
+  niveauFor, niveauAndel, trivsel, humoer, mestTraengende, alderDage, velkomst, MAKS_NIVEAU,
+} from './kat.mjs';
+
+const $ = s => document.querySelector(s);
+const KEY = 'zydy.kat.v1';
+const SPIL = 'kat';
+
+/* ---------- Seedbar tilfældighed, så ?seed=123 giver de samme små indfald ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const params = new URLSearchParams(location.search);
+const seed = parseInt(params.get('seed'), 10) || ((Math.random() * 2 ** 31) | 0);
+const rnd = mulberry32(seed);
+
+/* ================= Pelse og farver ================= */
+const PELSE = {
+  'pels-orange':   { krop:'#f0994a', lys:'#ffd3a0', moerk:'#c96f2c', striber:'#d0731f' },
+  'pels-graa':     { krop:'#9aa3bd', lys:'#e2e7f5', moerk:'#6b748e', striber:'#7c85a3' },
+  'pels-sort':     { krop:'#3d3f5e', lys:'#8e93b8', moerk:'#26283f', striber:'#2c2e47' },
+  'pels-hvid':     { krop:'#f3f1ea', lys:'#ffffff', moerk:'#cfcabb', striber:'#ddd8c9' },
+  'pels-tiger':    { krop:'#e8a13f', lys:'#ffe0b0', moerk:'#b9711f', striber:'#6a4014', tiger:true },
+  'pels-plettet':  { krop:'#f6efe2', lys:'#ffffff', moerk:'#d8cdb7', striber:'#c98a3c', pletter:true },
+  'pels-lyseblaa': { krop:'#8fc4ef', lys:'#dcefff', moerk:'#5f95c4', striber:'#6aa6d8' },
+};
+const pelsen = id => PELSE[id] || PELSE['pels-orange'];
+
+/* ================= Tilstand ================= */
+const state = {
+  skaerm: 'start',
+  kat: null,
+  tilstand: 'fri',        // fri | spiser | leger | vasker | sover
+  t: 0,                   // sekunder siden siden blev åbnet
+  x: 0.5,                 // kattens plads på gulvet, 0 (venstre) – 1 (højre)
+  maal: null,
+  vend: 1,
+  garn: null,             // { x, y, faldet }
+  hjerter: [],
+  blinkTil: 0, naesteBlink: 2,
+  spiserTil: 0, madISkaal: false,
+  vaskSum: 0,
+  soevnStart: null,
+  besked: '',
+  valgtPels: GRATIS_PELSE[0],
+  seed,
+};
+const GAME = window.GAME = { state, seed };
+let sidsteGem = 0, koerer = true, sidstTid = 0;
+
+/* ================= Gem og hent ================= */
+function gemNu() {
+  if (!state.kat) return;
+  try { localStorage.setItem(KEY, JSON.stringify(serialiser(state.kat, Date.now()))); } catch (e) {}
+  sidsteGem = state.t;
+}
+function hentGemt() {
+  try {
+    const raa = localStorage.getItem(KEY);
+    if (!raa) return null;
+    return laes(JSON.parse(raa), Date.now());
+  } catch (e) { return null; }
+}
+
+/* ================= Tegning ================= */
+const laerred = $('#laerred');
+const ctx = laerred.getContext('2d');
+let W = 300, H = 200, dpr = 1;
+
+function maalOp() {
+  const r = $('#stue').getBoundingClientRect();
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  W = Math.max(120, Math.round(r.width)); H = Math.max(120, Math.round(r.height));
+  laerred.width = Math.round(W * dpr); laerred.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener('resize', () => { maalOp(); tegn(); });
+
+const gulvY = () => H * 0.82;
+const katH = () => Math.min(H * 0.46, W * 0.34);
+const xTil = f => W * (0.14 + 0.72 * f);            // kattens plads → pixels
+const fraX = px => Math.max(0, Math.min(1, (px / W - 0.14) / 0.72));
+const SKAAL_X = 0.05, SENG_X = 0.93;                 // madskål til venstre, kurv til højre
+
+/** Afrundet rektangel (findes ikke i ældre Safari som ctx.roundRect). */
+function rrect(c, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + rr, y);
+  c.arcTo(x + w, y, x + w, y + h, rr);
+  c.arcTo(x + w, y + h, x, y + h, rr);
+  c.arcTo(x, y + h, x, y, rr);
+  c.arcTo(x, y, x + w, y, rr);
+  c.closePath();
+}
+const ellipse = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); c.fill(); };
+
+/* ---------- Stuen ---------- */
+function tegnStue(moerkt) {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, moerkt ? '#1a1b3a' : '#3b3272');
+  g.addColorStop(1, moerkt ? '#141531' : '#4b3f86');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // Vindue med sol eller måne
+  const vx = W * 0.68, vy = H * 0.10, vw = W * 0.24, vh = H * 0.34;
+  ctx.fillStyle = moerkt ? '#101a3d' : '#7fc8f2';
+  rrect(ctx, vx, vy, vw, vh, 12); ctx.fill();
+  ctx.fillStyle = moerkt ? '#ffe9a8' : '#ffd447';
+  ctx.beginPath(); ctx.arc(vx + vw * 0.68, vy + vh * 0.3, Math.min(vw, vh) * 0.18, 0, Math.PI * 2); ctx.fill();
+  if (moerkt) {                                     // en bid ud af månen + et par stjerner
+    ctx.fillStyle = '#101a3d';
+    ctx.beginPath(); ctx.arc(vx + vw * 0.60, vy + vh * 0.24, Math.min(vw, vh) * 0.17, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff7e6';
+    for (let i = 0; i < 5; i++) {
+      const sx = vx + vw * (0.12 + 0.16 * i), sy = vy + vh * (0.55 + 0.28 * Math.sin(i * 2.2));
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(state.t * 1.5 + i);
+      ctx.fillRect(sx, sy, 2.5, 2.5);
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.strokeStyle = moerkt ? '#2a2c55' : '#fff7e6'; ctx.lineWidth = 5;
+  rrect(ctx, vx, vy, vw, vh, 12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(vx + vw / 2, vy); ctx.lineTo(vx + vw / 2, vy + vh);
+  ctx.moveTo(vx, vy + vh / 2); ctx.lineTo(vx + vw, vy + vh / 2); ctx.stroke();
+
+  // Gulv og tæppe
+  const gy = gulvY();
+  ctx.fillStyle = moerkt ? '#2a2043' : '#6b4b36';
+  ctx.fillRect(0, gy, W, H - gy);
+  ctx.fillStyle = moerkt ? '#33284f' : '#7d5a41';
+  for (let i = 0; i < 7; i++) ctx.fillRect((i * W) / 7, gy, 3, H - gy);
+  ctx.fillStyle = moerkt ? 'rgba(94,224,168,.10)' : 'rgba(94,224,168,.28)';
+  ellipse(ctx, W * 0.5, gy + (H - gy) * 0.55, W * 0.30, (H - gy) * 0.42);
+
+  tegnSkaal(moerkt);
+  tegnKurv(moerkt);
+}
+
+function tegnSkaal(moerkt) {
+  const x = xTil(SKAAL_X), gy = gulvY(), s = katH() * 0.30;
+  ctx.fillStyle = moerkt ? '#7d4a86' : '#b45fc4';
+  rrect(ctx, x - s, gy - s * 0.55, s * 2, s * 0.55, s * 0.25); ctx.fill();
+  ctx.fillStyle = state.madISkaal ? '#e8b45c' : (moerkt ? '#5f3a66' : '#8d47a0');
+  ellipse(ctx, x, gy - s * 0.5, s * 0.8, s * 0.22);
+  if (state.madISkaal) {
+    ctx.fillStyle = '#c98a3c';
+    for (let i = 0; i < 5; i++) ellipse(ctx, x - s * 0.5 + i * s * 0.25, gy - s * 0.58, s * 0.10, s * 0.08);
+  }
+}
+
+function tegnKurv(moerkt) {
+  const x = xTil(SENG_X), gy = gulvY(), s = katH() * 0.5;
+  ctx.fillStyle = moerkt ? '#3c4a7a' : '#5b8cff';
+  ellipse(ctx, x, gy - s * 0.18, s * 0.95, s * 0.32);
+  ctx.fillStyle = moerkt ? '#2b3560' : '#3f6ad8';
+  ellipse(ctx, x, gy - s * 0.26, s * 0.72, s * 0.22);
+}
+
+/* ---------- Katten ---------- */
+/*
+  Katten tegnes altid med næsen mod højre og spejles med ctx.scale(vend, 1).
+  Alle mål er brøkdele af `h`, kattens højde, så den skalerer med skærmen.
+*/
+function tegnKat(c, cx, gy, h, o) {
+  const p = pelsen(o.pels);
+  c.save();
+  c.translate(cx, gy);
+  c.scale(o.vend, 1);
+
+  if (o.pose === 'sov') { tegnSovendeKat(c, h, o, p); c.restore(); return; }
+
+  const bob = o.pose === 'gaa' ? Math.sin(o.t * 9) * h * 0.012 : Math.sin(o.t * 1.6) * h * 0.006;
+  const svaj = o.pose === 'gaa' ? Math.sin(o.t * 9) : 0;
+
+  // Hale
+  c.strokeStyle = p.krop; c.lineWidth = h * 0.085; c.lineCap = 'round';
+  const halevip = Math.sin(o.t * (o.pose === 'leg' ? 7 : 2.4)) * h * 0.13;
+  c.beginPath();
+  c.moveTo(-h * 0.30, -h * 0.30 + bob);
+  c.quadraticCurveTo(-h * 0.56, -h * 0.34 + halevip * 0.5, -h * 0.48, -h * 0.72 + halevip);
+  c.stroke();
+
+  // Ben (bagerst først, så de forreste ligger ovenpå)
+  const ben = (bx, fase, bag) => {
+    c.fillStyle = bag ? p.moerk : p.krop;
+    const løft = o.pose === 'gaa' ? Math.max(0, Math.sin(o.t * 9 + fase)) * h * 0.09 : 0;
+    rrect(c, bx - h * 0.05, -h * 0.20 + bob, h * 0.10, h * 0.20 - løft, h * 0.045); c.fill();
+    c.fillStyle = p.lys;                        // pote
+    ellipse(c, bx, -h * 0.01 - løft + bob, h * 0.065, h * 0.035);
+  };
+  ben(-h * 0.20, Math.PI, true);
+  ben(h * 0.16, Math.PI * 0.5, true);
+  ben(-h * 0.12, 0, false);
+  ben(h * 0.24, Math.PI * 1.5, false);
+
+  // Krop
+  c.fillStyle = p.krop;
+  ellipse(c, -h * 0.02, -h * 0.34 + bob, h * 0.34, h * 0.215, svaj * 0.04);
+  c.fillStyle = p.lys;                          // lys mave
+  ellipse(c, h * 0.02, -h * 0.26 + bob, h * 0.24, h * 0.12);
+  if (p.tiger) {
+    c.fillStyle = p.striber;
+    for (let i = 0; i < 4; i++) {
+      c.save(); c.translate(-h * 0.18 + i * h * 0.13, -h * 0.44 + bob); c.rotate(0.25);
+      rrect(c, 0, 0, h * 0.035, h * 0.13, h * 0.02); c.fill(); c.restore();
+    }
+  }
+  if (p.pletter) {
+    c.fillStyle = p.striber;
+    ellipse(c, -h * 0.16, -h * 0.40 + bob, h * 0.07, h * 0.05);
+    ellipse(c, h * 0.10, -h * 0.44 + bob, h * 0.05, h * 0.04);
+  }
+
+  // Snavs, når katten trænger til en børstning
+  if (o.snavs > 0) {
+    c.fillStyle = 'rgba(96,72,40,.55)';
+    const pletter = [[-0.22,-0.30],[0.06,-0.42],[-0.05,-0.22],[0.20,-0.30],[-0.28,-0.42],[0.14,-0.48]];
+    for (let i = 0; i < Math.min(o.snavs, pletter.length); i++) {
+      ellipse(c, h * pletter[i][0], h * pletter[i][1] + bob, h * 0.035, h * 0.028);
+    }
+  }
+
+  const hx = h * 0.26, hy = -h * 0.62 + bob + (o.pose === 'spis' ? h * 0.16 : 0);
+  tegnHoved(c, hx, hy, h * 0.21, p, o);
+  if (o.halsbaand) tegnHalsbaand(c, hx - h * 0.02, hy + h * 0.19, h * 0.19, o.halsbaand);
+  if (o.hat) tegnHat(c, hx, hy - h * 0.17, h * 0.22, o.hat);
+  c.restore();
+}
+
+/** Hovedet: ører, øjne, snude og knurhår. Bruges både på katten og i butikkens ikoner. */
+function tegnHoved(c, x, y, r, p, o) {
+  // Ører
+  c.fillStyle = p.krop;
+  const oere = (dx, vip) => {
+    c.beginPath();
+    c.moveTo(x + dx - r * 0.30, y - r * 0.62);
+    c.lineTo(x + dx + r * 0.02 + vip, y - r * 1.30);
+    c.lineTo(x + dx + r * 0.42, y - r * 0.52);
+    c.closePath(); c.fill();
+    c.fillStyle = '#ff9fbd';
+    c.beginPath();
+    c.moveTo(x + dx - r * 0.12, y - r * 0.66);
+    c.lineTo(x + dx + r * 0.03 + vip * 0.7, y - r * 1.06);
+    c.lineTo(x + dx + r * 0.24, y - r * 0.60);
+    c.closePath(); c.fill();
+    c.fillStyle = p.krop;
+  };
+  oere(-r * 0.52, -r * 0.10);
+  oere(r * 0.32, r * 0.10);
+
+  // Hoved
+  c.fillStyle = p.krop;
+  ellipse(c, x, y, r * 1.02, r * 0.92);
+  c.fillStyle = p.lys;
+  ellipse(c, x + r * 0.05, y + r * 0.34, r * 0.55, r * 0.42);
+
+  // Øjne
+  const lukket = o.lukkedeOejne || o.blink;
+  const oejeX = [x - r * 0.36, x + r * 0.38];
+  for (const ox of oejeX) {
+    if (lukket) {
+      c.strokeStyle = '#2b2440'; c.lineWidth = r * 0.11; c.lineCap = 'round';
+      c.beginPath(); c.arc(ox, y - r * 0.02, r * 0.20, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
+    } else {
+      c.fillStyle = '#fffdf5'; ellipse(c, ox, y - r * 0.06, r * 0.21, r * 0.24);
+      c.fillStyle = '#2b2440';
+      const kig = o.kig || 0;
+      ellipse(c, ox + kig * r * 0.08, y - r * 0.05, r * 0.10, r * (o.glad ? 0.15 : 0.19));
+      c.fillStyle = '#fff'; ellipse(c, ox + r * 0.05, y - r * 0.14, r * 0.05, r * 0.05);
+    }
+  }
+
+  // Snude, næse og mund
+  c.fillStyle = '#ff8fb0';
+  c.beginPath();
+  c.moveTo(x + r * 0.01, y + r * 0.34);
+  c.lineTo(x - r * 0.13, y + r * 0.18);
+  c.lineTo(x + r * 0.15, y + r * 0.18);
+  c.closePath(); c.fill();
+  c.strokeStyle = '#8a6a55'; c.lineWidth = r * 0.07; c.lineCap = 'round';
+  c.beginPath();
+  if (o.trist) {                                   // nedadvendt mund
+    c.moveTo(x - r * 0.20, y + r * 0.58); c.quadraticCurveTo(x + r * 0.01, y + r * 0.40, x + r * 0.22, y + r * 0.58);
+  } else {
+    c.moveTo(x - r * 0.20, y + r * 0.40); c.quadraticCurveTo(x + r * 0.01, y + r * 0.60, x + r * 0.22, y + r * 0.40);
+  }
+  c.stroke();
+
+  // Knurhår
+  c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = r * 0.045;
+  for (let i = -1; i <= 1; i++) {
+    c.beginPath();
+    c.moveTo(x + r * 0.18, y + r * 0.22 + i * r * 0.10);
+    c.lineTo(x + r * 0.95, y + r * 0.10 + i * r * 0.22);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(x - r * 0.18, y + r * 0.22 + i * r * 0.10);
+    c.lineTo(x - r * 0.92, y + r * 0.10 + i * r * 0.22);
+    c.stroke();
+  }
+}
+
+function tegnSovendeKat(c, h, o, p) {
+  // Sammenrullet: krop som en stor ellipse, halen rundt om og hovedet på poterne
+  c.strokeStyle = p.krop; c.lineWidth = h * 0.085; c.lineCap = 'round';
+  c.beginPath();
+  c.moveTo(-h * 0.26, -h * 0.12);
+  c.quadraticCurveTo(h * 0.40, -h * 0.02, h * 0.16, -h * 0.22);
+  c.stroke();
+  c.fillStyle = p.krop;
+  ellipse(c, 0, -h * 0.20, h * 0.38, h * 0.21);
+  c.fillStyle = p.lys;
+  ellipse(c, h * 0.06, -h * 0.14, h * 0.22, h * 0.10);
+  const aande = Math.sin(o.t * 1.4) * h * 0.012;
+  tegnHoved(c, h * 0.20, -h * 0.30 + aande, h * 0.19, p, { lukkedeOejne: true });
+  if (o.hat) tegnHat(c, h * 0.20, -h * 0.30 + aande - h * 0.15, h * 0.20, o.hat);
+  // Zzz
+  c.save(); c.scale(o.vend, 1);
+  c.fillStyle = 'rgba(255,247,230,.9)'; c.textAlign = 'center';
+  for (let i = 0; i < 3; i++) {
+    const f = (o.t * 0.5 + i / 3) % 1;
+    c.globalAlpha = 0.9 * (1 - f);
+    c.font = `800 ${h * (0.10 + 0.07 * f)}px -apple-system, sans-serif`;
+    c.fillText('z', o.vend * (h * 0.42 + f * h * 0.18), -h * 0.58 - f * h * 0.35);
+  }
+  c.globalAlpha = 1; c.restore();
+}
+
+function tegnHat(c, x, y, r, id) {
+  c.save(); c.translate(x, y);
+  if (id === 'hat-sloejfe') {
+    c.fillStyle = '#ff5c7a';
+    ellipse(c, -r * 0.26, 0, r * 0.26, r * 0.19, -0.3);
+    ellipse(c, r * 0.26, 0, r * 0.26, r * 0.19, 0.3);
+    c.fillStyle = '#ffd447'; ellipse(c, 0, 0, r * 0.11, r * 0.11);
+  } else if (id === 'hat-hue') {
+    c.fillStyle = '#ff5c7a';
+    c.beginPath(); c.moveTo(-r * 0.5, r * 0.18); c.quadraticCurveTo(r * 0.1, -r * 0.95, r * 0.62, -r * 0.30);
+    c.lineTo(r * 0.05, r * 0.20); c.closePath(); c.fill();
+    c.fillStyle = '#fff7e6';
+    rrect(c, -r * 0.56, r * 0.06, r * 1.12, r * 0.22, r * 0.11); c.fill();
+    ellipse(c, r * 0.66, -r * 0.32, r * 0.15, r * 0.15);
+  } else if (id === 'hat-cowboy') {
+    c.fillStyle = '#a9763f';
+    ellipse(c, 0, r * 0.16, r * 0.86, r * 0.20);
+    rrect(c, -r * 0.40, -r * 0.42, r * 0.80, r * 0.60, r * 0.22); c.fill();
+    c.fillStyle = '#6b4a26'; rrect(c, -r * 0.42, -r * 0.06, r * 0.84, r * 0.12, r * 0.06); c.fill();
+  } else if (id === 'hat-blomst') {
+    c.fillStyle = '#ff8fb0';
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      ellipse(c, Math.cos(a) * r * 0.24, Math.sin(a) * r * 0.24 + r * 0.05, r * 0.16, r * 0.16);
+    }
+    c.fillStyle = '#ffd447'; ellipse(c, 0, r * 0.05, r * 0.13, r * 0.13);
+  } else if (id === 'hat-krone') {
+    c.fillStyle = '#ffd447';
+    c.beginPath();
+    c.moveTo(-r * 0.46, r * 0.20); c.lineTo(-r * 0.46, -r * 0.34); c.lineTo(-r * 0.18, -r * 0.02);
+    c.lineTo(0, -r * 0.46); c.lineTo(r * 0.18, -r * 0.02); c.lineTo(r * 0.46, -r * 0.34);
+    c.lineTo(r * 0.46, r * 0.20); c.closePath(); c.fill();
+    c.fillStyle = '#ff5c7a'; ellipse(c, 0, r * 0.04, r * 0.09, r * 0.09);
+  } else if (id === 'hat-party') {
+    c.fillStyle = '#5ee0a8';
+    c.beginPath(); c.moveTo(-r * 0.40, r * 0.20); c.lineTo(0, -r * 0.80); c.lineTo(r * 0.40, r * 0.20);
+    c.closePath(); c.fill();
+    c.fillStyle = '#ff5c7a';
+    ellipse(c, -r * 0.12, -r * 0.10, r * 0.08, r * 0.08);
+    ellipse(c, r * 0.14, r * 0.06, r * 0.08, r * 0.08);
+    c.fillStyle = '#ffd447'; ellipse(c, 0, -r * 0.84, r * 0.13, r * 0.13);
+  }
+  c.restore();
+}
+
+function tegnHalsbaand(c, x, y, r, id) {
+  const farve = { 'baand-roed': '#ff5c7a', 'baand-groen': '#5ee0a8', 'baand-klokke': '#ff9fbd', 'baand-guld': '#ffd447' }[id] || '#ff5c7a';
+  c.strokeStyle = farve; c.lineWidth = r * 0.22; c.lineCap = 'round';
+  c.beginPath(); c.arc(x, y - r * 0.30, r * 0.82, 0.18 * Math.PI, 0.82 * Math.PI); c.stroke();
+  if (id === 'baand-klokke' || id === 'baand-guld') {
+    c.fillStyle = '#ffd447'; ellipse(c, x, y + r * 0.44, r * 0.17, r * 0.17);
+    c.fillStyle = '#c99a13'; ellipse(c, x, y + r * 0.52, r * 0.05, r * 0.05);
+  }
+}
+
+/* ---------- Garnnøgle, børste og hjerter ---------- */
+function tegnGarn(g) {
+  const r = katH() * 0.13, x = xTil(g.x), y = gulvY() - r * 0.9;
+  ctx.fillStyle = '#ff5c7a'; ellipse(ctx, x, y, r, r);
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = r * 0.14;
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath(); ctx.arc(x, y, r * 0.72, i * 0.7, i * 0.7 + Math.PI * 0.9); ctx.stroke();
+  }
+}
+
+function tegnHjerter() {
+  for (const h of state.hjerter) {
+    const a = Math.max(0, 1 - h.t / 1.4);
+    ctx.globalAlpha = a; ctx.fillStyle = h.farve || '#ff5c7a';
+    const s = katH() * 0.10 * (0.7 + 0.3 * a), x = h.x, y = h.y - h.t * H * 0.14;
+    ctx.beginPath();
+    ctx.moveTo(x, y + s * 0.6);
+    ctx.bezierCurveTo(x - s, y - s * 0.2, x - s * 0.4, y - s, x, y - s * 0.35);
+    ctx.bezierCurveTo(x + s * 0.4, y - s, x + s, y - s * 0.2, x, y + s * 0.6);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+let boersteP = null;   // hvor børsten er lige nu (pixels), mens man børster
+function tegnBoerste() {
+  if (!boersteP) return;
+  const s = katH() * 0.22;
+  ctx.save(); ctx.translate(boersteP.x, boersteP.y); ctx.rotate(-0.5);
+  ctx.fillStyle = '#c98a3c'; rrect(ctx, -s * 0.5, -s * 0.2, s, s * 0.42, s * 0.12); ctx.fill();
+  ctx.fillStyle = '#fff7e6'; rrect(ctx, -s * 0.45, -s * 0.44, s * 0.9, s * 0.26, s * 0.06); ctx.fill();
+  ctx.restore();
+}
+
+/* ---------- Hele billedet ---------- */
+function tegn() {
+  const kat = state.kat;
+  if (!kat) return;
+  const moerkt = state.tilstand === 'sover';
+  tegnStue(moerkt);
+  if (state.garn) tegnGarn(state.garn);
+
+  const h = katH();
+  const pose = state.tilstand === 'sover' ? 'sov'
+    : state.tilstand === 'spiser' && naaetMaal() ? 'spis'
+    : state.maal != null && Math.abs(xTil(state.maal) - xTil(state.x)) > 3 ? 'gaa'
+    : state.tilstand === 'leger' ? 'leg' : 'staa';
+  const hum = humoer(kat);
+  const katX = state.tilstand === 'sover' ? xTil(SENG_X) : xTil(state.x);
+  tegnKat(ctx, katX, gulvY() + (state.tilstand === 'sover' ? -h * 0.02 : 0), h, {
+    pels: kat.pels, hat: kat.hat, halsbaand: kat.halsbaand,
+    pose, t: state.t, vend: state.vend,
+    blink: state.t < state.blinkTil,
+    glad: hum === 'glad', trist: hum === 'ked',
+    snavs: Math.max(0, Math.round((70 - kat.behov.renhed) / 12)),
+    kig: state.garn ? Math.sign(state.garn.x - state.x) * state.vend : 0,
+  });
+
+  tegnHjerter();
+  tegnBoerste();
+}
+
+/* ================= Spillets gang ================= */
+function naaetMaal() { return state.maal == null || Math.abs(state.maal - state.x) < 0.012; }
+
+function gaaMod(maal) { state.maal = Math.max(0, Math.min(1, maal)); }
+
+function tik(dt) {
+  const kat = state.kat;
+  if (!kat) return;
+  state.t += dt;
+
+  // Behovene siver
+  forfald(kat, dt, state.tilstand === 'sover');
+
+  // Søvn: vågner af sig selv, når energien er fuld
+  if (state.tilstand === 'sover' && kat.behov.energi >= 100) vaagn();
+
+  // Gang
+  if (state.maal != null && state.tilstand !== 'sover') {
+    const fart = (state.tilstand === 'leger' ? 0.55 : 0.28) * dt;
+    const d = state.maal - state.x;
+    if (Math.abs(d) <= fart) { state.x = state.maal; state.maal = null; }
+    else { state.x += Math.sign(d) * fart; state.vend = Math.sign(d); }
+  }
+
+  // Spisning: gå hen til skålen og spis
+  if (state.tilstand === 'spiser') {
+    if (naaetMaal()) {
+      if (!state.spiserTil) state.spiserTil = state.t + 2.6;
+      else if (state.t >= state.spiserTil) faerdigMedMaden();
+    }
+  }
+
+  // Leg: løb efter garnnøglet
+  if (state.tilstand === 'leger' && state.garn && naaetMaal() && Math.abs(state.garn.x - state.x) < 0.05) {
+    fangGarn();
+  }
+
+  // Småt liv: blink og små gåture
+  if (state.t > state.naesteBlink) { state.blinkTil = state.t + 0.16; state.naesteBlink = state.t + 2 + rnd() * 4; }
+  if (state.tilstand === 'fri' && state.maal == null && rnd() < dt * 0.25) gaaMod(0.12 + rnd() * 0.76);
+
+  // Hjerter
+  for (const h of state.hjerter) h.t += dt;
+  state.hjerter = state.hjerter.filter(h => h.t < 1.4);
+
+  if (state.t - sidsteGem > 4) gemNu();
+}
+
+function hjerte(antal = 1, farve) {
+  for (let i = 0; i < antal; i++) {
+    state.hjerter.push({
+      x: xTil(state.x) + (rnd() - 0.5) * katH() * 0.5,
+      y: gulvY() - katH() * (0.75 + rnd() * 0.2),
+      t: -i * 0.12, farve,
+    });
+  }
+}
+
+/* ---------- Handlingerne ---------- */
+function giMad() {
+  const kat = state.kat;
+  if (!kat || state.tilstand === 'sover' || state.tilstand === 'spiser' || kat.behov.mad >= 99) return false;
+  stopLeg(); stopVask();
+  state.tilstand = 'spiser'; state.madISkaal = true; state.spiserTil = 0;
+  gaaMod(SKAAL_X + 0.06);
+  sigNoget(`${kat.navn} løber hen til skålen!`);
+  opdater();
+  return true;
+}
+
+function faerdigMedMaden() {
+  const r = plej(state.kat, 'mad', MAD_PR_MAALTID);
+  state.tilstand = 'fri'; state.madISkaal = false; state.spiserTil = 0;
+  hjerte(2, '#ffd447');
+  sigNoget(`Mums! ${state.kat.navn} er blevet mæt. +${r.moenter} 🪙`);
+  efterPleje(r);
+}
+
+function startLeg() {
+  if (!state.kat || state.tilstand === 'sover') return;
+  stopVask();
+  state.tilstand = 'leger';
+  state.garn = { x: state.x > 0.5 ? 0.25 : 0.75 };
+  gaaMod(state.garn.x);
+  sigNoget('Tryk på gulvet – så løber katten efter nøglet!');
+  opdater();
+}
+
+function kastGarn(f) {
+  if (state.tilstand !== 'leger') return;
+  state.garn = { x: Math.max(0.03, Math.min(0.97, f)) };
+  gaaMod(state.garn.x);
+}
+
+function fangGarn() {
+  const r = plej(state.kat, 'leg', LEG_PR_FANGST);
+  state.garn = null; state.maal = null;
+  hjerte(2);
+  navigator.vibrate?.(20);
+  if (state.kat.behov.leg >= 100) { sigNoget(`${state.kat.navn} er godt legesyg nu!`); stopLeg(); }
+  else sigNoget('Fanget! Kast det igen.');
+  efterPleje(r);
+  if (state.tilstand === 'leger') setTimeout(() => { if (state.tilstand === 'leger' && !state.garn) kastGarn(0.12 + rnd() * 0.76); }, 700);
+}
+
+function stopLeg() {
+  if (state.tilstand !== 'leger') return;
+  state.tilstand = 'fri'; state.garn = null; state.maal = null;
+  opdater();
+}
+
+function startVask() {
+  if (!state.kat || state.tilstand === 'sover') return;
+  stopLeg();
+  state.tilstand = 'vasker'; state.vaskSum = 0; state.maal = null;
+  sigNoget('Stryg børsten hen over katten.');
+  opdater();
+}
+
+function stopVask() {
+  if (state.tilstand !== 'vasker') return;
+  state.tilstand = 'fri'; boersteP = null;
+  opdater();
+}
+
+/** Ét børstestrøg (kaldes både af fingeren og af testen). */
+function boerst(n = 1) {
+  if (state.tilstand !== 'vasker') return null;
+  const r = plej(state.kat, 'renhed', VASK_PR_STROEG * n);
+  if (r.oeget > 0) hjerte(1, '#5ee0a8');
+  if (state.kat.behov.renhed >= 100) { sigNoget(`${state.kat.navn} skinner!`); stopVask(); }
+  efterPleje(r);
+  return r;
+}
+
+function sov() {
+  if (!state.kat || state.tilstand === 'sover') return;
+  stopLeg(); stopVask();
+  state.tilstand = 'sover';
+  state.madISkaal = false;
+  state.soevnStart = state.kat.behov.energi;
+  state.kat.sover = true;
+  state.maal = null;
+  sigNoget(`${state.kat.navn} sover. Godnat …`);
+  opdater();
+}
+
+function vaagn() {
+  if (state.tilstand !== 'sover') return;
+  const vundet = state.kat.behov.energi - (state.soevnStart ?? state.kat.behov.energi);
+  state.tilstand = 'fri';
+  state.kat.sover = false;
+  state.soevnStart = null;
+  state.x = SENG_X - 0.1;
+  const r = beloen(state.kat, Math.max(0, vundet));
+  if (r.moenter > 0) sigNoget(`${state.kat.navn} vågnede frisk og udhvilet! +${r.moenter} 🪙`);
+  else sigNoget(`${state.kat.navn} er vågen.`);
+  efterPleje(r);
+}
+
+/** Fælles efterspil: gem, tegn måleren om og fejr et nyt niveau. */
+function efterPleje(r) {
+  gemNu();
+  opdater();
+  if (r && r.nytNiveau) fejrNiveau(r.niveau);
+}
+
+function fejrNiveau(niveau) {
+  sigNoget(`🎉 ${state.kat.navn} er blevet niveau ${niveau}!`);
+  hjerte(6, '#ffd447');
+  navigator.vibrate?.([30, 60, 30]);
+  aabnTopliste();
+}
+
+/* ================= Skærm og knapper ================= */
+let beskedTil = 0;
+function sigNoget(tekst) {
+  state.besked = tekst;
+  beskedTil = state.t + 4;
+  $('#besked').textContent = tekst;
+}
+
+function standardBesked() {
+  const kat = state.kat;
+  if (!kat) return '';
+  if (state.tilstand === 'sover') return `${kat.navn} sover …`;
+  const mangel = mestTraengende(kat);
+  if (kat.behov[mangel] > 65) return `${kat.navn} har det dejligt.`;
+  const tekst = {
+    mad: `${kat.navn} er sulten – giv den noget mad.`,
+    leg: `${kat.navn} keder sig – leg lidt med den.`,
+    renhed: `${kat.navn} trænger til en børstning.`,
+    energi: `${kat.navn} er træt – put den i kurven.`,
+  };
+  return tekst[mangel];
+}
+
+/** De fire målere under stuen. Bygges én gang ud fra BEHOV, så de ikke kan komme i utakt. */
+const BEHOV_EM = { mad: '🍗', leg: '🧶', renhed: '✨', energi: '⚡' };
+function byggMaalere() {
+  $('#behov').innerHTML = BEHOV.map(b =>
+    `<div class="maaler" data-b="${b}"><div class="hoved">${BEHOV_EM[b]} ${BEHOV_NAVN[b]}</div>` +
+    `<span class="spor"><i></i></span></div>`).join('');
+}
+
+function opdater() {
+  const kat = state.kat;
+  if (!kat) return;
+  const niveau = niveauFor(kat.xp);
+  $('#katBrand').textContent = kat.navn;
+  $('#moentPill').innerHTML = `🪙 <b>${kat.moenter}</b>`;
+  $('#butikMoent').innerHTML = `🪙 <b>${kat.moenter}</b>`;
+  $('#niveauTekst').textContent = `Niveau ${niveau}`;
+  $('#xpBar').style.width = `${Math.round(niveauAndel(kat.xp) * 100)}%`;
+  const dage = alderDage(kat, Date.now());
+  $('#alderPill').textContent = dage === 1 ? '1 dag' : `${dage} dage`;
+
+  for (const b of BEHOV) {
+    const el = $(`.maaler[data-b="${b}"]`);
+    if (!el) continue;
+    const v = kat.behov[b];
+    el.querySelector('i').style.width = `${Math.max(2, Math.round(v))}%`;
+    el.classList.toggle('lav', v < 25);
+    el.classList.toggle('halv', v >= 25 && v < 55);
+  }
+
+  $('#madBtn').disabled = state.tilstand === 'sover' || state.tilstand === 'spiser' || kat.behov.mad >= 99;
+  $('#legBtn').disabled = state.tilstand === 'sover';
+  $('#vaskBtn').disabled = state.tilstand === 'sover' || kat.behov.renhed >= 100;
+  $('#legBtn').classList.toggle('on', state.tilstand === 'leger');
+  $('#vaskBtn').classList.toggle('on', state.tilstand === 'vasker');
+  $('#sovBtn').classList.toggle('on', state.tilstand === 'sover');
+  $('#sovBtn').querySelector('.em').textContent = state.tilstand === 'sover' ? '⏰' : '😴';
+  $('#sovBtn').lastChild.textContent = state.tilstand === 'sover' ? 'Vågn' : 'Sov';
+  $('#legStop').hidden = state.tilstand !== 'leger' && state.tilstand !== 'vasker';
+  if (state.t >= beskedTil) $('#besked').textContent = standardBesked();
+}
+
+/* ---------- Startskærmen ---------- */
+function tegnKillinger() {
+  const rod = $('#killinger');
+  rod.innerHTML = '';
+  for (const id of GRATIS_PELSE) {
+    const t = tingen(id);
+    const knap = document.createElement('button');
+    knap.className = 'killing' + (id === state.valgtPels ? ' on' : '');
+    knap.type = 'button';
+    knap.dataset.pels = id;
+    const c = document.createElement('canvas');
+    knap.appendChild(c);
+    const navn = document.createElement('span');
+    navn.textContent = t.navn;
+    knap.appendChild(navn);
+    knap.addEventListener('click', () => { state.valgtPels = id; tegnKillinger(); });
+    rod.appendChild(knap);
+  }
+  requestAnimationFrame(() => {
+    for (const knap of rod.querySelectorAll('.killing')) ikonKat(knap.querySelector('canvas'), { pels: knap.dataset.pels });
+  });
+}
+
+/** Lille kattehoved til startskærmen og butikken. */
+function ikonKat(c, o) {
+  const s = 96, d = Math.min(devicePixelRatio || 1, 2);
+  c.width = s * d; c.height = s * d;
+  const k = c.getContext('2d');
+  k.setTransform(d, 0, 0, d, 0, 0);
+  k.clearRect(0, 0, s, s);
+  const p = pelsen(o.pels || GRATIS_PELSE[0]);
+  tegnHoved(k, s / 2, s * 0.56, s * 0.30, p, { glad: true });
+  if (o.halsbaand) tegnHalsbaand(k, s / 2, s * 0.88, s * 0.26, o.halsbaand);
+  if (o.hat) tegnHat(k, s / 2, s * 0.30, s * 0.32, o.hat);
+}
+
+function adopter(navn, pels) {
+  state.kat = nyKat(navn || $('#katNavn').value || 'Mis', pels || state.valgtPels, Date.now());
+  state.x = 0.5; state.tilstand = 'fri'; state.maal = null; state.hjerter = [];
+  gemNu();
+  tilSpil();
+  sigNoget(`Hej ${state.kat.navn}! Tryk på katten for at klappe den.`);
+}
+
+function tilSpil() {
+  state.skaerm = 'spil';
+  $('#start').classList.remove('on');
+  $('#spil').classList.add('on');
+  maalOp();
+  opdater();
+  tegn();
+}
+
+/* ---------- Butikken ---------- */
+function tegnButik() {
+  const kat = state.kat;
+  const hylder = { pels: $('#hyldePels'), hat: $('#hyldeHat'), halsbaand: $('#hyldeBaand') };
+  for (const h of Object.values(hylder)) h.innerHTML = '';
+  for (const t of TING) {
+    const har = ejer(kat, t.id);
+    const paa = kat.pels === t.id || kat.hat === t.id || kat.halsbaand === t.id;
+    const knap = document.createElement('button');
+    knap.className = 'vare' + (paa ? ' paa' : '') + (!har && kat.moenter < t.pris ? ' dyr' : '');
+    knap.type = 'button';
+    knap.dataset.ting = t.id;
+    const c = document.createElement('canvas');
+    knap.appendChild(c);
+    const navn = document.createElement('span');
+    navn.textContent = t.navn;
+    knap.appendChild(navn);
+    const pris = document.createElement('span');
+    pris.className = 'pris' + (har ? ' ejet' : '');
+    pris.textContent = har ? (paa ? 'på ✓' : 'ejer') : `🪙 ${t.pris}`;
+    knap.appendChild(pris);
+    knap.addEventListener('click', () => vaelgVare(t.id));
+    hylder[t.slags].appendChild(knap);
+    const o = { pels: t.slags === 'pels' ? t.id : kat.pels };
+    if (t.slags === 'hat') o.hat = t.id;
+    if (t.slags === 'halsbaand') o.halsbaand = t.id;
+    requestAnimationFrame(() => ikonKat(c, o));
+  }
+  $('#butikTekst').textContent = `Du har ${kat.moenter} mønter. Pas katten, så tjener du flere.`;
+}
+
+function vaelgVare(id) {
+  const kat = state.kat;
+  const t = tingen(id);
+  if (!ejer(kat, id)) {
+    if (!koeb(kat, id)) { sigNoget(`${t.navn} koster ${t.pris} mønter – du mangler ${t.pris - kat.moenter}.`); tegnButik(); return; }
+    hjerte(3, '#ffd447');
+    sigNoget(`${kat.navn} fik ${t.navn}!`);
+  } else {
+    tagPaa(kat, id);
+  }
+  gemNu(); tegnButik(); opdater(); tegn();
+}
+
+/* ---------- Ark ---------- */
+const aabn = el => el.classList.add('on');
+const luk = el => el.classList.remove('on');
+
+function aabnTopliste() {
+  const niveau = niveauFor(state.kat.xp);
+  $('#hsTitel').textContent = `Niveau ${niveau}`;
+  aabn($('#toplisteArk'));
+  Highscore.panel($('#hsPanel'), { spil: SPIL, score: niveau, titel: 'Største katte' });
+}
+
+/* ================= Input ================= */
+/** Er punktet (i pixels) oven på katten? */
+function paaKatten(px, py) {
+  const h = katH();
+  const cx = state.tilstand === 'sover' ? xTil(SENG_X) : xTil(state.x);
+  return Math.abs(px - cx) < h * 0.42 && py > gulvY() - h * 1.05 && py < gulvY() + h * 0.08;
+}
+
+function punkt(e) {
+  const r = laerred.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+laerred.addEventListener('pointerdown', e => {
+  if (!state.kat) return;
+  laerred.setPointerCapture?.(e.pointerId);
+  const p = punkt(e);
+  if (state.tilstand === 'vasker') { boersteP = p; state.vaskSum = 0; return; }
+  if (state.tilstand === 'sover') { vaagn(); return; }
+  if (paaKatten(p.x, p.y)) {
+    if (klap(state.kat)) hjerte(1);
+    navigator.vibrate?.(12);
+    sigNoget(`${state.kat.navn} spinder …`);
+    opdater();
+    return;
+  }
+  if (state.tilstand === 'leger') kastGarn(fraX(p.x));
+  else if (state.tilstand === 'fri') gaaMod(fraX(p.x));
+});
+
+laerred.addEventListener('pointermove', e => {
+  if (state.tilstand !== 'vasker' || !boersteP) return;
+  const p = punkt(e);
+  const d = Math.hypot(p.x - boersteP.x, p.y - boersteP.y);
+  boersteP = p;
+  if (!paaKatten(p.x, p.y)) return;
+  state.vaskSum += d;
+  const stroeg = katH() * 0.55;
+  while (state.vaskSum >= stroeg && state.tilstand === 'vasker') { state.vaskSum -= stroeg; boerst(1); }
+});
+laerred.addEventListener('pointerup', () => { if (state.tilstand === 'vasker') boersteP = null; });
+laerred.addEventListener('pointercancel', () => { boersteP = null; });
+
+$('#madBtn').addEventListener('click', giMad);
+$('#legBtn').addEventListener('click', () => (state.tilstand === 'leger' ? stopLeg() : startLeg()));
+$('#vaskBtn').addEventListener('click', () => (state.tilstand === 'vasker' ? stopVask() : startVask()));
+$('#sovBtn').addEventListener('click', () => (state.tilstand === 'sover' ? vaagn() : sov()));
+$('#legStop').addEventListener('click', () => { stopLeg(); stopVask(); });
+$('#butikBtn').addEventListener('click', () => { tegnButik(); aabn($('#butik')); });
+$('#butikLuk').addEventListener('click', () => luk($('#butik')));
+$('#toplisteBtn').addEventListener('click', aabnTopliste);
+$('#hsLuk').addEventListener('click', () => luk($('#toplisteArk')));
+for (const ark of document.querySelectorAll('.ark')) {
+  ark.addEventListener('click', e => { if (e.target === ark) luk(ark); });
+}
+$('#adopterBtn').addEventListener('click', () => adopter());
+$('#katNavn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adopter(); } });
+$('#fortsaetBtn').addEventListener('click', tilSpil);
+
+document.addEventListener('visibilitychange', () => { if (document.hidden) gemNu(); });
+addEventListener('pagehide', gemNu);
+
+/* ================= Loop ================= */
+let sidsteOpdater = 0;
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!koerer || state.skaerm !== 'spil') { sidstTid = nu; return; }
+  const dt = Math.min(0.1, (nu - sidstTid) / 1000 || 0);
+  sidstTid = nu;
+  tik(dt);
+  // Målerne og teksterne rører DOM'en, så de opdateres nogle få gange i sekundet
+  // i stedet for i hvert billede – katten tegnes derimod på canvas hver gang.
+  if (state.t - sidsteOpdater > 0.25) { sidsteOpdater = state.t; opdater(); }
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ================= Start ================= */
+{
+  // Navnet fra forsiden bruges ikke til katten – katten har sit eget navn –
+  // men toplisten kender det allerede via localStorage ('zydy.navn').
+  const gemt = hentGemt();
+  byggMaalere();
+  tegnKillinger();
+  if (gemt) {
+    state.kat = gemt.kat;
+    state.x = 0.5;
+    state.tilstand = gemt.kat.sover ? 'sover' : 'fri';
+    if (state.tilstand === 'sover') state.soevnStart = gemt.kat.behov.energi;
+    $('#startPill').textContent = `Niveau ${niveauFor(gemt.kat.xp)}`;
+    $('#startTekst').textContent = velkomst(gemt.kat, gemt.vaekSek) || `${gemt.kat.navn} venter på dig.`;
+    $('#fortsaetBtn').hidden = false;
+    $('#fortsaetBtn').textContent = `Tilbage til ${gemt.kat.navn}`;
+    $('#adopterBtn').textContent = 'Start forfra med en ny killing';
+    $('#adopterBtn').classList.add('ghost');
+    $('#katNavn').value = '';
+  }
+  Highscore.panel($('#hsStart'), { spil: SPIL, titel: 'Største katte' });
+  maalOp();
+}
+
+/* ================= Til test ================= */
+Object.assign(GAME, {
+  tik, tegn, opdater, adopter, tilSpil,
+  giMad, startLeg, kastGarn, stopLeg, startVask, boerst, stopVask, sov, vaagn,
+  klap: () => { const ok = klap(state.kat); if (ok) hjerte(1); opdater(); return ok; },
+  koeb: id => { vaelgVare(id); return ejer(state.kat, id); },
+  tagPaa: id => { vaelgVare(id); return true; },
+  gemNu, hentGemt,
+  pause: () => { koerer = false; },
+  resume: () => { koerer = true; },
+  niveau: () => niveauFor(state.kat.xp),
+  trivsel: () => trivsel(state.kat),
+  MAKS_NIVEAU,
+});
+// Katten skiftes ud, når man adopterer en ny, så den skal hentes hver gang.
+Object.defineProperty(GAME, 'kat', { get: () => state.kat });
+</script>
+</body></html>
