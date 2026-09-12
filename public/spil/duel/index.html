@@ -51,11 +51,13 @@
   .lead{font-size:18px}
 
   /* Lille illustration på startskærmen: telefonen mellem to spillere */
-  .demo{display:flex;flex-direction:column;border-radius:var(--r);overflow:hidden;margin:10px 0 18px;
+  .demo{display:flex;flex-direction:column;border-radius:var(--r);overflow:hidden;margin:8px 0 14px;
     border:2px solid var(--bg3)}
-  .demo div{padding:14px;font-weight:800;font-size:15px;text-align:center;letter-spacing:.5px}
+  .demo div{padding:12px;font-weight:800;font-size:15px;text-align:center;letter-spacing:.5px}
   .demo .b{background:#141d3f;color:var(--sky);transform:rotate(180deg)}
   .demo .r{background:#2a1526;color:var(--coral)}
+  .demo.solo .b{transform:none}
+  #botSeg[hidden]{display:none}   /* .seg er display:flex og overtrumfer ellers hidden */
 
   /* Valg af antal point */
   .seg{display:flex;background:var(--bg2);border-radius:999px;padding:4px;gap:4px;margin:8px 0 6px}
@@ -88,6 +90,12 @@
   /* Sikkerhedszoner: rød har notch-bunden, blå (roteret) har notch-toppen som sin "bund" */
   .half.red{padding-bottom:calc(env(safe-area-inset-bottom) + 12px)}
   .half.blue{padding-bottom:calc(env(safe-area-inset-top) + 12px)}
+  /* Mod botten: der sidder ingen overfor, så den øverste halvdel vendes rigtigt */
+  #arena.solo .half.blue{transform:none;padding-top:calc(env(safe-area-inset-top) + 30px);
+    padding-bottom:12px}
+  .botmark{position:absolute;top:8px;left:14px;font-size:13px;font-weight:800;letter-spacing:.3px;
+    color:var(--acc2);opacity:.9;z-index:2}
+  .botmark[hidden]{display:none}
   .half.go{background:var(--mint) !important}
   .half.go .head, .half.go .hud{opacity:0}
   .half.flash-win{animation:flashw .5s ease-out}
@@ -179,16 +187,27 @@
   </div>
   <div class="content">
     <h1>Duel</h1>
-    <p class="lead">To spillere, én telefon. Læg den på bordet mellem jer – Rød sidder nederst, Blå øverst.</p>
-    <div class="demo" aria-hidden="true"><div class="b">BLÅ</div><div class="r">RØD</div></div>
-    <p>Hver runde er en hurtig udfordring: tryk når det bliver grønt, find det højeste tal, farven og ikke ordet, tæl prikker, eller spot når to figurer er ens. Hurtigst rigtige tager pointet – trykker du forkert, får modstanderen det.</p>
-    <p style="margin-bottom:4px;font-weight:700">Først til</p>
+    <p class="lead" id="lead">To spillere, én telefon. Læg den på bordet mellem jer – Rød sidder nederst, Blå øverst.</p>
+    <div class="demo" id="demo" aria-hidden="true"><div class="b" id="demoTop">BLÅ</div><div class="r" id="demoBot">RØD</div></div>
+    <p style="margin-bottom:4px;font-weight:700">Hvem spiller?</p>
+    <div class="seg" id="modeSeg" role="radiogroup" aria-label="Modstander">
+      <button data-mode="to" class="on" role="radio" aria-checked="true">To spillere</button>
+      <button data-mode="bot" role="radio" aria-checked="false">Mod botten</button>
+    </div>
+    <div class="seg" id="botSeg" role="radiogroup" aria-label="Hvor god er botten?" hidden>
+      <button data-niveau="nem" role="radio" aria-checked="false">Nem</button>
+      <button data-niveau="mellem" class="on" role="radio" aria-checked="true">Mellem</button>
+      <button data-niveau="svaer" role="radio" aria-checked="false">Svær</button>
+    </div>
+    <p style="margin:10px 0 4px;font-weight:700">Først til</p>
     <div class="seg" id="targetSeg" role="radiogroup" aria-label="Antal point">
       <button data-target="3" role="radio" aria-checked="false">3 point</button>
       <button data-target="5" class="on" role="radio" aria-checked="true">5 point</button>
       <button data-target="10" role="radio" aria-checked="false">10 point</button>
     </div>
     <button class="btn" id="playBtn">Spil</button>
+    <!-- Reglerne står under knappen: så kan man spille uden at rulle -->
+    <p style="margin-top:16px">Hver runde er en hurtig udfordring: tryk når det bliver grønt, find det højeste tal, farven og ikke ordet, tæl prikker, eller spot når to figurer er ens. Hurtigst rigtige tager pointet – trykker du forkert, får modstanderen det.</p>
     <div class="stats" id="startStats"></div>
   </div>
 </div>
@@ -217,6 +236,7 @@
 <!-- ===== Spilfladen: to halvdele ===== -->
 <div id="arena" hidden>
   <section class="half blue" data-side="blue" aria-label="Blå spiller">
+    <div class="botmark" id="botmark" hidden>🤖 Bot</div>
     <div class="hud"></div>
     <div class="head"><div class="rname"></div><div class="instr"></div><div class="bar"><i></i></div></div>
     <div class="stage"></div>
@@ -232,7 +252,8 @@
   </section>
 </div>
 
-<script>
+<script type="module">
+import { SVAERHED, NIVEAUER, planlaeg, forkertSvar } from './bot.mjs';
 (function(){
 'use strict';
 const $ = s => document.querySelector(s);
@@ -270,21 +291,32 @@ const KEY = 'zydy.duel.stats';
 function loadStats(){ try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s && typeof s.games==='number') return s; }catch(e){} return {games:0, red:0, blue:0}; }
 function saveStats(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} }
 let stats = loadStats();
+// Botten har sin egen nøgle: både valget på startskærmen og stillingen mod den,
+// så to spilleres kampe (Rød/Blå) ikke blandes sammen med kampene mod computeren.
+const BOTKEY = 'zydy.duel.bot';
+const BOTSTART = { mode:'to', niveau:'mellem', kampe:0, dig:0, bot:0 };
+function loadBotData(){ try{ const b = JSON.parse(localStorage.getItem(BOTKEY)); if(b && typeof b==='object') return Object.assign({}, BOTSTART, b); }catch(e){} return Object.assign({}, BOTSTART); }
+function saveBotData(){ try{ localStorage.setItem(BOTKEY, JSON.stringify(botData)); }catch(e){} }
+let botData = loadBotData();
 function renderStats(){
-  const html = `<span class="pill">Kampe <b>${stats.games}</b></span><span class="pill red">Rød <b>${stats.red}</b></span><span class="pill blue">Blå <b>${stats.blue}</b></span>`;
+  const kampe = stats.games + botData.kampe;
+  let html = `<span class="pill">Kampe <b>${kampe}</b></span><span class="pill red">Rød <b>${stats.red}</b></span><span class="pill blue">Blå <b>${stats.blue}</b></span>`;
+  if(botData.kampe) html += `<span class="pill">Mod botten <b>${botData.dig}–${botData.bot}</b></span>`;
   $('#startStats').innerHTML = html; $('#endStats').innerHTML = html;
-  const t = `${stats.games} ${stats.games===1?'kamp':'kampe'}`;
+  const t = `${kampe} ${kampe===1?'kamp':'kampe'}`;
   $('#startPill').textContent = t; $('#endPill').textContent = t;
 }
 
 /* ---------- Tilstand ---------- */
 // hurtigst: den hurtigste reaktion i "Grønt lys" i kampen — { side, ms } — bruges til toplisten.
 const state = { phase:'idle', round:null, scores:{red:0,blue:0}, target:5, roundNo:0, hurtigst:null };
-const GAME = { state, fast:false, forceType:null, seed };
+const GAME = { state, fast:false, forceType:null, seed, botPause:false };
 window.GAME = GAME;
 
 const halves = { red: $('.half.red'), blue: $('.half.blue') };
 const D = () => ({ intro: GAME.fast?20:1800, result: GAME.fast?20:1200, window: GAME.fast?0:25 });
+// Spilleren er altid Rød nederst; botten overtager Blå foroven.
+const navn = s => (bot && s==='blue') ? 'Botten' : NAME[s];
 
 /* ---------- Hjælpere til begge halvdele ---------- */
 function each(fn){ SIDES.forEach(s => fn(halves[s], s)); }
@@ -402,6 +434,63 @@ const ROUNDS = {
 };
 const TYPES = Object.keys(ROUNDS);
 
+/* ---------- Botten på spilfladen ----------
+   bot.mjs lægger planen (hvor længe den er om det, og hvad den trykker på);
+   her holder vi øje med, hvornår der må trykkes, og sender trykket af sted
+   gennem den ganske almindelige press(). */
+let bot = null, botTimer = null;
+
+// Hvad går runden ud på, set med bottens øjne?
+function opgaveFor(r){
+  if(r.type==='green')   return { slags:'reaktion', vindue: GAME.fast ? 400 : r.delay };
+  if(r.type==='same')    return { slags:'reaktion', vindue: Math.max(0, r.matchAt - r.step + 1) * 900 };
+  if(r.type==='numbers') return { slags:'valg', korrekt:r.correct, muligheder:r.nums };
+  if(r.type==='stroop')  return { slags:'valg', korrekt:r.correct, muligheder:COLORS.map(c => c.key) };
+  if(r.type==='dots')    return { slags:'valg', korrekt:r.correct, muligheder:r.opts };
+  return { slags:'valg', korrekt:r.correct, muligheder:[r.correct] };
+}
+// I fast-mode (tests) skal botten ikke bruge et sekund på at tænke.
+const botMs = ms => GAME.fast ? Math.max(8, Math.round(ms*0.03)) : ms;
+
+function botPlanlaeg(){
+  if(!bot) return;
+  bot.plan = planlaeg(opgaveFor(state.round), bot.niveau, rnd);
+  bot.klarFra = null; bot.trykket = false; bot.forbiere = 0; bot.start = performance.now();
+}
+function botTick(){
+  if(!bot || GAME.botPause || bot.trykket || !bot.plan || state.phase!=='play') return;
+  const nu = performance.now(), klar = !!state.round.ready;
+  if(bot.plan.tyvstart){                       // trykker før tid og forærer pointet væk
+    if(!klar && nu - bot.start >= botMs(bot.plan.forsinkelse)) botTryk(bot.plan.svar);
+    return;
+  }
+  if(!klar){
+    // Chancen forsvandt igen, før botten fik trykket – det sker kun i «Ens eller ej»,
+    // hvor figurerne kun står ens i 900 ms. Den missede den, og prøver ved næste par;
+    // efter tre forbiere tager den sig sammen, så runden ikke kan hænge fast.
+    if(bot.klarFra != null){
+      bot.forbiere++;
+      bot.plan = planlaeg(opgaveFor(state.round), bot.niveau, rnd);
+      bot.plan.tyvstart = false;
+      if(bot.forbiere >= 3) bot.plan.forsinkelse = Math.min(bot.plan.forsinkelse, 600);
+      bot.klarFra = null;
+    }
+    return;
+  }
+  if(bot.klarFra == null) bot.klarFra = nu;
+  if(nu - bot.klarFra >= botMs(bot.plan.forsinkelse)) botTryk(bot.plan.svar);
+}
+function botTryk(svar){
+  if(!bot || state.phase!=='play') return;
+  bot.trykket = true;
+  if(svar != null){                            // vis hvad botten trykkede på
+    const b = halves.blue.querySelector(`[data-v="${CSS.escape(String(svar))}"]`);
+    if(b){ b.classList.add('pressed'); setTimeout(() => b.classList.remove('pressed'), 150); }
+  }
+  press('blue', svar, performance.now());
+}
+function botStop(){ if(botTimer){ clearInterval(botTimer); botTimer = null; } }
+
 /* ---------- Spilforløb ---------- */
 let lastType = null;
 let pending = [], pendingTimer = null;
@@ -409,6 +498,11 @@ let pending = [], pendingTimer = null;
 function start(target){
   if(target) state.target = target;
   state.scores = { red:0, blue:0 }; state.roundNo = 0; state.hurtigst = null; lastType = null;
+  botStop();
+  bot = botData.mode==='bot' ? { niveau: botData.niveau, plan:null, klarFra:null, trykket:false, start:0 } : null;
+  $('#arena').classList.toggle('solo', !!bot);
+  $('#botmark').hidden = !bot;
+  if(bot){ $('#botmark').textContent = `🤖 Bot · ${SVAERHED[bot.niveau].navn}`; botTimer = setInterval(botTick, 20); }
   showArena(true);
   nextRound();
 }
@@ -436,6 +530,7 @@ function beginPlay(){
   clearTimers(); stopBar();
   state.phase = 'play';
   ROUNDS[state.round.type].begin(state.round);
+  botPlanlaeg();
 }
 
 /* press(side, payload, ts): et tryk fra en spiller. Trykkene samles i et lille vindue
@@ -457,8 +552,9 @@ function resolvePress(){
   const first = pending[0]; pending = [];
   const winner = first.verdict==='win' ? first.side : other(first.side);
   const r = state.round;
-  // Rigtigt tryk i "Grønt lys" er en ægte reaktionstid — kampens hurtigste ryger på toplisten.
-  if(r.type==='green' && first.verdict==='win' && r.goAt){
+  // Rigtigt tryk i "Grønt lys" er en ægte reaktionstid — kampens hurtigste ryger på
+  // toplisten. Bottens tid tæller selvsagt ikke med.
+  if(r.type==='green' && first.verdict==='win' && r.goAt && !(bot && first.side==='blue')){
     const ms = Math.round(first.ts - r.goAt);
     if(ms >= 80 && (!state.hurtigst || ms < state.hurtigst.ms)) state.hurtigst = { side:first.side, ms };
   }
@@ -467,10 +563,10 @@ function resolvePress(){
   state.scores[winner]++;
   renderOrbs();
   navigator.vibrate?.(first.verdict==='win' ? 30 : [30,40,30]);
-  const big = first.verdict==='win' ? `${NAME[winner]} tog pointet` : `${NAME[first.side]} ${ROUNDS[r.type].loseText}`;
+  const big = first.verdict==='win' ? `${navn(winner)} tog pointet` : `${navn(first.side)} ${ROUNDS[r.type].loseText}`;
   const sub = first.verdict==='win'
     ? (r.correct!=null ? `Rigtigt svar: ${String(r.correct).toUpperCase()}` : 'Hurtigst!')
-    : `Pointet går til ${NAME[winner]}`;
+    : `Pointet går til ${navn(winner)}`;
   each((h,s) => {
     h.classList.remove('go'); h.classList.add('res');
     h.classList.add(s===winner ? 'flash-win' : 'flash-lose');
@@ -489,12 +585,16 @@ function advance(){
 }
 
 function finish(winner){
-  clearTimers();
+  clearTimers(); botStop();
   state.phase = 'end';
-  stats.games++; stats[winner]++; saveStats(stats); renderStats();
+  if(bot){ botData.kampe++; if(winner==='red') botData.dig++; else botData.bot++; saveBotData(); }
+  else { stats.games++; stats[winner]++; saveStats(stats); }
+  renderStats();
   showArena(false);
   $('#start').classList.remove('on'); $('#end').classList.add('on');
-  const wt = $('#winnerText'); wt.textContent = `${NAME[winner]} vandt`; wt.className = 'winner ' + winner;
+  const wt = $('#winnerText');
+  wt.textContent = bot ? (winner==='red' ? 'Du vandt!' : 'Botten vandt') : `${NAME[winner]} vandt`;
+  wt.className = 'winner ' + winner;
   $('#scoreText').textContent = `${state.scores[winner]}–${state.scores[other(winner)]}`;
   visTopliste();
   confetti(winner);
@@ -508,14 +608,15 @@ function visTopliste(){
   const h = state.hurtigst;
   Highscore.panel(hs, {
     spil: 'duel',
-    titel: h ? `Hurtigste reaktion · ${NAME[h.side]} klarede ${h.ms} ms` : 'Hurtigste reaktion',
+    titel: h ? `Hurtigste reaktion · ${navn(h.side)} klarede ${h.ms} ms` : 'Hurtigste reaktion',
     format: n => n + ' ms',
     score: h ? h.ms : undefined,
   });
 }
 
 function quit(){
-  clearTimers(); pending = [];
+  clearTimers(); botStop(); pending = [];
+  bot = null; $('#arena').classList.remove('solo'); $('#botmark').hidden = true;
   state.phase = 'idle';
   showArena(false);
   $('#end').classList.remove('on'); $('#start').classList.add('on');
@@ -547,6 +648,7 @@ arena.addEventListener('pointerdown', e => {
   e.preventDefault();
   const half = e.target.closest('.half');
   const side = half ? half.dataset.side : (e.clientY < innerHeight/2 ? 'blue' : 'red');
+  if(bot && side==='blue') return;            // bottens halvdel er dens egen
   const btn = e.target.closest('[data-v]');
   if(btn){ btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 150); }
   press(side, btn ? btn.dataset.v : null, e.timeStamp);
@@ -562,9 +664,36 @@ $('#targetSeg').addEventListener('click', e => {
   $$('#targetSeg button').forEach(x => { x.classList.toggle('on', x===b); x.setAttribute('aria-checked', x===b ? 'true' : 'false'); });
   state.target = parseInt(b.dataset.target,10);
 });
+
+/* Modstander: to spillere eller botten (med sværhedsgrad). Valget huskes. */
+function tegnModstander(){
+  const modBot = botData.mode==='bot';
+  $$('#modeSeg button').forEach(b => { const on = b.dataset.mode===botData.mode; b.classList.toggle('on', on); b.setAttribute('aria-checked', on?'true':'false'); });
+  $$('#botSeg button').forEach(b => { const on = b.dataset.niveau===botData.niveau; b.classList.toggle('on', on); b.setAttribute('aria-checked', on?'true':'false'); });
+  $('#botSeg').hidden = !modBot;
+  $('#demo').classList.toggle('solo', modBot);
+  $('#demoTop').textContent = modBot ? '🤖 BOT' : 'BLÅ';
+  $('#demoBot').textContent = modBot ? 'DIG' : 'RØD';
+  $('#lead').textContent = modBot
+    ? 'Du spiller mod computeren. Du er Rød nederst, botten er Blå foroven – dens halvdel skal du holde fingrene fra.'
+    : 'To spillere, én telefon. Læg den på bordet mellem jer – Rød sidder nederst, Blå øverst.';
+}
+function vaelgModstander(mode, niveau){
+  if(mode==='to' || mode==='bot') botData.mode = mode;
+  if(niveau && NIVEAUER.includes(niveau)) botData.niveau = niveau;
+  saveBotData(); tegnModstander();
+}
+$('#modeSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-mode]'); if(b) vaelgModstander(b.dataset.mode);
+});
+$('#botSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-niveau]'); if(b) vaelgModstander('bot', b.dataset.niveau);
+});
+
 $('#playBtn').addEventListener('click', () => start(state.target));
 $('#rematchBtn').addEventListener('click', () => start(state.target));
 $('#menuBtn').addEventListener('click', quit);
+tegnModstander();
 renderStats();
 
 /* ---------- Konfetti i vinderens farve ---------- */
@@ -591,7 +720,18 @@ function confetti(winner){
 }
 
 /* ---------- Eksponér til test ---------- */
-Object.assign(GAME, { start, press, currentRound, skipWait, quit });
+// botNu(rigtigt): lad botten svare med det samme. I «Grønt lys» og «Ens eller ej»
+// skal GAME.skipWait() først gøre runden klar, hvis botten skal svare rigtigt.
+function botNu(rigtigt){
+  if(!bot || state.phase!=='play') return false;
+  const o = opgaveFor(state.round);
+  const svar = o.slags==='valg' ? (rigtigt===false ? forkertSvar(o, rnd) : o.korrekt) : null;
+  botTryk(svar);
+  return true;
+}
+Object.assign(GAME, { start, press, currentRound, skipWait, quit, botNu,
+  setBot: (niveau) => vaelgModstander(niveau ? 'bot' : 'to', niveau || null),
+  botInfo: () => bot && { niveau: bot.niveau, plan: bot.plan } });
 })();
 </script>
 </body></html>
