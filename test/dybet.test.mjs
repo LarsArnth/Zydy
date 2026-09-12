@@ -4,6 +4,7 @@
 // start → valg i kryds → kamp → taske → trappen → gem/genoptag → død → topliste (API'et mockes).
 import assert from 'node:assert/strict';
 const { chromium, devices } = await import(process.env.PLAYWRIGHT ?? 'playwright');
+import { mockApi } from './api-mock.mjs';
 const BASE = process.env.BASE ?? 'http://localhost:4181';
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
@@ -14,6 +15,10 @@ page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 
 // Tom topliste → enhver dybde kvalificerer, så navneformularen vises ved død
 const sendte = [];
+// zydy.dk's API'er i hukommelsen (aktivitet + topliste). Registreres først, så en
+// mere specifik page.route nedenfor vinder over den.
+const api = await mockApi(page);
+
 await page.route('**/api/highscore/**', async route => {
   const req = route.request();
   if (req.method() === 'POST') {

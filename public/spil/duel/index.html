@@ -68,6 +68,9 @@
   .winner{font-size:52px;line-height:1;letter-spacing:-2px;font-weight:800;margin:0 0 8px}
   .winner.red{color:var(--coral)} .winner.blue{color:var(--sky)}
   .score{font-size:28px;font-weight:800;color:var(--text);margin-bottom:22px}
+  /* Toplisten (tegnes af /spil/highscore.js) */
+  #end .hs{margin:0 0 18px;text-align:left}
+  #end .hs-titel,#end .hs-venter,#end .hs-tom,#end .hs-fejl,#end .hs-status{text-align:center}
   #confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
 
   /* ======== Spilfladen ======== */
@@ -198,12 +201,16 @@
   <div class="content" style="text-align:center">
     <div class="winner" id="winnerText">Rød vandt</div>
     <div class="score" id="scoreText">5–3</div>
+    <div class="hs" id="hs"></div>
     <button class="btn" id="rematchBtn">Omkamp</button>
     <button class="btn ghost" id="menuBtn">Til start</button>
     <div class="stats" id="endStats"></div>
   </div>
 </div>
 <canvas id="confetti" hidden></canvas>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="duel"></script>
 
 <!-- ===== Spilfladen: to halvdele ===== -->
 <div id="arena" hidden>
@@ -269,7 +276,8 @@ function renderStats(){
 }
 
 /* ---------- Tilstand ---------- */
-const state = { phase:'idle', round:null, scores:{red:0,blue:0}, target:5, roundNo:0 };
+// hurtigst: den hurtigste reaktion i "Grønt lys" i kampen — { side, ms } — bruges til toplisten.
+const state = { phase:'idle', round:null, scores:{red:0,blue:0}, target:5, roundNo:0, hurtigst:null };
 const GAME = { state, fast:false, forceType:null, seed };
 window.GAME = GAME;
 
@@ -318,7 +326,7 @@ const ROUNDS = {
       setStage(() => `<div class="wait">Vent…</div>`);
       after(GAME.fast ? 400 : r.delay, () => ROUNDS.green.go(r));
     },
-    go(r){ if(r.ready || state.phase!=='play') return; r.ready = true; each(h => h.classList.add('go')); setStage(() => `<div class="wait" style="color:var(--ink);font-size:32px">TRYK!</div>`); },
+    go(r){ if(r.ready || state.phase!=='play') return; r.ready = true; r.goAt = performance.now(); each(h => h.classList.add('go')); setStage(() => `<div class="wait" style="color:var(--ink);font-size:32px">TRYK!</div>`); },
     skip(r){ clearTimers(); ROUNDS.green.go(r); },
     judge(r){ return r.ready ? 'win' : 'lose'; },
     loseText:'trykkede for tidligt',
@@ -398,7 +406,7 @@ let pending = [], pendingTimer = null;
 
 function start(target){
   if(target) state.target = target;
-  state.scores = { red:0, blue:0 }; state.roundNo = 0; lastType = null;
+  state.scores = { red:0, blue:0 }; state.roundNo = 0; state.hurtigst = null; lastType = null;
   showArena(true);
   nextRound();
 }
@@ -447,6 +455,11 @@ function resolvePress(){
   const first = pending[0]; pending = [];
   const winner = first.verdict==='win' ? first.side : other(first.side);
   const r = state.round;
+  // Rigtigt tryk i "Grønt lys" er en ægte reaktionstid — kampens hurtigste ryger på toplisten.
+  if(r.type==='green' && first.verdict==='win' && r.goAt){
+    const ms = Math.round(first.ts - r.goAt);
+    if(ms >= 80 && (!state.hurtigst || ms < state.hurtigst.ms)) state.hurtigst = { side:first.side, ms };
+  }
   clearTimers();
   state.phase = 'result';
   state.scores[winner]++;
@@ -481,7 +494,22 @@ function finish(winner){
   $('#start').classList.remove('on'); $('#end').classList.add('on');
   const wt = $('#winnerText'); wt.textContent = `${NAME[winner]} vandt`; wt.className = 'winner ' + winner;
   $('#scoreText').textContent = `${state.scores[winner]}–${state.scores[other(winner)]}`;
+  visTopliste();
   confetti(winner);
+}
+
+/* Online topliste: score = hurtigste reaktion i "Grønt lys" (færrest millisekunder vinder).
+   Kom runden ikke op i kampen, vises listen bare. */
+function visTopliste(){
+  const hs = $('#hs');
+  if(!window.Highscore){ hs.innerHTML = ''; return; }
+  const h = state.hurtigst;
+  Highscore.panel(hs, {
+    spil: 'duel',
+    titel: h ? `Hurtigste reaktion · ${NAME[h.side]} klarede ${h.ms} ms` : 'Hurtigste reaktion',
+    format: n => n + ' ms',
+    score: h ? h.ms : undefined,
+  });
 }
 
 function quit(){

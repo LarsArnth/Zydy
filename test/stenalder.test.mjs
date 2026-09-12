@@ -3,6 +3,7 @@
 // Regelmotoren testes særskilt i test/unit/; her testes UI'et på iPhone-størrelse.
 import assert from 'node:assert/strict';
 const { chromium, devices } = await import(process.env.PLAYWRIGHT ?? 'playwright');
+import { mockApi } from './api-mock.mjs';
 const BASE = process.env.BASE ?? 'http://localhost:4182';
 const SHOT = '/Users/lars/Projekter/Zydy/test/shots/stenalder.png';
 
@@ -25,6 +26,10 @@ const noScroll = async () => {
   assert.equal(r.ud, 0, 'ingen kort stikker ud af skærmen');
 };
 const st = () => page.evaluate(() => GAME.state);
+
+// zydy.dk's API'er i hukommelsen (aktivitet + topliste). Registreres først, så en
+// mere specifik page.route nedenfor vinder over den.
+const api = await mockApi(page);
 
 await page.goto(`${BASE}/spil/stenalder/?seed=5`);
 await page.waitForSelector('#start.on');

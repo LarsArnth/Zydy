@@ -186,6 +186,9 @@ input:focus{outline:2px solid var(--sun)}
 .slutscore thead th{font-size:12px;color:var(--muted)}
 .slutscore .tot td{font-weight:800;font-size:16px;color:var(--sun)}
 .vinder{font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--sun);margin:6px 0 4px}
+/* Toplisten (tegnes af /spil/highscore.js) */
+.hs{margin:14px 0 4px}
+.hs .hs-liste{max-height:28vh}
 .tbl{overflow-x:auto}
 </style></head><body>
 
@@ -223,6 +226,8 @@ input:focus{outline:2px solid var(--sun)}
 <div id="dlg"><div class="panel" id="panel"></div></div>
 <div id="msg"></div>
 
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="stenalder"></script>
 <script type="module">
 import { nytSpil, udfoer, lovligePlaceringer, hvemErPaa, tilfaeldigHandling, kanBetaleBygning, vaerdiAf, ledigeRedskaber, redskabsvaerdi, FARVER, beskrivRess } from './regler.mjs';
 import { RESSOURCER, VAERDI, NAVN, IKON, STEDER, LANDSBY, TERNINGSTEDER, KORT, BYGNINGER, KULTUR, SPECIALIST, TERNINGKORT_GEVINST,
@@ -719,9 +724,37 @@ function visSlut() {
     ${raekke('Shamaner × folk', x => x.shamaner)}
     ${raekke('Ressourcer tilbage', x => x.ressourcer)}
     <tr class="tot"><td>I alt</td>${rk.map(x => `<td>${x.total}</td>`).join('')}</tr></tbody></table></div>
+    <div class="hs" id="hsSlut"></div>
     <button class="btn" id="btnNyt">Nyt spil</button>`, { bred: true });
   $('#btnNyt').onclick = () => { slet(); lukDlg(); S = null; visSkaerm('start'); $('#btnFortsaet').hidden = true; };
+  visTopliste($('#hsSlut'), S.spillere[r.vinder].navn, r.spillere[r.vinder].total);
   slet();
+}
+
+/**
+ * Online topliste: score = vinderens point. Her kender vi spillerens rigtige navn fra
+ * startskærmen, så vi gemmer direkte med det i stedet for at spørge igen (derfor
+ * Highscore.hent/send/tegnListe frem for Highscore.panel).
+ */
+async function visTopliste(rod, navn, point) {
+  if (!rod || !window.Highscore || !Number.isInteger(point) || point < 1) return;
+  rod.innerHTML = '<p class="hs-venter">Henter toplisten…</p>';
+  let top;
+  try { top = await Highscore.hent('stenalder'); } catch (e) { Highscore.tegnFejl(rod); return; }
+  if (!Highscore.kvalificerer(top, point)) {
+    Highscore.tegnListe(rod, top.liste || [], navn, 'Flest point');
+    return;
+  }
+  try {
+    const svar = await Highscore.send('stenalder', navn, point);
+    const titel = svar.uaendret ? `${navn}s rekord er stadig ${svar.score} point`
+      : svar.placering === 1 ? `${navn} er nr. 1 på toplisten!`
+      : svar.placering ? `${navn} er nr. ${svar.placering} på toplisten!`
+      : `Gemt – men uden for top ${Highscore.LAENGDE}`;
+    Highscore.tegnListe(rod, svar.liste || [], svar.id, titel);
+  } catch (e) {
+    Highscore.tegnFejl(rod, 'Kunne ikke gemme på toplisten.');
+  }
 }
 
 // ---- Testkrog ------------------------------------------------------------

@@ -74,6 +74,9 @@
   /* Slutskærm */
   .winner{font-size:52px;line-height:1;letter-spacing:-2px;font-weight:800;margin:0 0 8px;color:var(--pc)}
   .score{font-size:22px;font-weight:700;color:var(--muted);margin-bottom:22px}
+  /* Toplisten (tegnes af /spil/highscore.js) */
+  #end .hs{margin:0 0 18px;text-align:left;max-width:420px;margin-left:auto;margin-right:auto}
+  #end .hs-titel,#end .hs-venter,#end .hs-tom,#end .hs-fejl,#end .hs-status{text-align:center}
 
   /* ======== Bordet ======== */
   #table{display:none;flex-direction:column;gap:8px;flex:1;width:100%;max-width:1100px;margin:0 auto}
@@ -193,11 +196,15 @@
   <div class="content" style="text-align:center">
     <div class="winner" id="winnerText">Rød vandt</div>
     <div class="score" id="scoreText"></div>
+    <div class="hs" id="hs"></div>
     <button class="btn" id="rematchBtn">Omkamp</button>
     <button class="btn ghost" id="menuBtn">Til start</button>
     <div class="stats" id="endStats"></div>
   </div>
 </div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="helteriget"></script>
 
 <!-- ===== Bordet (den aktive spillers udsigt) ===== -->
 <div id="table">
@@ -361,6 +368,7 @@ function recordStats(winner){ const s = loadStats(); s.games++; s[winner]++; try
 
 /* ---------- Spilopsætning ---------- */
 function newGame(){
+  toplisteVist = false;
   state = { phase:'handoff', turn:'red', turnNo:1, rs: state ? state.rs : seed, uid:0, seed,
     players:{}, market:[], marketDeck:[], gems:16, prompts:[], winner:null, last:null, cur:freshLog() };
   for (const p of ['red','blue']) {
@@ -503,7 +511,7 @@ function afterChange(){
   } else save();
   render();
 }
-function quitGame(){ state = null; sel = []; modalMode = null; clearSave(); render(); }
+function quitGame(){ state = null; sel = []; modalMode = null; toplisteVist = false; clearSave(); render(); }
 
 /* ---------- Prompts (valg) ---------- */
 function promptOptions(pr){
@@ -606,6 +614,8 @@ function renderHandoff(){
   $('#hoLast').textContent = (state.last ? state.last.text + ' ' : 'Rød begynder og har kun 3 kort i første tur. ')
     + (pend ? `${NAME[p]} skal smide ${pend} kort, før turen begynder.` : '');
 }
+// Toplisten tegnes én gang pr. afsluttet spil (render() kaldes flere gange).
+let toplisteVist = false;
 function renderEnd(){
   const w = state.winner, l = other(w);
   $('#end').className = 'screen on ' + w;
@@ -613,6 +623,16 @@ function renderEnd(){
   $('#scoreText').textContent = `${NAME[l]} løb tør for liv efter ${Math.ceil(state.turnNo / 2)} ture. ${NAME[w]} har ${P(w).health} liv tilbage.`;
   $('#endPill').textContent = `${loadStats().games} spil`;
   $('#endStats').innerHTML = statsHTML();
+  // Online topliste: score = antal ture sejren tog, så færrest ture vinder.
+  if (!toplisteVist && window.Highscore) {
+    toplisteVist = true;
+    Highscore.panel($('#hs'), {
+      spil: 'helteriget',
+      titel: 'Vundet på færrest ture',
+      format: n => n + (n === 1 ? ' tur' : ' ture'),
+      score: Math.ceil(state.turnNo / 2),
+    });
+  }
 }
 function renderTable(){
   const p = state.turn, me = cur(), o = other(p), op = P(o);

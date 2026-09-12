@@ -15,3 +15,18 @@ CREATE TABLE IF NOT EXISTS scores (
 -- Kolonnen token kom til 2026-09-12. Databaser oprettet før det blev opdateret med:
 --   npx wrangler@4 d1 execute zydy-highscore --remote --command "ALTER TABLE scores ADD COLUMN token TEXT"
 CREATE INDEX IF NOT EXISTS scores_spil_score ON scores (spil, score DESC, oprettet ASC);
+
+-- Aktivitet (src/aktivitet.mjs): hvor tit hvert spil startes, pr. UTC-døgn …
+CREATE TABLE IF NOT EXISTS starter (
+  spil       TEXT    NOT NULL,
+  dag        TEXT    NOT NULL,             -- 'YYYY-MM-DD'
+  antal      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (spil, dag)
+);
+-- … og hvem der spiller lige nu (én række pr. browser-tab, heartbeat hvert 30. sek., glemt efter 90).
+CREATE TABLE IF NOT EXISTS aktive (
+  klient     TEXT    PRIMARY KEY,          -- tilfældigt id fra klienten (sessionStorage)
+  spil       TEXT    NOT NULL,
+  sidst      INTEGER NOT NULL              -- ms siden epoch
+);
+CREATE INDEX IF NOT EXISTS aktive_sidst ON aktive (sidst);

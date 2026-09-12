@@ -2,6 +2,7 @@
 // (kræver at en lokal server kører: python3 -m http.server 4182 -d public)
 import assert from 'node:assert/strict';
 const { chromium, devices } = await import(process.env.PLAYWRIGHT ?? 'playwright');
+import { mockApi } from './api-mock.mjs';
 const BASE = process.env.BASE ?? 'http://localhost:4182';
 const SHOT = '/Users/lars/Projekter/Zydy/test/shots/saet.png';
 
@@ -17,6 +18,10 @@ page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 const regler = { 'saet-klassisk': { retning: 'asc', min: 600, maks: 10800 }, 'saet-blitz': { retning: 'desc', min: 1, maks: 60 } };
 const lister = { 'saet-klassisk': [{ id: 1, navn: 'Mor', score: 65, oprettet: '2026-09-12T10:00:00.000Z' }], 'saet-blitz': [] };
 const sendte = [];
+// zydy.dk's API'er i hukommelsen (aktivitet + topliste). Registreres først, så en
+// mere specifik page.route nedenfor vinder over den.
+const api = await mockApi(page);
+
 await page.route('**/api/highscore/**', async route => {
   const req = route.request(), spil = new URL(req.url()).pathname.split('/').pop();
   const r = regler[spil];

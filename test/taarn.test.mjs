@@ -4,6 +4,7 @@
 // kræver wrangler dev eller netværk. Selve API'et testes i test/unit/highscore.test.mjs.
 import assert from 'node:assert/strict';
 const { chromium, devices } = await import(process.env.PLAYWRIGHT ?? 'playwright');
+import { mockApi } from './api-mock.mjs';
 const BASE = process.env.BASE ?? 'http://localhost:4181';
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
@@ -20,6 +21,10 @@ page.on('console', m => {
 // Mock af højscore-API'et: starter med en fuld top 10 (scores 200..191), så score 4 ikke kvalificerer.
 let liste = Array.from({ length: 10 }, (_, i) => ({ id: 100 + i, navn: 'Spiller ' + (i + 1), score: 200 - i, oprettet: '2026-09-12T10:00:00.000Z' }));
 const sendte = [], rettede = [];
+// zydy.dk's API'er i hukommelsen (aktivitet + topliste). Registreres først, så en
+// mere specifik page.route nedenfor vinder over den.
+const api = await mockApi(page);
+
 await page.route('**/api/highscore/**', async route => {
   const req = route.request();
   if (req.method() === 'POST') {

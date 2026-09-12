@@ -99,6 +99,9 @@
   .card h2{color:var(--sun)}
   .card .stats{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
   .card .note{font-size:14px;margin:-6px 0 12px}
+  /* Toplisten (tegnes af /spil/highscore.js) */
+  .card .hs{margin:0 0 12px}
+  .card .hs-liste{max-height:30vh}
 
   /* Konfetti */
   #confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:15}
@@ -173,6 +176,7 @@
     <h2 id="ovTitle">Niveau 1 løst!</h2>
     <div class="stats"><span class="pill" id="ovMoves"><b>0</b> træk</span><span class="pill" id="ovBest">Bedste: <b>–</b></span></div>
     <p class="note" id="ovNote" hidden>Du brugte et ekstra glas</p>
+    <div class="hs" id="hs"></div>
     <button class="btn" id="btnNext">Næste niveau</button>
     <button class="btn ghost" id="btnAgain">Prøv niveauet igen</button>
     <a class="btn ghost" href="/">Tilbage til zydy.dk</a>
@@ -180,6 +184,8 @@
 </div>
 <div id="confetti" aria-hidden="true"></div>
 
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="farvesortering"></script>
 <script>
 (function(){
 'use strict';
@@ -525,7 +531,9 @@ function tapTube(i){
 function bestFor(level){ const b = load('best', {}); return b[level] || null; }
 function saveProgress(){
   const lvl = load('level', 1);
-  if (state.level + 1 > lvl) save('level', state.level + 1);
+  // Nyt højeste niveau nogensinde? Så er det en rekord værd at komme på toplisten med.
+  state.rekord = state.level + 1 > lvl;
+  if (state.rekord) save('level', state.level + 1);
   const best = load('best', {});
   const prev = best[state.level];
   if (!prev || state.moves < prev.moves) best[state.level] = { moves: state.moves, help: state.helped };
@@ -560,6 +568,11 @@ function showOverlay(){
   const best = bestFor(state.level);
   $('ovBest').innerHTML = 'Bedste: <b>' + (best ? best.moves : state.moves) + '</b>';
   $('ovNote').hidden = !state.helped;
+  // Online topliste: score = højeste niveau løst. Kun ved nyt personligt højeste
+  // sendes scoren ind; ellers fylder listen ikke overlayet hver eneste gang.
+  const hs = $('hs');
+  if (state.rekord && window.Highscore) Highscore.panel(hs, { spil: 'farvesortering', titel: 'Højeste niveau', format: n => 'niveau ' + n, score: state.level });
+  else hs.innerHTML = '';
   $('overlay').classList.add('on');
   navigator.vibrate && navigator.vibrate([40, 60, 40]);
 }

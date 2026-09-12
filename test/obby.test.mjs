@@ -6,6 +6,7 @@
 // på en ny platform (eller på den anden side af laseren).
 import assert from 'node:assert/strict';
 const { chromium, devices } = await import(process.env.PLAYWRIGHT ?? 'playwright');
+import { mockApi } from './api-mock.mjs';
 const BASE = process.env.BASE ?? 'http://localhost:4181';
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
@@ -20,6 +21,10 @@ let liste = [
   { id: 3, navn: 'Mor', score: 9, oprettet: '2026-09-12T10:02:00.000Z' },
 ];
 const sendte = [], patchede = [];
+// zydy.dk's API'er i hukommelsen (aktivitet + topliste). Registreres først, så en
+// mere specifik page.route nedenfor vinder over den.
+const api = await mockApi(page);
+
 await page.route('**/api/highscore/**', async route => {
   const req = route.request();
   const regler = { retning: 'desc', min: 1, maks: 10000, unik: true };

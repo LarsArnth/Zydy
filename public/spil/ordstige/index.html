@@ -134,6 +134,9 @@
   .stat b{display:block;font-size:24px;font-weight:800;line-height:1.1}
   .stat span{display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.2}
   .card a.link{display:block;margin-top:14px;color:var(--muted);font-weight:700;text-decoration:none;padding:8px}
+  /* Toplisten (tegnes af /spil/highscore.js) */
+  .card .hs{margin:10px 0 4px}
+  .card .hs-liste{max-height:26vh}
 
   #confetti{position:fixed;inset:0;pointer-events:none;z-index:30}
 
@@ -190,6 +193,7 @@
     <h2 id="end-title">Perfekt!</h2>
     <div class="sub" id="end-sub"></div>
     <div class="stats" id="end-stats"></div>
+    <div class="hs" id="hs"></div>
     <button class="btn" id="end-random">Ny tilfældig stige</button>
     <button class="btn ghost" id="end-close">Se stigen</button>
     <a class="link" href="/">Tilbage til zydy.dk</a>
@@ -200,6 +204,8 @@
 <!-- Ordlister fra Stavekontrolden da_DK (GPL/LGPL/MPL) via Ordle. Forskudt 13 pladser i alfabetet. -->
 <script src="words-allowed.js"></script>
 <script src="words-solutions.js"></script>
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="ordstige"></script>
 <script>
 (function () {
   'use strict';
@@ -468,9 +474,24 @@
       '<div class="stat"><b>' + pct + '%</b><span>vundet</span></div>' +
       '<div class="stat"><b>' + stats.streak + '</b><span>streak<br>dagens</span></div>' +
       '<div class="stat"><b>' + avgTxt + '</b><span>trin over par<br>i snit</span></div>';
+    visTopliste(stats, alreadyPlayed);
     document.getElementById('end').classList.add('on');
   }
   function hideEnd() { document.getElementById('end').classList.remove('on'); }
+
+  /* Online topliste: score = hvor mange dage i træk dagens stige er klaret.
+     Kun en frisk sejr i dagens stige sender scoren ind; ellers vises listen bare. */
+  function visTopliste(stats, alreadyPlayed) {
+    var hs = document.getElementById('hs');
+    if (!window.Highscore) { hs.innerHTML = ''; return; }
+    var frisk = state.mode === 'daily' && state.won && !alreadyPlayed && stats.streak > 0;
+    Highscore.panel(hs, {
+      spil: 'ordstige',
+      titel: 'Flest dage i træk',
+      format: function (n) { return n + (n === 1 ? ' dag' : ' dage'); },
+      score: frisk ? stats.streak : undefined,
+    });
+  }
 
   /* ================= Rendering ================= */
 

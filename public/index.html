@@ -49,6 +49,21 @@
   .text p{margin:0;color:var(--muted);font-size:16px;line-height:1.35}
   .tag{display:inline-block;margin-top:8px;font-size:13px;font-weight:700;color:var(--sun);
     background:rgba(255,212,71,.12);border-radius:999px;padding:3px 10px}
+
+  /* Mærkater under hvert kort: hvem der spiller nu, rekordholderen og hvor tit spillet er spillet.
+     De udfyldes af scriptet nederst ud fra /api/oversigt — uden data vises de slet ikke. */
+  .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .meta:empty{display:none}
+  .m{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;
+    border-radius:999px;padding:3px 10px;background:rgba(255,255,255,.07);color:var(--muted)}
+  .m.nu{background:rgba(94,224,168,.16);color:#7cf0c0}
+  .m.nu::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;
+    animation:puls 1.8s ease-in-out infinite}
+  .m.top{background:rgba(255,212,71,.12);color:var(--sun)}
+  @keyframes puls{0%,100%{opacity:1}50%{opacity:.25}}
+
+  /* Kortene skifter plads, når popularitetstallene er hentet. */
+  .apps.sorteret .app{transition:transform .08s,background .15s}
   .go{flex:0 0 auto;width:40px;height:40px;border-radius:50%;background:var(--sun);color:#1c1f4a;
     display:grid;place-items:center;font-size:22px;font-weight:800}
 
@@ -59,14 +74,14 @@
     .icon{flex-basis:88px;width:88px;height:88px;border-radius:24px}
     .text h2{font-size:28px}
   }
-  @media (prefers-reduced-motion:reduce){ .app{transition:none} }
+  @media (prefers-reduced-motion:reduce){ .app{transition:none} .m.nu::before{animation:none} }
 </style>
 </head>
 <body>
 <main>
   <header>
     <h1>zydy<span>.dk</span></h1>
-    <p>Tryk på et spil for at spille</p>
+    <p id="undertekst">Tryk på et spil for at spille</p>
   </header>
 
   <ul class="apps" id="apps">
@@ -330,7 +345,7 @@
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="/spil/obby/">
+    <li data-spil="obby"><a class="app" href="/spil/obby/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="ob-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b0c2a"/><stop offset=".6" stop-color="#2a2160"/><stop offset="1" stop-color="#7a2a3a"/></linearGradient>
@@ -389,5 +404,119 @@
 
   <footer>Familien Arnths apps · zydy.dk</footer>
 </main>
+
+<script>
+/*
+  Popularitet, "spiller nu" og rekordholder.
+
+  Alt kommer fra ét kald til /api/oversigt (src/aktivitet.mjs + Cloudflare D1):
+  for hvert spil hvor tit det er startet i alt og de sidste 30 dage, hvor mange
+  der spiller lige nu, og hvem der står øverst på toplisten. Spillene her på
+  zydy.dk melder selv til via /spil/aktivitet.js; apps der bor et andet sted
+  (Ordle, Taltræf, Imposter, KlaverLær) kan ikke, så for dem tæller vi trykket
+  på kortet her.
+
+  Rækkefølgen sættes én gang ved indlæsning (mest spillet de sidste 30 dage
+  øverst). Derefter opdateres kun mærkaterne hvert halve minut, så kortene
+  ikke hopper rundt, mens man kigger. Uden API sker der ingenting — siden ser
+  ud som før.
+*/
+(function () {
+  'use strict';
+  var liste = document.getElementById('apps');
+  var kort = Array.prototype.slice.call(liste.querySelectorAll('li[data-spil]'));
+  var plads = {};                       // spil → <li>, så opdateringer er hurtige
+  kort.forEach(function (li) { plads[li.dataset.spil] = li; });
+
+  /* Tryk på en app der bor et andet sted: tæl starten her, da den ikke selv kan. */
+  kort.filter(function (li) { return li.hasAttribute('data-ekstern'); }).forEach(function (li) {
+    li.querySelector('a').addEventListener('click', function () {
+      try {
+        fetch('/api/aktivitet/' + li.dataset.spil, {
+          method: 'POST', keepalive: true,
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ ny: true }),
+        });
+      } catch (e) { /* pyt – linket virker uanset hvad */ }
+    });
+  });
+
+  /* Hvordan en rekord skrives ud. Nøglen er toplistens navn, fx 'saet-klassisk'. */
+  function tid(n) { return Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0'); }
+  function enFlere(en, flere) { return function (n) { return n + ' ' + (n === 1 ? en : flere); }; }
+  var FORMAT = {
+    'taarn': enFlere('point', 'point'),
+    'dybet': function (n) { return 'dybde ' + n; },
+    'obby': enFlere('hop', 'hop'),
+    'saet-klassisk': tid,
+    'saet-blitz': enFlere('sæt', 'sæt'),
+    'farvesortering': function (n) { return 'niveau ' + n; },
+    'ordstige': enFlere('dag', 'dage'),
+    'duel': function (n) { return n + ' ms'; },
+    'helteriget': enFlere('tur', 'ture'),
+    'stenalder': enFlere('point', 'point'),
+  };
+
+  function maerkat(klasse, tekst) {
+    var e = document.createElement('span');
+    e.className = 'm' + (klasse ? ' ' + klasse : '');
+    e.textContent = tekst;
+    return e;
+  }
+
+  function tegn(data) {
+    var nogenSpiller = 0;
+    kort.forEach(function (li) {
+      var d = data[li.dataset.spil];
+      var boks = li.querySelector('.meta');
+      if (!boks) return;
+      boks.innerHTML = '';
+      if (!d) return;
+      if (d.aktive > 0) {
+        nogenSpiller += d.aktive;
+        boks.appendChild(maerkat('nu', d.aktive === 1 ? 'Én spiller nu' : d.aktive + ' spiller nu'));
+      }
+      if (d.top) {
+        var f = FORMAT[d.top.noegle] || String;
+        boks.appendChild(maerkat('top', '🏆 ' + d.top.navn + ' · ' + f(d.top.score)));
+      }
+      if (d.nylig > 0) boks.appendChild(maerkat('', d.nylig === 1 ? 'Spillet 1 gang i denne måned' : 'Spillet ' + d.nylig + ' gange i denne måned'));
+    });
+    var u = document.getElementById('undertekst');
+    if (u) u.textContent = nogenSpiller === 0 ? 'Tryk på et spil for at spille'
+      : nogenSpiller === 1 ? 'Der er én i gang lige nu' : 'Der er ' + nogenSpiller + ' i gang lige nu';
+  }
+
+  /* Mest spillet de sidste 30 dage øverst; derefter flest gange nogensinde, og
+     ellers den rækkefølge siden allerede står i. */
+  function sorter(data) {
+    var plan = kort.map(function (li, i) {
+      var d = data[li.dataset.spil] || {};
+      return { li: li, nylig: d.nylig || 0, starter: d.starter || 0, i: i };
+    });
+    plan.sort(function (a, b) { return b.nylig - a.nylig || b.starter - a.starter || a.i - b.i; });
+    plan.forEach(function (x) { liste.appendChild(x.li); });
+    liste.classList.add('sorteret');
+  }
+
+  var foerste = true;
+  function opdater() {
+    fetch('/api/oversigt', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (svar) {
+        if (!svar || !svar.spil) return;
+        tegn(svar.spil);
+        if (foerste) { foerste = false; sorter(svar.spil); }
+      })
+      .catch(function () { /* ingen forbindelse – siden virker uden */ });
+  }
+
+  opdater();
+  setInterval(function () { if (document.visibilityState === 'visible') opdater(); }, 30000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') opdater();
+  });
+})();
+</script>
 </body>
 </html>

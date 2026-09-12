@@ -2,6 +2,7 @@
 // (kræver at en lokal server kører: python3 -m http.server 4185 -d public)
 import assert from 'node:assert/strict';
 const { chromium, devices } = await import(process.env.PLAYWRIGHT ?? 'playwright');
+import { mockApi } from './api-mock.mjs';
 const BASE = process.env.BASE ?? 'http://localhost:4185';
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
@@ -9,6 +10,10 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+// zydy.dk's API'er i hukommelsen (aktivitet + topliste). Registreres først, så en
+// mere specifik page.route nedenfor vinder over den.
+const api = await mockApi(page);
+
 await page.goto(`${BASE}/spil/duel/?seed=1`);
 
 const phase = () => page.evaluate(() => GAME.state.phase);
