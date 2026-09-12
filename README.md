@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; tretten spil
+afhængigheder. De store apps bor i egne repoer og linkes til; fjorten spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet tretten spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet fjorten spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder og Dybet, der er tre,
-og Kryds og bolle, Gulvet er lava, Klodser og Min kat, der er to). De udrulles sammen
+og Kryds og bolle, Gulvet er lava, Klodser, Min kat og Miskmask, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -36,6 +36,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Gulvet er lava | `public/spil/lava/` | Selmas idé: stuen set fra siden, hvor gulvet bliver til lava, og lavaen stiger nedefra. Man går til venstre og højre og hopper op ad sofaen, bordet, reolen, klaveret og flyttekasserne, mens de bliver smallere og længere fra hinanden. Trampolinpuffen skyder en ekstra højt op, flyttekasser styrter i lavaen kort efter man er landet på dem, og isterninger holder lavaen nede i tre sekunder. Score = hvor højt man nåede i meter, online topliste. To filer: `bane.mjs` (fysik og banegenerator, enhedstestet) og `index.html`. Se «Gulvet er lava – styring og bane» nedenfor. |
 | Obby | `public/spil/obby/` | One-button-platformspil på canvas: hop fra flyvende firkant til flyvende firkant med mellemrum eller et tryk. Rød laser på hver anden firkant, lava i bunden, checkpoint på hver femte, og TRY AGAIN når man dør. Banen er uendelig og genereres, så hvert spring kan nås (bot-testet i `test/obby.test.mjs`) — også ved den høje fart, for farten stiger, jo længere man kommer, og banen genereres ud fra netop den fart. Checkpointet har en høj flagstang (blå = ikke nået, grøn med flueben = nået), og både TRY AGAIN og «tryk for at starte» skriver hvilket checkpoint man fortsætter fra — før stod figuren oven på et lillebitte mærke, så det så ud som om checkpointet ikke gjorde noget. **Coins får man kun på checkpoints** (3 pr. nyt checkpoint, dvs. 3 for hver 5. firkant) og kan købe blandt 14 skins til højst 100 coins, nogle med hat; butikken kan åbnes midt i et løb og fryser spillet imens. Tallet 3 er valgt, så et godt løb til firkant 50 giver 30 coins og et langt løb til 100 giver 60: en dyr skin kan spares op på et par gode løb, men aldrig på ét. Score = hop i træk uden at dø (uafhængig af coins); navnet skrives på startskærmen, og en ny rekord ryger selv på toplisten. Øverst på startskærmen står **«Lavet af»** – Sofie fandt på spillet, Far og Claude byggede det – efter Sofies ønske om, at der skulle stå hvem der har lavet det. Den står lige under titlen og ikke nederst som en rulletekst: startskærmen er højere end en telefonskærm, så alt under Spil-knappen skal man rulle ned til. |
 | Klodser | `public/spil/klodser/` | Selmas ønske om Roblox, oversat til noget der kan ligge her: en 3D-verden af klodser (WebGL på canvas, ingen biblioteker) med sin egen klodsefigur set bagfra. Verdenen er en ø på 40 × 40 klodser med bakker, søer, strande og træer, og havet uden om går ud til horisonten. Man løber rundt med joystick + HOP, kigger ved at trække på skærmen, bygger og river ned med ti farver klodser, og kan skifte til første person. 12 guldklodser er gemt rundt omkring – hver med en lysstråle op i luften, så de kan findes – og tiden det tager at samle dem alle er scoren på toplisten (laveste vinder). Verdenen gemmes i `localStorage` som «frø + de klodser du selv har ændret», så det man har bygget står der næste gang. Man træder automatisk op ad én klods, så bakker ikke kræver hop. To filer: `verden.mjs` (verden, fysik og sigte, enhedstestet) og `index.html`. |
+| Miskmask | `public/spil/miskmask/` | Selmas ønske om «en verity app» – en *variety* app, altså én app med mange forskellige småting i. Det er blevet til 13 bittesmå spil i en pose: tryk på knappen, find den anderledes, prik ballonerne, fang den, det største tal, passer regnestykket, find farven, find bogstavet, hvor mange, tag stjernerne (ikke bomben), tryk N gange, tryk tallene i rækkefølge – og «RØR IKKE!», som man vinder ved at holde fingrene i skødet. Ét ad gangen, med 5 sekunder i starten og 2,2 ved fuld fart (runde 21), og tre liv. Alle minispil deler den samme regel – nogle felter er rigtige, resten er fælder – så et nyt minispil kun skal beskrive, hvad der står på skærmen. Posen trækkes som sedler, så alle 13 kommer, før nogen kommer igen. Score = antal klarede minispil, online topliste. To filer: `mikro.mjs` (de 13 spil og reglerne, enhedstestet) og `index.html`. Se «Miskmask – kvadratet og de 13 minispil» nedenfor. |
 | Min kat | `public/spil/kat/` | Selmas ønske om «My Cat»: et kæledyr man passer. Man adopterer en killing, giver den et navn, og så har den fire behov – mæt, glad, ren og frisk – som siver nedad med tiden, også mens man er væk. Man giver mad i skålen, kaster garnnøglet (tryk på gulvet, katten løber efter det), børster pelsen med fingeren og putter den i kurven, hvor stuen bliver mørk og månen kommer frem. Katten tegnes på canvas (ingen billeder) og blinker, logrer, spinder når man klapper den, og får snavsede pletter, hvis den ikke bliver børstet. Man tjener mønter og erfaring for **det, man faktisk fylder op** – en mæt kat giver ingenting, så man kan ikke trykke sig til mønter – og køber pelse, hatte og halsbånd i butikken. Score = kattens niveau, online topliste. To filer: `kat.mjs` (behov, erfaring, butik og den gemte kat, enhedstestet) og `index.html`. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
@@ -272,6 +273,46 @@ Flyttekassen styrter i lavaen 1,15 sekund efter, man er landet på den. Derfor
 laver generatoren den kun i en række med to møbler – ellers kunne den fjerne
 den eneste vej videre.
 
+### Miskmask – kvadratet og de 13 minispil
+
+Spillet kom af Selmas ønske «Vil du gerne lave en verity app». Læst som
+*variety* er det én app med mange forskellige småting i – derfor en pose med 13
+bittesmå spil frem for ét stort.
+
+**Alle minispil deler den samme regel.** Et minispil i `mikro.mjs` beskriver
+kun, hvad der står på skærmen, og en håndfuld *felter*, hvor nogle er rigtige:
+
+```js
+{ id: 'farve', navn: 'Find farven',
+  forbered(rnd, sv) { return { instruktion: 'TRYK PÅ DEN RØDE', felter: [ … ] }; } }
+```
+
+Motoren gør resten: ram alle de rigtige (`krav`), og du har vundet; ram et
+forkert, og runden er tabt; løb tiden ud, og den er også tabt – medmindre
+spillet vindes ved at vente (`vindVedTid`, som «RØR IKKE!»). Et minispil med
+felter, der flytter sig, får en `bevaeg(r, dt)`. Et nyt minispil er derfor et
+objekt i `MIKROSPIL` – og testen spiller det automatisk igennem, fordi
+`facit(r)` kan udlede de rigtige tryk af felterne.
+
+**Fladen er et kvadrat på 100 × 100 enheder**, som `index.html` lægger midt i
+rammen. Det er derfor, en cirkel er rund både på en iPhone på højkant og en
+iPad på tværs, og det er derfor, HUD'en (hjerter, instruktion, tidslinje)
+ligger *uden for* fladen: alt inde på fladen må man trykke på, alt udenfor er
+noget, man kun skal læse.
+
+**Det skal være sjovt, ikke fælder.** Rammer man op til 3 enheder ved siden af
+et rigtigt felt, tæller det med (`RAMME`) – men et næsten-tryk på et forkert
+felt koster ingenting. Under rundens overskrift (det første sekund) tager
+spillet slet ikke imod tryk, så man ikke kan nå at dumme sig, før man har læst,
+hvad der står. Tiden falder fra 5 sekunder til 2,2 over 20 runder.
+
+Minispillene trækkes som sedler af en pose (`pose()`): alle 13 kommer, før
+nogen kommer igen. Med en almindelig terning kom det samme spil tit to gange i
+træk, og så føles det ikke som en blandet pose.
+
+`window.GAME.tvingRunde('bombe')` sætter et bestemt minispil i gang – brugt af
+testen til at spille alle 13 igennem gennem skærmen og til at se på dem.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -296,7 +337,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, forsidens kort, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, forsidens kort, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter

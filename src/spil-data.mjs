@@ -19,6 +19,7 @@ export const KORT = [
   { id: 'kryds', navn: 'Kryds og bolle', url: '/spil/kryds/' },
   { id: 'klodser', navn: 'Klodser', url: '/spil/klodser/' },
   { id: 'kat', navn: 'Min kat', url: '/spil/kat/' },
+  { id: 'miskmask', navn: 'Miskmask', url: '/spil/miskmask/' },
   { id: 'klaver', navn: 'KlaverLær', url: 'https://klaver.zydy.dk/', ekstern: true },
 ];
 
@@ -39,4 +40,5 @@ export const SPIL = {
   lava: { maks: 3000 },
   klodser: { retning: 'asc', min: 10, maks: 3600 },
   kat: { maks: 50 },
+  miskmask: { maks: 500, unik: true },
 };
