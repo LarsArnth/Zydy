@@ -50,6 +50,15 @@ await page.goto(`${BASE}/spil/taarn/?seed=1`);
 
 // Startskærm og "Spil"
 assert.ok(await page.locator('#startScreen.on').isVisible(), 'startskærmen vises');
+// Points: nul fra start, og målstregen fortæller hvor langt der er til de første 1000
+assert.equal(await page.locator('#pointPill').textContent(), '⭐ 0');
+assert.equal(await page.locator('#pointMaal').textContent(), '⭐ 0 points – 1000 til de første 1000!');
+// "Spil" skal kunne nås uden at rulle, også med point-linjerne på startskærmen
+const spilKnapSynlig = await page.locator('#startBtn').evaluate(el => {
+  const r = el.getBoundingClientRect();
+  return r.bottom <= el.closest('.screen').getBoundingClientRect().bottom;
+});
+assert.ok(spilKnapSynlig, 'Spil-knappen kan ses uden at rulle');
 await page.getByRole('button', { name: 'Spil', exact: true }).click();
 await page.waitForFunction(() => window.GAME.state.running);
 await page.waitForTimeout(200); // forbi dobbelt-tryk-beskyttelsen
@@ -71,6 +80,10 @@ assert.equal(s.streak, 3, 'perfekt-streak 3');
 assert.equal(s.blocks.length, 4);
 assert.ok(Math.abs(s.blocks[3].w - W0) < 0.01, 'perfekt beholder bredden');
 assert.equal(await page.locator('#score').textContent(), '3');
+// Points: 10 pr. blok + 20 × stimen for hver perfekt → 30 + 50 + 70
+assert.equal(s.point, 150, 'points efter 3 perfekte');
+assert.equal(s.rundePoint, 150);
+assert.equal(await page.locator('#pointPill').textContent(), '⭐ 150');
 assert.ok((await page.locator('#streak').textContent()).includes('3'), 'streak vises i UI');
 assert.ok(await page.locator('#streak').evaluate(el => el.classList.contains('on')));
 
@@ -83,6 +96,7 @@ await page.evaluate(() => {
 s = await state();
 assert.equal(s.score, 4);
 assert.equal(s.streak, 0, 'streak nulstillet');
+assert.equal(s.point, 160, 'et skævt drop giver kun de 10 for blokken');
 const topAfter = s.blocks[s.blocks.length - 1];
 assert.ok(Math.abs(topAfter.w - (W0 - 30)) < 0.01, `bredden skæres til ${W0 - 30}, fik ${topAfter.w}`);
 assert.ok(Math.abs(s.moving.w - topAfter.w) < 0.01, 'næste blok har den nye bredde');
@@ -112,6 +126,8 @@ assert.ok(await page.locator('#rekord.on').isVisible(), '"Ny rekord!" vises før
 const stored = await page.evaluate(() => localStorage.getItem('zydy.taarn.best'));
 assert.equal(stored, '4', 'highscore gemt i localStorage');
 assert.equal(await page.locator('#bestPill').textContent(), 'Bedste: 4');
+assert.equal(await page.locator('#overPoint').textContent(), '+160 points · i alt 160', 'rundens points og totalen');
+assert.equal(await page.evaluate(() => localStorage.getItem('zydy.taarn.point')), '160', 'points gemt i localStorage');
 
 // Toplisten er fuld med højere scorer → ingen navneformular, bare listen med 10 rækker
 await page.waitForSelector('#hs .hs-liste');
@@ -127,6 +143,8 @@ s = await state();
 assert.equal(s.score, 0);
 assert.equal(s.best, 4);
 assert.equal(s.blocks.length, 1);
+assert.equal(s.rundePoint, 0, 'rundens points nulstilles');
+assert.equal(s.point, 160, 'de samlede points bliver liggende');
 
 // Runde 2 med kun tre på listen: score 2 kvalificerer → navneformular → gem → fremhævet på listen
 liste = liste.slice(0, 3);
@@ -207,6 +225,32 @@ assert.equal(await page.locator('#hsListe .hs-form').count(), 0, 'ingen formular
 assert.deepEqual(await page.locator('#hsListe .hs-mig .hs-navn').allTextContents(), ['Simon'], 'egen række fremhæves efter navn');
 await page.getByRole('button', { name: 'Tilbage' }).click();
 assert.ok(await page.locator('#startScreen.on').isVisible(), 'tilbage på startskærmen');
+
+// Points overlever genindlæsning: 160 + 80 (runde 2) + 150 (runde 3)
+assert.equal(await page.locator('#pointPill').textContent(), '⭐ 390');
+assert.equal(await page.locator('#pointMaal').textContent(), '⭐ 390 points – 610 til de første 1000!');
+
+// Målstregen: fra 990 runder én blok de 1000, og linjen skifter til pokalen
+await page.evaluate(() => window.GAME.setPoint(990));
+assert.equal(await page.locator('#pointPill').textContent(), '⭐ 990');
+await page.getByRole('button', { name: 'Spil', exact: true }).click();
+await page.waitForFunction(() => window.GAME.state.running);
+await page.waitForTimeout(200);
+await page.evaluate(() => {
+  const s = window.GAME.state, top = s.blocks[s.blocks.length - 1];
+  window.GAME.setMovingX(top.x + 40);    // skævt, så det kun er de 10 for blokken
+  window.GAME.drop();
+});
+s = await state();
+assert.equal(s.point, 1000, 'blokken runder de 1000');
+assert.equal(await page.locator('#pointPill').textContent(), '⭐ 1000');
+assert.equal(await page.locator('#pointMaal').textContent(), '🏆 1000 points! Næste mål: 2000');
+assert.equal(await page.evaluate(() => localStorage.getItem('zydy.taarn.point')), '1000', 'de 1000 er gemt');
+await miss();
+await page.waitForSelector('#overScreen.on', { timeout: 4000 });
+assert.equal(await page.locator('#overPoint').textContent(), '+10 points · i alt 1000');
+await page.reload();   // tilbage på startskærmen – pokalen står der stadig
+assert.equal(await page.locator('#pointMaal').textContent(), '🏆 1000 points! Næste mål: 2000');
 
 // Fejl fra API'et må ikke vælte spillet
 forventetFejl = true;
