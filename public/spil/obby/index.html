@@ -28,6 +28,10 @@
     fortsætter fra. Og coins gives nu KUN på checkpoints (COINS_PR_CHECKPOINT
     pr. nyt checkpoint) i stedet for én pr. firkant.
 
+    Fjerde ønske (Sofie igen): «Jeg vil have der skal stå hvem der har lavet
+    spillet». Derfor står «Lavet af» (#lavetAf) nu lige under titlen på
+    startskærmen – hvem der fandt på spillet, og hvem der har skrevet koden.
+
     Én fil, ingen afhængigheder (ud over toplistens fælles klient
     /spil/highscore.js).
 
@@ -145,6 +149,17 @@
   .regler{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 4px}
   .regler span{font-size:13px;background:var(--bg2);border-radius:999px;padding:5px 10px;color:var(--muted)}
 
+  /*
+    «Hvem har lavet spillet?» – Sofies ønske. Den står lige under titlen og ikke
+    nederst som en rulletekst: startskærmen er højere end en telefonskærm, og
+    alt under Spil-knappen skal man rulle ned til for at få øje på.
+  */
+  .lavet{margin:-2px 0 16px;padding:9px 14px;border-radius:16px;background:rgba(27,29,74,.55)}
+  .lavet .lavet-titel{display:block;font-size:11px;font-weight:800;letter-spacing:1.6px;
+    text-transform:uppercase;color:var(--muted);opacity:.8;margin-bottom:3px}
+  .lavet p{margin:0;font-size:14px;line-height:1.4}
+  .lavet b{color:var(--text);font-weight:800}
+
   @media (max-height:640px){
     h1{font-size:32px} #hop{font-size:44px} #coins{font-size:32px} .hs .hs-liste{max-height:26vh} .screen .btn{padding:14px}
   }
@@ -191,6 +206,10 @@
     <div class="screen on" id="startScreen">
       <div class="card">
         <h1>Obby</h1>
+        <div class="lavet" id="lavetAf">
+          <span class="lavet-titel">Lavet af</span>
+          <p><b>Sofie</b> fandt på spillet · <b>Far</b> og <b>Claude</b> byggede det</p>
+        </div>
         <div class="hs" id="hsListe"></div>
         <div class="regler" aria-hidden="true">
           <span>🟥 Laser = død</span><span>🌋 Lava = død</span><span>🟩 Hver 5. er checkpoint</span><span>🪙 Coins kun på checkpoints</span>

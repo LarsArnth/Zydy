@@ -59,6 +59,32 @@ assert.ok(foer, 'toplisten står før Rekord, og Rekord står før Name');
 assert.equal(await page.locator('#rekordVal').textContent(), '0');
 assert.equal(await page.locator('#nameBtn').textContent(), 'Name');
 
+/* ---------- «Der skal stå hvem der har lavet spillet» (Sofies ønske) ---------- */
+const lavetAf = page.locator('#lavetAf');
+assert.ok(await lavetAf.isVisible(), 'startskærmen fortæller hvem der har lavet spillet');
+const lavetTekst = (await lavetAf.textContent()).replace(/\s+/g, ' ');
+assert.match(lavetTekst, /Lavet af/i, 'rulleteksten har en overskrift');
+assert.match(lavetTekst, /Sofie/, 'Sofie står der som den, der fandt på spillet');
+assert.match(lavetTekst, /Far/, 'den der har skrevet koden står der også');
+// Den skal kunne ses uden at rulle ned – startskærmen er højere end en telefonskærm
+const lavetPlads = await page.evaluate(() => {
+  const el = document.getElementById('lavetAf'), kort = el.closest('.card');
+  const b = el.getBoundingClientRect(), k = kort.getBoundingClientRect();
+  const st = document.getElementById('startScreen').getBoundingClientRect();
+  return {
+    inde: b.left >= k.left - 1 && b.right <= k.right + 1,
+    synlig: b.top >= st.top - 1 && b.bottom <= st.bottom + 1,
+  };
+});
+assert.ok(lavetPlads.inde, 'teksten holder sig inden for startkortet');
+assert.ok(lavetPlads.synlig, 'man kan se hvem der har lavet spillet uden at rulle ned');
+const titelSynlig = await page.evaluate(() => {
+  const h = document.querySelector('#startScreen h1').getBoundingClientRect();
+  const st = document.getElementById('startScreen').getBoundingClientRect();
+  return h.top >= st.top - 1 && h.bottom <= st.bottom + 1;
+});
+assert.ok(titelSynlig, 'titlen skubbes ikke ud over kanten af den ekstra linje');
+
 // Skriv navn
 await page.locator('#nameBtn').click();
 const input = page.locator('#nameInput');
@@ -88,6 +114,7 @@ assert.equal(s.phase, 'ready', 'spilleren står klar på første platform');
 assert.equal(s.player.on, 0);
 assert.ok(await page.locator('#readyHint.on').isVisible());
 assert.ok(!(await page.locator('#menuBtn').isHidden()), 'Menu-knappen vises under spil');
+assert.ok(!(await lavetAf.isVisible()), 'rulleteksten ligger ikke i vejen, når man spiller');
 
 const bot = (maal) => page.evaluate(({ maal }) => {
   const G = window.GAME, DT = 1 / 120;
