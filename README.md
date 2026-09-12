@@ -32,7 +32,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Stenalder | `public/spil/stenalder/` | Hot-seat-udgave af brætspillet Stone Age for 2-4 spillere på én iPad. Tre filer uden build: `regler.mjs` (regelmotor, ren JS), `data.mjs` (kort og bygninger) og `index.html` (UI). Gemmer spillet i `localStorage`, så det kan genoptages. Online topliste: vinderens point, gemt under det navn spilleren selv skrev på startskærmen. |
 | Helteriget | `public/spil/helteriget/` | Deck-building-kortspil for to på én iPad (Hero Realms-mekanik, egne danske kort): 80 markedskort i fire fraktioner, helte med vagter, allierede og ofringer. Hot-seat med overleveringsskærm, så hænderne forbliver hemmelige; igangværende spil gemmes i `localStorage`. Online topliste: vundet på færrest ture. |
 | Dybet | `public/spil/dybet/` | Dungeon crawler i Wolfenstein-3D-stil (raycaster på canvas) med Pokémon-agtig turbaseret kamp. Procedurelt genererede labyrinter (altid en vej til trappen), monstre der står stille og spærrer gange, kister med udstyr, evner og potioner; minimap viser kun det udforskede. Spillet går selv, indtil vejen deler sig, og viser så flydende valgknapper. Score = dybde nået, online topliste. Tre filer: `motor.mjs` (regler, enhedstestet), `sprites.mjs` (pixel-art som tekst), `index.html`. |
-| Kryds og bolle | `public/spil/kryds/` | Klassisk tre på stribe, hot-seat for to på samme skærm eller mod computeren i tre sværhedsgrader: Nem (spiller mest tilfældigt og overser trusler), Mellem (vinder og blokerer, men vælger hvert andet træk tilfældigt) og Svær (perfekt minimax – kan ikke slås). Startspilleren skifter for hvert parti, så begge får fordelen. To filer: `motor.mjs` (regler + computerspiller, enhedstestet) og `index.html`. Ingen topliste – der er ikke noget at måle i. |
+| Kryds og bolle | `public/spil/kryds/` | Klassisk tre på stribe, hot-seat for to på samme skærm eller mod computeren i tre sværhedsgrader: Nem (spiller mest tilfældigt og overser trusler), Mellem (vinder og blokerer, men vælger hvert andet træk tilfældigt) og Svær (perfekt minimax – kan ikke slås). Startspilleren skifter for hvert parti, så begge får fordelen. **Kan også spilles mod en ven over nettet**, én på hver telefon — se [Spil sammen](#spil-sammen). To filer: `motor.mjs` (regler + computerspiller, enhedstestet) og `index.html`. Ingen topliste – der er ikke noget at måle i. |
 | Gulvet er lava | `public/spil/lava/` | Selmas idé: stuen set fra siden, hvor gulvet bliver til lava, og lavaen stiger nedefra. Man går til venstre og højre og hopper op ad sofaen, bordet, reolen, klaveret og flyttekasserne, mens de bliver smallere og længere fra hinanden. Trampolinpuffen skyder en ekstra højt op, flyttekasser styrter i lavaen kort efter man er landet på dem, og isterninger holder lavaen nede i tre sekunder. Score = hvor højt man nåede i meter, online topliste. To filer: `bane.mjs` (fysik og banegenerator, enhedstestet) og `index.html`. Se «Gulvet er lava – styring og bane» nedenfor. |
 | Obby | `public/spil/obby/` | One-button-platformspil på canvas: hop fra flyvende firkant til flyvende firkant med mellemrum eller et tryk. Rød laser på hver anden firkant, lava i bunden, checkpoint på hver femte, og TRY AGAIN når man dør. Banen er uendelig og genereres, så hvert spring kan nås (bot-testet i `test/obby.test.mjs`) — også ved den høje fart, for farten stiger, jo længere man kommer, og banen genereres ud fra netop den fart. Checkpointet har en høj flagstang (blå = ikke nået, grøn med flueben = nået), og både TRY AGAIN og «tryk for at starte» skriver hvilket checkpoint man fortsætter fra — før stod figuren oven på et lillebitte mærke, så det så ud som om checkpointet ikke gjorde noget. **Coins får man kun på checkpoints** (3 pr. nyt checkpoint, dvs. 3 for hver 5. firkant) og kan købe blandt 14 skins til højst 100 coins, nogle med hat; butikken kan åbnes midt i et løb og fryser spillet imens. Tallet 3 er valgt, så et godt løb til firkant 50 giver 30 coins og et langt løb til 100 giver 60: en dyr skin kan spares op på et par gode løb, men aldrig på ét. Score = hop i træk uden at dø (uafhængig af coins); navnet skrives på startskærmen, og en ny rekord ryger selv på toplisten. Øverst på startskærmen står **«Lavet af»** – Sofie fandt på spillet, Far og Claude byggede det – efter Sofies ønske om, at der skulle stå hvem der har lavet det. Den står lige under titlen og ikke nederst som en rulletekst: startskærmen er højere end en telefonskærm, så alt under Spil-knappen skal man rulle ned til. |
 | Klodser | `public/spil/klodser/` | Selmas ønske om Roblox, oversat til noget der kan ligge her: en 3D-verden af klodser (WebGL på canvas, ingen biblioteker) med sin egen klodsefigur set bagfra. Verdenen er en ø på 40 × 40 klodser med bakker, søer, strande og træer, og havet uden om går ud til horisonten. Man løber rundt med joystick + HOP, kigger ved at trække på skærmen, bygger og river ned med ti farver klodser, og kan skifte til første person. 12 guldklodser er gemt rundt omkring – hver med en lysstråle op i luften, så de kan findes – og tiden det tager at samle dem alle er scoren på toplisten (laveste vinder). Verdenen gemmes i `localStorage` som «frø + de klodser du selv har ændret», så det man har bygget står der næste gang. Man træder automatisk op ad én klods, så bakker ikke kræver hop. To filer: `verden.mjs` (verden, fysik og sigte, enhedstestet) og `index.html`. |
@@ -218,8 +218,8 @@ node ../zydy-feedback-loop.mjs --afvist 42 "hvorfor det ikke kan lade sig gøre"
 Øverst på forsiden står **«Dine venner»**: hvem du er venner med, og om de er
 på zydy.dk lige nu («Selma spiller Obby»). Spørger nogen, om I skal være
 venner, står spørgsmålet samme sted med *Ja tak* / *Nej*. Trykker man på en
-ven, kan man se hvor hen er — og hoppe direkte med ind i det spil, hen er i
-gang med.
+ven, kan man se hvor hen er, hoppe med ind i det spil, hen er i gang med — og
+invitere hen til at spille *sammen*, se [Spil sammen](#spil-sammen).
 
 Der er **ingen konti og intet login** på zydy.dk, og det bliver der ikke. Man
 er det navn, man har skrevet på forsiden (`zydy.navn`), så et venskab er en
@@ -244,6 +244,48 @@ Skulle der komme skrald ind:
 ```bash
 npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM venner WHERE fra='pjat' OR til='pjat'"
 ```
+
+<a id="spil-sammen"></a>
+
+### Spil sammen — venner kan joine hinanden
+
+Trykker man på en ven, står der **«🎮 Spil Kryds og bolle sammen»**. Så laves
+der et *rum*, man selv sendes ind i (`/spil/kryds/?rum=K7QFD`), og vennen får
+invitationen øverst på forsiden: «Sofie vil spille Kryds og bolle med dig» med
+knappen **«Hop med!»**. Begge lander i det samme parti på hver sin telefon: den
+der inviterede er kryds og begynder, brættet er låst, når det ikke er ens tur,
+og trykker den ene «Nyt spil», får den anden det nye bræt med det samme. Går
+den ene, får den anden det at vide («Selma gik») i stedet for at sidde og vente.
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Database | tabellen `rum` i `schema.sql` | Ét rum pr. par: `rum(kode, spil, vaert, vaert_navn, gaest, gaest_navn, status, version, tilstand, opdateret)`. `status` er `'inviteret'`, `'igang'` eller `'slut'`. `tilstand` er spillets egen JSON. Rum uden aktivitet i tre timer ryddes (`RUM_TIMER`). |
+| API | `src/worker.mjs` → `src/rum.mjs` | `POST /api/rum {navn, ven, spil}` inviterer (kun en ven, og kun til et spil i `SAMMEN`). `GET /api/rum?navn=` giver mine invitationer og igangværende spil. `GET`/`POST /api/rum/<kode>` med `handling`: `'kom'` (hop med), `'nej'` (nej tak / jeg går), `'gem'` (skriv stillingen), `'se'`. |
+| Klient i spillene | `public/spil/rum.js` | `Rum.kode()`, `hent`, `kom`, `forlad`, `gem` og `foelg(kode, naar)`, som kigger efter den andens træk hvert 1,2 sekund, mens fanen er fremme. |
+| Klient på forsiden | `public/venner.js` | Invitationerne øverst i venne-panelet (hentes hvert 5. sekund — de haster) og «Spil … sammen»-knapperne i venne-dialogen. |
+
+Tre ting er værd at huske:
+
+1. **Serveren kender ikke spillets regler.** `tilstand` er spillets egen kasse,
+   og i stedet for at dømme trækkene passer serveren på, at de to ikke skriver
+   oven i hinanden: hver skrivning oplyser den `version`, den blev tegnet ud
+   fra, og den, der kommer for sent, får rummet tilbage og tegner det i stedet.
+   Til et turbaseret spil er det rigeligt, og næste spil kan bruge det samme.
+2. **Man kan kun invitere sine venner** (`venner`-tabellen skal have et ja
+   begge veje), og kun til et spil, der siger, det kan spilles sammen. Det er
+   hele værnet — der er stadig hverken konti eller login.
+3. **Invitationen venter.** Er vennen ikke på siden, står den bare på forsiden,
+   til hen kommer. Derfor sendes værten ind i spillet med det samme og får en
+   venteskærm; det er nemmere at forstå end en knap, der ikke sker noget ved.
+
+**Gør et nyt spil «sammen»-klar:** skriv `"sammen": true` i spillets
+`kort.json` og kør `node scripts/byg-forside.mjs` (så kommer det med i `SAMMEN`
+i `src/spil-data.mjs` og får `data-sammen` på kortet). Indlæs
+`<script src="/spil/rum.js"></script>` i spillet, og lad det hente rummet, når
+`Rum.kode()` giver en kode: tegn brættet efter `rum.tilstand`, send din egen
+stilling med `Rum.gem(kode, tilstand, version)`, og følg med i den andens træk
+med `Rum.foelg`. Kryds og bolle er forbilledet (`public/spil/kryds/index.html`,
+afsnittet «Spil sammen: rummet»).
 
 ### Feedback-loopet
 
@@ -459,7 +501,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé- og venne-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
@@ -471,17 +513,22 @@ så testene ser de samme svar som i drift. Hver test begynder med
 const api = await mockApi(page);    // før testens egen page.route, som så vinder
 ```
 
-og kan bagefter kigge i `api.log.aktivitet`, `api.scores`, `api.ideer.rows` og
-`api.venner.rows`. Tårn, Sæt, Dybet
+og kan bagefter kigge i `api.log.aktivitet`, `api.scores`, `api.ideer.rows`,
+`api.venner.rows` og `api.rum.rows`. Tårn, Sæt, Dybet
 og Obby lægger deres egen `page.route('**/api/highscore/**')` ovenpå, når de
 har brug for en bestemt startliste. API'erne testes desuden hver for sig i
 `test/unit/highscore.test.mjs`, `test/unit/aktivitet.test.mjs`,
-`test/unit/ideer.test.mjs` og `test/unit/venner.test.mjs`. Forsiden har tre
+`test/unit/ideer.test.mjs`, `test/unit/venner.test.mjs` og
+`test/unit/rum.test.mjs`. Forsiden har fire
 browser-tests: `test/forside.test.mjs` (navn, ønsker, «hvem er her»),
 `test/venner.test.mjs` (spørg, sig ja, se hvem der spiller hvad, fjern en ven —
-den anden part spilles af testen selv gennem `api.venner`) og
+den anden part spilles af testen selv gennem `api.venner`),
 `test/nyheder.test.mjs` («Nyt på Zydy», hvor en ekstra nyhed serveres gennem
-`page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til).
+`page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til) og
+`test/rum.test.mjs` («spil sammen»). Den sidste er den eneste med **to
+browsere**: Sofie og Selma har hver sit vindue med sit eget `localStorage`, men
+deler API'et (`mockApi(side, { delMed: api })`), så et helt parti Kryds og bolle
+kan spilles på tværs af to telefoner, præcis som i drift.
 Vil man prøve
 hele kæden lokalt mod en lokal D1-database:
 

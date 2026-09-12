@@ -49,6 +49,25 @@ CREATE TABLE IF NOT EXISTS venner (
 );
 CREATE INDEX IF NOT EXISTS venner_til ON venner (til);
 
+-- Spil sammen (src/rum.mjs): ét rum pr. par venner, der spiller det samme spil
+-- på hver sin telefon. Serveren kender ikke spillets regler – `tilstand` er
+-- spillets egen JSON, og `version` tælles op ved hver skrivning, så de to ikke
+-- kan skrive oven i hinanden. Rum uden aktivitet i tre timer ryddes.
+CREATE TABLE IF NOT EXISTS rum (
+  kode       TEXT    PRIMARY KEY,          -- fx 'K7QFD', står i adressen: /spil/kryds/?rum=K7QFD
+  spil       TEXT    NOT NULL,             -- fx 'kryds'
+  vaert      TEXT    NOT NULL,             -- den der inviterede (nøgle, små bogstaver)
+  vaert_navn TEXT    NOT NULL,             -- som skrevet, fx 'Sofie'
+  gaest      TEXT    NOT NULL,             -- den der blev inviteret
+  gaest_navn TEXT    NOT NULL,
+  status     TEXT    NOT NULL DEFAULT 'inviteret',   -- 'inviteret' | 'igang' | 'slut'
+  version    INTEGER NOT NULL DEFAULT 0,
+  tilstand   TEXT,                         -- spillets egen JSON (NULL indtil første træk)
+  opdateret  INTEGER NOT NULL              -- ms siden epoch
+);
+CREATE INDEX IF NOT EXISTS rum_vaert ON rum (vaert, opdateret DESC);
+CREATE INDEX IF NOT EXISTS rum_gaest ON rum (gaest, opdateret DESC);
+
 -- Idéer og ønsker (src/ideer.mjs): forslag til nye spil og ting der mangler i
 -- dem der findes. Hentes ned med `npm run ideer`.
 CREATE TABLE IF NOT EXISTS ideer (

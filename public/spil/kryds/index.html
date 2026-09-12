@@ -52,6 +52,10 @@
   .seg button.on{background:var(--sun);color:var(--ink)}
   #niveauBoks[hidden]{display:none}
   .forklaring{margin:8px 2px 0;font-size:15px;min-height:21px}
+  .sammen-tip{margin:12px 2px 0;font-size:14px}
+  .sammen-tip a{color:var(--sun)}
+  a.btn{display:block;text-align:center;text-decoration:none;color:var(--ink)}
+  a.btn.ghost{color:var(--text)}
 
   /* Stilling */
   .stilling{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:18px}
@@ -132,7 +136,23 @@
     <p class="forklaring" id="forklaring"></p>
 
     <button class="btn" id="spilBtn">Spil</button>
+    <p class="sammen-tip">Vil du spille mod en ven, der sidder et andet sted?
+      Gå til <a href="/">zydy.dk</a>, tryk på vennen og vælg «Spil Kryds og bolle sammen».</p>
     <div class="stilling" id="startStilling"></div>
+  </div>
+</div>
+
+<!-- ===== Venteskærm: spil sammen med en ven over nettet ===== -->
+<div class="screen" id="vent">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Kryds og bolle</span>
+    <span class="pill" id="ventPill">Sammen</span>
+  </div>
+  <div class="content">
+    <h1 id="ventTitel">Vent lidt…</h1>
+    <p id="ventTekst">Vi henter spillet.</p>
+    <a class="btn ghost" href="/">Til zydy.dk</a>
   </div>
 </div>
 
@@ -156,6 +176,8 @@
 <canvas id="confetti" hidden></canvas>
 
 <script src="/spil/aktivitet.js" data-spil="kryds"></script>
+<!-- Spil sammen med en ven over nettet: forsiden sender begge herhen med ?rum=<kode>. -->
+<script src="/spil/rum.js"></script>
 <script type="module">
 import { nytBraet, vinder, resultat, ledige, modstander, bedsteTraek, NIVEAUER } from './motor.mjs';
 
@@ -185,10 +207,29 @@ const state = {
   braet: nytBraet(), tur: 'x', starter: 'x',
   faerdig: false, resultat: null, linje: null, sidst: null,
   venter: false,                 // computeren er ved at trække
+  parti: 0,                      // tælles op ved hvert nyt parti (deles online)
   stilling: { x: 0, o: 0, lige: 0 },
 };
 const GAME = window.GAME = { state, fast: false, seed };
 let aiTimer = null;
+
+/* ---------- Spil sammen med en ven (tilstand 'online') ----------
+   Rummet og kaldene ligger i /spil/rum.js; her holder vi kun styr på, hvem vi
+   er i rummet, og hvilken version af stillingen vi har tegnet. */
+const rumKode = window.Rum ? window.Rum.kode() : null;
+const online = {
+  kode: rumKode, status: null, version: -1,
+  mit: 'x',            // værten er kryds, gæsten er bolle
+  modspiller: '',
+  stop: null,          // stopper "kig efter den andens træk"
+};
+/** Den anden spillers symbol, når vi spiller sammen. */
+const hans = () => modstander(online.mit);
+/** Hvilket symbol er *mit*? Mod computeren er det altid kryds. */
+const jegEr = () => (state.tilstand === 'online' ? online.mit : MENNESKE);
+/** "Selmas tur", men "Lars' tur". */
+const ejer = n => n + (/[sxzSXZ]$/.test(n) ? '’' : 's');
+const undvig = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 /* ---------- Samlet statistik i localStorage ---------- */
 const KEY = 'zydy.kryds.stats';
@@ -222,7 +263,9 @@ function tegn(){
     // Tegn kun feltet om, når det har ændret sig – ellers ville alle brikker
     // animere forfra ved hvert træk.
     if (el.dataset.v !== v) { el.dataset.v = v; el.innerHTML = v ? mark(v) : ''; }
-    el.disabled = !!v || state.faerdig || state.venter;
+    // Online kan man kun trykke, når det er ens egen tur – ellers er brættet låst.
+    const minTur = state.tilstand !== 'online' || (online.status === 'igang' && state.tur === online.mit);
+    el.disabled = !!v || state.faerdig || state.venter || !minTur;
     el.classList.toggle('sidst', i === state.sidst && !state.faerdig);
     el.classList.toggle('vind', !!state.linje && state.linje.includes(i));
     el.setAttribute('aria-label', `Felt ${i + 1}${v ? ': ' + NAVN[v] : ': tomt'}`);
@@ -259,16 +302,21 @@ addEventListener('resize', () => { if (state.linje) tegnStreg(); });
 function tegnStatus(){
   const el = $('#status');
   const modAI = state.tilstand === 'ai';
+  const medVen = state.tilstand === 'online';
   el.className = '';
   if (state.faerdig) {
     el.classList.add('slut', state.resultat);
     if (state.resultat === 'lige') el.textContent = 'Uafgjort!';
     else if (modAI) el.textContent = state.resultat === MENNESKE ? 'Du vandt!' : 'Computeren vandt';
+    else if (medVen) el.innerHTML = `${mark(state.resultat, 'mark')} ` +
+      (state.resultat === online.mit ? 'Du vandt!' : `${undvig(online.modspiller)} vandt`);
     else el.innerHTML = `${mark(state.resultat, 'mark')} ${NAVN[state.resultat]} vandt!`;
     return;
   }
   el.classList.add(state.tur);
   if (modAI) el.innerHTML = `${mark(state.tur, 'mark')} ` + (state.tur === MENNESKE ? 'Din tur' : 'Computeren tænker…');
+  else if (medVen) el.innerHTML = `${mark(state.tur, 'mark')} ` +
+    (state.tur === online.mit ? 'Din tur' : `${undvig(ejer(online.modspiller))} tur`);
   else el.innerHTML = `${mark(state.tur, 'mark')} ${TUR[state.tur]}`;
 }
 
@@ -276,11 +324,14 @@ function tegnStilling(){
   const s = state.stilling;
   const html = state.tilstand === 'ai'
     ? `<span class="pill x">Dig <b>${s.x}</b></span><span class="pill o">Computer <b>${s.o}</b></span><span class="pill">Uafgjort <b>${s.lige}</b></span>`
-    : `<span class="pill x">Kryds <b>${s.x}</b></span><span class="pill o">Bolle <b>${s.o}</b></span><span class="pill">Uafgjort <b>${s.lige}</b></span>`;
+    : state.tilstand === 'online'
+      ? `<span class="pill ${online.mit}">Dig <b>${s[online.mit]}</b></span><span class="pill ${hans()}">${undvig(online.modspiller)} <b>${s[hans()]}</b></span><span class="pill">Uafgjort <b>${s.lige}</b></span>`
+      : `<span class="pill x">Kryds <b>${s.x}</b></span><span class="pill o">Bolle <b>${s.o}</b></span><span class="pill">Uafgjort <b>${s.lige}</b></span>`;
   $('#spilStilling').innerHTML = html;
   const alt = stats.partier === 1 ? '1 parti' : `${stats.partier} partier`;
   $('#startPill').textContent = alt;
-  $('#spilPill').textContent = state.tilstand === 'ai' ? `Computer · ${NIVEAUNAVN[state.niveau]}` : 'To spillere';
+  $('#spilPill').textContent = state.tilstand === 'ai' ? `Computer · ${NIVEAUNAVN[state.niveau]}`
+    : state.tilstand === 'online' ? `Mod ${online.modspiller}` : 'To spillere';
   $('#startStilling').innerHTML = stats.partier
     ? `<span class="pill">Partier <b>${stats.partier}</b></span><span class="pill x">Vundet mod computeren <b>${stats.sejre}</b></span><span class="pill">Uafgjort <b>${stats.lige}</b></span>`
     : '';
@@ -290,6 +341,7 @@ function tegnStilling(){
 function nytParti(skiftStarter = true){
   clearTimeout(aiTimer); aiTimer = null;
   if (skiftStarter) state.starter = modstander(state.starter);
+  state.parti++;
   state.braet = nytBraet();
   state.tur = state.starter;
   state.faerdig = false; state.resultat = null; state.linje = null; state.sidst = null; state.venter = false;
@@ -304,7 +356,7 @@ function start(tilstand = state.tilstand, niveau = state.niveau){
   if (NIVEAUER.includes(niveau)) state.niveau = niveau;
   state.stilling = { x: 0, o: 0, lige: 0 };
   state.starter = 'x';
-  $('#start').classList.remove('on'); $('#spil').classList.add('on');
+  visSkaerm('spil');
   nytParti(false);
 }
 
@@ -312,6 +364,8 @@ function start(tilstand = state.tilstand, niveau = state.niveau){
 function traek(i){
   if (state.faerdig || state.braet[i] || i == null) return false;
   if (state.tilstand === 'ai' && state.venter && state.tur !== MENNESKE) return false;
+  // Online må man kun trække, når det er ens egen tur – og først når vennen er hoppet med.
+  if (state.tilstand === 'online' && (online.status !== 'igang' || state.tur !== online.mit)) return false;
   state.braet[i] = state.tur;
   state.sidst = i;
   const v = vinder(state.braet);
@@ -324,12 +378,15 @@ function traek(i){
     state.tur = modstander(state.tur);
   }
   tegn();
+  if (state.tilstand === 'online') sendTilstand();
   if (!state.faerdig) maaskeComputer();
   return true;
 }
 
-function afslut(r){
-  state.stilling[r]++;
+/** `taelStilling` er falsk, når partiet blev afgjort af den anden online – der
+ *  kom stillingen med i rummet, og så må vi ikke tælle den op en gang til. */
+function afslut(r, taelStilling = true){
+  if (taelStilling) state.stilling[r]++;
   stats.partier++;
   if (state.tilstand === 'ai') {
     if (r === MENNESKE) stats.sejre++;
@@ -338,7 +395,7 @@ function afslut(r){
   } else if (r === 'lige') stats.lige++;
   saveStats();
   navigator.vibrate?.(r === 'lige' ? 40 : [40, 60, 40]);
-  if (r !== 'lige' && (state.tilstand === 'pvp' || r === MENNESKE)) konfetti(r);
+  if (r !== 'lige' && (state.tilstand === 'pvp' || r === jegEr())) konfetti(r);
 }
 
 /** Er det computerens tur, så lad den trække efter en lille tænkepause. */
@@ -361,8 +418,122 @@ function computerTraekker(){
 function tilStart(){
   clearTimeout(aiTimer); aiTimer = null;
   state.venter = false;
-  $('#spil').classList.remove('on'); $('#start').classList.add('on');
+  visSkaerm('start');
   tegnStilling();
+}
+
+function visSkaerm(hvilken){
+  ['start', 'spil', 'vent'].forEach(id => $('#' + id).classList.toggle('on', id === hvilken));
+}
+
+/* ---------- Spil sammen: rummet ---------- */
+
+/** Beskeden på venteskærmen (venter på vennen, spillet er slut, noget gik galt). */
+function rumSkaerm(titel, tekst){
+  $('#ventTitel').textContent = titel;
+  $('#ventTekst').textContent = tekst;
+  visSkaerm('vent');
+}
+
+const pakBraet = b => b.map(v => v || '.').join('');
+const pakUd = s => String(s).split('').map(c => (c === '.' ? '' : c));
+
+/** Spillets egen kasse i rummet – det eneste serveren gemmer for os. */
+const minTilstand = () => ({
+  parti: state.parti, braet: pakBraet(state.braet), tur: state.tur,
+  starter: state.starter, sidst: state.sidst, stilling: state.stilling,
+});
+
+/** Tegn brættet efter det, der står i rummet (den anden har trukket). */
+function laesTilstand(t){
+  if (!t || typeof t.braet !== 'string' || t.braet.length !== 9) return;
+  const nytParti = t.parti !== state.parti;
+  const varFaerdig = state.faerdig;
+  state.parti = t.parti;
+  state.braet = pakUd(t.braet);
+  state.tur = t.tur === 'o' ? 'o' : 'x';
+  state.starter = t.starter === 'o' ? 'o' : 'x';
+  state.sidst = typeof t.sidst === 'number' ? t.sidst : null;
+  if (t.stilling) state.stilling = t.stilling;
+  state.venter = false;
+  const v = vinder(state.braet), r = resultat(state.braet);
+  state.faerdig = !!r; state.resultat = r; state.linje = v ? v.linje : null;
+  if (nytParti) {
+    stregEl.style.transition = 'none'; stregEl.style.width = '0px';
+    requestAnimationFrame(() => { stregEl.style.transition = ''; });
+  }
+  tegn();
+  // Den anden satte det afgørende mærke: så skal partiet også tælles med her.
+  if (state.faerdig && (!varFaerdig || nytParti)) afslut(r, false);
+}
+
+/** Et rum er landet fra serveren: vent, spil eller slut. */
+function modtag(r){
+  if (!r) return;
+  const foerste = online.status === null;
+  online.status = r.status;
+  online.modspiller = r.modspiller;
+  online.mit = r.rolle === 'vaert' ? 'x' : 'o';
+
+  if (r.status === 'inviteret') {
+    rumSkaerm(r.rolle === 'vaert' ? 'Venter på ' + r.modspiller : 'Klar!',
+      r.rolle === 'vaert'
+        ? r.modspiller + ' kan se invitationen på zydy.dk. Så snart ' + r.modspiller + ' hopper med, går spillet i gang.'
+        : 'Vi siger til ' + r.modspiller + ', at du er klar.');
+    return;
+  }
+  if (r.status === 'slut') {
+    rumSkaerm(r.modspiller + ' gik', 'Spillet er slut. Vil I spille igen, kan I invitere hinanden på zydy.dk.');
+    if (online.stop) { online.stop(); online.stop = null; }
+    return;
+  }
+
+  // I gang. Første gang: et friskt bræt, hvor værten (kryds) begynder.
+  if (foerste || !$('#spil').classList.contains('on')) {
+    if (!r.tilstand) { state.starter = 'x'; state.parti = 0; nytParti(false); }
+    visSkaerm('spil');
+  }
+  if (r.version > online.version) {
+    online.version = r.version;
+    if (r.tilstand) laesTilstand(r.tilstand);
+  }
+  tegn();
+}
+
+/** Sender min stilling til rummet. Kom den anden først, tegner vi hans i stedet. */
+async function sendTilstand(){
+  if (state.tilstand !== 'online' || !online.kode || online.status !== 'igang') return;
+  try {
+    const d = await Rum.gem(online.kode, minTilstand(), online.version);
+    online.version = d.rum.version;
+    if (d.uaendret) modtag(d.rum);
+  } catch (e) {
+    // Kom trækket ikke af sted, henter vi rummet igen, så de to skærme er ens.
+    try { modtag(await Rum.hent(online.kode)); } catch (e2) { /* prøver igen ved næste tik */ }
+  }
+}
+
+/** Jeg går: den anden får det at vide med det samme. */
+function forladRum(){
+  if (online.stop) { online.stop(); online.stop = null; }
+  const hjem = () => { location.href = '/'; };
+  Rum.forlad(online.kode).then(hjem, hjem);
+}
+
+async function startOnline(){
+  state.tilstand = 'online';
+  $('#menuBtn').textContent = 'Slut spillet';
+  rumSkaerm('Vent lidt…', 'Vi henter spillet.');
+  try {
+    let r = await Rum.hent(online.kode);
+    // Gæsten siger ja ved at være her: det var dét, «Hop med!» betød på forsiden.
+    if (r.rolle === 'gaest' && r.status === 'inviteret') r = await Rum.kom(online.kode);
+    modtag(r);
+  } catch (e) {
+    rumSkaerm('Spillet er væk', e.message || 'Prøv at få din ven til at invitere igen.');
+    return;
+  }
+  online.stop = Rum.foelg(online.kode, modtag);
 }
 
 /* ---------- Input ---------- */
@@ -371,8 +542,14 @@ braetEl.addEventListener('click', e => {
   if (!el || el.disabled) return;
   traek(parseInt(el.dataset.i, 10));
 });
-$('#igenBtn').addEventListener('click', () => nytParti(true));
-$('#menuBtn').addEventListener('click', tilStart);
+$('#igenBtn').addEventListener('click', () => {
+  nytParti(true);
+  if (state.tilstand === 'online') sendTilstand();     // den anden får det nye bræt med det samme
+});
+$('#menuBtn').addEventListener('click', () => {
+  if (state.tilstand === 'online') forladRum();        // online er "Til start" i stedet "Slut spillet"
+  else tilStart();
+});
 
 function vaelg(seg, knap, felt){
   $$(`#${seg} button`).forEach(b => { b.classList.toggle('on', b === knap); b.setAttribute('aria-checked', b === knap ? 'true' : 'false'); });
@@ -429,9 +606,16 @@ Object.assign(GAME, {
   start, traek, nytParti, tilStart,
   ledige: () => ledige(state.braet),
   computerTraekker,                 // udfør computerens ventende træk med det samme
+  online, modtag,                   // rummet, når man spiller sammen med en ven
 });
 
 opdaterStartskaerm();
 tegnStilling();
+
+/* ---------- Kom vi via en invitation? ---------- */
+if (rumKode) {
+  if (window.Rum && Rum.navn()) startOnline();
+  else rumSkaerm('Hvem er du?', 'Skriv dit navn på zydy.dk, så ved din ven, hvem der spiller med.');
+}
 </script>
 </body></html>

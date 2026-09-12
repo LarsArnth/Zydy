@@ -1,6 +1,7 @@
 {
   "navn": "Kryds og bolle",
-  "beskrivelse": "Tre på stribe mod en ven på samme skærm – eller mod computeren i tre sværhedsgrader.",
+  "beskrivelse": "Tre på stribe mod en ven – på samme skærm, over nettet, eller mod computeren i tre sværhedsgrader.",
   "url": "/spil/kryds/",
-  "orden": 130
+  "orden": 130,
+  "sammen": true
 }

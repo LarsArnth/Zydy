@@ -17,6 +17,7 @@ import { haandterApi } from '../src/highscore.mjs';
 import { haandterAktivitet } from '../src/aktivitet.mjs';
 import { haandterIdeer } from '../src/ideer.mjs';
 import { haandterVenner } from '../src/venner.mjs';
+import { haandterRum } from '../src/rum.mjs';
 
 /** Højscore-lager i hukommelsen – samme seks metoder som d1Lager(). */
 export function huskLager(start = []) {
@@ -116,13 +117,50 @@ export function huskVenner(hs, akt) {
   };
 }
 
-/** Sætter mocken op på `page`. Returnerer lagrene og en log over aktivitets-kald. */
+/** Rum-lager i hukommelsen – samme metoder som d1Rum(). */
+export function huskRum() {
+  const rows = [];
+  return {
+    rows,
+    async find(kode) { return rows.find(r => r.kode === kode) || null; },
+    async mine(k, efter) {
+      return rows.filter(r => (r.vaert === k || r.gaest === k) && r.status !== 'slut' && r.opdateret >= efter)
+        .sort((a, b) => b.opdateret - a.opdateret);
+    },
+    async opret(r) { rows.push({ ...r }); },
+    async saetStatus(kode, status, nu) {
+      const r = rows.find(x => x.kode === kode);
+      if (r) { r.status = status; r.opdateret = nu; }
+    },
+    async gem(kode, tilstand, version, nu) {
+      const r = rows.find(x => x.kode === kode);
+      if (!r || r.version !== version) return false;
+      r.tilstand = tilstand; r.version++; r.opdateret = nu;
+      return true;
+    },
+    async sletPar(a, b) {
+      for (let i = rows.length - 1; i >= 0; i--) {
+        const r = rows[i];
+        if ((r.vaert === a && r.gaest === b) || (r.vaert === b && r.gaest === a)) rows.splice(i, 1);
+      }
+    },
+    async ryd(foer) { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].opdateret < foer) rows.splice(i, 1); },
+  };
+}
+
+/**
+ * Sætter mocken op på `page`. Returnerer lagrene og en log over aktivitets-kald.
+ * `opt.delMed` er et tidligere svar fra mockApi: så deler de to sider database,
+ * og man kan spille to spillere mod hinanden i to faner (test/rum.test.mjs).
+ */
 export async function mockApi(page, opt = {}) {
-  const hs = huskLager(opt.scores || []);
-  const akt = huskAktivitet();
-  const ideer = huskIdeer();
-  const venner = huskVenner(hs, akt);
-  const log = { aktivitet: [], highscore: [] };
+  const delt = opt.delMed || null;
+  const hs = delt ? delt.hs : huskLager(opt.scores || []);
+  const akt = delt ? delt.akt : huskAktivitet();
+  const ideer = delt ? delt.ideer : huskIdeer();
+  const venner = delt ? delt.venner : huskVenner(hs, akt);
+  const rum = delt ? delt.rum : huskRum();
+  const log = delt ? delt.log : { aktivitet: [], highscore: [] };
 
   // Cloudflare Web Analytics-beaconen holdes ude af testene. Den hører ikke til
   // spillene, og fra localhost afviser cloudflareinsights.com indrapporteringen
@@ -149,6 +187,7 @@ export async function mockApi(page, opt = {}) {
     const svar = (await haandterAktivitet(request, akt, hs))
       || (await haandterIdeer(request, ideer))
       || (await haandterVenner(request, venner))
+      || (await haandterRum(request, rum, venner))
       || (await haandterApi(request, hs));
     if (!svar) return route.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"fejl":"Ikke API (mock)"}' });
     return route.fulfill({
@@ -158,5 +197,5 @@ export async function mockApi(page, opt = {}) {
     });
   });
 
-  return { hs, akt, ideer, venner, log, get scores() { return hs.rows; } };
+  return { hs, akt, ideer, venner, rum, log, get scores() { return hs.rows; } };
 }

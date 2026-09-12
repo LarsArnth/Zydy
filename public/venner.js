@@ -6,11 +6,18 @@
   Man er det navn, man har skrevet på forsiden ('zydy.navn', se /ideer.js).
   Panelet øverst viser:
 
+    • invitationer: "Selma vil spille Kryds og bolle med dig" — med Hop med!
     • dine venner, og om de er her lige nu ("Selma spiller Obby")
     • dem der har spurgt, om I skal være venner — med Ja tak / Nej tak
     • en knap til at finde en ven blandt de navne, vi har set på siden
 
-  Selve listen kommer fra /api/venner (src/venner.mjs). Hvem der er online,
+  Trykker man på en ven, kan man invitere hen til et spil, som to kan spille
+  sammen over nettet (kortene med data-sammen, se scripts/byg-forside.mjs).
+  Invitationen er et "rum" i /api/rum (src/rum.mjs), og begge sendes ind i
+  spillet med ?rum=<kode>; selve kaldene ligger i /spil/rum.js, som deles med
+  spillene.
+
+  Selve venne-listen kommer fra /api/venner (src/venner.mjs). Hvem der er online,
   kommer derimod gratis fra forsidens eget kald til /api/oversigt: scriptet
   nederst i index.html sender resultatet videre som hændelsen 'zydy:oversigt',
   så vi ikke henter det samme to gange.
@@ -26,6 +33,7 @@ const API = '/api/venner';
 const KEY_NAVN = 'zydy.navn';        // fælles med /ideer.js og /spil/highscore.js
 const NAVN_MAKS = 12;
 const OPDATER_MS = 60_000;           // hvor tit vi spørger efter nye venner og spørgsmål
+const RUM_MS = 5_000;                // … og efter invitationer til at spille sammen (de haster)
 
 const laesNavn = () => {
   try { return (localStorage.getItem(KEY_NAVN) || '').trim(); } catch (e) { return ''; }
@@ -50,6 +58,7 @@ const knap = (cls, tekst, naar) => {
 // Sidste svar fra /api/venner og sidste oversigt over hvem der er hvor.
 let data = { venner: [], venter: [], sendt: [], kendte: [] };
 let hvorErDe = {};                   // navn med små bogstaver → spillets titel, eller '' for forsiden
+let rum = [];                        // mine åbne spil-sammen-rum fra /api/rum
 
 async function kald(krop) {
   const navn = laesNavn();
@@ -73,15 +82,23 @@ function hent() { kald(null).catch(() => {}); }
 
 /* ---------- Hvem er hvor ---------- */
 
-/** Kortene på forsiden: 'obby' → { titel: 'Obby', href: '/spil/obby/' }. */
+/** Kortene på forsiden: 'obby' → { titel: 'Obby', href: '/spil/obby/', sammen }. */
 function kortene() {
   const ud = {};
   document.querySelectorAll('#apps li[data-spil]').forEach(li => {
     const h = li.querySelector('h2'), a = li.querySelector('a');
-    if (h) ud[li.dataset.spil] = { titel: h.textContent, href: a ? a.getAttribute('href') : null };
+    if (h) ud[li.dataset.spil] = {
+      id: li.dataset.spil,
+      titel: h.textContent,
+      href: a ? a.getAttribute('href') : null,
+      sammen: li.hasAttribute('data-sammen'),      // kan spilles sammen over nettet
+    };
   });
   return ud;
 }
+
+/** De spil to venner kan spille sammen, i den rækkefølge kortene står. */
+const sammenSpil = () => Object.values(kortene()).filter(k => k.sammen && k.href);
 
 /**
  * Laver navn → hvor, ud fra forsidens /api/oversigt. Navne i et spil får
@@ -103,6 +120,53 @@ function hvor(navn) {
   if (!(k in hvorErDe)) return { tekst: 'ikke her nu', online: false, spil: null };
   const spil = hvorErDe[k];
   return { tekst: spil ? 'spiller ' + spil.titel : 'er her nu', online: true, spil };
+}
+
+/* ---------- Spil sammen (rum) ---------- */
+
+/** Det, der skal tegnes om: hvem, hvilket spil, og hvor langt det er. */
+const rumMaerke = liste => liste.map(r => [r.kode, r.status, r.rolle, r.spil, r.modspiller].join('|')).join(',');
+
+/** Henter mine invitationer og igangværende spil. Fejler stille som resten. */
+async function hentRum() {
+  if (!window.Rum || !laesNavn()) { if (rum.length) { rum = []; tegn(); } return; }
+  try {
+    const nye = await Rum.mine();
+    if (rumMaerke(nye) !== rumMaerke(rum)) { rum = nye; tegn(); } else { rum = nye; }
+  } catch (e) { /* så står der bare det samme som før */ }
+}
+
+/** Sender begge parter ind i spillet. Værten er allerede på vej, når han inviterer. */
+function gaaTilRum(r) {
+  const kort = kortene()[r.spil];
+  location.href = (kort && kort.href ? kort.href : '/') + '?rum=' + encodeURIComponent(r.kode);
+}
+
+/** Invitationer og igangværende spil øverst i panelet – det haster mest. */
+function tegnRum(kort) {
+  const k = kortene();
+  rum.forEach(r => {
+    const titel = (k[r.spil] && k[r.spil].titel) || r.spil;
+    const raekke = el('div', 'v-spoerg v-rum');
+    const svar = el('span', 'v-svar');
+
+    if (r.status === 'igang') {
+      raekke.appendChild(el('span', 'v-spoerg-tekst', '🎮 Du spiller ' + titel + ' med ' + r.modspiller));
+      svar.appendChild(knap('v-knap v-vigtig', 'Tilbage', () => gaaTilRum(r)));
+      svar.appendChild(knap('v-knap', 'Stop', () => Rum.forlad(r.kode).then(hentRum).catch(() => {})));
+    } else if (r.rolle === 'gaest') {
+      raekke.appendChild(el('span', 'v-spoerg-tekst', r.modspiller + ' vil spille ' + titel + ' med dig'));
+      svar.appendChild(knap('v-knap v-vigtig v-hopmed', 'Hop med!', () => gaaTilRum(r)));
+      svar.appendChild(knap('v-knap', 'Nej tak', () => Rum.forlad(r.kode).then(hentRum).catch(() => {})));
+    } else {
+      raekke.appendChild(el('span', 'v-spoerg-tekst', 'Venter på at ' + r.modspiller + ' hopper med i ' + titel));
+      svar.appendChild(knap('v-knap v-vigtig', 'Tilbage', () => gaaTilRum(r)));
+      svar.appendChild(knap('v-knap', 'Afbryd', () => Rum.forlad(r.kode).then(hentRum).catch(() => {})));
+    }
+
+    raekke.appendChild(svar);
+    kort.appendChild(raekke);
+  });
 }
 
 /* ---------- Panelet ---------- */
@@ -131,7 +195,10 @@ function tegn() {
   top.appendChild(knap('v-knap v-find', '＋ Find en ven', findDialog));
   kort.appendChild(top);
 
-  // Øverst: dem der har spurgt mig. Det skal man kunne svare på med ét tryk.
+  // Allerøverst: "Selma vil spille Kryds og bolle med dig" – det haster mest.
+  tegnRum(kort);
+
+  // Dernæst: dem der har spurgt mig. Det skal man kunne svare på med ét tryk.
   data.venter.forEach(v => {
     const raekke = el('div', 'v-spoerg');
     raekke.appendChild(el('span', 'v-spoerg-tekst', v.navn + ' vil være din ven'));
@@ -254,7 +321,24 @@ function venDialog(hvem) {
       ? (h.spil ? hvem + ' spiller ' + h.spil.titel + ' lige nu.' : hvem + ' er på zydy.dk lige nu.')
       : hvem + ' er ikke på zydy.dk lige nu.'));
 
-    // Det sjoveste ved en ven, der spiller: at hoppe med ind i det samme spil.
+    // Det bedste: at spille *sammen* – ét spil, to telefoner. Vi laver et rum og
+    // hopper derind; den anden får invitationen på forsiden og kan hoppe med.
+    const status = el('p', 'id-status', '');
+    const spil = sammenSpil();
+    if (spil.length) {
+      spil.forEach(s => {
+        rod.appendChild(knap('id-knap v-sammen', '🎮 Spil ' + s.titel + ' sammen', () => {
+          status.textContent = 'Spørger ' + hvem + '…';
+          Rum.inviter(hvem, s.id)
+            .then(r => gaaTilRum(r))
+            .catch(err => { status.textContent = err.message; });
+        }));
+      });
+      rod.appendChild(el('p', 'v-under', 'Invitationen står og venter på forsiden, til ' + hvem + ' kommer.'));
+    }
+    rod.appendChild(status);
+
+    // Ellers kan man bare hoppe med ind i det spil, vennen er i gang med.
     if (h.spil && h.spil.href) {
       const gaa = el('a', 'id-knap v-spil-med', 'Spil ' + h.spil.titel + ' med');
       gaa.href = h.spil.href;
@@ -315,7 +399,14 @@ const css = `
 .v-input{flex:1;min-width:0;font-size:17px;text-align:left;padding:12px 14px}
 .v-spoerg-knap{flex:0 0 auto;font-size:16px;padding:0 18px}
 .v-spil-med{display:block;margin-top:14px;text-align:center;text-decoration:none;line-height:24px;
-  background:var(--sun,#ffd447);color:#1c1f4a}
+  background:rgba(255,255,255,.09);color:var(--text,#fff7e6)}
+
+/* Spil sammen: invitationen står øverst i panelet og lyser, så den ikke overses */
+.v-rum{background:rgba(94,224,168,.14)}
+.v-rum .v-hopmed{background:var(--mint,#5ee0a8);color:#10321f;animation:puls 1.8s ease-in-out infinite}
+.v-sammen{display:block;width:100%;margin-top:14px;text-align:center;
+  background:var(--sun,#ffd447);color:#1c1f4a;font-weight:800}
+@media (prefers-reduced-motion:reduce){ .v-rum .v-hopmed{animation:none} }
 @media (prefers-reduced-motion:reduce){ .v-ven.online .v-prik{animation:none} }
 `;
 const style = document.createElement('style');
@@ -327,16 +418,25 @@ document.head.appendChild(style);
 function start() {
   tegn();
   hent();
+  hentRum();
   // Forsiden henter /api/oversigt hvert halve minut – vi får resultatet gratis.
   document.addEventListener('zydy:oversigt', e => { if (e.detail) laesOversigt(e.detail); });
   // Navnet blev skrevet eller skiftet: så er det en anden persons venner, vi skal vise.
-  document.addEventListener('zydy:navn', () => { data = { venner: [], venter: [], sendt: [], kendte: [] }; tegn(); hent(); });
+  document.addEventListener('zydy:navn', () => {
+    data = { venner: [], venter: [], sendt: [], kendte: [] };
+    rum = [];
+    tegn(); hent(); hentRum();
+  });
   setInterval(() => { if (document.visibilityState === 'visible') hent(); }, OPDATER_MS);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') hent(); });
+  // Invitationer hentes tiere: den anden står og venter på, at man hopper med.
+  setInterval(() => { if (document.visibilityState === 'visible') hentRum(); }, RUM_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') { hent(); hentRum(); }
+  });
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
 else start();
 
-window.Venner = { hent, tegn, get data() { return data; } };
+window.Venner = { hent, tegn, hentRum, get data() { return data; }, get rum() { return rum; } };
 })();

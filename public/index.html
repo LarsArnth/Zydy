@@ -424,7 +424,7 @@
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li data-spil="kryds"><a class="app" href="/spil/kryds/">
+    <li data-spil="kryds" data-sammen><a class="app" href="/spil/kryds/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="kryds-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
@@ -446,7 +446,7 @@
       </span>
       <span class="text">
         <h2>Kryds og bolle</h2>
-        <p>Tre på stribe mod en ven på samme skærm – eller mod computeren i tre sværhedsgrader.</p>
+        <p>Tre på stribe mod en ven – på samme skærm, over nettet, eller mod computeren i tre sværhedsgrader.</p>
         <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
@@ -839,9 +839,13 @@
      Knapperne og kortet laves i JS, så nye kort her i filen automatisk får dem med. -->
 <script src="/ideer.js" defer></script>
 
+<!-- Invitationer til at spille sammen (/api/rum). Deles med spillene, som bruger
+     den samme fil til at følge med i rummet. Skal stå før /venner.js. -->
+<script src="/spil/rum.js" defer></script>
+
 <!-- Venne-panelet øverst: dine venner og om de er her lige nu, spørgsmål fra
-     andre, og "Find en ven". Skal stå efter /ideer.js, som ejer navnet og stilen
-     til dialogen. -->
+     andre, "Find en ven" og "Spil sammen". Skal stå efter /ideer.js, som ejer
+     navnet og stilen til dialogen. -->
 <script src="/venner.js" defer></script>
 
 <!-- "Nyt på Zydy": knappen i toppen og listen over hvad vi har lavet (/nyheder.json).

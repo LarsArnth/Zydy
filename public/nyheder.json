@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 15,
+      "dato": "2026-09-12",
+      "spil": "kryds",
+      "titel": "Venner kan hoppe med ind i spillet",
+      "hvad": "Tryk på en ven på forsiden og vælg «Spil Kryds og bolle sammen». Vennen får en invitation øverst på sin forside, trykker «Hop med!» — og så spiller I det samme parti, én på hver telefon.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 14,
       "dato": "2026-09-12",
       "spil": "slotskamp",
