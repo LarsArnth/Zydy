@@ -14,10 +14,21 @@
     Obby – et one-button-platformspil for zydy.dk, lavet efter Sofies prompt:
     flyvende firkanter man hopper på med mellemrum, laser på hver anden,
     lava i bunden, checkpoint på hver femte, TRY AGAIN når man dør, og en
-    tæller for hop i træk. Senere kom Sofies anden ønskeseddel til: coins
-    (én for hver ny firkant, vist i højre hjørne), en skinbutik med farvede
-    firkanter og hatte til højst 100 coins, og en fart der stiger, jo længere
-    man kommer. Én fil, ingen afhængigheder (ud over toplistens fælles klient
+    tæller for hop i træk. Senere kom Sofies anden ønskeseddel til: coins,
+    en skinbutik med farvede firkanter og hatte til højst 100 coins, og en
+    fart der stiger, jo længere man kommer.
+
+    Tredje ønskeseddel (også Sofies): «checkpointet virker alligevel ikke, og
+    man får alt for mange coins for hurtigt». Checkpointet *virkede* — man
+    genopstod på det rigtige sted — men man kunne ikke se det: mærket var en
+    lille firkant nede på platformen, som figuren stod oven på, og selve
+    platformen havde samme farve som alle de andre. Derfor har checkpoints nu
+    en høj flagstang, deres egen farve (blå = ikke nået, grøn = nået), og både
+    TRY AGAIN-skærmen og «tryk for at starte» skriver hvilket checkpoint man
+    fortsætter fra. Og coins gives nu KUN på checkpoints (COINS_PR_CHECKPOINT
+    pr. nyt checkpoint) i stedet for én pr. firkant.
+
+    Én fil, ingen afhængigheder (ud over toplistens fælles klient
     /spil/highscore.js).
 
     Spilverdenen regnes i "enheder" (1 enhed = spillerens bredde), og en
@@ -169,12 +180,12 @@
       <b id="coins">0</b>
     </div>
 
-    <div class="msg" id="readyHint"><div class="sub">Tryk for at starte</div></div>
+    <div class="msg" id="readyHint"><div class="sub" id="readyTekst">Tryk for at starte</div></div>
 
     <div class="msg" id="tryAgain">
       <div class="big">TRY AGAIN</div>
       <div class="ny" id="nyRekord" hidden>Ny rekord!</div>
-      <div class="sub">Tryk for at prøve igen</div>
+      <div class="sub" id="tryAgainTekst">Tryk for at prøve igen</div>
     </div>
 
     <div class="screen on" id="startScreen">
@@ -182,7 +193,7 @@
         <h1>Obby</h1>
         <div class="hs" id="hsListe"></div>
         <div class="regler" aria-hidden="true">
-          <span>🟥 Laser = død</span><span>🌋 Lava = død</span><span>🟩 Hver 5. er checkpoint</span>
+          <span>🟥 Laser = død</span><span>🌋 Lava = død</span><span>🟩 Hver 5. er checkpoint</span><span>🪙 Coins kun på checkpoints</span>
         </div>
         <div class="rekord-row"><span>Rekord</span><b id="rekordVal">0</b></div>
         <button class="btn ghost tom" id="nameBtn">Name</button>
@@ -203,7 +214,7 @@
           <h2>Skins</h2>
           <div class="coins-pil stor">🪙 <b id="coinsShop">0</b></div>
         </div>
-        <p class="shop-hint">Du får 1 coin for hver ny firkant, du hopper videre til.</p>
+        <p class="shop-hint" id="shopHint">Du får coins ved checkpointene – de grønne flag på hver 5. firkant.</p>
         <div class="skin-gitter" id="skinGitter"></div>
         <button class="btn" id="shopTilbageBtn">Tilbage</button>
       </div>
@@ -248,6 +259,7 @@ const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
 if (!ctx.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
 const hopEl = $('hop'), rekHud = $('rekHud'), rekordVal = $('rekordVal');
 const startScreen = $('startScreen'), tryAgain = $('tryAgain'), readyHint = $('readyHint'), nyRekord = $('nyRekord');
+const readyTekst = $('readyTekst'), tryAgainTekst = $('tryAgainTekst'), shopHint = $('shopHint');
 const coinsEl = $('coins'), coinsStart = $('coinsStart'), coinsShop = $('coinsShop');
 const shopScreen = $('shopScreen'), skinGitter = $('skinGitter'), skinBtn = $('skinBtn');
 const nameBtn = $('nameBtn'), nameForm = $('nameForm'), nameInput = $('nameInput'), menuBtn = $('menuBtn');
@@ -533,13 +545,26 @@ if (!Array.isArray(ejet) || !ejet.includes('klassisk')) ejet = ['klassisk'];
 ejet = ejet.filter(id => SKINS.some(s => s.id === id));
 let valgtSkin = laes(KEY_VALGT, 'klassisk');
 if (!ejet.includes(valgtSkin)) valgtSkin = 'klassisk';
-let maksNaaet = 0;           // højeste platform man har været på – coins gives kun for nye firkanter
+let maksNaaet = 0;           // højeste platform man har været på – coins gives kun for nye checkpoints
+
+/*
+  Coins gives KUN på checkpoints (Sofies ønske: "gør så det kun var der man fik
+  point eller coins for, ellers får man alt for mange coins for hurtigt").
+  Regnestykket bag tallet 3: checkpoints ligger på hver 5. firkant, så 3 coins
+  pr. checkpoint er 0,6 coins pr. firkant mod 1 før. Den dyreste skin koster 100
+  coins, og butikken koster 570 i alt. Et almindeligt løb til firkant 25 giver
+  15 coins (en billig skin), et godt løb til 50 giver 30, og et rigtig langt løb
+  til 100 giver 60. Kongen til 100 kan altså spares op på et par gode løb – men
+  aldrig på ét, og det var netop pointen.
+*/
+const COINS_PR_CHECKPOINT = 3;
 
 /** Lægger n coins til og lader dem poppe op fra platformen. */
 function tjenCoins(n, pl) {
   coins += n; skriv(KEY_COINS, coins);
   visCoins();
-  if (pl) popups.push({ text: '+' + n, x: pl.x + pl.w / 2, y: platTop(pl, T) + 1.4, t: 0, color: '#ffd447' });
+  // Højt nok til at teksten ikke lander oven i flagstangen på checkpointet
+  if (pl) popups.push({ text: '+' + n + ' coins', x: pl.x + pl.w / 2, y: platTop(pl, T) + 2.0, t: 0, color: '#ffd447' });
 }
 
 function visCoins() {
@@ -584,6 +609,10 @@ function spawn() {
   player.running = false; player.alive = true; player.coyote = 0; player.jumpBuf = 0; player.jumped = false;
   streak = 0; camX = player.x - Wu * 0.3; particles = []; popups = []; shake = 0;
   phase = 'ready';
+  // Sig hvor man står, ellers kan man ikke se at checkpointet gjorde noget:
+  // hop-tælleren starter jo forfra, selv om man er langt inde på banen.
+  readyTekst.textContent = pl.i > 0 ? 'Checkpoint ' + pl.i + ' – tryk for at starte' : 'Tryk for at starte';
+  flashT = pl.i > 0 ? 1.2 : 0;                  // lys kort op på flaget, man genopstår ved
   tryAgain.classList.remove('on'); readyHint.classList.add('on'); startScreen.classList.remove('on');
   menuBtn.hidden = false; skinBtn.hidden = false;
   fyldBane(); updateHud();
@@ -614,16 +643,15 @@ function onLand(pl) {
     navigator.vibrate && navigator.vibrate(8);
   }
   player.vx = fartVed(pl.i);                 // hurtigere og hurtigere, jo længere man er nået
-  if (pl.i > maksNaaet) {
-    // Én coin pr. ny firkant. Kun for firkanter man ikke har været på før, så man
-    // ikke kan samle coins ved at dø og hoppe de samme felter igen.
-    tjenCoins(pl.i - maksNaaet, pl);
-    maksNaaet = pl.i;
-  }
+  // Kun firkanter man ikke har været på før tæller – ellers kunne man samle
+  // coins ved at dø og hoppe de samme felter igen.
+  const nyFirkant = pl.i > maksNaaet;
+  if (nyFirkant) maksNaaet = pl.i;
   if (pl.checkpoint && pl !== checkpoint) {
-    checkpoint = pl; pl.active = true; flashT = 0.4;
-    popups.push({ text: 'Checkpoint!', x: pl.x + pl.w / 2, y: platTop(pl, T) + 2.2, t: 0, color: '#5ee0a8' });
+    checkpoint = pl; pl.active = true; flashT = 0.9;
+    popups.push({ text: 'Checkpoint ' + pl.i + '!', x: pl.x + pl.w / 2, y: platTop(pl, T) + 3.0, t: 0, color: '#5ee0a8' });
   }
+  if (pl.checkpoint && nyFirkant) tjenCoins(COINS_PR_CHECKPOINT, pl);   // coins findes kun her
   if (player.jumpBuf > 0) doJump();
   updateHud();
 }
@@ -642,6 +670,10 @@ function die(hvorfor) {
   const ny = streak > best;
   if (ny) { best = streak; saveBest(best); sendRekord(streak); }
   nyRekord.hidden = !ny;
+  // Fortæl hvor man lander henne, så det er til at se at checkpointet virker
+  tryAgainTekst.textContent = checkpoint && checkpoint.i > 0
+    ? 'Tryk – du fortsætter fra checkpoint ' + checkpoint.i
+    : 'Tryk for at prøve igen';
   tryAgain.classList.add('on');
   updateHud();
 }
@@ -715,22 +747,49 @@ function draw() {
         ctx.beginPath(); ctx.moveTo(x + w * fx - 0.18 * u, y + h); ctx.lineTo(x + w * fx + 0.18 * u, y + h); ctx.lineTo(x + w * fx, y + h + fl); ctx.fill();
       }
     }
-    ctx.fillStyle = `hsl(${pl.hue},55%,${pl.checkpoint ? 40 : 48}%)`;
+    // Checkpoints har deres egen farve, så man kan se dem på lang afstand:
+    // blå = ikke nået endnu, grøn = nået (og dermed dér man genopstår).
+    // (lys blå og grøn – kraftigere end hue-rampen, så et checkpoint ikke
+    //  forveksles med en almindelig blå platform)
+    const cpFarve = pl.active ? '#5ee0a8' : '#8fc0ff';
+    ctx.fillStyle = pl.checkpoint ? (pl.active ? '#2f9d78' : '#3f76e8') : `hsl(${pl.hue},55%,48%)`;
     rr(x, y, w, h, 0.2 * u); ctx.fill();
-    ctx.fillStyle = `hsl(${pl.hue},60%,64%)`;
+    ctx.fillStyle = pl.checkpoint ? cpFarve : `hsl(${pl.hue},60%,64%)`;
     rr(x, y, w, h * 0.32, [0.2 * u, 0.2 * u, 0, 0]); ctx.fill();
 
     if (pl.checkpoint) {
-      // Checkpoint-firkant: blå indtil man har været der, så grøn med flueben
-      const cs = 0.75 * u, cx = x + 0.45 * u, cy = y - cs;
-      ctx.fillStyle = pl.active ? '#5ee0a8' : '#5b8cff';
-      if (pl === checkpoint && flashT > 0) { ctx.shadowColor = '#5ee0a8'; ctx.shadowBlur = 30 * flashT; }
-      rr(cx, cy, cs, cs, 0.15 * u); ctx.fill(); ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(15,16,48,.8)'; ctx.lineWidth = Math.max(2, 0.09 * u); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      /*
+        Flagstang i stedet for den lille firkant, der lå nede på platformen:
+        figuren står præcis dér, man genopstår, og dækkede mærket helt, så det
+        var umuligt at se, at checkpointet overhovedet gjorde noget. Stangen er
+        2,6 enheder høj – godt over figurens hoved (1 enhed).
+      */
+      const erMit = pl === checkpoint;
+      const fx0 = x + 0.4 * u, hoej = 2.6 * u, fh = 0.95 * u, fb = 1.5 * u;
+      ctx.fillStyle = 'rgba(15,16,48,.8)';                       // fod
+      rr(fx0 - 0.28 * u, y - 0.18 * u, 0.56 * u, 0.24 * u, 0.1 * u); ctx.fill();
+      rr(fx0 - 0.07 * u, y - hoej, 0.14 * u, hoej, 0.07 * u); ctx.fill();   // stang
+      const blaf = reduceMotion ? 0 : Math.sin(T * 3.4 + pl.i) * 0.13 * u;
+      if (erMit) { ctx.shadowColor = cpFarve; ctx.shadowBlur = (10 + 26 * flashT) * (reduceMotion ? 0.5 : 0.7 + 0.3 * Math.sin(T * 5)); }
+      ctx.fillStyle = cpFarve;
       ctx.beginPath();
-      if (pl.active) { ctx.moveTo(cx + cs * 0.25, cy + cs * 0.52); ctx.lineTo(cx + cs * 0.43, cy + cs * 0.72); ctx.lineTo(cx + cs * 0.77, cy + cs * 0.3); }
-      else { ctx.moveTo(cx + cs * 0.3, cy + cs * 0.72); ctx.lineTo(cx + cs * 0.3, cy + cs * 0.25); ctx.lineTo(cx + cs * 0.7, cy + cs * 0.4); ctx.lineTo(cx + cs * 0.3, cy + cs * 0.55); }
+      ctx.moveTo(fx0, y - hoej);
+      ctx.lineTo(fx0 + fb, y - hoej + fh / 2 + blaf);
+      ctx.lineTo(fx0, y - hoej + fh);
+      ctx.closePath(); ctx.fill();
+      ctx.shadowBlur = 0;
+      // Flueben i flaget når checkpointet er taget, ellers en tom ring
+      // (ikke et kryds – et kryds ville se ud som noget farligt)
+      ctx.strokeStyle = 'rgba(15,16,48,.85)'; ctx.lineWidth = Math.max(2, 0.11 * u); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const mx = fx0 + 0.42 * u, my = y - hoej + fh / 2;
+      ctx.beginPath();
+      if (pl.active) { ctx.moveTo(mx - 0.22 * u, my); ctx.lineTo(mx - 0.04 * u, my + 0.19 * u); ctx.lineTo(mx + 0.28 * u, my - 0.22 * u); }
+      else ctx.arc(mx, my, 0.19 * u, 0, 6.283);
       ctx.stroke();
+      if (erMit) {   // en ring om selve platformen: her lander man efter en død
+        ctx.strokeStyle = cpFarve; ctx.lineWidth = Math.max(2, 0.1 * u);
+        rr(x, y, w, h, 0.2 * u); ctx.stroke();
+      }
     }
     if (pl.laser) {
       const cx = x + w / 2, lh = LASER_H * u, pulse = 0.7 + 0.3 * Math.sin(T * 14 + pl.phase);
@@ -975,6 +1034,7 @@ nameForm.addEventListener('submit', e => {
 nyBane();
 camX = -Wu * 0.3;
 fyldBane();
+shopHint.textContent = `Du får ${COINS_PR_CHECKPOINT} coins, hver gang du når et nyt checkpoint – det grønne flag på hver 5. firkant.`;
 visNavn(); updateHud(); visCoins(); hentListe();
 
 /* ---------- Test-API ---------- */
@@ -993,7 +1053,7 @@ window.GAME = {
   get state() {
     return {
       phase, running: phase === 'run', streak, best, T, camX,
-      coins, skin: valgtSkin, ejet: [...ejet], maksNaaet, butikAaben,
+      coins, coinsPrCheckpoint: COINS_PR_CHECKPOINT, skin: valgtSkin, ejet: [...ejet], maksNaaet, butikAaben,
       fart: player.vx, maksFart: VX_MAKS,
       player: { x: player.x, y: player.y, vy: player.vy, on: player.on ? player.on.i : null, alive: player.alive },
       checkpoint: checkpoint ? checkpoint.i : null,

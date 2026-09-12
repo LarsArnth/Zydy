@@ -129,10 +129,18 @@ assert.ok(s2.fart > fart0 * 1.4, `farten stiger (fra ${fart0} til ${s2.fart})`);
 assert.equal(s2.fart, s2.maksFart, 'ved platform 120 er man på maksfart');
 assert.ok(s2.maksFart <= 12, 'maksfarten er stadig til at styre');
 
-/* ---------- Coins: én for hver ny firkant ---------- */
-assert.equal(s2.coins, 120, 'én coin pr. ny firkant, 120 efter 120 platforme');
+/* ---------- Coins: kun på checkpoints ---------- */
+// Sofie: "gør så det kun var der man fik point eller coins for, ellers får man
+// alt for mange coins for hurtigt". Checkpoint på hver 5. firkant.
+const CP = s2.coinsPrCheckpoint;
+assert.equal(CP, 3, '3 coins pr. checkpoint');
+const efterLoeb = Math.floor(120 / 5) * CP;                 // 24 checkpoints
+assert.equal(s2.coins, efterLoeb, `${CP} coins pr. checkpoint (ikke pr. firkant): ${efterLoeb} efter 120 platforme`);
 assert.equal(s2.maksNaaet, 120);
-assert.equal(await page.locator('#coins').textContent(), '120', 'coins vises i spillet');
+assert.equal(await page.locator('#coins').textContent(), String(efterLoeb), 'coins vises i spillet');
+// Balancen: et enkelt (meget) langt løb må ikke betale den dyreste skin
+assert.ok(s2.coins < 100, `et løb til 120 firkanter giver ${s2.coins} coins – ikke nok til den dyreste skin (100)`);
+assert.ok(s2.coins >= 40, `men det skal stadig batte noget (${s2.coins} coins)`);
 const hjoerner = await page.evaluate(() => {
   const st = document.getElementById('stage').getBoundingClientRect();
   const h = document.getElementById('hop').getBoundingClientRect();
@@ -143,9 +151,9 @@ assert.ok(hjoerner.hopVenstre, 'hop-tælleren står til venstre');
 assert.ok(hjoerner.coinsHoejre, 'coins står i højre hjørne');
 assert.ok(hjoerner.sammeTop, 'begge tællere står i toppen');
 
-// Coins gives ikke igen for firkanter man allerede har været på
+// Coins gives ikke igen for checkpoints man allerede har taget
 await page.evaluate(() => { window.GAME.placer(60); for (let n = 0; n < 60; n++) window.GAME.tick(1 / 120); });
-assert.equal((await page.evaluate(() => window.GAME.state)).coins, 120, 'ingen nye coins for gamle firkanter');
+assert.equal((await page.evaluate(() => window.GAME.state)).coins, efterLoeb, 'ingen nye coins for gamle firkanter');
 await page.evaluate(() => window.GAME.placer(120));
 
 /* ---------- Skinbutikken ---------- */
@@ -165,7 +173,8 @@ await page.waitForTimeout(400);
 assert.equal(await page.evaluate(() => window.GAME.state.player.x), foerFrys, 'spilleren rører sig ikke, mens butikken er åben');
 await page.locator('body').press('Space');
 assert.equal(await page.evaluate(() => window.GAME.state.player.x), foerFrys, 'mellemrum hopper ikke i butikken');
-assert.equal(await page.locator('#coinsShop').textContent(), '120', 'coins vises i butikken');
+assert.equal(await page.locator('#coinsShop').textContent(), String(efterLoeb), 'coins vises i butikken');
+assert.match(await page.locator('#shopHint').textContent(), /checkpoint/i, 'butikken forklarer at coins kommer fra checkpoints');
 assert.equal(await page.locator('.skin-kort').count(), skins.length, 'alle skins står i gitteret');
 // Forhåndsvisningerne skal ligge inde i deres eget kort (den globale canvas-regel
 // gjorde dem engang absolut placerede, så de stablede sig oven på titlen)
@@ -183,20 +192,22 @@ const kasser = await page.evaluate(() => [...document.querySelectorAll('.skin-ko
 assert.equal(new Set(kasser.map(k => k.join(','))).size, kasser.length, 'tegningerne står hver for sig');
 await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/obby-skins.png' });
 
-// Køb: en skin til 100 kan betales med 120 coins
-const dyr = skins.find(k => k.pris === 100);
+// Køb: den dyreste skin, et langt løb rækker til
+const dyr = skins.filter(k => k.pris > 0 && k.pris <= efterLoeb).sort((a, b) => b.pris - a.pris)[0];
+assert.ok(dyr, `et løb til 120 firkanter rækker til mindst én skin (${efterLoeb} coins)`);
+const rest = efterLoeb - dyr.pris;
 await page.locator(`.skin-kort[data-skin="${dyr.id}"]`).click();
 let st = await page.evaluate(() => window.GAME.state);
-assert.equal(st.coins, 20, '100 coins trukket fra');
+assert.equal(st.coins, rest, `${dyr.pris} coins trukket fra`);
 assert.equal(st.skin, dyr.id, 'den købte skin er valgt');
 assert.ok(st.ejet.includes(dyr.id));
 assert.ok(await page.locator(`.skin-kort[data-skin="${dyr.id}"].valgt`).isVisible(), 'kortet er markeret som valgt');
 
 // Uden råd sker der ingenting
-const forDyr = skins.find(k => k.pris > 20 && k.id !== dyr.id);
+const forDyr = skins.find(k => k.pris > rest && k.id !== dyr.id);
 await page.locator(`.skin-kort[data-skin="${forDyr.id}"]`).click();
 st = await page.evaluate(() => window.GAME.state);
-assert.equal(st.coins, 20, 'ingen coins trukket for noget man ikke har råd til');
+assert.equal(st.coins, rest, 'ingen coins trukket for noget man ikke har råd til');
 assert.ok(!st.ejet.includes(forDyr.id), 'skinnen blev ikke købt');
 assert.equal(st.skin, dyr.id, 'valget er uændret');
 
@@ -204,7 +215,7 @@ assert.equal(st.skin, dyr.id, 'valget er uændret');
 await page.locator('.skin-kort[data-skin="klassisk"]').click();
 st = await page.evaluate(() => window.GAME.state);
 assert.equal(st.skin, 'klassisk');
-assert.equal(st.coins, 20, 'det koster ikke noget at skifte mellem sine egne');
+assert.equal(st.coins, rest, 'det koster ikke noget at skifte mellem sine egne');
 await page.locator(`.skin-kort[data-skin="${dyr.id}"]`).click();
 
 // Tilbage til spillet: det kører videre, hvor det slap
@@ -220,20 +231,32 @@ assert.ok(await page.evaluate(() => window.GAME.state.player.x) > foerFrys, 'spi
 await page.reload();
 await page.waitForSelector('#hsListe .hs-liste, #hsListe .hs-tom');
 st = await page.evaluate(() => window.GAME.state);
-assert.equal(st.coins, 20, 'coins huskes');
+assert.equal(st.coins, rest, 'coins huskes');
 assert.equal(st.skin, dyr.id, 'den valgte skin huskes');
 assert.ok(st.ejet.includes(dyr.id));
-assert.equal(await page.locator('#coinsStart').textContent(), '20', 'coins vises på startskærmen');
+assert.equal(await page.locator('#coinsStart').textContent(), String(rest), 'coins vises på startskærmen');
+assert.match(await page.locator('.regler').textContent(), /checkpoint/i, 'startskærmen fortæller om checkpoints og coins');
 await page.getByRole('button', { name: /Skins/ }).first().click();
 await page.waitForSelector('#shopScreen.on');
 assert.ok(await page.locator(`.skin-kort[data-skin="${dyr.id}"].ejet`).isVisible(), 'den købte skin er stadig ejet');
 await page.locator('#shopTilbageBtn').click();
 assert.ok(await page.locator('#startScreen.on').isVisible(), 'tilbage på startskærmen');
 
-// Spil videre, så resten af testen kører som før (nyt spil fra platform 0)
+// Spil videre, så resten af testen kører som før (nyt spil fra platform 0).
+// Undervejs: coins kommer KUN på checkpointene, aldrig på firkanterne imellem.
 await page.getByRole('button', { name: 'Spil', exact: true }).click();
+const mellem = [];
+for (const maal of [4, 5, 9, 10]) {
+  r = await bot(maal);
+  assert.ok(!r.doed, `botten nåede firkant ${maal}`);
+  mellem.push((await page.evaluate(() => window.GAME.state)).coins);
+}
+assert.deepEqual(mellem, [rest, rest + CP, rest + CP, rest + 2 * CP],
+  'firkant 1-4 og 6-9 giver ingenting; kun checkpoint 5 og 10 udbetaler');
 r = await bot(120);
 assert.ok(!r.doed, 'botten klarer banen igen efter genindlæsning');
+assert.equal((await page.evaluate(() => window.GAME.state)).coins, rest + Math.floor(120 / 5) * CP,
+  'hele løbet giver ét udbytte pr. checkpoint');
 
 /* ---------- Laseren dræber, hvis man bare løber ---------- */
 s = await page.evaluate(() => window.GAME.state);
@@ -247,6 +270,9 @@ assert.equal(r.phase, 'dead', 'man dør af laseren');
 assert.ok(Math.abs(r.player.x + 0.5 - (laserPl.x + laserPl.w / 2)) < 0.8, 'døde ved laseren midt på platformen');
 assert.ok(await page.locator('#tryAgain.on').isVisible(), 'TRY AGAIN vises');
 assert.equal(await page.locator('#tryAgain .big').textContent(), 'TRY AGAIN');
+// Sofie kunne ikke se, at checkpointet gjorde noget. Nu står der hvor man lander.
+assert.equal(await page.locator('#tryAgainTekst').textContent(), 'Tryk – du fortsætter fra checkpoint 120',
+  'TRY AGAIN fortæller hvilket checkpoint man fortsætter fra');
 assert.ok(await page.locator('#nyRekord').isVisible(), 'ny rekord vises');
 const best = r.best;
 assert.ok(best >= 120, 'rekorden er gemt');
@@ -267,6 +293,11 @@ assert.equal(r.player.on, 120, 'genopstået på checkpoint-platformen');
 assert.equal(r.streak, 0, 'tælleren starter fra 0');
 assert.equal(await page.locator('#hop').textContent(), '0');
 assert.ok(!(await page.locator('#tryAgain').evaluate(el => el.classList.contains('on'))));
+// … og man kan se, at man står på et checkpoint (tælleren er jo nulstillet)
+assert.equal(await page.locator('#readyTekst').textContent(), 'Checkpoint 120 – tryk for at starte',
+  'startteksten siger hvilket checkpoint man står på');
+assert.ok(r.platforms.find(p => p.i === 120).active, 'checkpointet er markeret som taget');
+const coinsFoerGentag = r.coins;
 
 // Det første tryk starter kun løbet – det må ikke også hoppe. Hoppede det, ville
 // et genstartet spil ved høj fart ende i lavaen med det samme, fordi hoppet er
@@ -288,6 +319,8 @@ assert.equal(r.straks.player.vy, 0, 'første tryk hopper ikke');
 assert.ok(r.straks.fart > 9, 'farten er høj på et checkpoint så langt inde');
 assert.ok(r.sekunder > 0.8, `der er tid til at nå at trykke igen (${r.sekunder.toFixed(2)} sek.)`);
 assert.ok(r.slut.phase !== 'dead', 'man dør ikke af selve starten');
+
+assert.equal(r.slut.coins, coinsFoerGentag, 'man tjener ikke coins om igen på et checkpoint, man har taget før');
 
 // Tilbage til klar-tilstand for resten af testen
 await page.evaluate(() => window.GAME.spawn());
