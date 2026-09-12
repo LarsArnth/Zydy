@@ -69,9 +69,9 @@
     <p>Tryk på et spil for at spille</p>
   </header>
 
-  <ul class="apps">
+  <ul class="apps" id="apps">
 
-    <li><a class="app" href="https://larsarnth.github.io/ordle/">
+    <li data-spil="ordle" data-ekstern><a class="app" href="https://larsarnth.github.io/ordle/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="o-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
@@ -87,11 +87,12 @@
       <span class="text">
         <h2>Ordle</h2>
         <p>Gæt dagens danske ord på fem bogstaver. Du har seks forsøg.</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="https://larsarnth.github.io/taltraef/">
+    <li data-spil="taltraef" data-ekstern><a class="app" href="https://larsarnth.github.io/taltraef/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="t-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
@@ -107,11 +108,12 @@
       <span class="text">
         <h2>Taltræf</h2>
         <p>Par tal der er ens eller giver 10, og ryd hele pladen. Virker offline.</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="https://larsarnth.github.io/Imposter/">
+    <li data-spil="imposter" data-ekstern><a class="app" href="https://larsarnth.github.io/Imposter/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512">
           <rect width="512" height="512" fill="#1c1f4a"/>
@@ -125,12 +127,13 @@
       <span class="text">
         <h2>Imposter</h2>
         <p>Alle får det samme ord – undtagen imposterne. Find dem, før de snyder sig til sejren.</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
 
-    <li><a class="app" href="/spil/taarn/">
+    <li data-spil="taarn"><a class="app" href="/spil/taarn/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="taarn-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
@@ -150,11 +153,12 @@
       <span class="text">
         <h2>Tårn</h2>
         <p>Stak blokkene præcist – alt der hænger ud over kanten, skæres af. Hvor højt kan du nå?</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="/spil/saet/">
+    <li data-spil="saet"><a class="app" href="/spil/saet/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="saet-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
@@ -170,11 +174,12 @@
       <span class="text">
         <h2>Sæt</h2>
         <p>Find tre kort, hvor antal, form, farve og fyld er helt ens eller helt forskellige.</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="/spil/farvesortering/">
+    <li data-spil="farvesortering"><a class="app" href="/spil/farvesortering/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="farvesortering-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
@@ -198,11 +203,12 @@
       <span class="text">
         <h2>Farvesortering</h2>
         <p>Hæld farvet væske mellem glassene, til hver farve står for sig selv.</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="/spil/ordstige/">
+    <li data-spil="ordstige"><a class="app" href="/spil/ordstige/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="ordstige-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
@@ -223,11 +229,12 @@
       <span class="text">
         <h2>Ordstige</h2>
         <p>Skift ét bogstav ad gangen og nå målordet på færrest trin. Ny stige hver dag.</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="/spil/duel/">
+    <li data-spil="duel"><a class="app" href="/spil/duel/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="duel-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
@@ -247,11 +254,12 @@
       <span class="text">
         <h2>Duel</h2>
         <p>To spillere, én telefon: hurtige reflex-runder mod hinanden – først til 5 point vinder.</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="/spil/helteriget/">
+    <li data-spil="helteriget"><a class="app" href="/spil/helteriget/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="helte-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
@@ -268,11 +276,12 @@
       <span class="text">
         <h2>Helteriget</h2>
         <p>Kortspil for to på én iPad: køb kort, hyr helte og slå modstanderen fra 50 liv ned til 0.</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="/spil/stenalder/">
+    <li data-spil="stenalder"><a class="app" href="/spil/stenalder/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="sten-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3a2d"/><stop offset="1" stop-color="#1a1410"/></linearGradient>
@@ -291,11 +300,12 @@
       <span class="text">
         <h2>Stenalder</h2>
         <p>Brætspil for 2-4 på én iPad: sæt folk ud, saml ressourcer, byg hytter og køb kort. Husk maden!</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="/spil/dybet/">
+    <li data-spil="dybet"><a class="app" href="/spil/dybet/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="dyb-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2f5a"/><stop offset="1" stop-color="#0b0c14"/></linearGradient>
@@ -315,11 +325,41 @@
       <span class="text">
         <h2>Dybet</h2>
         <p>Dungeon crawler i gammeldags 3D: udforsk labyrinten, find skatte, slå monstre i turbaseret kamp. Hvor dybt tør du gå?</p>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>
 
-    <li><a class="app" href="https://klaver.zydy.dk/">
+    <li><a class="app" href="/spil/obby/">
+      <span class="icon" aria-hidden="true">
+        <svg viewBox="0 0 512 512"><defs>
+          <linearGradient id="ob-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b0c2a"/><stop offset=".6" stop-color="#2a2160"/><stop offset="1" stop-color="#7a2a3a"/></linearGradient>
+          <linearGradient id="ob-lava" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb13b"/><stop offset=".35" stop-color="#ff6a2a"/><stop offset="1" stop-color="#b3121e"/></linearGradient>
+        </defs>
+          <rect width="512" height="512" fill="url(#ob-bg)"/>
+          <g fill="#fff" opacity=".5"><circle cx="70" cy="70" r="5"/><circle cx="410" cy="52" r="4"/><circle cx="300" cy="110" r="4"/><circle cx="150" cy="150" r="3"/></g>
+          <rect x="28" y="330" width="150" height="34" rx="12" fill="#3fae76"/>
+          <rect x="28" y="330" width="150" height="11" rx="5" fill="#6fd8a2"/>
+          <rect x="248" y="286" width="200" height="34" rx="12" fill="#5b8cff"/>
+          <rect x="248" y="286" width="200" height="11" rx="5" fill="#8fb0ff"/>
+          <rect x="340" y="212" width="14" height="74" fill="#ff2d55"/>
+          <rect x="344" y="212" width="6" height="74" fill="#fff" opacity=".75"/>
+          <rect x="120" y="238" width="86" height="86" rx="20" fill="#ffd447"/>
+          <g fill="#fff"><circle cx="150" cy="272" r="13"/><circle cx="184" cy="272" r="13"/></g>
+          <g fill="#1c1f4a"><circle cx="154" cy="275" r="6"/><circle cx="188" cy="275" r="6"/></g>
+          <path d="M148 296a18 18 0 0 0 30 0" stroke="#1c1f4a" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <path d="M0 408c60-18 100 18 160 0s100-22 160-4 132 6 192-14v122H0z" fill="url(#ob-lava)"/>
+        </svg>
+      </span>
+      <span class="text">
+        <h2>Obby</h2>
+        <p>Hop fra flyvende firkant til flyvende firkant. Pas på laserne, og fald ikke i lavaen. Hvor mange hop i træk kan du tage?</p>
+        <span class="meta"></span>
+      </span>
+      <span class="go" aria-hidden="true">›</span>
+    </a></li>
+
+    <li data-spil="klaver" data-ekstern><a class="app" href="https://klaver.zydy.dk/">
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 512 512"><defs>
           <linearGradient id="k-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f2438"/><stop offset="1" stop-color="#0f111c"/></linearGradient>
@@ -340,6 +380,7 @@
         <h2>KlaverLær</h2>
         <p>Lær at spille klaver med faldende noder og sjove sange. Bedst på iPad.</p>
         <span class="tag">Virker hjemme uden login</span>
+        <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </a></li>

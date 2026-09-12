@@ -26,7 +26,7 @@ await page.route('**/api/highscore/**', async route => {
     const ny = { id: 900 + sendte.length, navn: krop.navn, score: krop.score, oprettet: '2026-09-12T12:00:00.000Z' };
     const tegn = r.retning === 'asc' ? 1 : -1;
     lister[spil] = [...lister[spil], ny].sort((a, b) => tegn * (a.score - b.score)).slice(0, 10);
-    return route.fulfill({ json: { ok: true, id: ny.id, placering: lister[spil].indexOf(ny) + 1, ...r, liste: lister[spil] } });
+    return route.fulfill({ json: { ok: true, id: ny.id, token: 'tok' + ny.id, placering: lister[spil].indexOf(ny) + 1, ...r, liste: lister[spil] } });
   }
   return route.fulfill({ json: { spil, ...r, liste: lister[spil] } });
 });
@@ -194,12 +194,13 @@ assert.equal(bBest, '1', 'bedste blitz-antal gemt');
 assert.match(await page.locator('#end .panel').innerText(), /Tiden er gået/);
 // Toplisten (Blitz): tom liste → ét sæt kvalificerer → navn → gemt som nr. 1
 await page.waitForSelector('#end .hs-form');
-assert.equal(await page.locator('#end .hs-jubel').innerText(), 'Ny rekord – du er nr. 1!');
+assert.equal(await page.locator('#end .hs-jubel').innerText(), 'Ny rekord – hvad hedder du?');
 await page.fill('#end .hs-input', 'Simon');
 await page.click('#end .hs-gem');
 await page.waitForSelector('#end .hs-mig');
 assert.deepEqual(sendte, [{ spil: 'saet-blitz', navn: 'Simon', score: 1 }], 'sendt til blitz-listen');
-assert.equal(await page.locator('#end .hs-titel').innerText(), 'Du er nr. 1!');
+assert.equal(await page.locator('#end .hs-titel').innerText(), 'Simon, du har slået rekorden!');
+assert.equal(await page.locator('#end .hs-skift').innerText(), 'Ikke Simon, der spiller?');
 assert.equal(await page.locator('#end .hs-mig .hs-score').innerText(), '1', 'antal sæt formateres ikke som tid');
 
 // Spil igen-knappen starter samme tilstand
@@ -215,7 +216,7 @@ await page.click('#btnListe');
 await page.waitForSelector('#hsK .hs-liste');
 await page.waitForSelector('#hsB .hs-liste');
 assert.equal(await page.locator('#hsK .hs-titel').innerText(), 'Klassisk · hurtigste tid');
-assert.equal(await page.locator('#hsB .hs-mig').count(), 0, 'ingen fremhævning uden ny score');
+assert.equal(await page.locator('#hsB .hs-mig').count(), 1, 'egen række (huskét navn) fremhæves også i listevisningen');
 assert.equal(await page.locator('#hsB .hs-navn').first().innerText(), 'Simon');
 await noScroll();
 

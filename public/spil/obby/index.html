@@ -1,0 +1,692 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1030">
+<meta name="description" content="Obby: hop fra flyvende firkant til flyvende firkant, undgå laserne, og fald ikke i lavaen. Hvor mange hop kan du lave i træk?">
+<title>Obby – zydy.dk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f1030'/%3E%3Cpath d='M0 50h64v14H0z' fill='%23ff6a2a'/%3E%3Crect x='6' y='34' width='22' height='7' rx='2' fill='%235ee0a8'/%3E%3Crect x='36' y='26' width='22' height='7' rx='2' fill='%238f6bff'/%3E%3Crect x='46' y='16' width='2.5' height='10' fill='%23ff2d55'/%3E%3Crect x='10' y='22' width='12' height='12' rx='3' fill='%23ffd447'/%3E%3C/svg%3E">
+<style>
+  /*
+    Obby – et one-button-platformspil for zydy.dk, lavet efter Sofies prompt:
+    flyvende firkanter man hopper på med mellemrum, laser på hver anden,
+    lava i bunden, checkpoint på hver femte, TRY AGAIN når man dør, og en
+    tæller for hop i træk. Én fil, ingen afhængigheder (ud over toplistens
+    fælles klient /spil/highscore.js).
+
+    Spilverdenen regnes i "enheder" (1 enhed = spillerens bredde), og en
+    enhed er så mange px, at der altid er 12 enheder på tværs og 16 i højden.
+    Så virker det ens på en iPhone på højkant og en iPad på langs.
+  */
+  :root{
+    --bg:#0f1030; --bg2:#1b1d4a; --bg3:#26296a; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --violet:#8f6bff; --laser:#ff2d55;
+    --ink:#1c1f4a; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:40px;line-height:1;margin:0 0 10px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  button.pill{color:var(--text);font-weight:700;min-height:36px}
+
+  .wrap{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:20px;letter-spacing:-.4px}
+  #menuBtn[hidden]{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:var(--bg2)}
+  canvas{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Tælleren i øverste venstre hjørne: hop i træk + rekord */
+  .hud{position:absolute;left:14px;top:12px;pointer-events:none;text-shadow:0 3px 14px rgba(0,0,0,.5)}
+  .hud .lbl{font-size:14px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  #hop{display:block;font-size:56px;font-weight:800;line-height:1;letter-spacing:-2px;transition:transform .12s}
+  #hop.bump{transform:scale(1.2)}
+  .hud .rek{margin-top:6px;font-size:16px;font-weight:700;color:var(--sun)}
+  .hud .rek b{font-variant-numeric:tabular-nums}
+
+  /* Beskeder midt på spilfladen */
+  .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .2s}
+  .msg.on{opacity:1}
+  #tryAgain .big{font-size:clamp(44px,15vw,110px);font-weight:900;letter-spacing:-2px;line-height:1;color:#fff;
+    text-shadow:0 0 24px var(--laser),0 6px 0 #a5112f,0 10px 30px rgba(0,0,0,.6);transform:rotate(-4deg)}
+  #tryAgain.on .big{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+  #tryAgain .sub,#readyHint .sub{margin-top:18px;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(15,16,48,.6);border-radius:999px;padding:8px 16px}
+  #readyHint{justify-content:flex-end;padding-bottom:22%}
+  #readyHint .sub{animation:blink 1.4s ease-in-out infinite}
+  .ny{margin-top:10px;color:var(--sun);font-weight:800;font-size:22px}
+  @keyframes pop{from{transform:scale(.3) rotate(-4deg);opacity:0}to{transform:scale(1) rotate(-4deg);opacity:1}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
+
+  /* Startskærmen: topliste øverst, så Rekord og Name lidt længere nede, så Spil */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:18px 20px 24px;background:rgba(15,16,48,.8);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .hs{margin-bottom:14px}
+  .hs .hs-titel{font-size:24px;margin:0 0 10px;letter-spacing:-.6px}
+  .hs .hs-liste{max-height:32vh}
+  .rekord-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0 8px;font-size:20px}
+  .rekord-row span{color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:15px}
+  .rekord-row b{font-size:34px;font-weight:800;color:var(--sun);letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  #nameBtn{position:relative}
+  #nameBtn small{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-top:2px}
+  #nameBtn.tom{border:2px dashed var(--muted)}
+  #nameForm{display:flex;gap:8px;margin-top:10px}
+  #nameForm[hidden]{display:none}
+  #nameInput{flex:1;font:inherit;font-size:20px;font-weight:700;text-align:center;padding:14px;border-radius:var(--r);
+    border:2px solid var(--sun);background:var(--bg2);color:var(--text);outline:none;min-width:0;
+    -webkit-user-select:text;user-select:text}
+  #nameForm .btn{width:auto;margin-top:0;padding:14px 20px}
+  .hint{font-size:15px;margin:14px 0 0}
+  .regler{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 4px}
+  .regler span{font-size:13px;background:var(--bg2);border-radius:999px;padding:5px 10px;color:var(--muted)}
+
+  @media (max-height:640px){
+    h1{font-size:32px} #hop{font-size:44px} .hs .hs-liste{max-height:26vh} .screen .btn{padding:14px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .btn,#hop{transition:none} #tryAgain.on .big,#readyHint .sub{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Obby</div>
+    <button class="pill" id="menuBtn" hidden>Menu</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Spilflade"></canvas>
+
+    <div class="hud" aria-live="polite">
+      <span class="lbl">Hop</span>
+      <b id="hop">0</b>
+      <div class="rek">Rekord <b id="rekHud">0</b></div>
+    </div>
+
+    <div class="msg" id="readyHint"><div class="sub">Tryk for at hoppe</div></div>
+
+    <div class="msg" id="tryAgain">
+      <div class="big">TRY AGAIN</div>
+      <div class="ny" id="nyRekord" hidden>Ny rekord!</div>
+      <div class="sub">Tryk for at prøve igen</div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Obby</h1>
+        <div class="hs" id="hsListe"></div>
+        <div class="regler" aria-hidden="true">
+          <span>🟥 Laser = død</span><span>🌋 Lava = død</span><span>🟩 Hver 5. er checkpoint</span>
+        </div>
+        <div class="rekord-row"><span>Rekord</span><b id="rekordVal">0</b></div>
+        <button class="btn ghost tom" id="nameBtn">Name</button>
+        <form id="nameForm" hidden autocomplete="off">
+          <input id="nameInput" type="text" maxlength="12" placeholder="Skriv dit navn" aria-label="Dit navn"
+            enterkeyhint="done" autocapitalize="words" spellcheck="false">
+          <button class="btn" type="submit">OK</button>
+        </form>
+        <button class="btn" id="startBtn">Spil</button>
+        <p class="hint">Hop med mellemrum – eller tryk på skærmen.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="obby"></script>
+<script>
+(() => {
+'use strict';
+
+/* ---------- Seedbar tilfældighed (?seed=123 giver samme bane) ---------- */
+const params = new URLSearchParams(location.search);
+let seed = parseInt(params.get('seed'), 10);
+if (!Number.isFinite(seed)) seed = (Math.random() * 4294967296) >>> 0;
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rnd = mulberry32(seed);          // kun til banen, så ?seed giver samme bane
+const fx = Math.random;                // pynt (stumper, rystelse) må ikke røre banens tal
+const starRnd = mulberry32(11);
+const stars = Array.from({ length: 60 }, () => ({ x: starRnd(), y: starRnd() * 0.7, r: 0.6 + starRnd() * 1.4, a: 0.2 + starRnd() * 0.5 }));
+const clouds = Array.from({ length: 8 }, (_, i) => ({ x: i * 7 + starRnd() * 5, y: 9 + starRnd() * 5, w: 2.5 + starRnd() * 2.5 }));
+
+/* ---------- Lagring ---------- */
+const KEY_BEST = 'zydy.obby.best';
+const loadBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const saveBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
+const hopEl = $('hop'), rekHud = $('rekHud'), rekordVal = $('rekordVal');
+const startScreen = $('startScreen'), tryAgain = $('tryAgain'), readyHint = $('readyHint'), nyRekord = $('nyRekord');
+const nameBtn = $('nameBtn'), nameForm = $('nameForm'), nameInput = $('nameInput'), menuBtn = $('menuBtn');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Fysik i enheder (1 enhed = spillerens bredde) ---------- */
+const P = 1;                 // spillerens bredde og højde
+const VX = 6.4;              // løbefart, enheder/sek
+const T_UP = 0.33;           // sekunder op til toppen af et hop
+const H_JUMP = 2.0;          // hophøjde
+const G = 2 * H_JUMP / (T_UP * T_UP);
+const VJ = G * T_UP;         // afsæt
+const LASER_H = 0.7, LASER_W = 0.16;   // laserstrålens højde over platformen og bredde
+const PLAT_T = 0.75;         // platformens tykkelse
+const COYOTE = 0.08;         // sekunder man stadig må hoppe efter kanten
+const BUFFER = 0.12;         // tryk lige før landing gemmes og udløses ved landing
+const Y_MIN = 3, Y_MAX = 8;  // båndet platformenes overside ligger i (lava-toppen er y = 0)
+const DY_MAX = 1.4;          // højeste opadgående forskel man skal kunne nå (hophøjden er 2.0)
+const DT = 1 / 120;          // fast fysik-trin
+
+/** Hvor længe er man i luften, før man er faldet til højden dy (positiv = op) i forhold til afsættet? */
+const tLand = dy => (VJ + Math.sqrt(Math.max(0, VJ * VJ - 2 * G * dy))) / G;
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1, dpr = 1, u = 30, Wu = 12, Hu = 16;
+function resize() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  u = Math.max(14, Math.min(W / 12, H / 16));
+  Wu = W / u; Hu = H / u;
+}
+resize();
+addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 60));
+if ('ResizeObserver' in window) new ResizeObserver(resize).observe(stage);
+
+/* ---------- Bane ---------- */
+let platforms = [];          // {i, x, w, y, amp, freq, phase, laser, checkpoint, hue}
+let checkpoint = null;       // platformen man genopstår på
+
+/** Platformens overside til tiden t (den "flyver" op og ned). */
+const platTop = (pl, t) => pl.y + pl.amp * Math.sin(pl.freq * t + pl.phase);
+
+/**
+ * Næste platform efter `prev`. Afstanden regnes ud fra, hvor langt et hop fra
+ * kanten rækker i værste fald (næste platform højest oppe, denne længst nede),
+ * så banen altid kan gennemføres – og bredden så et hop i bedste fald ikke
+ * flyver forbi.
+ */
+function gen(prev) {
+  const i = prev.i + 1;
+  const diff = Math.min(1, i / 70);                       // sværhedsgrad 0..1 over de første 70
+  const isCheckpoint = i % 5 === 0;
+  const laser = !isCheckpoint && i >= 3 && i % 2 === 1;   // hver anden – undtagen checkpoints
+  // Først svinget, så højden: den værst tænkelige stigning (denne platform i top,
+  // den forrige i bund) skal holde sig under DY_MAX, ellers kan hoppet ikke nås.
+  const bund = prev.y - prev.amp;                       // forrige platforms laveste punkt
+  let amp = i < 3 ? 0 : (0.15 + rnd() * 0.65) * (0.35 + 0.65 * diff);
+  amp = Math.max(0, Math.min(amp, bund + DY_MAX - Y_MIN));
+  const yLoft = Math.min(Y_MAX, bund + DY_MAX - amp);   // så y + amp - bund <= DY_MAX
+  const y = Math.max(Y_MIN, Math.min(yLoft, prev.y + (rnd() * 2 - 1) * (0.6 + 1.0 * diff)));
+  const dy = y - prev.y;
+  const dyWorst = y + amp - bund, dyBest = y - amp - (prev.y + prev.amp);
+  const reachWorst = VX * tLand(dyWorst), reachBest = VX * tLand(dyBest);
+  const k = laser ? 0.55 + 0.2 * diff + rnd() * 0.1 : 0.4 + 0.3 * diff + rnd() * 0.15;
+  const gap = Math.max(1.2, k * reachWorst);
+  let w = isCheckpoint ? 4.5 + rnd()
+    : laser ? Math.max(7.5, 2 * (reachWorst * (1 - k) + 1.6)) + rnd() * 1.5
+    : Math.max(2.4, 4.4 - 1.6 * diff + rnd() * 1.2);
+  w = Math.max(w, reachBest - gap + 0.6);                 // et hop fra kanten må ikke flyve forbi
+  return {
+    i, x: prev.x + prev.w + gap, w, y, amp,
+    freq: 1.0 + rnd() * 1.4, phase: rnd() * 6.2832,
+    laser, checkpoint: isCheckpoint, active: false,
+    hue: (200 + i * 23) % 360,
+  };
+}
+
+function nyBane() {
+  platforms = [{ i: 0, x: 0, w: 5, y: 4, amp: 0, freq: 1, phase: 0, laser: false, checkpoint: true, active: true, hue: 150 }];
+  checkpoint = platforms[0];
+}
+
+function fyldBane() {
+  while (platforms[platforms.length - 1].x < camX + Wu + 10) platforms.push(gen(platforms[platforms.length - 1]));
+  // Smid dem der er langt bag kameraet – men behold checkpointet, man skal kunne genopstå der.
+  while (platforms.length > 2 && platforms[0] !== checkpoint && platforms[0].x + platforms[0].w < camX - 4) platforms.shift();
+}
+
+/* ---------- Spilleren ---------- */
+const player = { x: 0, y: 0, vy: 0, on: null, running: false, alive: true, coyote: 0, jumpBuf: 0, jumped: false, ev: null };
+
+/**
+ * Ét fysik-trin for spilleren p fra tiden t0 til t0+dt. Ren i den forstand, at
+ * den kun rører p (og læser platforms), så den også kan køre på en kopi for at
+ * forudsige et hop (simJump). Sætter p.ev til 'land', 'laser' eller 'lava'.
+ */
+function stepPlayer(p, t0, dt) {
+  const t1 = t0 + dt;
+  p.ev = null;
+  const x0 = p.x;
+  if (p.running) p.x += VX * dt;
+  p.coyote = Math.max(0, p.coyote - dt);
+  p.jumpBuf = Math.max(0, p.jumpBuf - dt);
+
+  if (p.on) {
+    p.y = platTop(p.on, t1);
+    if (p.x >= p.on.x + p.on.w) { p.on = null; p.coyote = COYOTE; }  // løb ud over kanten
+  } else {
+    const y0 = p.y;
+    p.vy -= G * dt;
+    p.y += p.vy * dt;
+    for (const pl of platforms) {
+      if (p.x + P <= pl.x || p.x >= pl.x + pl.w) continue;
+      const top0 = platTop(pl, t0), top1 = platTop(pl, t1);
+      if (y0 >= top0 - 0.02 && p.y <= top1) {          // krydsede oversiden nedad → landing
+        p.y = top1; p.vy = 0; p.on = pl; p.coyote = 0; p.ev = 'land';
+        break;
+      }
+      if (x0 + P <= pl.x && p.y < top1 - 0.02 && p.y + P > top1 - PLAT_T) {   // ramte siden
+        p.x = pl.x - P - 0.001;
+      }
+    }
+  }
+
+  // Laser: en lodret rød stråle midt på platformen
+  for (const pl of platforms) {
+    if (!pl.laser) continue;
+    const cx = pl.x + pl.w / 2, top = platTop(pl, t1);
+    if (p.x + P - 0.1 > cx - LASER_W / 2 && p.x + 0.1 < cx + LASER_W / 2 && p.y < top + LASER_H && p.y + P > top) {
+      p.alive = false; p.ev = 'laser'; return;
+    }
+  }
+  if (p.y < 0.05) { p.alive = false; p.ev = 'lava'; }
+}
+
+/** Hvor ender et hop lige nu? { i, x } for platformen og landingsstedet, eller null hvis man dør. Bruges af tests. */
+function simJump() {
+  const p = { ...player, running: true, vy: VJ, on: null, coyote: 0, jumpBuf: 0 };
+  let t = T;
+  for (let n = 0; n < 2 / DT; n++) {
+    stepPlayer(p, t, DT); t += DT;
+    if (!p.alive) return null;
+    if (p.on) return { i: p.on.i, x: p.x };
+  }
+  return null;
+}
+
+/* ---------- Tilstand ---------- */
+let phase = 'menu';          // menu | ready | run | dead
+let T = 0;                   // spiltid i sekunder
+let streak = 0, best = loadBest();
+let camX = 0, shake = 0, deadAt = 0, squash = 0, flashT = 0;
+let particles = [], popups = [];
+let acc = 0, lastT = 0, paused = false;
+
+function updateHud() {
+  if (hopEl.textContent !== String(streak)) {
+    hopEl.textContent = streak;
+    hopEl.classList.add('bump'); setTimeout(() => hopEl.classList.remove('bump'), 120);
+  }
+  rekHud.textContent = best; rekordVal.textContent = best;
+}
+
+function spawn() {
+  const pl = checkpoint;
+  player.x = pl.x + 0.5; player.y = platTop(pl, T); player.vy = 0; player.on = pl;
+  player.running = false; player.alive = true; player.coyote = 0; player.jumpBuf = 0; player.jumped = false;
+  streak = 0; camX = player.x - Wu * 0.3; particles = []; popups = []; shake = 0;
+  phase = 'ready';
+  tryAgain.classList.remove('on'); readyHint.classList.add('on'); startScreen.classList.remove('on');
+  menuBtn.hidden = false;
+  fyldBane(); updateHud();
+}
+
+function doJump() {
+  player.vy = VJ; player.on = null; player.coyote = 0; player.jumpBuf = 0; player.jumped = true;
+}
+
+/** Et tryk (mellemrum eller finger). */
+function jump() {
+  if (phase === 'ready') { phase = 'run'; player.running = true; readyHint.classList.remove('on'); doJump(); return; }
+  if (phase === 'run') {
+    if (player.on || player.coyote > 0) doJump(); else player.jumpBuf = BUFFER;
+    return;
+  }
+  if (phase === 'dead') { if (T - deadAt > 0.6) spawn(); return; }
+  if (phase === 'menu') start();
+}
+
+function onLand(pl) {
+  if (player.jumped) {
+    streak++; player.jumped = false; squash = 0.18;
+    navigator.vibrate && navigator.vibrate(8);
+  }
+  if (pl.checkpoint && pl !== checkpoint) {
+    checkpoint = pl; pl.active = true; flashT = 0.4;
+    popups.push({ text: 'Checkpoint!', x: pl.x + pl.w / 2, y: platTop(pl, T) + 2.2, t: 0, color: '#5ee0a8' });
+  }
+  if (player.jumpBuf > 0) doJump();
+  updateHud();
+}
+
+function die(hvorfor) {
+  phase = 'dead'; deadAt = T; player.running = false;
+  shake = reduceMotion ? 0 : 0.5;
+  navigator.vibrate && navigator.vibrate([60, 40, 60]);
+  if (!reduceMotion) {
+    for (let n = 0; n < 26; n++) {
+      particles.push({ x: player.x + 0.5, y: player.y + 0.5, vx: (fx() - 0.5) * 12, vy: 2 + fx() * 9,
+        s: 0.12 + fx() * 0.25, rot: fx() * 6.28, vr: (fx() - 0.5) * 12, t: 0, life: 0.9 + fx() * 0.6,
+        color: hvorfor === 'laser' ? '#ff2d55' : '#ffd447' });
+    }
+  }
+  const ny = streak > best;
+  if (ny) { best = streak; saveBest(best); sendRekord(streak); }
+  nyRekord.hidden = !ny;
+  tryAgain.classList.add('on');
+  updateHud();
+}
+
+function start() {
+  if (phase !== 'menu') return;
+  spawn();
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+function tilMenu() {
+  phase = 'menu'; player.running = false;
+  tryAgain.classList.remove('on'); readyHint.classList.remove('on');
+  startScreen.classList.add('on'); menuBtn.hidden = true;
+  hentListe();
+}
+
+/* ---------- Opdatering ---------- */
+function tick(dt) {
+  T += dt;
+  if (phase === 'ready' || phase === 'run') {
+    stepPlayer(player, T - dt, dt);
+    if (player.ev === 'land') onLand(player.on);
+    if (!player.alive) die(player.ev);
+  }
+  const target = player.x - Wu * 0.3;
+  camX += (target - camX) * Math.min(1, dt * 8);
+  fyldBane();
+  squash = Math.max(0, squash - dt); shake = Math.max(0, shake - dt); flashT = Math.max(0, flashT - dt);
+  for (const q of particles) { q.t += dt; q.vy -= G * 0.6 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.rot += q.vr * dt; }
+  particles = particles.filter(q => q.t < q.life);
+  for (const q of popups) q.t += dt;
+  popups = popups.filter(q => q.t < 1.2);
+}
+
+/* ---------- Tegning ---------- */
+const sx = wx => (wx - camX) * u;
+const sy = wy => H - 1.6 * u - wy * u;
+const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
+if (!ctx.roundRect) ctx.roundRect = function (x, y, w, h, r) { this.rect(x, y, w, h); };
+
+function draw() {
+  ctx.save();
+  if (shake > 0) ctx.translate((fx() - 0.5) * shake * 16, (fx() - 0.5) * shake * 16);
+
+  // Himmel
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0b0c2a'); g.addColorStop(0.6, '#2a2160'); g.addColorStop(1, '#7a2a3a');
+  ctx.fillStyle = g; ctx.fillRect(-20, -20, W + 40, H + 40);
+  ctx.fillStyle = '#fff';
+  for (const s of stars) {
+    const x = ((s.x * W - camX * u * 0.05) % W + W) % W;
+    ctx.globalAlpha = s.a; ctx.beginPath(); ctx.arc(x, s.y * H, s.r, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 0.12; ctx.fillStyle = '#fff';
+  for (const c of clouds) {
+    const span = 56, x = ((c.x - camX * 0.35) % span + span) % span - 4;
+    rr(x * u, sy(c.y), c.w * u, 0.9 * u, 0.45 * u); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Platforme
+  for (const pl of platforms) {
+    if (pl.x + pl.w < camX - 1 || pl.x > camX + Wu + 1) continue;
+    const top = platTop(pl, T), x = sx(pl.x), y = sy(top), w = pl.w * u, h = PLAT_T * u;
+    // Små jetflammer under – det er derfor de flyver
+    if (!reduceMotion) {
+      ctx.fillStyle = 'rgba(255,170,60,.75)';
+      for (const fx of [0.2, 0.8]) {
+        const fl = (0.35 + 0.25 * Math.sin(T * 23 + pl.phase + fx * 9)) * u;
+        ctx.beginPath(); ctx.moveTo(x + w * fx - 0.18 * u, y + h); ctx.lineTo(x + w * fx + 0.18 * u, y + h); ctx.lineTo(x + w * fx, y + h + fl); ctx.fill();
+      }
+    }
+    ctx.fillStyle = `hsl(${pl.hue},55%,${pl.checkpoint ? 40 : 48}%)`;
+    rr(x, y, w, h, 0.2 * u); ctx.fill();
+    ctx.fillStyle = `hsl(${pl.hue},60%,64%)`;
+    rr(x, y, w, h * 0.32, [0.2 * u, 0.2 * u, 0, 0]); ctx.fill();
+
+    if (pl.checkpoint) {
+      // Checkpoint-firkant: blå indtil man har været der, så grøn med flueben
+      const cs = 0.75 * u, cx = x + 0.45 * u, cy = y - cs;
+      ctx.fillStyle = pl.active ? '#5ee0a8' : '#5b8cff';
+      if (pl === checkpoint && flashT > 0) { ctx.shadowColor = '#5ee0a8'; ctx.shadowBlur = 30 * flashT; }
+      rr(cx, cy, cs, cs, 0.15 * u); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(15,16,48,.8)'; ctx.lineWidth = Math.max(2, 0.09 * u); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      if (pl.active) { ctx.moveTo(cx + cs * 0.25, cy + cs * 0.52); ctx.lineTo(cx + cs * 0.43, cy + cs * 0.72); ctx.lineTo(cx + cs * 0.77, cy + cs * 0.3); }
+      else { ctx.moveTo(cx + cs * 0.3, cy + cs * 0.72); ctx.lineTo(cx + cs * 0.3, cy + cs * 0.25); ctx.lineTo(cx + cs * 0.7, cy + cs * 0.4); ctx.lineTo(cx + cs * 0.3, cy + cs * 0.55); }
+      ctx.stroke();
+    }
+    if (pl.laser) {
+      const cx = x + w / 2, lh = LASER_H * u, pulse = 0.7 + 0.3 * Math.sin(T * 14 + pl.phase);
+      ctx.fillStyle = '#2a1030'; rr(cx - 0.2 * u, y - 0.12 * u, 0.4 * u, 0.12 * u, 3); ctx.fill();   // sokkel
+      ctx.shadowColor = '#ff2d55'; ctx.shadowBlur = 14 * pulse;
+      ctx.fillStyle = `rgba(255,45,85,${pulse})`;
+      ctx.fillRect(cx - LASER_W * u / 2, y - lh, LASER_W * u, lh);
+      ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.8 * pulse;
+      ctx.fillRect(cx - LASER_W * u * 0.15, y - lh, LASER_W * u * 0.3, lh);
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    }
+  }
+
+  // Spilleren
+  if (phase !== 'menu' && player.alive) {
+    const px = sx(player.x), py = sy(player.y + P);
+    const sq = squash > 0 ? 1 - Math.sin(squash / 0.18 * Math.PI) * 0.22 : 1;   // klask ved landing
+    const tilt = player.on ? 0 : Math.max(-0.35, Math.min(0.35, -player.vy * 0.025));
+    ctx.save();
+    ctx.translate(px + u / 2, py + u);
+    ctx.rotate(tilt); ctx.scale(1 / sq, sq);
+    ctx.translate(-u / 2, -u);
+    ctx.fillStyle = '#ffd447'; rr(0, 0, u, u, 0.22 * u); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(u * 0.42, u * 0.38, u * 0.15, 0, 6.283); ctx.arc(u * 0.8, u * 0.38, u * 0.15, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#1c1f4a'; ctx.beginPath(); ctx.arc(u * 0.47, u * 0.4, u * 0.07, 0, 6.283); ctx.arc(u * 0.85, u * 0.4, u * 0.07, 0, 6.283); ctx.fill();
+    ctx.strokeStyle = '#1c1f4a'; ctx.lineWidth = Math.max(1.5, u * 0.06); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(u * 0.63, u * 0.6, u * 0.16, 0.2, Math.PI - 0.2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Stumper når man dør
+  for (const q of particles) {
+    ctx.save(); ctx.translate(sx(q.x), sy(q.y)); ctx.rotate(q.rot);
+    ctx.globalAlpha = Math.max(0, 1 - q.t / q.life); ctx.fillStyle = q.color;
+    ctx.fillRect(-q.s * u / 2, -q.s * u / 2, q.s * u, q.s * u); ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+
+  // Lava i bunden – med bølget overflade og glød
+  const lavaY = sy(0);
+  const gl = ctx.createLinearGradient(0, lavaY - 1.2 * u, 0, lavaY);
+  gl.addColorStop(0, 'rgba(255,110,40,0)'); gl.addColorStop(1, 'rgba(255,110,40,.45)');
+  ctx.fillStyle = gl; ctx.fillRect(0, lavaY - 1.2 * u, W, 1.2 * u);
+  const lg = ctx.createLinearGradient(0, lavaY, 0, H);
+  lg.addColorStop(0, '#ffb13b'); lg.addColorStop(0.25, '#ff6a2a'); lg.addColorStop(1, '#b3121e');
+  ctx.fillStyle = lg;
+  ctx.beginPath(); ctx.moveTo(-10, H + 10); ctx.lineTo(-10, lavaY);
+  for (let x = -10; x <= W + 10; x += 6) {
+    const wx = x / u + camX;
+    ctx.lineTo(x, lavaY + Math.sin(wx * 1.7 + T * 2.2) * 0.12 * u + Math.sin(wx * 0.6 - T * 1.1) * 0.1 * u);
+  }
+  ctx.lineTo(W + 10, H + 10); ctx.fill();
+  ctx.fillStyle = 'rgba(255,230,120,.55)';
+  for (let n = 0; n < 7; n++) {
+    const ph = (T * 0.35 + n * 0.143) % 1, bx = ((n * 173 + camX * -30) % (W + 40) + W + 40) % (W + 40) - 20;
+    ctx.beginPath(); ctx.arc(bx, lavaY + 0.3 * u + ph * (H - lavaY), (0.06 + (1 - ph) * 0.1) * u, 0, 6.283); ctx.fill();
+  }
+
+  // Små tekster (Checkpoint!)
+  for (const q of popups) {
+    ctx.globalAlpha = Math.max(0, 1 - q.t / 1.2); ctx.fillStyle = q.color;
+    ctx.font = `800 ${Math.round(u * 0.7)}px -apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif`;
+    ctx.textAlign = 'center'; ctx.fillText(q.text, sx(q.x), sy(q.y + q.t * 0.8));
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+/* ---------- Løkke med fast fysik-trin ---------- */
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (!lastT) lastT = now;
+  let dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  if (!paused) {
+    acc += dt;
+    while (acc >= DT) { tick(DT); acc -= DT; }
+  }
+  draw();
+}
+requestAnimationFrame(frame);
+
+/* ---------- Topliste (uden formular: navnet er skrevet på startskærmen) ---------- */
+const SPIL = 'obby';
+let top = null;              // serverens seneste svar { retning, min, maks, liste }
+const navn = () => Highscore.navn.hent();
+
+// Kvitteringen for egen række på listen ({ id, token }), så et navneskift kan rette
+// den i stedet for at efterlade rekorden under det gamle navn.
+const KEY_MIN = 'zydy.obby.min';
+const minRaekke = {
+  hent() { try { return JSON.parse(localStorage.getItem(KEY_MIN)) || null; } catch (e) { return null; } },
+  gem(v) { try { localStorage.setItem(KEY_MIN, JSON.stringify(v)); } catch (e) {} },
+};
+
+function visNavn() {
+  const n = navn();
+  nameBtn.classList.toggle('tom', !n);
+  nameBtn.innerHTML = '';
+  if (n) { nameBtn.appendChild(document.createTextNode(n)); const s = document.createElement('small'); s.textContent = 'Tryk for at ændre navn'; nameBtn.appendChild(s); }
+  else nameBtn.textContent = 'Name';
+}
+
+function tegnListe() {
+  if (!top) return;
+  Highscore.tegnListe($('hsListe'), top.liste || [], navn() || null, 'Topliste');   // egen række fremhæves på navn
+}
+
+async function hentListe() {
+  const rod = $('hsListe');
+  if (!top) { rod.innerHTML = '<p class="hs-venter">Henter toplisten…</p>'; }
+  try { top = await Highscore.hent(SPIL); tegnListe(); }
+  catch (e) { if (!top) Highscore.tegnFejl(rod); }
+}
+
+/** Sender en ny personlig rekord, hvis der er et navn og den kommer på listen. Serveren holder én række pr. navn. */
+async function sendRekord(score) {
+  const n = navn();
+  if (!n || !top || !Highscore.kvalificerer(top, score)) return;
+  try {
+    const svar = await Highscore.send(SPIL, n, score);
+    if (svar.token) minRaekke.gem({ id: svar.id, token: svar.token });
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { /* toplisten er pynt – spillet fortsætter */ }
+}
+
+/** Skifter navn på egen række, hvis vi har kvitteringen for den. Ellers står den gamle rekord bare under det gamle navn. */
+async function omdoebMigSelv(nyt) {
+  const m = minRaekke.hent();
+  if (!m || !m.id || !m.token) return;
+  try {
+    const svar = await Highscore.omdoeb(SPIL, m.id, m.token, nyt);
+    if (svar.id !== m.id) minRaekke.gem(null);     // rækken blev lagt sammen med en anden
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { minRaekke.gem(null); }             // rækken er væk (trimmet) – glem kvitteringen
+}
+
+/* ---------- Input ---------- */
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;   // man skriver sit navn
+  if (e.code === 'Space' || e.key === ' ' || e.code === 'ArrowUp') {
+    e.preventDefault();
+    if (e.repeat) return;
+    jump();
+  }
+});
+$('startBtn').addEventListener('click', start);
+menuBtn.addEventListener('click', tilMenu);
+nameBtn.addEventListener('click', () => {
+  nameBtn.hidden = true; nameForm.hidden = false;
+  nameInput.value = navn();
+  setTimeout(() => nameInput.focus({ preventScroll: true }), 30);
+});
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const n = nameInput.value.replace(/\s+/g, ' ').trim().slice(0, 12);
+  const foer = navn();
+  if (n) Highscore.navn.gem(n);
+  nameForm.hidden = true; nameBtn.hidden = false;
+  visNavn(); tegnListe();
+  if (n && foer && n !== foer) omdoebMigSelv(n);
+});
+
+/* ---------- Start ---------- */
+nyBane();
+camX = -Wu * 0.3;
+fyldBane();
+visNavn(); updateHud(); hentListe();
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  start, jump, tick, simJump, spawn, tilMenu, seed,
+  pause() { paused = true; }, resume() { paused = false; lastT = 0; acc = 0; },
+  die() { if (phase === 'run' || phase === 'ready') { player.alive = false; die('lava'); } },
+  /** Stil spilleren på platform nr. i (tests). */
+  placer(i) {
+    const pl = platforms.find(q => q.i === i); if (!pl) return false;
+    player.x = pl.x + 0.3; player.on = pl; player.y = platTop(pl, T); player.vy = 0; player.alive = true; player.jumped = false;
+    camX = player.x - Wu * 0.3; fyldBane(); return true;
+  },
+  get state() {
+    return {
+      phase, running: phase === 'run', streak, best, T, camX,
+      player: { x: player.x, y: player.y, vy: player.vy, on: player.on ? player.on.i : null, alive: player.alive },
+      checkpoint: checkpoint ? checkpoint.i : null,
+      platforms: platforms.map(pl => ({ i: pl.i, x: pl.x, w: pl.w, y: pl.y, amp: pl.amp, laser: pl.laser, checkpoint: pl.checkpoint, active: pl.active, top: platTop(pl, T) })),
+      consts: { VX, G, VJ, LASER_H, P },
+    };
+  },
+};
+})();
+</script>
+</body></html>

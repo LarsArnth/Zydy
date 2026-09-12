@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; otte spil
+afhængigheder. De store apps bor i egne repoer og linkes til; ni spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er et lille
 højscore-API (`src/`), se [Online topliste](#online-topliste).
 
@@ -15,7 +15,7 @@ højscore-API (`src/`), se [Online topliste](#online-topliste).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet otte spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet ni spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder og Dybet, der er tre). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
@@ -29,6 +29,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Stenalder | `public/spil/stenalder/` | Hot-seat-udgave af brætspillet Stone Age for 2-4 spillere på én iPad. Tre filer uden build: `regler.mjs` (regelmotor, ren JS), `data.mjs` (kort og bygninger) og `index.html` (UI). Gemmer spillet i `localStorage`, så det kan genoptages. |
 | Helteriget | `public/spil/helteriget/` | Deck-building-kortspil for to på én iPad (Hero Realms-mekanik, egne danske kort): 80 markedskort i fire fraktioner, helte med vagter, allierede og ofringer. Hot-seat med overleveringsskærm, så hænderne forbliver hemmelige; igangværende spil gemmes i `localStorage`. |
 | Dybet | `public/spil/dybet/` | Dungeon crawler i Wolfenstein-3D-stil (raycaster på canvas) med Pokémon-agtig turbaseret kamp. Procedurelt genererede labyrinter (altid en vej til trappen), monstre der står stille og spærrer gange, kister med udstyr, evner og potioner; minimap viser kun det udforskede. Spillet går selv, indtil vejen deler sig, og viser så flydende valgknapper. Score = dybde nået, online topliste. Tre filer: `motor.mjs` (regler, enhedstestet), `sprites.mjs` (pixel-art som tekst), `index.html`. |
+| Obby | `public/spil/obby/` | One-button-platformspil på canvas: hop fra flyvende firkant til flyvende firkant med mellemrum eller et tryk. Rød laser på hver anden firkant, lava i bunden, checkpoint på hver femte, og TRY AGAIN når man dør. Banen er uendelig og genereres, så hvert spring kan nås (bot-testet i `test/obby.test.mjs`). Score = hop i træk uden at dø; navnet skrives på startskærmen, og en ny rekord ryger selv på toplisten. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -59,7 +60,9 @@ npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM scores 
 tal vinder), (2) indlæs `<script src="/spil/highscore.js"></script>` i spillet,
 (3) kald `Highscore.panel(...)` på slutskærmen og evt. uden score på
 startskærmen. Tårn er det enkle forbillede, Sæt viser to tilstande og
-tidsformatering. Spil med topliste: Tårn, Sæt, Dybet. Skemaet skal kun køres
+tidsformatering. Obby viser varianten uden formular: navnet skrives på
+startskærmen, og spillet sender selv rekorden ind (`unik` holder styr på, at
+hver spiller kun står én gang). Spil med topliste: Tårn, Sæt, Dybet, Obby. Skemaet skal kun køres
 én gang (er gjort):
 
 ```bash

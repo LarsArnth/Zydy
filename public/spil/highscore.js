@@ -5,10 +5,12 @@
     ...
     Highscore.panel(document.getElementById('hs'), { spil: 'taarn', score });
 
-  panel() henter toplisten fra /api/highscore/<spil> (src/highscore.mjs + D1),
-  viser en navneformular hvis scoren kommer på listen, sender den ind og
-  viser listen med den nye række fremhævet. Navnet huskes i localStorage
-  ('zydy.navn'), så det er udfyldt næste gang – også i de andre spil.
+  panel() henter toplisten fra /api/highscore/<spil> (src/highscore.mjs + D1).
+  Kommer scoren på listen, spørges der om navn – men kun første gang. Navnet
+  huskes i localStorage ('zydy.navn', fælles for alle spil), og derefter gemmes
+  rekorder automatisk: "Sofie, du har slået rekorden!" med listen under og en
+  knap "Ikke Sofie, der spiller?" til at skifte navn. Serveren holder én række
+  pr. navn (den bedste), så listen ikke fyldes af samme spiller.
 
   Retningen (flest point eller laveste tid) og grænserne for en gyldig score
   bestemmes af serveren (SPIL i src/highscore.mjs) og følger med i svaret.
@@ -48,7 +50,19 @@ async function send(spil, n, score) {
   });
   const data = await r.json().catch(() => ({}));
   if (!r.ok || !data.ok) throw new Error(data.fejl || 'Kunne ikke gemme (' + r.status + ')');
-  return data;                       // { ok, id, placering, liste }
+  return data;                       // { ok, id, token, placering, uaendret?, score?, liste }
+}
+
+/** Retter navnet på en række man selv har gemt (kræver dens token). */
+async function omdoeb(spil, id, token, n) {
+  const r = await fetch(API + spil + '/' + id, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ navn: n, token }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || !data.ok) throw new Error(data.fejl || 'Kunne ikke skifte navn (' + r.status + ')');
+  return data;
 }
 
 /** Er a bedre end b i den givne retning? */
@@ -73,8 +87,14 @@ const el = (tag, cls, text) => {
   return e;
 };
 
-/** Tegner toplisten i `rod`. `fremhaevId` markerer spillerens egen række; `format` gør tal til tekst (fx tid). */
-function tegnListe(rod, liste, fremhaevId, overskrift, format) {
+/**
+ * Tegner toplisten i `rod`. `fremhaev` markerer spillerens egen række: et id (tal) eller et navn (tekst,
+ * uanset store/små bogstaver). `format` gør tal til tekst (fx tid som m:ss).
+ */
+function tegnListe(rod, liste, fremhaev, overskrift, format) {
+  const erMig = r => typeof fremhaev === 'string'
+    ? r.navn.toLowerCase() === fremhaev.toLowerCase()
+    : r.id === fremhaev;
   rod.innerHTML = '';
   rod.appendChild(el('div', 'hs-titel', overskrift || 'Topliste'));
   if (!liste.length) {
@@ -83,7 +103,7 @@ function tegnListe(rod, liste, fremhaevId, overskrift, format) {
   }
   const ol = el('ol', 'hs-liste');
   liste.forEach((r, i) => {
-    const li = el('li', 'hs-raekke' + (r.id === fremhaevId ? ' hs-mig' : ''));
+    const li = el('li', 'hs-raekke' + (erMig(r) ? ' hs-mig' : ''));
     li.appendChild(el('span', 'hs-nr', String(i + 1)));
     li.appendChild(el('span', 'hs-navn', r.navn));
     li.appendChild(el('span', 'hs-score', format ? format(r.score) : String(r.score)));
@@ -97,55 +117,101 @@ function tegnFejl(rod, besked) {
   rod.appendChild(el('p', 'hs-fejl', besked || 'Toplisten kunne ikke hentes.'));
 }
 
-/**
- * Hele forløbet efter et spil. `score` udelades for bare at vise listen.
- * Options: { spil, score, format(score), titel = 'Topliste', knap = 'btn', onGemt(placering) }.
- */
-async function panel(rod, opt) {
-  const spil = opt.spil, score = opt.score, knapKlasse = opt.knap || 'btn', format = opt.format;
-  rod.innerHTML = '';
-  rod.appendChild(el('p', 'hs-venter', 'Henter toplisten…'));
+/** Overskriften efter en gemning, med navnet på spilleren. */
+function titelEfterGem(svar, n, format) {
+  const f = v => format ? format(v) : String(v);
+  if (svar.uaendret) return n + ', din rekord er stadig ' + f(svar.score);
+  if (svar.placering === 1) return n + ', du har slået rekorden!';
+  if (svar.placering) return n + ', du er nr. ' + svar.placering + '!';
+  return n + ', gemt – men uden for top ' + LAENGDE;
+}
 
-  let top;
-  try { top = await hent(spil); } catch (e) { tegnFejl(rod); return; }
-  const liste = top.liste || [];
-
-  if (!kvalificerer(top, score)) { tegnListe(rod, liste, null, opt.titel, format); return; }
-
-  // Scoren kommer på listen: bed om navn.
-  rod.innerHTML = '';
-  const erNr1 = !liste.length || bedre(score, liste[0].score, top.retning);
-  rod.appendChild(el('div', 'hs-titel hs-jubel', erNr1 ? 'Ny rekord – du er nr. 1!' : 'Du er på toplisten!'));
+/** Et navnefelt med knap. `onNavn(navn)` kaldes ved indsendelse; feltet er fokuseret, hvis det er tomt. */
+function navneFormular(rod, opt, startVaerdi, knapTekst, onNavn) {
   const form = el('form', 'hs-form');
   form.setAttribute('autocomplete', 'off');
   const input = el('input', 'hs-input');
   input.type = 'text'; input.name = 'navn'; input.maxLength = NAVN_MAKS;
   input.placeholder = 'Dit navn'; input.setAttribute('aria-label', 'Dit navn');
   input.setAttribute('enterkeyhint', 'done'); input.autocapitalize = 'words'; input.spellcheck = false;
-  input.value = navn.hent();
-  const gem = el('button', knapKlasse + ' hs-gem', 'Gem på listen');
-  gem.type = 'submit';
-  form.appendChild(input); form.appendChild(gem);
+  input.value = startVaerdi || '';
+  const knap = el('button', (opt.knap || 'btn') + ' hs-gem', knapTekst);
+  knap.type = 'submit';
+  form.appendChild(input); form.appendChild(knap);
   rod.appendChild(form);
   const status = el('p', 'hs-status', '');
   rod.appendChild(status);
   if (!input.value) setTimeout(() => input.focus({ preventScroll: true }), 50);
-
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const n = input.value.trim();
     if (!n) { input.focus(); return; }
-    gem.disabled = true; status.textContent = 'Gemmer…';
-    try {
+    knap.disabled = true; status.textContent = 'Gemmer…';
+    try { await onNavn(n); }
+    catch (err) { knap.disabled = false; status.textContent = 'Kunne ikke gemme – prøv igen.'; }
+  });
+}
+
+/** Viser resultatet af en gemning: overskrift med navn, listen med egen række fremhævet, og knappen til at skifte navn. */
+function visGemt(rod, opt, svar, n) {
+  tegnListe(rod, svar.liste || [], svar.id, titelEfterGem(svar, n, opt.format), opt.format);
+  const skift = el('button', 'hs-skift', 'Ikke ' + n + ', der spiller?');
+  skift.type = 'button';
+  skift.addEventListener('click', () => {
+    rod.innerHTML = '';
+    rod.appendChild(el('div', 'hs-titel', 'Hvad hedder du så?'));
+    navneFormular(rod, opt, '', 'Skift navn', async nyt => {
+      navn.gem(nyt);
+      if (svar.token && svar.id && !svar.uaendret) {
+        // Rækken blev gemt lige før: ret navnet på den (serveren tjekker token).
+        const ret = await omdoeb(opt.spil, svar.id, svar.token, nyt);
+        if (ret.id === svar.id) ret.token = svar.token;   // så man kan skifte igen
+        visGemt(rod, opt, ret, nyt);
+      } else {
+        // Ingen egen ny række (rekorden stod i forvejen under det gamle navn): gem forfra under det nye.
+        await panel(rod, opt);
+      }
+    });
+  });
+  rod.appendChild(skift);
+}
+
+/**
+ * Hele forløbet efter et spil. `score` udelades for bare at vise listen.
+ * Options: { spil, score, format(score), titel = 'Topliste', knap = 'btn', onGemt(placering) }.
+ */
+async function panel(rod, opt) {
+  const spil = opt.spil, score = opt.score, format = opt.format;
+  rod.innerHTML = '';
+  rod.appendChild(el('p', 'hs-venter', 'Henter toplisten…'));
+
+  let top;
+  try { top = await hent(spil); } catch (e) { tegnFejl(rod); return; }
+  const liste = top.liste || [];
+  const kendt = navn.hent();
+
+  if (!kvalificerer(top, score)) { tegnListe(rod, liste, kendt || null, opt.titel, format); return; }
+
+  const faerdig = (svar, n) => { visGemt(rod, opt, svar, n); if (opt.onGemt) opt.onGemt(svar.placering); };
+
+  if (!kendt) {
+    // Første gang: spørg om navn.
+    rod.innerHTML = '';
+    const erNr1 = !liste.length || bedre(score, liste[0].score, top.retning);
+    rod.appendChild(el('div', 'hs-titel hs-jubel', erNr1 ? 'Ny rekord – hvad hedder du?' : 'Du er på toplisten – hvad hedder du?'));
+    navneFormular(rod, opt, '', 'Gem på listen', async n => {
       const svar = await send(spil, n, score);
       navn.gem(n);
-      tegnListe(rod, svar.liste, svar.id,
-        svar.placering === 1 ? 'Du er nr. 1!' : svar.placering ? 'Gemt som nr. ' + svar.placering : 'Gemt', format);
-      if (opt.onGemt) opt.onGemt(svar.placering);
-    } catch (err) {
-      gem.disabled = false; status.textContent = 'Kunne ikke gemme – prøv igen.';
-    }
-  });
+      faerdig(svar, n);
+    });
+    return;
+  }
+
+  // Navnet er kendt: gem med det samme.
+  rod.innerHTML = '';
+  rod.appendChild(el('p', 'hs-venter', 'Gemmer på toplisten…'));
+  try { faerdig(await send(spil, kendt, score), kendt); }
+  catch (e) { tegnFejl(rod, 'Kunne ikke gemme på toplisten.'); }
 }
 
 /* ---------- Standard-stil (kan overstyres af spillets CSS) ---------- */
@@ -171,10 +237,12 @@ const css = `
 .hs-input::placeholder{color:var(--muted,#aaa);font-weight:500}
 .hs-status,.hs-venter,.hs-tom,.hs-fejl{color:var(--muted,#aaa);font-size:15px;margin:6px 0 0;min-height:1.2em}
 .hs-fejl{color:var(--coral,#ff5c7a)}
+.hs-skift{display:block;margin:6px auto 0;background:none;border:0;color:var(--muted,#aaa);font:inherit;font-size:14px;
+  text-decoration:underline;padding:8px 12px;min-height:36px;cursor:pointer}
 `;
 const style = document.createElement('style');
 style.textContent = css;
 document.head.appendChild(style);
 
-window.Highscore = { hent, send, kvalificerer, tegnListe, tegnFejl, panel, navn, LAENGDE };
+window.Highscore = { hent, send, omdoeb, kvalificerer, tegnListe, tegnFejl, panel, navn, LAENGDE };
 })();

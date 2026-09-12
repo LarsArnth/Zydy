@@ -19,15 +19,24 @@ page.on('console', m => {
 
 // Mock af højscore-API'et: starter med en fuld top 10 (scores 200..191), så score 4 ikke kvalificerer.
 let liste = Array.from({ length: 10 }, (_, i) => ({ id: 100 + i, navn: 'Spiller ' + (i + 1), score: 200 - i, oprettet: '2026-09-12T10:00:00.000Z' }));
-const sendte = [];
+const sendte = [], rettede = [];
 await page.route('**/api/highscore/**', async route => {
   const req = route.request();
   if (req.method() === 'POST') {
     const krop = req.postDataJSON(); sendte.push(krop);
-    const ny = { id: 999, navn: krop.navn, score: krop.score, oprettet: '2026-09-12T12:00:00.000Z' };
+    const id = 1000 + sendte.length;
+    const ny = { id, navn: krop.navn, score: krop.score, oprettet: '2026-09-12T12:00:00.000Z' };
     liste = [...liste, ny].sort((a, b) => b.score - a.score || a.oprettet.localeCompare(b.oprettet)).slice(0, 10);
-    const idx = liste.findIndex(r => r.id === 999);
-    return route.fulfill({ json: { ok: true, id: 999, placering: idx === -1 ? null : idx + 1, liste } });
+    const idx = liste.findIndex(r => r.id === id);
+    return route.fulfill({ json: { ok: true, id, token: 'tok' + id, placering: idx === -1 ? null : idx + 1, liste } });
+  }
+  if (req.method() === 'PATCH') {
+    const id = Number(new URL(req.url()).pathname.split('/').pop());
+    const krop = req.postDataJSON(); rettede.push({ id, ...krop });
+    const r = liste.find(x => x.id === id);
+    if (!r || krop.token !== 'tok' + id) return route.fulfill({ status: 403, json: { ok: false, fejl: 'Forkert token' } });
+    r.navn = krop.navn;
+    return route.fulfill({ json: { ok: true, id, placering: liste.indexOf(r) + 1, liste } });
   }
   return route.fulfill({ json: { spil: 'taarn', liste } });
 });
@@ -129,7 +138,7 @@ await page.waitForSelector('#overScreen.on', { timeout: 4000 });
 assert.equal(await page.locator('#overScore').textContent(), '2');
 assert.equal(await page.locator('#rekord.on').count(), 0, 'ikke personlig rekord (best er 4)');
 await page.waitForSelector('#hs .hs-form');
-assert.ok((await page.locator('#hs .hs-titel').textContent()).includes('toplisten'), 'forklarer at man er på listen');
+assert.equal(await page.locator('#hs .hs-titel').textContent(), 'Du er på toplisten – hvad hedder du?', 'første gang spørges om navn');
 const input = page.locator('#hs .hs-input');
 assert.equal(await input.inputValue(), '', 'intet navn husket endnu');
 await input.fill('Sofie');
@@ -142,18 +151,55 @@ await page.waitForSelector('#hs .hs-mig');
 assert.deepEqual(sendte, [{ navn: 'Sofie', score: 2 }], 'navn og score sendt til API\'et');
 assert.equal(await page.locator('#hs .hs-mig .hs-navn').textContent(), 'Sofie');
 assert.equal(await page.locator('#hs .hs-mig .hs-nr').textContent(), '4', 'nr. 4 efter de tre på 200, 199, 198');
-assert.equal(await page.locator('#hs .hs-titel').textContent(), 'Gemt som nr. 4');
+assert.equal(await page.locator('#hs .hs-titel').textContent(), 'Sofie, du er nr. 4!');
 assert.equal(await page.locator('#hs .hs-raekke').count(), 4);
 assert.equal(await page.evaluate(() => localStorage.getItem('zydy.navn')), 'Sofie', 'navnet huskes til næste gang');
+assert.equal(await page.locator('#hs .hs-skift').textContent(), 'Ikke Sofie, der spiller?');
 await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/taarn-topliste.png' });
 
-// Genindlæs: best læses fra localStorage; "Topliste" på startskærmen viser listen (nu 4 rækker)
+// Runde 3: navnet er kendt → score 3 gemmes automatisk uden formular
+await page.getByRole('button', { name: 'Spil igen' }).click();
+await page.waitForFunction(() => window.GAME.state.running);
+await page.waitForTimeout(200);
+for (let i = 0; i < 3; i++) {
+  await page.evaluate(() => {
+    const s = window.GAME.state, top = s.blocks[s.blocks.length - 1];
+    window.GAME.setMovingX(top.x);
+    window.GAME.drop();
+  });
+}
+await miss();
+await page.waitForSelector('#overScreen.on', { timeout: 4000 });
+await page.waitForSelector('#hs .hs-skift');
+assert.equal(await page.locator('#hs .hs-form').count(), 0, 'ingen formular når navnet er kendt');
+assert.deepEqual(sendte[1], { navn: 'Sofie', score: 3 }, 'gemt automatisk under det huskede navn');
+assert.equal(await page.locator('#hs .hs-titel').textContent(), 'Sofie, du er nr. 4!');
+assert.equal(await page.locator('#hs .hs-mig .hs-score').textContent(), '3');
+assert.equal(await page.locator('#hs .hs-raekke').count(), 5);
+
+// "Ikke Sofie, der spiller?" → nyt navn rettes på den netop gemte række (PATCH med token)
+await page.locator('#hs .hs-skift').click();
+await page.waitForSelector('#hs .hs-form');
+assert.equal(await page.locator('#hs .hs-titel').textContent(), 'Hvad hedder du så?');
+assert.equal(await page.locator('#hs .hs-input').inputValue(), '', 'feltet er tomt, så man ikke skal slette det gamle navn');
+await page.locator('#hs .hs-input').fill('Simon');
+await page.getByRole('button', { name: 'Skift navn' }).click();
+await page.waitForSelector('#hs .hs-mig');
+assert.deepEqual(rettede, [{ id: 1002, navn: 'Simon', token: 'tok1002' }], 'PATCH med rækkens token');
+assert.equal(await page.locator('#hs .hs-mig .hs-navn').textContent(), 'Simon');
+assert.equal(await page.locator('#hs .hs-titel').textContent(), 'Simon, du er nr. 4!');
+assert.equal(await page.evaluate(() => localStorage.getItem('zydy.navn')), 'Simon', 'det nye navn huskes');
+assert.equal(await page.locator('#hs .hs-skift').textContent(), 'Ikke Simon, der spiller?');
+assert.equal(await page.locator('#hs .hs-raekke').count(), 5, 'stadig fem rækker');
+
+// Genindlæs: best læses fra localStorage; "Topliste" på startskærmen viser listen (nu 5 rækker) med egne rækker fremhævet
 await page.reload();
 assert.equal(await page.locator('#bestPill').textContent(), 'Bedste: 4');
 await page.getByRole('button', { name: 'Topliste' }).click();
 await page.waitForSelector('#listScreen.on .hs-liste');
-assert.equal(await page.locator('#hsListe .hs-raekke').count(), 4);
+assert.equal(await page.locator('#hsListe .hs-raekke').count(), 5);
 assert.equal(await page.locator('#hsListe .hs-form').count(), 0, 'ingen formular uden score');
+assert.deepEqual(await page.locator('#hsListe .hs-mig .hs-navn').allTextContents(), ['Simon'], 'egen række fremhæves efter navn');
 await page.getByRole('button', { name: 'Tilbage' }).click();
 assert.ok(await page.locator('#startScreen.on').isVisible(), 'tilbage på startskærmen');
 
