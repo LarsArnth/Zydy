@@ -25,6 +25,7 @@ export const KORT = [
   { id: 'slotskamp', navn: 'Slotskamp', url: '/spil/slotskamp/' },
   { id: 'weee', navn: 'Weeee!', url: '/spil/weee/' },
   { id: 'legebyen', navn: 'Legebyen', url: '/spil/legebyen/' },
+  { id: 'mitliv', navn: 'Mit liv', url: '/spil/mitliv/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -49,6 +50,7 @@ export const SPIL = {
   blokblast: { maks: 200000, unik: true },
   slotskamp: { maks: 200, unik: true },
   weee: { maks: 20000, unik: true },
+  mitliv: { maks: 1000000, unik: true },
 };
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).

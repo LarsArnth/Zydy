@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 24,
+      "dato": "2026-09-13",
+      "spil": "mitliv",
+      "titel": "Mit liv – lev et helt liv i dit eget hus",
+      "hvad": "Selma ønskede sig The Sims, og nu er det her: lav din egen figur, flyt ind i huset og hold styr på seks ting — mæt, energi, toilet, ren, sjov og selskab. Tryk på et møbel, så går figuren selv derhen og bruger det. Om morgenen kører bussen på arbejde, og jo bedre du har det, når du tager af sted, jo mere får du i løn og jo hurtigere bliver du forfremmet — helt fra avisbud til astronaut. Pengene bruger du i byg-tilstand, hvor du kan købe, flytte og sælge 20 slags møbler; en potteplante eller en lampe gør huset hyggeligere, og det kan mærkes på humøret. Ringer du fra telefonen, kommer der en ven på besøg. Og når du ikke når på toilettet i tide … så er der noget at tørre op. Toplisten måler din formue: pengene plus alt det, huset er fyldt med.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 23,
       "dato": "2026-09-13",
       "spil": "obby",
