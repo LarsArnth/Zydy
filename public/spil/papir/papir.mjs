@@ -20,6 +20,11 @@
 //      blive længe nok ude til, at sløjfen bliver stor.
 //   3) Mister man hele sit område, er man ude. Ellers ville en spiller uden
 //      hjem køre rundt for evigt uden nogensinde at kunne lukke en sløjfe.
+//
+// Spiller to venner sammen på hver sin telefon (sammen.mjs), er der to små
+// undtagelser: vennens klat er `fjern` og flyttes ikke herinde – den kommer fra
+// rummet – og i `sammen` slutter runden ikke, når man ryger ud; man kommer igen
+// som modstanderne gør.
 
 /* ---------- Tal man kan skrue på ---------- */
 export const N = 40;                 // papiret er N × N felter
@@ -39,6 +44,8 @@ export const modsat = d => (d + 2) % 4;
 export const drej = (d, v) => (d + v + 4) % 4;
 
 export const MIN_FARVE = '#18c98a';
+/** Vennens klat, når to spiller sammen. Hver ser sig selv som den grønne. */
+export const VEN_FARVE = '#ff8f3a';
 /** Modstanderne. `aggro` er chancen for, at en tur ud bliver en jagt på en fremmed streg. */
 export const BOTTER = [
   { navn: 'Bo', farve: '#ff4d5e', aggro: 0.05 },
@@ -63,35 +70,52 @@ function lavSpiller(id, navn, bot, fart, farve, aggro) {
     id, navn, farve,
     mig: id === 1,           // mennesket – ikke det samme som !bot: testen lader botten styre spilleren
     bot: !!bot,
+    fjern: false,            // vennens klat, når to spiller sammen: den styres fra rummet
     fart, aggro: aggro || 0,
     cx: 0, cy: 0, dir: 0, næste: null, t: 0,
     ude: false,              // er jeg ude fra mit eget område (og altså sårbar)?
     streg: [],               // felterne i stregen, i den rækkefølge de blev lagt
     levende: true, genfoedes: 0,
     felter: 0, bedste: 0, drab: 0, sløjfer: 0,
+    doede: 0, sidsteGrund: null, sidsteAf: 0,   // hvor mange gange og hvordan man røg ud
     // Bottens plan: ud i `maal` felter, om ad siden i `sideMaal`, og så hjem.
     fase: 'hjem', iFase: 0, maal: 4, sideMaal: 3, dreje: 1, jagt: false, jagtTilbage: 0,
   };
 }
 
-/** Et friskt stykke papir med spilleren og `bots` modstandere. */
-export function nyBane({ seed = 1, bots = 3, navn = 'Dig' } = {}) {
+/**
+ * Et friskt stykke papir med spilleren og `bots` modstandere.
+ *
+ * `ven` er navnet på en ven, man spiller sammen med: så er der ingen bots, og
+ * klat nr. 2 er vennens – den flyttes ikke her, men af sammen.mjs. `vaert`
+ * siger, om det er mig, der inviterede; de to klatter skal placeres i den samme
+ * rækkefølge på begge telefoner, ellers bytter de plads på papiret.
+ */
+export function nyBane({ seed = 1, bots = 3, navn = 'Dig', ven = null, vaert = true } = {}) {
   const s = {
     seed: seed >>> 0,
     r: mulberry32(seed >>> 0),
     ejer: new Int8Array(FELTER),      // 0 = tomt papir, ellers spillerens id
     spor: new Int8Array(FELTER),      // 0 = ingen streg, ellers stregens ejer
     spillere: [],
+    sammen: !!ven,                    // to venner på det samme papir
     t: 0,
     slut: null,                       // null | 'doed' | 'vundet'
     grund: null,                      // 'mur' | 'egen' | 'ramt' | 'overtaget'
   };
   s.spillere.push(lavSpiller(1, navn, false, FART, MIN_FARVE, 0));
-  for (let i = 0; i < bots && i < BOTTER.length; i++) {
-    const b = BOTTER[i];
-    s.spillere.push(lavSpiller(i + 2, b.navn, true, BOT_FART[i], b.farve, b.aggro));
+  if (ven) {
+    const v = lavSpiller(2, ven, false, FART, VEN_FARVE, 0);
+    v.fjern = true;
+    s.spillere.push(v);
+  } else {
+    for (let i = 0; i < bots && i < BOTTER.length; i++) {
+      const b = BOTTER[i];
+      s.spillere.push(lavSpiller(i + 2, b.navn, true, BOT_FART[i], b.farve, b.aggro));
+    }
   }
-  for (const p of s.spillere) saetBase(s, p);
+  const orden = ven && !vaert ? [s.spillere[1], s.spillere[0]] : s.spillere;
+  for (const p of orden) saetBase(s, p);
   return s;
 }
 
@@ -165,8 +189,9 @@ export function tik(s, dt) {
   if (s.slut) return h;
   s.t += dt;
   for (const p of s.spillere) {
+    if (p.fjern) continue;                         // vennens klat kommer fra rummet, ikke herfra
     if (!p.levende) {
-      if (!p.bot) continue;                        // mennesket kommer ikke igen – runden er slut
+      if (!p.bot && !s.sammen) continue;           // mennesket kommer ikke igen – runden er slut
       p.genfoedes -= dt;
       if (p.genfoedes <= 0) {
         if (saetBase(s, p)) h.push({ slags: 'genfoedt', id: p.id });
@@ -195,7 +220,13 @@ export function skridt(s, p, h = []) {
 
   const streg = s.spor[i];
   if (streg === p.id) { doed(s, p, 'egen', h, null); return h; }
-  if (streg) doed(s, s.spillere[streg - 1], 'ramt', h, p);
+  if (streg) {
+    const offer = s.spillere[streg - 1];
+    // Vennens streg må jeg ikke dømme over: hans telefon ved bedst, om stregen
+    // stadig var der. Jeg *kræver* ham ude, og han svarer selv (sammen.mjs).
+    if (offer.fjern) h.push({ slags: 'krav', id: offer.id, felt: i, af: p.id });
+    else doed(s, offer, 'ramt', h, p);
+  }
 
   if (s.ejer[i] === p.id) {
     if (p.ude) {
@@ -256,14 +287,19 @@ export function erobre(s, p, h = []) {
   taelFelter(s);
 
   // Tog jeg hele nogens område, er de ude – ellers kørte de rundt uden et hjem
-  // at lukke sløjfen i.
-  for (const q of s.spillere) if (q !== p && q.levende && q.felter === 0) doed(s, q, 'overtaget', h, p);
+  // at lukke sløjfen i. Vennen opdager det selv på sin egen telefon.
+  for (const q of s.spillere) {
+    if (q !== p && q.levende && q.felter === 0 && !q.fjern) doed(s, q, 'overtaget', h, p);
+  }
   return vundet;
 }
 
-/** Ude: stregen og hele området forsvinder fra papiret. */
-function doed(s, p, grund, h, af) {
-  if (!p.levende) return;
+/**
+ * Ude: stregen og hele området forsvinder fra papiret. Spiller man sammen med
+ * en ven, er runden ikke forbi af den grund – man kommer igen som modstanderne.
+ */
+export function doed(s, p, grund, h = [], af = null) {
+  if (!p.levende) return h;
   p.levende = false;
   p.genfoedes = RESPAWN;
   p.ude = false;
@@ -271,9 +307,13 @@ function doed(s, p, grund, h, af) {
   p.streg.length = 0;
   for (let i = 0; i < FELTER; i++) if (s.ejer[i] === p.id) s.ejer[i] = 0;
   if (af) af.drab++;
+  p.doede++;
+  p.sidsteGrund = grund;
+  p.sidsteAf = af ? af.id : 0;
   taelFelter(s);
   h.push({ slags: 'doed', id: p.id, grund, af: af ? af.id : 0 });
-  if (p.mig) { s.slut = 'doed'; s.grund = grund; }
+  if (p.mig && !s.sammen) { s.slut = 'doed'; s.grund = grund; }
+  return h;
 }
 
 /* ---------- Modstanderne ---------- */

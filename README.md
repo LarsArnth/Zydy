@@ -45,7 +45,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Weeee! | `public/spil/weee/` | Selmas ønske, der bare lød «Weeee» – lyden man laver, når det går stærkt ned ad bakke. Det er blevet til en kælketur ned ad en uendelig bjergside med ét eneste tryk: holder man fingeren nede, trykker man sig ned i sneen og får mere fart, men klæber også fast; slipper man på kanten af en bølge, letter man og flyver. I luften dykker man ved at holde igen, så man kan lande parallelt med bakken og beholde farten – en landing på tværs koster det meste. Bagved kommer en lavine, der bliver hurtigere for hvert sekund, så den eneste vej er fremad. Den gule streg på sneen viser, hvor man ville lette lige nu, og HUD'en siger hvad fingeren skal. Score = meter, online topliste. To filer: `bakke.mjs` (bakke, fysik og lavine, enhedstestet) og `index.html`. Se «Weeee! – det ene tryk og bjerget» nedenfor. |
 
 | Legebyen | `public/spil/legebyen/` | Selmas ønske om «Toca boca»: et dukkehus med fem rum – stuen, køkkenet, badeværelset, butikken og legepladsen – og seks figurer (fem børn og voksne plus hunden Vaks), man trækker rundt med fingeren. Slipper man en ved sofaen, badekarret, gyngen eller rutsjebanen, sætter den sig. Fra bakken nederst tager man ting frem: mad der bliver spist, hatte og solbriller der bliver taget på, og legetøj figuren holder i hånden. Møblerne kan man trykke på – køleskabet giver mad, komfuret en pizza, fjernsynet og bruseren tænder, kassen i butikken sælger, gyngen svinger. Ting man trykker på, ryger i **tasken** og kan komme med ind i et andet rum, og hver figur kan klædes på med hud, frisure, hårfarve, trøje og bukser. **Ingen point og ingen måde at tabe på** – det er fri leg, og byen står, som man forlod den. To filer: `by.mjs` (rum, figurer, ting og hvad der sker, når de mødes, enhedstestet) og `index.html`. Se «Legebyen – dukkehuset» nedenfor. |
-| Papirøen | `public/spil/papir/` | Selmas ønske om «Papir io 2»: et stort stykke ternet papir, hvor fire klatter farver hver sit område. Kører man ud fra sit eget, trækker man en streg efter sig – og kommer man hjem igen, bliver hele sløjfen ens, også det, en anden havde farvet inde i den. Men mens man er ude, er man i fare: kører Bo, Ida eller Mikkel over stregen, ryger man ud, og hele området forsvinder fra papiret. Det gælder begge veje, så man kan tage dem på deres streg – og tager man hele deres område, er de også ude. Kanten af papiret er lige så farlig. Man styrer med et lille joystick (træk fingeren dén vej, man vil køre), og minikortet i hjørnet viser hele papiret. Score = den største del af papiret, man nåede at have, i hele procent. To filer: `papir.mjs` (papiret, sløjfen og modstanderne, enhedstestet) og `index.html`. `?bots=0` giver papiret for sig selv. Se «Papirøen – sløjfen og de tre modstandere» nedenfor. |
+| Papirøen | `public/spil/papir/` | Selmas ønske om «Papir io 2»: et stort stykke ternet papir, hvor fire klatter farver hver sit område. Kører man ud fra sit eget, trækker man en streg efter sig – og kommer man hjem igen, bliver hele sløjfen ens, også det, en anden havde farvet inde i den. Men mens man er ude, er man i fare: kører Bo, Ida eller Mikkel over stregen, ryger man ud, og hele området forsvinder fra papiret. Det gælder begge veje, så man kan tage dem på deres streg – og tager man hele deres område, er de også ude. Kanten af papiret er lige så farlig. Man styrer med et lille joystick (træk fingeren dén vej, man vil køre), og minikortet i hjørnet viser hele papiret. Score = den største del af papiret, man nåede at have, i hele procent. `papir.mjs` (papiret, sløjfen og modstanderne) er enhedstestet. `?bots=0` giver papiret for sig selv. **Kan også spilles sammen med en ven**, én på hver telefon, på det samme stykke papir – se [Spil sammen](#spil-sammen) og [Papirøen sammen](#papir-sammen). Tre filer: `papir.mjs`, `sammen.mjs` (de to venner, enhedstestet) og `index.html`. Se «Papirøen – sløjfen og de tre modstandere» nedenfor. |
 | Fiskedybet | `public/spil/fisk/` | Timos ønske om «Fish It: Abyss»: en lille båd, fem farvande og en fiskebog, der skal fyldes. Man kaster snøren, og når der hugger, løber en viser frem og tilbage over en bar – et tryk tæller kun i det grønne felt, og store fisk kræver flere rammere og tåler færre forbiere. Fangsten sejles hjem til havnen og sælges, og pengene går til snøren (åbner et farvand mere), stangen (bredere felt), skroget (flere hjerter) og kølerummet (større last). Solskinshavet er trygt; i Hajvandet, Dybhavet, Afgrunden og Tomrummet hugger der ét uhyre hvert sted, og så skal man vælge: klippe snøren, eller tage kampen – taber man, eller når man ikke at bestemme sig, tager det en bid af båden. Går skroget i nul, bliver man slæbt i havn og mister lasten, men aldrig fiskebogen. Score = antal arter i bogen, online topliste. To filer: `hav.mjs` (farvande, dyr, kamp, økonomi og det gemte spil, enhedstestet) og `index.html`. Se «Fiskedybet – baren, farvandene og uhyrerne» nedenfor. |
 | Mit liv | `public/spil/mitliv/` | Selmas ønske om «The Sims»: et helt liv i ét hus, set oppefra. Man laver sin egen figur (hud, frisure, hårfarve, trøje, bukser), flytter ind med 600 kr. og fire møbler, og passer seks behov – mæt, energi, toilet, ren, sjov og selskab – der siver nedad, mens spiluret går (ét rigtigt sekund = fem spilminutter). Man trykker på et møbel, og figuren går selv derhen og bruger det, til behovet er fyldt. Om morgenen kører bussen på arbejde: man er væk i seks spiltimer og kommer hjem med løn, der følger humøret, og stjerner mod en forfremmelse – fra avisbud til astronaut i otte trin. Pengene bruges i **byg-tilstand**, hvor 20 møbler kan købes, flyttes og sælges for det halve. Når toilettet ikke kan vente, kommer der en pyt på gulvet, man skal tørre op, og telefonen henter en ven på besøg. Score = **formuen** (penge + alt i huset), online topliste. To filer: `liv.mjs` (behov, veje, møbler og arbejde, enhedstestet) og `index.html`. Se «Mit liv – huset, behovene og arbejdet» nedenfor. |
 
@@ -53,7 +53,7 @@ Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee! og Papirøen — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp og Weeee! — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -415,7 +415,8 @@ alle de andre ([se nedenfor](#kaploeb)) — det er den, der gør, at man kan joi
 hinanden i næsten alle spil uden at skulle skrive netværkskode i hvert enkelt.
 
 Trykker man på en ven, står der en knap pr. spil, to kan spille sammen — i dag
-**«🎮 Spil Kryds og bolle sammen»** og **«🎮 Spil Dybet sammen»**. Så laves
+**«🎮 Spil Kryds og bolle sammen»**, **«🎮 Spil Dybet sammen»** og
+**«🎮 Spil Papirøen sammen»**. Så laves
 der et *rum*, man selv sendes ind i (`/spil/kryds/?rum=K7QFD`), og vennen får
 invitationen øverst på forsiden: «Sofie vil spille Kryds og bolle med dig» med
 knappen **«Hop med!»**. Begge lander i det samme spil på hver sin telefon: den
@@ -471,8 +472,8 @@ pille øverst på skærmen hele tiden:
 
 Den **bedste runde** tæller, man må spille så mange runder man vil, og trykker
 man på pillen, folder hele stillingen sig ud med «Stop kapløbet» og en vej hjem.
-Tolv spil er med: Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er lava,
-Klodser, Miskmask, Blokblast, Slotskamp, Weeee! og Papirøen.
+Elleve spil er med: Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er lava,
+Klodser, Miskmask, Blokblast, Slotskamp og Weeee!
 
 | Del | Fil | Hvad |
 |---|---|---|
@@ -517,8 +518,8 @@ Fire ting er værd at huske:
    den kører spillet præcis som før. Stopper man kapløbet, fjernes `?rum=` fra
    adressen, så en genindlæsning bare er det almindelige spil.
 
-Ikke alle spil er med, og det er med vilje: Kryds og bolle og Dybet deler et
-rigtigt parti (bedre end et kapløb), Helteriget og Stenalder er hot-seat for to
+Ikke alle spil er med, og det er med vilje: Kryds og bolle, Dybet og Papirøen
+deler et rigtigt parti (bedre end et kapløb), Helteriget og Stenalder er hot-seat for to
 på én iPad, Ordstige har én opgave om dagen, Min kat er en killing, der vokser
 over uger, og Legebyen er fri leg — ingen af dem har en «runde», man kan måle
 mod hinanden.
@@ -1019,6 +1020,68 @@ kanten, der tog en – og ikke Bo.
 Test: `test/papir.test.mjs` (en rigtig finger, der drejer klatten, en sløjfe der
 farver, og en hel runde med botten ved rattet) + `test/unit/papir.test.mjs`.
 
+<a id="papir-sammen"></a>
+
+### Papirøen sammen — to venner på det samme stykke papir
+
+Papirøen kan spilles af to venner på hver sin telefon: de er på det *samme*
+papir, ser hinandens klat og streg, kan tage hinandens område — og klippe
+hinandens streg over. Reglerne ligger i `public/spil/papir/sammen.mjs` (ren JS,
+enhedstestet i `test/unit/papir-sammen.test.mjs`) oven på den almindelige
+`papir.mjs`.
+
+Det er det første «sammen»-spil, der ikke er turbaseret, og dét er hele
+udfordringen: rummet (`public/spil/rum.js`) henter og skriver et par gange i
+sekundet, så vennens klat er altid omkring et sekund bagud. Reglerne er skruet
+sammen, så de kan holde til det:
+
+1. **Hver telefon passer sin egen klat.** Min position, min streg, mit område og
+   mit liv regnes her; vennens kommer færdigt fra rummet (`ven.fjern`, som
+   `tik()` går uden om). Så er der aldrig to, der bestemmer det samme.
+2. **Papiret sendes som *ændringer*, ikke som et facit.** Vennens felter kommer
+   som en maske med ét bit pr. felt, men kun det, der er *kommet til* siden
+   sidst, farves — også hvis feltet var mit. Så vinder den nyeste sløjfe, uden
+   at de to skal blive enige om et ur, og de to skærme ender det samme sted
+   (enhedstesten kører seks runder og kræver, at alle 1600 felter passer).
+3. **Et drab er et krav, ikke en dom.** Kører jeg over vennens streg, ser jeg
+   kun den streg, hans telefon sendte for et sekund siden. Derfor rejser jeg et
+   *krav* (`{slags: 'krav', felt}`), og hans telefon svarer: lå feltet stadig i
+   hans streg, ryger han ud — var han nået hjem, sker der ingenting. Man kan
+   altså ikke klippe det allersidste stykke af en streg, men man bliver til
+   gengæld aldrig taget for en streg, man for længst har lukket.
+4. **Papiret genereres, det sendes ikke.** Frøet er `froe(rumkode, runde)`, så
+   begge telefoner ruller det samme papir ud. Klatterne placeres i rollernes
+   rækkefølge (`nyBane({ven, vaert})`) — ellers bytter de to plads, fordi man på
+   sin egen telefon altid er nr. 1 og den grønne.
+
+Runden varer **to minutter** (`TID`), og den med mest papir til sidst har
+vundet. Ryger man ud, er runden ikke forbi: man kommer igen efter to sekunder
+som modstanderne gør i enkeltmandsspillet — ellers sad den ene og kiggede på i
+halvandet minut. Til gengæld koster det hele området, så et drab er stadig det
+værste, der kan ske. Begge venter på vennens sidste tal, før resultatet skrives
+(højst otte sekunder), så de to skærme siger det samme. Toplisten er den
+samme som ellers: den største del af papiret, man nåede at have.
+
+**Der er ingen bots med, når to spiller sammen.** De skulle simuleres på begge
+telefoner, og eftersom de reagerer på begge spilleres streger, ville de to
+udgaver drive fra hinanden i løbet af få sekunder.
+
+Hele stillingen fylder omkring 1200 tegn (rummet har 4000): området er 267 tegn,
+og stregen er sin længde, sit startfelt og så to bit pr. skridt — rækkefølgen
+skal med, ellers er det en sky af felter og ikke en streg.
+
+Papirøen er **ikke** længere et [kapløb](#kaploeb). Deler man et rigtigt papir,
+er det bedre end at spille hver for sig, og `"sammen"` og `"kapløb"` kan ikke
+være tændt samtidig: så ville forsiden tilbyde begge dele, og `?rum=`-koden
+kunne betyde to ting.
+
+Test: `test/papir-sammen.test.mjs` (repoets femte to-browser-test: Sofie
+inviterer, begge farver papir, Selma klipper Sofies streg over og får sit drab,
+uret løber ud, og de to skærme er enige om, hvem der vandt) +
+`test/unit/papir-sammen.test.mjs`. Testen kører med `?frys=1`, som lader papiret
+stå stille, til `GAME.frem()` kaldes — to browsere kan ikke spille et rigtigt
+sekund i takt, men rummet kører imens, og det er dét, der skal prøves.
+
 <a id="fiskedybet"></a>
 
 ### Fiskedybet – baren, farvandene og uhyrerne
@@ -1152,7 +1215,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Fiskedybets farvande, kamp og økonomi, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om
@@ -1193,9 +1256,9 @@ kælenavn, fjern en ven — den anden part spilles af testen selv gennem
 `test/nyheder.test.mjs` («Nyt på Zydy», hvor en ekstra nyhed serveres gennem
 `page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til),
 `test/beskeder.test.mjs` («skriv med en ven») og
-`test/rum.test.mjs` («spil sammen»). De to sidste er blandt repoets fire tests
-med **to browsere** (de andre er `test/dybet-sammen.test.mjs` og
-`test/kaploeb.test.mjs`): Sofie og Selma har
+`test/rum.test.mjs` («spil sammen»). De to sidste er blandt repoets fem tests
+med **to browsere** (de andre er `test/dybet-sammen.test.mjs`,
+`test/papir-sammen.test.mjs` og `test/kaploeb.test.mjs`): Sofie og Selma har
 hver sit vindue med sit eget `localStorage`, men deler API'et
 (`mockApi(side, { delMed: api })`), så et helt parti Kryds og bolle — eller en
 tur ned i Dybet — kan spilles på tværs af to telefoner, præcis som i drift.

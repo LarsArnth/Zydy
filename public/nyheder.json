@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 29,
+      "dato": "2026-09-13",
+      "spil": "papir",
+      "titel": "Papirøen: spil på det samme papir som din ven",
+      "hvad": "Selma ville gerne spille sammen i Papirøen, og nu kan to venner være på det samme stykke papir, én på hver telefon. Tryk på din ven på forsiden og vælg «Spil Papirøen sammen» — så får hen en invitation, og I ruller det samme papir ud. Du er den grønne, din ven er den orange, og I kan se hinandens klat og streg hele tiden. Alt tæller: kører du en sløjfe om noget af din vens område, bliver det dit, og kører du hen over vennens streg, mens hen er ude, ryger hen ud og mister det hele. Det gælder også den anden vej, så pas på din egen streg! Ryger du ud, er det ikke slut — du kommer igen om lidt på et frit stykke papir. Runden varer to minutter, og den, der har mest papir, når uret er i bund, har vundet. Til gengæld er Bo, Ida og Mikkel ikke med, når I spiller sammen: dér er I to om papiret.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 28,
       "dato": "2026-09-13",
       "spil": "fisk",

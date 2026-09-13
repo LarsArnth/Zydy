@@ -61,9 +61,9 @@ export const SPIL = {
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).
  *  src/rum.mjs bruger listen, og forsiden kender dem på data-sammen på kortet. */
-export const SAMMEN = ['dybet', 'kryds'];
+export const SAMMEN = ['dybet', 'kryds', 'papir'];
 
 /** Spil to venner kan tage et kapløb i: samme spil, hver sin telefon, bedste
  *  runde vinder ("kapløb": true i kort.json). Forsiden kender dem på
  *  data-kaploeb, og de må inviteres til gennem /api/rum ligesom SAMMEN. */
-export const KAPLOEB = ['taarn', 'saet', 'farvesortering', 'duel', 'obby', 'lava', 'klodser', 'miskmask', 'blokblast', 'slotskamp', 'weee', 'papir'];
+export const KAPLOEB = ['taarn', 'saet', 'farvesortering', 'duel', 'obby', 'lava', 'klodser', 'miskmask', 'blokblast', 'slotskamp', 'weee'];
