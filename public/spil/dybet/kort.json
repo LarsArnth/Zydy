@@ -1,8 +1,9 @@
 {
   "navn": "Dybet",
-  "beskrivelse": "Dungeon crawler i gammeldags 3D: udforsk labyrinten, find skatte, slå monstre i turbaseret kamp. Hvor dybt tør du gå?",
+  "beskrivelse": "Dungeon crawler i gammeldags 3D: udforsk labyrinten, find skatte, slå monstre i turbaseret kamp. Alene eller sammen med en ven. Hvor dybt tør I gå?",
   "url": "/spil/dybet/",
   "orden": 110,
+  "sammen": true,
   "højscore": {
     "maks": 500
   }

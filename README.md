@@ -18,8 +18,8 @@ og [venner](#venner).
 ## Spil der bor her
 
 Ud over links til de andre apps huser repoet sytten spil under `public/spil/<navn>/`
-uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder og Dybet, der er tre,
-og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask, Blokblast, Slotskamp og Weeee!, der er to). De udrulles sammen
+uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask, Blokblast, Slotskamp og Weeee!, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -31,7 +31,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Duel | `public/spil/duel/` | To spillere på én telefon, skærmen delt i to: fem reflex-minispil, først til 3/5/10 point. Kan også spilles **alene mod botten** i tre sværhedsgrader – så vendes den øverste halvdel rigtigt, og man holder fingrene fra den. Bottens hoved bor i `bot.mjs` (enhedstestet). Online topliste: hurtigste reaktion i «Grønt lys», målt fra skærmen bliver grøn til trykket lander (under 80 ms tæller ikke) – bottens reaktioner tæller ikke med. |
 | Stenalder | `public/spil/stenalder/` | Hot-seat-udgave af brætspillet Stone Age for 2-4 spillere på én iPad. Tre filer uden build: `regler.mjs` (regelmotor, ren JS), `data.mjs` (kort og bygninger) og `index.html` (UI). Gemmer spillet i `localStorage`, så det kan genoptages. Online topliste: vinderens point, gemt under det navn spilleren selv skrev på startskærmen. |
 | Helteriget | `public/spil/helteriget/` | Deck-building-kortspil for to på én iPad (Hero Realms-mekanik, egne danske kort): 80 markedskort i fire fraktioner, helte med vagter, allierede og ofringer. Hot-seat med overleveringsskærm, så hænderne forbliver hemmelige; igangværende spil gemmes i `localStorage`. Online topliste: vundet på færrest ture. |
-| Dybet | `public/spil/dybet/` | Dungeon crawler i Wolfenstein-3D-stil (raycaster på canvas) med Pokémon-agtig turbaseret kamp. Procedurelt genererede labyrinter (altid en vej til trappen), monstre der står stille og spærrer gange, kister med udstyr, evner og potioner; minimap viser kun det udforskede. Spillet går selv, indtil vejen deler sig, og viser så flydende valgknapper. Score = dybde nået, online topliste. Tre filer: `motor.mjs` (regler, enhedstestet), `sprites.mjs` (pixel-art som tekst), `index.html`. |
+| Dybet | `public/spil/dybet/` | Dungeon crawler i Wolfenstein-3D-stil (raycaster på canvas) med Pokémon-agtig turbaseret kamp. Procedurelt genererede labyrinter (altid en vej til trappen), monstre der står stille og spærrer gange, kister med udstyr, evner og potioner; minimap viser kun det udforskede. Spillet går selv, indtil vejen deler sig, og viser så flydende valgknapper. Score = dybde nået, online topliste. **Kan også spilles sammen med en ven**, én på hver telefon — se [Spil sammen](#spil-sammen) og [Dybet sammen](#dybet-sammen). Fire filer: `motor.mjs` (regler, enhedstestet), `sammen.mjs` (to helte i den samme labyrint, enhedstestet), `sprites.mjs` (pixel-art som tekst), `index.html`. |
 | Kryds og bolle | `public/spil/kryds/` | Klassisk tre på stribe, hot-seat for to på samme skærm eller mod computeren i tre sværhedsgrader: Nem (spiller mest tilfældigt og overser trusler), Mellem (vinder og blokerer, men vælger hvert andet træk tilfældigt) og Svær (perfekt minimax – kan ikke slås). Startspilleren skifter for hvert parti, så begge får fordelen. **Kan også spilles mod en ven over nettet**, én på hver telefon — se [Spil sammen](#spil-sammen). To filer: `motor.mjs` (regler + computerspiller, enhedstestet) og `index.html`. Ingen topliste – der er ikke noget at måle i. |
 | Gulvet er lava | `public/spil/lava/` | Selmas idé: stuen set fra siden, hvor gulvet bliver til lava, og lavaen stiger nedefra. Man går til venstre og højre og hopper op ad sofaen, bordet, reolen, klaveret og flyttekasserne, mens de bliver smallere og længere fra hinanden. Trampolinpuffen skyder en ekstra højt op, flyttekasser styrter i lavaen kort efter man er landet på dem, og isterninger holder lavaen nede i tre sekunder. Score = hvor højt man nåede i meter, online topliste. To filer: `bane.mjs` (fysik og banegenerator, enhedstestet) og `index.html`. Se «Gulvet er lava – styring og bane» nedenfor. |
 | Obby | `public/spil/obby/` | One-button-platformspil på canvas: hop fra flyvende firkant til flyvende firkant med mellemrum eller et tryk. Rød laser på hver anden firkant, lava i bunden, checkpoint på hver femte, og TRY AGAIN når man dør. Banen er uendelig og genereres, så hvert spring kan nås (bot-testet i `test/obby.test.mjs`) — også ved den høje fart, for farten stiger, jo længere man kommer, og banen genereres ud fra netop den fart. Checkpointet har en høj flagstang (blå = ikke nået, grøn med flueben = nået), og både TRY AGAIN og «tryk for at starte» skriver hvilket checkpoint man fortsætter fra — før stod figuren oven på et lillebitte mærke, så det så ud som om checkpointet ikke gjorde noget. **Coins får man kun på checkpoints** (3 pr. nyt checkpoint, dvs. 3 for hver 5. firkant) og kan købe blandt 14 skins til højst 100 coins, nogle med hat; butikken kan åbnes midt i et løb og fryser spillet imens. Tallet 3 er valgt, så et godt løb til firkant 50 giver 30 coins og et langt løb til 100 giver 60: en dyr skin kan spares op på et par gode løb, men aldrig på ét. Score = hop i træk uden at dø (uafhængig af coins); navnet skrives på startskærmen, og en ny rekord ryger selv på toplisten. Øverst på startskærmen står **«Lavet af»** – Sofie fandt på spillet, Far og Claude byggede det – efter Sofies ønske om, at der skulle stå hvem der har lavet det. Den står lige under titlen og ikke nederst som en rulletekst: startskærmen er højere end en telefonskærm, så alt under Spil-knappen skal man rulle ned til. |
@@ -250,13 +250,14 @@ npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM venner 
 
 ### Spil sammen — venner kan joine hinanden
 
-Trykker man på en ven, står der **«🎮 Spil Kryds og bolle sammen»**. Så laves
+Trykker man på en ven, står der en knap pr. spil, to kan spille sammen — i dag
+**«🎮 Spil Kryds og bolle sammen»** og **«🎮 Spil Dybet sammen»**. Så laves
 der et *rum*, man selv sendes ind i (`/spil/kryds/?rum=K7QFD`), og vennen får
 invitationen øverst på forsiden: «Sofie vil spille Kryds og bolle med dig» med
-knappen **«Hop med!»**. Begge lander i det samme parti på hver sin telefon: den
-der inviterede er kryds og begynder, brættet er låst, når det ikke er ens tur,
-og trykker den ene «Nyt spil», får den anden det nye bræt med det samme. Går
-den ene, får den anden det at vide («Selma gik») i stedet for at sidde og vente.
+knappen **«Hop med!»**. Begge lander i det samme spil på hver sin telefon: den
+der inviterede er vært og begynder, man kan kun trykke, når det er ens tur, og
+starter den ene forfra, følger den anden med. Går den ene, får den anden det at
+vide («Selma gik») i stedet for at sidde og vente.
 
 | Del | Fil | Hvad |
 |---|---|---|
@@ -285,8 +286,50 @@ i `src/spil-data.mjs` og får `data-sammen` på kortet). Indlæs
 `<script src="/spil/rum.js"></script>` i spillet, og lad det hente rummet, når
 `Rum.kode()` giver en kode: tegn brættet efter `rum.tilstand`, send din egen
 stilling med `Rum.gem(kode, tilstand, version)`, og følg med i den andens træk
-med `Rum.foelg`. Kryds og bolle er forbilledet (`public/spil/kryds/index.html`,
-afsnittet «Spil sammen: rummet»).
+med `Rum.foelg`. Kryds og bolle er det enkle forbilledet
+(`public/spil/kryds/index.html`, afsnittet «Spil sammen: rummet»); Dybet viser,
+hvordan man gør det med et spil, der er alt for stort til at sende — se
+nedenfor.
+
+<a id="dybet-sammen"></a>
+
+### Dybet sammen — to helte i den samme labyrint
+
+Dybet kan spilles af to venner på hver sin telefon. Reglerne ligger i
+`public/spil/dybet/sammen.mjs` (ren JS, enhedstestet i
+`test/unit/dybet-sammen.test.mjs`) oven på den almindelige `motor.mjs`:
+
+- **Holdet går sammen.** Man skiftes til at vælge vej, hver gang vejen deler
+  sig; derimellem går spillet selv videre, præcis som når man spiller alene.
+- **I kamp skiftes man til at slå**, og monsteret slår igen på den, der lige
+  slog. Falder den ene, kæmper den anden videre og rejser makkeren op, når
+  kampen er slut. Går begge ned, er turen slut på den samme dybde.
+- **Erfaringen deles**: begge helte får den for hvert monster, også den der lå
+  ned. Kisternes indhold ryger derimod i tasken hos den, der åbnede dem — og
+  eftersom man skiftes, går det lige op.
+
+Fire ting er værd at huske:
+
+1. **Labyrinten sendes ikke — den genereres.** Rummet har plads til 4000 tegn,
+   og et helt Dybet-niveau er langt større. Men labyrinten kommer ud af ét tal,
+   så begge telefoner graver den samme ud af `seed` + dybden
+   (`dungeonFroe`). I rummet står kun det, der har flyttet sig: hvor holdet
+   står, monstrenes liv, hvilke kister der er åbnet, og de to heltes egne tal.
+   Dybt nede fylder stillingen omkring 1500 tegn.
+2. **Kampterningerne har deres eget frø.** Ellers ville labyrinten på næste
+   dybde afhænge af, hvor mange slag der blev byttet på denne — og de to
+   telefoner kaster ikke terningerne i samme rækkefølge. Kun den, det er tur
+   til, regner; resultatet sendes færdigt.
+3. **Den gåede vej følger med** (`spil.vej`: 0-3 = «gå ét felt den vej», 4-7 =
+   «drej på stedet»), så makkerens skærm animerer den samme tur ned ad gangen i
+   stedet for at hoppe. Uden den ville det se ud, som om man teleporterede.
+4. **Beskederne skrives om ved læsningen, ikke ved skrivningen.** Motoren siger
+   «Du angriber med kniv»; hændelsen får bare et `af: 'vaert'` med, og
+   `tekstFor()` gør den til «Sofie angriber med kniv» hos den, der ser med. Så
+   er der kun ét sæt tekster at vedligeholde.
+
+Test: `test/dybet-sammen.test.mjs` (to browsere, hele vejen fra invitationen på
+forsiden til en kamp, hvor begge slår) + `test/unit/dybet-sammen.test.mjs`.
 
 ### Feedback-loopet
 
@@ -561,7 +604,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
@@ -585,10 +628,11 @@ browser-tests: `test/forside.test.mjs` (navn, ønsker, «hvem er her»),
 den anden part spilles af testen selv gennem `api.venner`),
 `test/nyheder.test.mjs` («Nyt på Zydy», hvor en ekstra nyhed serveres gennem
 `page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til) og
-`test/rum.test.mjs` («spil sammen»). Den sidste er den eneste med **to
-browsere**: Sofie og Selma har hver sit vindue med sit eget `localStorage`, men
-deler API'et (`mockApi(side, { delMed: api })`), så et helt parti Kryds og bolle
-kan spilles på tværs af to telefoner, præcis som i drift.
+`test/rum.test.mjs` («spil sammen»). Den sidste er én af repoets to tests med
+**to browsere** (den anden er `test/dybet-sammen.test.mjs`): Sofie og Selma har
+hver sit vindue med sit eget `localStorage`, men deler API'et
+(`mockApi(side, { delMed: api })`), så et helt parti Kryds og bolle — eller en
+tur ned i Dybet — kan spilles på tværs af to telefoner, præcis som i drift.
 Vil man prøve
 hele kæden lokalt mod en lokal D1-database:
 

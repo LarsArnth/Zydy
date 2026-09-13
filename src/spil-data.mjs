@@ -51,4 +51,4 @@ export const SPIL = {
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).
  *  src/rum.mjs bruger listen, og forsiden kender dem på data-sammen på kortet. */
-export const SAMMEN = ['kryds'];
+export const SAMMEN = ['dybet', 'kryds'];

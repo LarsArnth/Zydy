@@ -11,8 +11,11 @@
     lavRng, nytSpil, genoptag           – tilstand og tilfældighed
     lavDungeon                          – labyrint med monstre, kister, ting og trappe
     muligheder, gaa, vend, gaaNed        – bevægelse: hvad kan man her, og skridt for skridt
-    startKamp, kampTur                  – turbaseret kamp, returnerer hændelser til UI'et
+    startKamp, kampTur, vindXp          – turbaseret kamp, returnerer hændelser til UI'et
     udstyr, brugTing                    – taske uden for kamp
+
+  sammen.mjs lægger «spil sammen» oven på de samme regler: to helte i den samme
+  labyrint, én på hver telefon.
 */
 
 /* ---------- Tilfældighed (mulberry32, tilstanden kan gemmes) ---------- */
@@ -620,22 +623,37 @@ export function kampTur(spil, valg) {
 
 function afsluttKamp(spil) { spil.kamp = null; spil.fase = 'udforsk'; }
 
-function sejr(spil, m) {
-  const sp = spil.spiller, h = [];
-  m.doed = true; sp.draebt++;
-  h.push({ type: 'sejr', xp: m.xp, tekst: `${m.navn} er besejret! Du får ${m.xp} erfaring.` });
-  sp.xp += m.xp;
-  sp.mp = Math.min(stats(sp).maxMp, sp.mp + 2);
+/**
+ * Lægger erfaring til og håndterer niveauspring og nye evner. `hvem` står i
+ * teksterne: 'Du' når man spiller alene, og makkerens navn når to spiller
+ * sammen (sammen.mjs giver den anden helt den samme erfaring).
+ */
+export function vindXp(sp, xp, hvem = 'Du') {
+  const h = [];
+  sp.xp += xp;
   while (sp.xp >= xpTilNaeste(sp.level)) {
     sp.xp -= xpTilNaeste(sp.level);
     sp.level++;
     sp.maxHp += 6; sp.maxMp += 2; sp.grundAngreb += 1;
     sp.hp = Math.min(stats(sp).maxHp, sp.hp + 6);
-    h.push({ type: 'levelOp', level: sp.level, tekst: `Du er nu niveau ${sp.level}! Mere liv, mana og styrke.` });
+    h.push({ type: 'levelOp', level: sp.level, tekst: `${hvem} er nu niveau ${sp.level}! Mere liv, mana og styrke.` });
     for (const [id, e] of Object.entries(EVNER)) {
-      if (e.niveau === sp.level && !sp.evner.includes(id)) { sp.evner.push(id); h.push({ type: 'nyEvne', id, tekst: `Ny evne: ${e.navn}! ${e.tekst}.` }); }
+      if (e.niveau !== sp.level || sp.evner.includes(id)) continue;
+      sp.evner.push(id);
+      // Evnens forklaring er skrevet til den, der får den ("40 % af dit liv"),
+      // så makkeren får den korte udgave.
+      h.push({ type: 'nyEvne', id, tekst: hvem === 'Du' ? `Ny evne: ${e.navn}! ${e.tekst}.` : `${hvem} har lært ${e.navn}!` });
     }
   }
+  return h;
+}
+
+function sejr(spil, m) {
+  const sp = spil.spiller, h = [];
+  m.doed = true; sp.draebt++;
+  h.push({ type: 'sejr', xp: m.xp, tekst: `${m.navn} er besejret! Du får ${m.xp} erfaring.` });
+  sp.mp = Math.min(stats(sp).maxMp, sp.mp + 2);
+  h.push(...vindXp(sp, m.xp));
   afsluttKamp(spil);
   markerSet(spil);
   return h;

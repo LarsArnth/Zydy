@@ -11,8 +11,9 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0c14'/%3E%3Cpath d='M8 56V22l24-14 24 14v34H40V38H24v18z' fill='%235a5f80'/%3E%3Cpath d='M24 56V38h16v18z' fill='%23ffd447'/%3E%3C/svg%3E">
 <style>
   /*
-    Dybet – dungeon crawler for zydy.dk. Tre filer uden build:
+    Dybet – dungeon crawler for zydy.dk. Fire filer uden build:
       motor.mjs   – regler, labyrint, kamp (ren JS, enhedstestet)
+      sammen.mjs  – «spil sammen»: to helte i den samme labyrint, én på hver telefon
       sprites.mjs – pixel-art som tekst
       index.html  – denne fil: raycaster à la Wolfenstein 3D, minimap, knapper og kampskærm.
     3D-billedet tegnes i lav opløsning (320 px bredt) og skaleres op uden udglatning.
@@ -40,7 +41,10 @@
   .btn.ghost{background:var(--bg2);color:var(--text)}
   .btn.danger{background:var(--coral);color:#fff}
   .btn[disabled]{opacity:.45}
-  .pill{background:var(--bg2);border-radius:999px;padding:7px 12px;font-size:14px;color:var(--muted);white-space:nowrap}
+  .pill{background:var(--bg2);border-radius:999px;padding:7px 12px;font-size:14px;color:var(--muted);white-space:nowrap;
+    max-width:44vw;overflow:hidden;text-overflow:ellipsis}
+  /* Spiller man sammen, står der i stedet hvis tur det er – øverst, hvor den altid kan ses. */
+  .pill.min{background:var(--sun);color:var(--ink);font-weight:800}
 
   .wrap{width:100%;max-width:720px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
   .top{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-height:40px}
@@ -70,12 +74,19 @@
   .bar.xp i{background:var(--sun)}
   .bar span{position:absolute;inset:0;font-size:10px;font-weight:800;line-height:12px;text-align:center;color:#fff;text-shadow:0 1px 2px #000}
   .hud .lvl{font-size:12px;font-weight:700;color:var(--muted);text-shadow:0 1px 2px #000}
+  /* Makkerens liv, når man er to i labyrinten */
+  .hud .ven{display:flex;align-items:center;gap:6px;margin-top:3px}
+  .hud .ven b{font-size:12px;font-weight:800;text-shadow:0 1px 2px #000;max-width:66px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hud .ven .bar{flex:1;height:9px}
+  .hud .ven.nede{opacity:.5}
+  .hud .ven.nede b::after{content:" 💀"}
   #kort{position:absolute;right:10px;top:10px;width:104px;height:104px;border-radius:12px;background:rgba(0,0,0,.55);
     border:1px solid rgba(255,255,255,.12);image-rendering:pixelated}
   #dybde{position:absolute;right:10px;top:120px;font-size:12px;font-weight:800;color:var(--sun);text-shadow:0 1px 2px #000;pointer-events:none}
   #taskeKnap{position:absolute;right:10px;bottom:10px;padding:10px 14px;border-radius:14px;background:rgba(23,26,46,.85);
     color:var(--text);font-weight:700;font-size:15px;border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(6px)}
   #taskeKnap:active{transform:scale(.96)}
+  #taskeKnap[disabled]{opacity:.35}
 
   /* Flydende valgknapper. Placeres med left/top i procent af scenen, centreret. */
   #valg{position:absolute;inset:0;pointer-events:none;z-index:2}
@@ -88,6 +99,9 @@
   .valg.kiste{background:var(--mint);color:var(--ink)}
   .valg.trappe{background:var(--sky);color:#fff}
   .valg.vend{background:rgba(23,26,46,.92);color:var(--text);font-size:14px;padding:10px 14px;animation:pop .35s both}
+  /* Står der ingen knapper, fordi makkeren vælger vej */
+  .valg.venter{background:rgba(23,26,46,.92);color:var(--muted);font-size:14px;padding:10px 14px;font-weight:700;
+    animation:pop .35s both;pointer-events:none}
   .valg:active{transform:translate(-50%,-50%) scale(.95)}
   @keyframes pop{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
   @keyframes puls{0%,100%{box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 0 3px rgba(255,255,255,.25)}50%{box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 0 8px rgba(255,255,255,.1)}}
@@ -119,6 +133,11 @@
   .boks .tal{font-size:12px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
   #fjendeBoks{left:4%;top:8%}
   #migBoks{right:4%;bottom:6%;min-width:170px}
+  #venBoks{left:4%;bottom:6%;min-width:118px;padding:6px 9px}
+  #venBoks .navn{font-size:13px}
+  #venBoks.nede{opacity:.55}
+  #venBoks.ramt{animation:boksRamt .4s}
+  #venBoks.heal{animation:heal .6s}
   #migBoks.ramt{animation:boksRamt .4s}
   @keyframes boksRamt{0%,100%{transform:none}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
   #migBoks.heal{animation:heal .6s}
@@ -152,6 +171,8 @@
   .hjaelp{text-align:left;font-size:15px}
   .hjaelp li{margin-bottom:8px;color:var(--muted)}
   .hjaelp b{color:var(--text)}
+  .sammen-tip{font-size:14px;margin:14px 2px 0}
+  .sammen-tip a{color:var(--sun)}
 
   /* Taske */
   .taskeTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
@@ -203,6 +224,7 @@
       <div class="bar hp" id="hpBar"><i></i><span id="hpTekst"></span></div>
       <div class="bar mp" id="mpBar"><i></i><span id="mpTekst"></span></div>
       <div class="bar xp" id="xpBar"><i></i></div>
+      <div class="ven" id="venHud" hidden><b id="venNavn"></b><div class="bar hp"><i id="venHp"></i></div></div>
     </div>
     <canvas id="kort" width="104" height="104" aria-label="Kort over det udforskede"></canvas>
     <div id="dybde">Dybde 1</div>
@@ -218,6 +240,11 @@
           <div class="navn"><span id="fjendeNavn">Rotte</span></div>
           <div class="bar hp"><i id="fjendeHp"></i></div>
           <div class="tal" id="fjendeTal"></div>
+        </div>
+        <div class="boks" id="venBoks" hidden>
+          <div class="navn"><span id="venBoksNavn">Ven</span><small id="venBoksLvl">Niv. 1</small></div>
+          <div class="bar hp"><i id="venBoksHp"></i></div>
+          <div class="tal" id="venBoksTal"></div>
         </div>
         <div class="boks" id="migBoks">
           <div class="navn"><span>Dig</span><small id="migLvl">Niv. 1</small></div>
@@ -244,6 +271,17 @@
         <button class="btn" id="nytKnap" type="button">Nyt spil</button>
         <button class="btn ghost" id="toplisteKnap" type="button">Topliste</button>
         <button class="btn ghost" id="hjaelpKnap" type="button">Sådan spiller du</button>
+        <p class="sammen-tip">Vil du ned i labyrinten sammen med en ven, der sidder et andet sted?
+          Gå til <a href="/">zydy.dk</a>, tryk på vennen og vælg «Spil Dybet sammen».</p>
+      </div>
+    </div>
+
+    <!-- Venteskærm: to venner i den samme labyrint, én på hver telefon -->
+    <div class="screen" id="ventScreen">
+      <div class="inner">
+        <h2 id="ventTitel">Vent lidt…</h2>
+        <p id="ventTekst">Vi henter labyrinten.</p>
+        <a class="btn ghost" href="/">Til zydy.dk</a>
       </div>
     </div>
 
@@ -258,6 +296,7 @@
           <li><b>Udstyr</b> skiftes i tasken – kun uden for kamp.</li>
           <li><b>Trappen</b> fører ned til næste dybde: lidt liv og al mana tilbage, men monstrene bliver stærkere.</li>
           <li><b>Score</b> = hvor dybt du nåede. Kortet øverst til højre viser kun det, du har set.</li>
+          <li><b>Sammen:</b> inviterer du en ven fra zydy.dk, går I ned i den samme labyrint. I skiftes til at vælge vej og til at slå i kampen — og falder den ene, kæmper den anden videre og rejser makkeren op bagefter.</li>
         </ul>
         <button class="btn ghost" id="hjaelpTilbage" type="button">Tilbage</button>
       </div>
@@ -299,8 +338,11 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="dybet"></script>
+<!-- Spil sammen med en ven over nettet: forsiden sender begge herhen med ?rum=<kode>. -->
+<script src="/spil/rum.js"></script>
 <script type="module">
 import * as M from './motor.mjs';
+import * as S from './sammen.mjs';
 import { MONSTER_SPRITES, TING_SPRITES, IKONER, tegn } from './sprites.mjs';
 
 /* ---------- Opsætning ---------- */
@@ -322,6 +364,24 @@ $('bestPill').textContent = best ? `Bedste: dybde ${best}` : 'Bedste: –';
 let spil = null;
 let fase = 'start';             // start | udforsk | kamp | doed
 let valgVises = [];             // aktuelle muligheder (til GAME og tastatur)
+
+/* ---------- Spil sammen med en ven ----------
+   Forsiden sender begge venner herhen med ?rum=<kode>. Reglerne ligger i
+   sammen.mjs, rummet i /spil/rum.js; her holder vi kun styr på, hvem vi er, og
+   hvilken version af stillingen vi har tegnet. `sam` er null, når man spiller
+   alene, og alt nedenfor opfører sig som før. */
+const RUMKODE = window.Rum ? Rum.kode() : null;
+let sam = null;                 // { kode, rolle, status, version, modspiller, jeg, stop }
+const erSammen = () => !!sam;
+/** Min egen helt. Alene er det bare spilleren; sammen er det *min* af de to. */
+const mig = () => (erSammen() ? spil.helte[sam.rolle] : spil.spiller);
+const makker = () => spil.helte[S.anden(sam.rolle)];
+const minTur = () => erSammen() && !!spil && !!spil.helte && S.minTur(spil, sam.rolle);
+/** «Selmas tur», men «Lars' tur». */
+const ejer = n => n + (/[sxzSXZ]$/.test(n) ? '’' : 's');
+/** Motorens beskeder er skrevet til den, der trykker – her gøres de til mine. */
+const pynt = e => ({ ...e, tekst: S.tekstFor(spil, e, sam.rolle),
+  boks: e.af && e.af !== sam.rolle ? 'venBoks' : 'migBoks' });
 
 /* ---------- Temaer pr. dybde ---------- */
 const TEMAER = [
@@ -576,7 +636,7 @@ function tegnKort() {
 /* ---------- HUD ---------- */
 function opdaterHud() {
   if (!spil) return;
-  const sp = spil.spiller, s = M.stats(sp);
+  const sp = mig(), s = M.stats(sp);
   $('hudLvl').textContent = `Niveau ${sp.level}`;
   const hp = $('hpBar'); hp.querySelector('i').style.width = (100 * sp.hp / s.maxHp) + '%';
   hp.classList.toggle('lav', sp.hp / s.maxHp < 0.3);
@@ -585,6 +645,21 @@ function opdaterHud() {
   $('mpTekst').textContent = `${sp.mp} / ${s.maxMp} mana`;
   $('xpBar').querySelector('i').style.width = (100 * sp.xp / M.xpTilNaeste(sp.level)) + '%';
   $('dybde').textContent = `Dybde ${spil.niveau}`;
+  if (erSammen()) opdaterMakker();
+}
+
+/** Makkerens liv i HUD'en og hvis tur det er – øverst, hvor det altid kan ses. */
+function opdaterMakker() {
+  const v = makker(), vs = M.stats(v);
+  $('venHud').hidden = false;
+  $('venHud').classList.toggle('nede', v.nede);
+  $('venNavn').textContent = v.navn;
+  $('venHp').style.width = (100 * v.hp / vs.maxHp) + '%';
+  const min = minTur();
+  const p = $('bestPill');
+  p.classList.toggle('min', min);
+  p.textContent = spil.fase === 'slut' ? 'Turen er slut' : min ? 'Din tur' : `${ejer(v.navn)} tur`;
+  $('taskeKnap').disabled = !min || spil.fase !== 'udforsk';
 }
 
 /* ---------- Animationskø ---------- */
@@ -628,15 +703,23 @@ requestAnimationFrame(tick);
 /* ---------- Udforskning ---------- */
 function stilKamera() { kam.x = spil.pos.x + .5; kam.y = spil.pos.y + .5; kam.a = vinkel(spil.retning); kam.bob = 0; }
 
-function gem() { if (spil && spil.fase !== 'doed') lager.gem(KEY_SPIL, M.tilJson(spil)); }
+// Sammen er rummet gemmestedet – så skulle vi ikke også skrive et enkeltmands-
+// spil i localStorage, som «Fortsæt» bagefter ikke kan læse.
+function gem() { if (spil && spil.fase !== 'doed' && !erSammen()) lager.gem(KEY_SPIL, M.tilJson(spil)); }
 
 /** Kaldt når en bevægelse er færdig: find ud af hvad der kan ske, gå selv videre eller vis knapper. */
 function visValg() {
   if (fase !== 'udforsk') return;
   const m = M.muligheder(spil);
-  const auto = M.autoValg(m);
   opdaterHud(); gem();
-  if (auto) { udfoer(auto); return; }
+  if (erSammen()) {
+    // Sammen har motoren allerede gået turen færdig, så her skal der ikke gås
+    // videre af sig selv – der skal bare vises knapper til den, det er tur til.
+    if (!minTur()) { visVenter(); return; }
+  } else {
+    const auto = M.autoValg(m);
+    if (auto) { udfoer(auto); return; }
+  }
   valgVises = m;
   const rod = $('valg'); rod.innerHTML = '';
   const PIL = { frem: '▲', venstre: '◀', hoejre: '▶', tilbage: '▼' };
@@ -665,8 +748,27 @@ function visValg() {
 }
 function rydValg() { valgVises = []; $('valg').innerHTML = ''; }
 
+/** Ingen knapper – makkeren vælger vej. Står samme sted som «Vend om». */
+function visVenter() {
+  rydValg();
+  const d = document.createElement('div');
+  d.className = 'valg venter'; d.id = 'venter';
+  d.textContent = `${makker().navn} vælger vej…`;
+  d.style.left = '50%'; d.style.top = '86%';
+  $('valg').appendChild(d);
+}
+
 function vaelg(v) {
   if (fase !== 'udforsk' || aktuel || koe.length) return;
+  if (erSammen()) {
+    const fra = { ...spil.pos };
+    const r = S.udfoer(spil, sam.rolle, v);
+    if (!r) return;
+    rydValg();
+    sendTilstand();
+    spilAf(fra);
+    return;
+  }
   rydValg();
   udfoer(v);
 }
@@ -721,20 +823,32 @@ function nedTrappen() {
 
 /* ---------- Kamp ---------- */
 let kampMonster = null, kampSprite = null, afspiller = false, naesteTrin = null;
-function startKamp(m) {
+/** Stiller kampskærmen op mod `m`. Selve kampen er allerede startet i motoren. */
+function aabnKamp(m) {
   fase = 'kamp';
   kampMonster = m;
-  const h = M.startKamp(spil, m);
+  rydValg();
   const fj = $('fjende'); fj.innerHTML = '';
   kampSprite = stortSprite(m.type, 12); fj.appendChild(kampSprite);
   $('fjendeNavn').textContent = m.navn;
   $('kamp').classList.add('on'); $('stage').classList.add('ikamp');
   $('menu').innerHTML = '';
   opdaterKampBokse();
+}
+/** Lukker kampskærmen. `fase` sættes af den, der kalder – der er forskel på at
+ *  komme tilbage til gangen, at være død og at vente på sin ven. */
+function lukKamp() {
+  $('kamp').classList.remove('on'); $('stage').classList.remove('ikamp');
+  kampMonster = null;
+}
+function startKamp(m) {
+  const h = M.startKamp(spil, m);
+  aabnKamp(m);
   afspil(h, visKampMenu);
 }
 function opdaterKampBokse() {
-  const m = kampMonster, sp = spil.spiller, s = M.stats(sp);
+  const m = kampMonster, sp = mig(), s = M.stats(sp);
+  if (!m) return;
   $('fjendeHp').style.width = (100 * m.hp / m.maxHp) + '%';
   $('fjendeTal').textContent = `${m.hp} / ${m.maxHp}`;
   $('migHp').style.width = (100 * sp.hp / s.maxHp) + '%';
@@ -742,6 +856,15 @@ function opdaterKampBokse() {
   $('migMp').style.width = (100 * sp.mp / s.maxMp) + '%';
   $('migMpTal').textContent = `${sp.mp} / ${s.maxMp} mana`;
   $('migLvl').textContent = `Niv. ${sp.level}`;
+  if (erSammen()) {
+    const v = makker(), vs = M.stats(v);
+    $('venBoks').hidden = false;
+    $('venBoks').classList.toggle('nede', v.nede);
+    $('venBoksNavn').textContent = v.navn;
+    $('venBoksLvl').textContent = `Niv. ${v.level}`;
+    $('venBoksHp').style.width = (100 * v.hp / vs.maxHp) + '%';
+    $('venBoksTal').textContent = v.nede ? 'slået ud' : `${v.hp} / ${vs.maxHp} liv`;
+  }
   opdaterHud();
 }
 function visKampMenu() {
@@ -754,7 +877,7 @@ function visKampMenu() {
   knap('Flygt', 'flygt', () => kampValg({ type: 'flygt' }));
 }
 function visEvner() {
-  const menu = $('menu'), sp = spil.spiller; menu.className = 'menu liste'; menu.innerHTML = '';
+  const menu = $('menu'), sp = mig(); menu.className = 'menu liste'; menu.innerHTML = '';
   $('besked').textContent = 'Vælg en evne.';
   for (const id of sp.evner) {
     const e = M.EVNER[id];
@@ -767,7 +890,7 @@ function visEvner() {
   const t = document.createElement('button'); t.type = 'button'; t.className = 'tilbage'; t.textContent = 'Tilbage'; t.addEventListener('click', visKampMenu); menu.appendChild(t);
 }
 function visKampTaske() {
-  const menu = $('menu'), sp = spil.spiller; menu.className = 'menu liste'; menu.innerHTML = '';
+  const menu = $('menu'), sp = mig(); menu.className = 'menu liste'; menu.innerHTML = '';
   const forbrug = sp.taske.filter(t => M.TING[t.id].slot === 'forbrug');
   $('besked').textContent = forbrug.length ? 'Vælg en ting.' : 'Tasken er tom for ting du kan bruge.';
   for (const t of forbrug) {
@@ -781,6 +904,17 @@ function visKampTaske() {
 }
 function kampValg(valg) {
   if (afspiller || fase !== 'kamp') return;
+  if (erSammen()) {
+    const r = S.kampTur(spil, sam.rolle, valg);
+    if (!r) return;
+    $('menu').innerHTML = '';
+    // «Ikke nok mana» er ikke et træk: turen bliver hvor den er, og der er
+    // ikke noget at fortælle den anden telefon.
+    if (!r.aendret) { afspil(r.log.map(pynt), visKampMenu); return; }
+    sendTilstand();
+    afspil(r.log.map(pynt), efterKampSammen);
+    return;
+  }
   $('menu').innerHTML = '';
   const h = M.kampTur(spil, valg);
   afspil(h, efterKampTur);
@@ -789,11 +923,27 @@ function efterKampTur() {
   if (spil.fase === 'kamp') { visKampMenu(); return; }
   if (spil.fase === 'doed') { visDoed(); return; }
   // Sejr eller flugt: tilbage til gangen
-  $('kamp').classList.remove('on'); $('stage').classList.remove('ikamp');
-  fase = 'udforsk';
-  kampMonster = null;
+  lukKamp(); fase = 'udforsk';
   M.markerSet(spil);
   opdaterHud(); gem();
+  visValg();
+}
+
+/** Samme, men sammen med en ven: turen kan være hoppet over til makkeren. */
+function efterKampSammen() {
+  opdaterKampBokse();
+  if (spil.fase === 'kamp') {
+    if (minTur()) visKampMenu();
+    else {
+      $('menu').innerHTML = '';
+      $('besked').textContent = `${ejer(makker().navn)} tur…`;
+      $('besked').classList.remove('klik');
+    }
+    return;
+  }
+  if (spil.fase === 'slut') { visDoed(); return; }
+  lukKamp(); fase = 'udforsk';
+  opdaterHud();
   visValg();
 }
 
@@ -807,12 +957,14 @@ function afspil(haendelser, done) {
     const h = liste.shift();
     besked.textContent = h.tekst; besked.classList.add('klik');
     let vent = 950;
+    // `boks` er sat, når to spiller sammen: det er makkeren, der bliver ramt.
+    const boks = h.boks || 'migBoks', mig_ = boks === 'migBoks';
     if (h.type === 'skade' && h.maal === 'monster') { blink(kampSprite, 'ramt'); }
-    else if (h.type === 'skade' && h.maal === 'spiller') { if (!h.gift) blink(kampSprite, 'angriber'); setTimeout(() => { blink($('migBoks'), 'ramt'); blink($('stage'), 'ryst'); blink($('flash'), 'on'); }, h.gift ? 0 : 200 * HAST); vent = 1100; }
-    else if (h.type === 'heal' || h.type === 'mana') blink($('migBoks'), 'heal');
+    else if (h.type === 'skade' && h.maal === 'spiller') { if (!h.gift) blink(kampSprite, 'angriber'); setTimeout(() => { blink($(boks), 'ramt'); if (mig_) { blink($('stage'), 'ryst'); blink($('flash'), 'on'); } }, h.gift ? 0 : 200 * HAST); vent = 1100; }
+    else if (h.type === 'heal' || h.type === 'mana') blink($(boks), 'heal');
     else if (h.type === 'sejr') { if (kampSprite) kampSprite.classList.add('doed'); vent = 1300; }
     else if (h.type === 'levelOp' || h.type === 'nyEvne') vent = 1500;
-    else if (h.type === 'doed') vent = 1400;
+    else if (h.type === 'doed' || h.type === 'nede' || h.type === 'slut') vent = 1400;
     else if (h.type === 'start') vent = 1100;
     setTimeout(opdaterKampBokse, 250 * HAST);
     const id = setTimeout(() => { if (naesteTrin === trin) trin(); }, vent * HAST);
@@ -826,16 +978,22 @@ $('kamp').addEventListener('click', e => { if (afspiller && naesteTrin && !e.tar
 
 /* ---------- Død og topliste ---------- */
 function visDoed() {
+  const monster = kampMonster;
+  lukKamp();
   fase = 'doed';
-  $('kamp').classList.remove('on'); $('stage').classList.remove('ikamp');
   rydValg();
-  lager.slet(KEY_SPIL);
-  const dybde = spil.niveau, sp = spil.spiller;
+  if (!erSammen()) lager.slet(KEY_SPIL);   // en fælles tur må ikke slette ens eget gemte spil
+  const dybde = spil.niveau, sp = mig();
   const rekord = dybde > best;
   if (rekord) { best = dybde; lager.gem(KEY_BEST, String(best)); }
-  $('bestPill').textContent = `Bedste: dybde ${best}`;
+  if (erSammen()) { $('bestPill').classList.remove('min'); $('bestPill').textContent = 'Turen er slut'; }
+  else $('bestPill').textContent = `Bedste: dybde ${best}`;
   $('overDybde').textContent = dybde;
-  $('overTekst').textContent = `${kampMonster ? kampMonster.navn : 'Mørket'} fik dig på ${temaFor(dybde).navn.toLowerCase()}. Du besejrede ${sp.draebt} ${sp.draebt === 1 ? 'monster' : 'monstre'} og nåede niveau ${sp.level}.`;
+  $('overTitel').textContent = erSammen() ? 'I faldt begge i kamp' : 'Du faldt i kamp';
+  $('igenKnap').textContent = erSammen() ? 'Ned igen sammen' : 'Spil igen';
+  $('overTekst').textContent = erSammen()
+    ? `${monster ? monster.navn : 'Mørket'} fik jer på ${temaFor(dybde).navn.toLowerCase()}. Du og ${makker().navn} besejrede ${sp.draebt + makker().draebt} monstre undervejs.`
+    : `${monster ? monster.navn : 'Mørket'} fik dig på ${temaFor(dybde).navn.toLowerCase()}. Du besejrede ${sp.draebt} ${sp.draebt === 1 ? 'monster' : 'monstre'} og nåede niveau ${sp.level}.`;
   $('rekord').hidden = !rekord;
   $('overBest').textContent = `Bedste: dybde ${best}`;
   $('overScreen').classList.add('on');
@@ -846,7 +1004,10 @@ function visDoed() {
 /* ---------- Taske (uden for kamp) ---------- */
 function visTaske() {
   if (fase !== 'udforsk' || aktuel || koe.length) return;
-  const sp = spil.spiller, s = M.stats(sp);
+  // Sammen passer man sin egen taske, men kun på sin egen tur – så kan de to
+  // ikke skrive oven i hinanden i rummet.
+  if (erSammen() && !minTur()) return;
+  const sp = mig(), s = M.stats(sp);
   $('statsGrid').innerHTML = [['Niveau', sp.level], ['Angreb', s.angreb], ['Forsvar', s.forsvar], ['Erfaring', `${sp.xp}/${M.xpTilNaeste(sp.level)}`]]
     .map(([n, v]) => `<div><b>${v}</b><small>${n}</small></div>`).join('');
   const slots = $('slots'); slots.innerHTML = '';
@@ -872,18 +1033,185 @@ function visTaske() {
     if (d.slot === 'forbrug') {
       b.textContent = 'Brug'; b.className = 'brug';
       b.disabled = !!d.kunKamp || (d.heal && sp.hp >= s.maxHp) || (d.mana && sp.mp >= s.maxMp);
-      b.addEventListener('click', () => { const r = M.brugTing(spil, t.id); if (r) toast(r.tekst, t.id); opdaterHud(); gem(); visTaske(); });
+      b.addEventListener('click', () => { taskeHandling('brug', t.id); });
     } else {
       b.textContent = 'Tag på';
-      b.addEventListener('click', () => { M.udstyr(spil, t.id); opdaterHud(); gem(); visTaske(); });
+      b.addEventListener('click', () => { taskeHandling('udstyr', t.id); });
     }
     row.appendChild(b);
     liste.appendChild(row);
   }
   $('taskeScreen').classList.add('on');
 }
+
+/** Tag udstyr på eller drik en potion. Sammen skal makkeren se det med det samme. */
+function taskeHandling(handling, id) {
+  if (erSammen()) {
+    const r = S.taske(spil, sam.rolle, handling, id);
+    if (!r) return;
+    for (const e of r.log) toast(S.tekstFor(spil, e, sam.rolle), id);
+    if (r.aendret) sendTilstand();
+  } else {
+    if (handling === 'brug') { const r = M.brugTing(spil, id); if (r) toast(r.tekst, id); }
+    else M.udstyr(spil, id);
+  }
+  opdaterHud(); gem(); visTaske();
+}
 $('taskeKnap').addEventListener('click', visTaske);
 $('taskeLuk').addEventListener('click', () => $('taskeScreen').classList.remove('on'));
+
+/* ---------- Spil sammen: rummet ---------- */
+const SKAERME = ['startScreen', 'overScreen', 'hjaelpScreen', 'listScreen', 'taskeScreen', 'ventScreen'];
+const lukSkaerme = () => SKAERME.forEach(id => $(id).classList.remove('on'));
+
+/** Beskeden på venteskærmen (venter på vennen, spillet er slut, noget gik galt). */
+function ventSkaerm(titel, tekst) {
+  lukSkaerme(); lukKamp(); rydValg();
+  fase = 'start';
+  $('ventTitel').textContent = titel;
+  $('ventTekst').textContent = tekst;
+  $('ventScreen').classList.add('on');
+}
+
+/** Sender min stilling til rummet. Kom den anden først, tegner vi hans i stedet. */
+function sendTilstand() {
+  if (!sam || sam.status !== 'igang') return;
+  Rum.gem(sam.kode, S.pak(spil), sam.version).then(d => {
+    sam.version = d.rum.version;
+    if (d.uaendret) modtag(d.rum);
+  }, () => {
+    // Kom trækket ikke af sted, henter vi rummet igen, så de to skærme er ens.
+    Rum.hent(sam.kode).then(modtag, () => {});
+  });
+}
+
+/** Et rum er landet fra serveren: vent, spil eller slut. */
+function modtag(r) {
+  if (!r || !sam) return;
+  sam.status = r.status; sam.rolle = r.rolle; sam.jeg = r.jeg; sam.modspiller = r.modspiller;
+  if (r.status === 'inviteret') {
+    ventSkaerm(r.rolle === 'vaert' ? 'Venter på ' + r.modspiller : 'Klar!',
+      r.rolle === 'vaert'
+        ? `${r.modspiller} kan se invitationen på zydy.dk. Så snart ${r.modspiller} hopper med, går I ned i labyrinten sammen.`
+        : `Vi siger til ${r.modspiller}, at du er klar.`);
+    return;
+  }
+  if (r.status === 'slut') {
+    ventSkaerm(r.modspiller + ' gik', 'Turen er slut. Vil I ned igen, kan I invitere hinanden på zydy.dk.');
+    if (sam.stop) { sam.stop(); sam.stop = null; }
+    return;
+  }
+  if (r.version <= sam.version) return;
+  sam.version = r.version;
+  if (r.tilstand) { anvend(r.tilstand); return; }
+  // I gang, men ingen har gravet labyrinten endnu. Det gør værten, og sender den.
+  if (r.rolle === 'vaert') {
+    spil = S.nytSammen(seed, { vaert: r.jeg, gaest: r.modspiller });
+    aabnSpil();
+    sendTilstand();
+  } else ventSkaerm('Vent lidt…', `Vi henter labyrinten fra ${r.modspiller}.`);
+}
+
+/** Rummets stilling er landet: tegn den, og afspil det, der skete undervejs. */
+function anvend(data) {
+  const forrige = spil;
+  const fra = forrige && !data.ned && forrige.niveau === data.n ? { ...forrige.pos } : null;
+  spil = S.pakUd(data, forrige);
+  if (!forrige || fase === 'start' || fase === 'doed') { aabnSpil(); return; }
+  koe = []; aktuel = null;
+  spilAf(fra);
+}
+
+/** Tegner spillet op fra bunden efter rummets stilling. */
+function aabnSpil() {
+  koe = []; aktuel = null;
+  lukSkaerme(); lukKamp(); rydValg();
+  fase = 'udforsk';
+  saetTema(spil.niveau); stilKamera(); tilpas(); opdaterHud();
+  if (spil.fase === 'kamp') { aabnKamp(M.kampMonster(spil)); efterKampSammen(); }
+  else if (spil.fase === 'slut') visDoed();
+  else visValg();
+}
+
+/**
+ * Afspiller det, der lige er sket – både hos den, der trykkede, og hos den, der
+ * ser med: først gangen der blev gået (`spil.vej`), så beskederne.
+ */
+function spilAf(fra) {
+  const varKamp = $('kamp').classList.contains('on');
+  const log = (spil.log || []).map(pynt);
+  const bagefter = () => efterSpilAf(varKamp, log);
+  if (spil.ned) { nedTrappenSammen(bagefter); return; }
+  animerVej(fra, spil.vej);
+  planKald(bagefter);
+}
+
+/** Går kameraet den samme vej, som motoren gik: 0-3 = ét felt, 4-7 = drej på stedet. */
+function animerVej(fra, vej) {
+  let p = fra ? { ...fra } : null;
+  for (const t of (vej || [])) {
+    if (t >= 4) { planDrej(t - 4); continue; }
+    planDrej(t);
+    if (!p) continue;
+    const d = M.RETNINGER[t], til = { x: p.x + d.dx, y: p.y + d.dy };
+    planFlyt(p, til);
+    p = til;
+  }
+  if (!p || p.x !== spil.pos.x || p.y !== spil.pos.y) planKald(stilKamera);
+}
+
+/** Ny dybde sammen: overgangsskærmen, og så videre fra det nye startfelt. */
+function nedTrappenSammen(bagefter) {
+  const o = $('overgang');
+  $('overgangTitel').textContent = `Dybde ${spil.niveau}`;
+  $('overgangTekst').textContent = `${temaFor(spil.niveau).navn}. ${temaFor(spil.niveau).tekst}`;
+  o.classList.add('on');
+  lukKamp(); fase = 'udforsk';
+  setTimeout(() => {
+    saetTema(spil.niveau);
+    const st = spil.dungeon.start;
+    kam.x = st.x + .5; kam.y = st.y + .5; kam.a = vinkel(st.retning); kam.bob = 0;
+    opdaterHud();
+    setTimeout(() => {
+      o.classList.remove('on');
+      animerVej({ x: st.x, y: st.y }, spil.vej);
+      planKald(bagefter);
+    }, 300 * HAST);
+  }, 1300 * HAST);
+}
+
+function efterSpilAf(varKamp, log) {
+  opdaterHud();
+  if (spil.fase === 'kamp' && !varKamp) aabnKamp(M.kampMonster(spil));
+  if (varKamp || spil.fase === 'kamp') { afspil(log, efterKampSammen); return; }
+  if (spil.fase === 'slut') { afspil(log, visDoed); return; }
+  for (const e of log) toast(e.tekst, e.id);
+  visValg();
+}
+
+async function startSammen() {
+  sam = { kode: RUMKODE, rolle: 'vaert', status: null, version: -1, modspiller: '', jeg: '', stop: null };
+  ventSkaerm('Vent lidt…', 'Vi henter spillet.');
+  try {
+    let r = await Rum.hent(sam.kode);
+    // Gæsten siger ja ved at være her: det var dét, «Hop med!» betød på forsiden.
+    if (r.rolle === 'gaest' && r.status === 'inviteret') r = await Rum.kom(sam.kode);
+    modtag(r);
+  } catch (e) {
+    ventSkaerm('Spillet er væk', e.message || 'Prøv at få din ven til at invitere igen.');
+    return;
+  }
+  sam.stop = Rum.foelg(sam.kode, modtag, Math.max(150, Rum.TIK_MS * HAST));
+}
+
+// «‹ zydy.dk» midt i et fælles spil: sig det til makkeren i stedet for bare at gå.
+document.querySelector('.back').addEventListener('click', e => {
+  if (!sam) return;
+  e.preventDefault();
+  if (sam.stop) { sam.stop(); sam.stop = null; }
+  const hjem = () => { location.href = '/'; };
+  Rum.forlad(sam.kode).then(hjem, hjem);
+});
 
 /* ---------- Start, fortsæt, skærme ---------- */
 function startSpil(genoptaget) {
@@ -899,7 +1227,17 @@ $('nytKnap').addEventListener('click', () => { seed = params.has('seed') ? seed 
 $('fortsaetKnap').addEventListener('click', () => {
   try { startSpil(M.genoptag(lager.hent(KEY_SPIL))); } catch (e) { lager.slet(KEY_SPIL); startSpil(); }
 });
-$('igenKnap').addEventListener('click', () => { seed = params.has('seed') ? seed + 1 : (Math.random() * 4294967296) >>> 0; startSpil(); });
+$('igenKnap').addEventListener('click', () => {
+  seed = params.has('seed') ? seed + 1 : (Math.random() * 4294967296) >>> 0;
+  if (erSammen()) {
+    // En ny tur i en ny labyrint – makkeren får den med det samme.
+    spil = S.nytSammen(seed, { vaert: spil.helte.vaert.navn, gaest: spil.helte.gaest.navn });
+    aabnSpil();
+    sendTilstand();
+    return;
+  }
+  startSpil();
+});
 $('hjaelpKnap').addEventListener('click', () => { $('startScreen').classList.remove('on'); $('hjaelpScreen').classList.add('on'); });
 $('hjaelpTilbage').addEventListener('click', () => { $('hjaelpScreen').classList.remove('on'); $('startScreen').classList.add('on'); });
 $('toplisteKnap').addEventListener('click', () => {
@@ -923,14 +1261,21 @@ tilpas();
 // Tegn en stemningsfuld baggrund bag startskærmen
 { const s = M.nytSpil(seed); spil = s; saetTema(1); stilKamera(); tegnScene(0); spil = null; }
 
+// Kom man hertil fra forsiden med ?rum=<kode>, skal vi ned i labyrinten sammen.
+if (RUMKODE && window.Rum && Rum.navn()) startSammen();
+
 /* ---------- Til tests ---------- */
 window.GAME = {
-  M,
+  M, S,
   get spil() { return spil; },
   get state() {
     return { fase, dybde: spil ? spil.niveau : 0, pos: spil ? spil.pos : null, retning: spil ? spil.retning : null,
       animerer: !!(aktuel || koe.length), afspiller, valg: valgVises.map(v => ({ type: v.type, relativ: v.relativ, tekst: v.tekst })),
-      hp: spil ? spil.spiller.hp : 0, seed, best };
+      hp: spil ? mig().hp : 0, seed, best,
+      sammen: sam ? { rolle: sam.rolle, status: sam.status, modspiller: sam.modspiller, minTur: minTur(), version: sam.version,
+        spilFase: spil ? spil.fase : null, tur: spil && spil.helte ? spil.tur : null,
+        mig: spil && spil.helte ? { navn: mig().navn, hp: mig().hp, nede: mig().nede } : null,
+        ven: spil && spil.helte ? { navn: makker().navn, hp: makker().hp, nede: makker().nede } : null } : null };
   },
   vaelg(relativEllerType) { const v = valgVises.find(x => x.relativ === relativEllerType || x.type === relativEllerType); if (v) vaelg(v); return !!v; },
   kamp(valg) { kampValg(valg); },

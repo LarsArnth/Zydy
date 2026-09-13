@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 17,
+      "dato": "2026-09-13",
+      "spil": "dybet",
+      "titel": "Gå ned i Dybet sammen med en ven",
+      "hvad": "Tryk på en ven på forsiden og vælg «Spil Dybet sammen». Så er I i den samme labyrint, én på hver telefon: I skiftes til at vælge vej og til at slå i kampen, I får begge erfaring for monstrene — og falder den ene, kæmper den anden videre og rejser makkeren op bagefter.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 16,
       "dato": "2026-09-13",
       "spil": "weee",

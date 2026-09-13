@@ -46,11 +46,12 @@ await sofie.page.goto(`${BASE}/`);
 await sofie.page.waitForSelector('#venner .v-ven');
 await sofie.page.click('#venner .v-ven');
 await sofie.page.waitForSelector('.v-dlg[open]');
-assert.match(await sofie.page.locator('.v-sammen').textContent(), /Spil Kryds og bolle sammen/,
-  'man kan invitere en ven til de spil, to kan spille sammen');
+// Der er en knap pr. spil, to kan spille sammen – vi vil den til Kryds og bolle.
+const sammenKnap = sofie.page.locator('.v-sammen', { hasText: 'Kryds og bolle' });
+assert.equal(await sammenKnap.count(), 1, 'man kan invitere en ven til de spil, to kan spille sammen');
 await sofie.page.screenshot({ path: path.join(shots, 'rum-inviter.png') });
 
-await sofie.page.click('.v-sammen');
+await sammenKnap.click();
 await sofie.page.waitForURL(/\/spil\/kryds\/\?rum=[A-Z0-9]{5}/, { timeout: 10_000 });
 const kode = new URL(sofie.page.url()).searchParams.get('rum');
 assert.equal(api.rum.rows.length, 1, 'der er lavet ét rum');
