@@ -1,6 +1,13 @@
 {
   "navn": "Taltræf",
   "beskrivelse": "Par tal der er ens eller giver 10, og ryd hele pladen. Virker offline.",
+  "nøgleord": [
+    "number match",
+    "matematik",
+    "par",
+    "plus",
+    "tal"
+  ],
   "url": "https://larsarnth.github.io/taltraef/",
   "orden": 20,
   "ekstern": true

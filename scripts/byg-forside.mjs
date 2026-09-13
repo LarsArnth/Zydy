@@ -5,7 +5,7 @@
 //
 // Sandheden om et spil bor i spillets egen mappe:
 //
-//   public/spil/<id>/kort.json   navn, beskrivelse, url, orden og evt. topliste-regler
+//   public/spil/<id>/kort.json   navn, beskrivelse, nøgleord, url, orden og evt. topliste-regler
 //   public/spil/<id>/ikon.svg    ikonet på forsidens kort
 //
 // og herfra genereres:
@@ -47,10 +47,12 @@ export function læsKort() {
 const undvig = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Ét <li> som det står i index.html. Formen skal blive: /ideer.js hænger sine
- *  knapper på li[data-spil] og læser titlen i <h2>. */
+ *  knapper på li[data-spil] og læser titlen i <h2>, og /soeg.js søger i <h2>,
+ *  <p> og data-noegleord. */
 function liFor(k) {
   const ikon = k.ikon.split('\n').map(l => (l ? '        ' + l : l)).join('\n');
-  return `    <li data-spil="${k.id}"${k.ekstern ? ' data-ekstern' : ''}${k.sammen ? ' data-sammen' : ''}${k.kapløb ? ' data-kaploeb' : ''}><a class="app" href="${k.url}">
+  const noegleord = (k.nøgleord || []).join(', ');
+  return `    <li data-spil="${k.id}"${k.ekstern ? ' data-ekstern' : ''}${k.sammen ? ' data-sammen' : ''}${k.kapløb ? ' data-kaploeb' : ''}${noegleord ? ` data-noegleord="${undvig(noegleord).replace(/"/g, '&quot;')}"` : ''}><a class="app" href="${k.url}">
       <span class="icon" aria-hidden="true">
 ${ikon}
       </span>

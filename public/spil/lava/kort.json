@@ -1,6 +1,14 @@
 {
   "navn": "Gulvet er lava",
   "beskrivelse": "Lavaen stiger i stuen! Klatr op ad sofaen, bordet og reolen – hvor højt når du, før den tager dig?",
+  "nøgleord": [
+    "floor is lava",
+    "klatre",
+    "stue",
+    "møbler",
+    "hop",
+    "højde"
+  ],
   "url": "/spil/lava/",
   "orden": 125,
   "kapløb": true,

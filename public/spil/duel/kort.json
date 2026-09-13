@@ -1,6 +1,14 @@
 {
   "navn": "Duel",
   "beskrivelse": "Hurtige reflex-runder: to spillere på én telefon – eller alene mod botten.",
+  "nøgleord": [
+    "to spillere",
+    "reflekser",
+    "hurtig",
+    "grønt lys",
+    "bot",
+    "delt skærm"
+  ],
   "url": "/spil/duel/",
   "orden": 80,
   "kapløb": true,

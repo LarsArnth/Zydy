@@ -1,6 +1,13 @@
 {
   "navn": "Blokblast",
   "beskrivelse": "Træk brikkerne ned på brættet og fyld hele rækker og søjler, så de blæser væk. Hvor mange point kan du nå, før der ikke er plads til flere?",
+  "nøgleord": [
+    "block blast",
+    "brikker",
+    "puslespil",
+    "tetris",
+    "firkanter"
+  ],
   "url": "/spil/blokblast/",
   "orden": 139,
   "kapløb": true,

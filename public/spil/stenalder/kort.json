@@ -1,6 +1,13 @@
 {
   "navn": "Stenalder",
   "beskrivelse": "Brætspil for 2-4 på én iPad: sæt folk ud, saml ressourcer, byg hytter og køb kort. Husk maden!",
+  "nøgleord": [
+    "stone age",
+    "brætspil",
+    "terninger",
+    "arbejdere",
+    "familie"
+  ],
   "url": "/spil/stenalder/",
   "orden": 100,
   "højscore": {

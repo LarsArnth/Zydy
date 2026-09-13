@@ -122,6 +122,43 @@ tvivl:
 Har du en lokal D1 til `wrangler dev`, skal de køres dér med `--local` — eller
 bare drop den flygtige `aktive`-tabel og kør `schema.sql` igen.
 
+<a id="soeg"></a>
+
+### Søg efter et spil
+
+Over listen står et felt: **«🔍 Søg efter et spil»**. Skriver man i det, bliver
+de kort, der ikke passer, skjult med det samme — der er over tyve spil på
+forsiden nu, og skal man finde ét bestemt, er det en lang rulletur. Selma bad om
+det gennem «Nyt spil?».
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Reglerne | `public/soeg-regler.mjs` | Ren JS uden browser: `normaliser`, `ord`, `soegetekst`, `staarI`, `passer` og `filtrer`. Enhedstestet i `test/unit/soeg.test.mjs` — mod de rigtige `kort.json`-filer. |
+| Feltet | `public/soeg.js` (modul) | Laver feltet over `<ul id="apps">`, skjuler kortene med `hidden`, tæller dem, og tilbyder at ønske sig spillet, når der ikke var noget. |
+| Det der søges i | `data-noegleord` på hvert kort | `scripts/byg-forside.mjs` skriver `"nøgleord"` fra spillets eget `kort.json` ud på kortet. |
+
+Fire ting er værd at huske:
+
+1. **Et spil hedder også noget andet.** Børnene leder efter forbilledet, ikke
+   vores navn: «roblox» skal finde Klodser, «block blast» Blokblast, «clash
+   royale» Slotskamp, «my cat» Min kat, «tre på stribe» Kryds og bolle. Derfor
+   har hvert `kort.json` et `"nøgleord"`, og der søges i navn + nøgleord +
+   beskrivelse. Et nyt spil bliver søgbart uden at nogen rører `soeg.js`.
+2. **Æ, Ø og Å skrives også ae/oe/aa**, så «saet» finder Sæt og «taarn» Tårn.
+   Det skrives tit uden de danske bogstaver, især på en iPad.
+3. **Korte søgeord skal begynde et ord, lange må stå midt inde i et.** Måtte
+   korte ord stå hvor som helst, ville «kat» også finde Dybet, fordi der står
+   «skatte» på kortet. Lange ord må, for ellers kunne man ikke finde Ordstige på
+   «stige» — dansk sætter ordene sammen. Grænsen er `LANGT_ORD` (4 bogstaver).
+4. **Rækkefølgen bliver, som den er.** Vi filtrerer kun og sorterer ikke om, så
+   det spil, man plejer at se øverst, står der stadig efter to bogstaver. Enter
+   går ind i det øverste kort, der er tilbage, og finder vi ingenting, står der
+   «Vi har ikke noget, der hedder «fodbold»» med en knap, der åbner «Nyt spil?»
+   med ordet skrevet i forvejen (`Ideer.nytSpil(udkast)`).
+
+Uden JavaScript er der intet felt, og listen ser ud som før.
+Test: `test/soeg.test.mjs` + `test/unit/soeg.test.mjs`.
+
 <a id="populaere-spil-og-spiller-nu"></a>
 
 ### Populære spil, «spiller nu» og hvem der er her
@@ -708,7 +745,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, kapløbets stilling, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, kapløbets stilling, forsidens kort og søgning, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
@@ -726,8 +763,9 @@ og Obby lægger deres egen `page.route('**/api/highscore/**')` ovenpå, når de
 har brug for en bestemt startliste. API'erne testes desuden hver for sig i
 `test/unit/highscore.test.mjs`, `test/unit/aktivitet.test.mjs`,
 `test/unit/ideer.test.mjs`, `test/unit/venner.test.mjs` og
-`test/unit/rum.test.mjs`. Forsiden har fire
+`test/unit/rum.test.mjs`. Forsiden har fem
 browser-tests: `test/forside.test.mjs` (navn, ønsker, «hvem er her»),
+`test/soeg.test.mjs` (søgefeltet over listen),
 `test/venner.test.mjs` (spørg, sig ja, se hvem der spiller hvad, giv en ven et
 kælenavn, fjern en ven — den anden part spilles af testen selv gennem
 `api.venner`),
@@ -766,7 +804,7 @@ Et kort beskriver sig selv i sin egen mappe, og forsiden bygges ud fra
 mapperne. Tilføj derfor **ingenting i hånden i `public/index.html`**:
 
 ```
-public/spil/<id>/kort.json    navn, beskrivelse, url, orden, evt. topliste-regler
+public/spil/<id>/kort.json    navn, beskrivelse, nøgleord, url, orden, evt. topliste-regler
 public/spil/<id>/ikon.svg     ikonet (ét <svg viewBox="0 0 512 512">)
 public/spil/<id>/index.html   selve spillet (kun spil der bor her)
 ```
@@ -779,6 +817,7 @@ node scripts/byg-forside.mjs    # skriver kortene ind i public/index.html og src
 {
   "navn": "Tårn",
   "beskrivelse": "Slip blokken i det rigtige øjeblik og byg tårnet så højt du kan.",
+  "nøgleord": ["tower", "stable", "stak", "blokke"],   // det spillet *også* hedder – se Søg efter et spil
   "url": "/spil/taarn/",       // absolut https://… for apps der bor et andet sted, sammen med "ekstern": true
   "orden": 40,                 // placering før popularitets-sorteringen; vælg et tal ingen andre har
   "kapløb": true,              // to venner kan tage et kapløb i spillet – se Kapløb
@@ -804,7 +843,8 @@ scriptet igen.
 `test/unit/kort.test.mjs` fejler, hvis man har glemt at køre generatoren, hvis
 et `kort.json` mangler noget, eller hvis et spil her på sitet ikke har en
 `index.html` at linke til. `node scripts/byg-forside.mjs --tjek` svarer på det
-samme uden at skrive noget.
+samme uden at skrive noget. `test/unit/soeg.test.mjs` fejler, hvis spillet ikke
+har mindst tre `nøgleord` — eller ikke kan findes på sit eget navn.
 
 Til sidst: skriv spillet på nyhedslisten i `public/nyheder.json`, så det lyser
 op på forsiden hos dem, der har været her før — se [Nyt på Zydy](#nyt-paa-zydy).

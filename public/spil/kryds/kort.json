@@ -1,6 +1,13 @@
 {
   "navn": "Kryds og bolle",
   "beskrivelse": "Tre på stribe mod en ven – på samme skærm, over nettet, eller mod computeren i tre sværhedsgrader.",
+  "nøgleord": [
+    "tre på stribe",
+    "tic tac toe",
+    "x og o",
+    "bord",
+    "to spillere"
+  ],
   "url": "/spil/kryds/",
   "orden": 130,
   "sammen": true

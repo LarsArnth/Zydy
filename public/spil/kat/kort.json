@@ -1,6 +1,14 @@
 {
   "navn": "Min kat",
   "beskrivelse": "Adopter din egen killing: giv den mad, leg med garnnøglet, børst pelsen og put den. Jo bedre du passer den, jo større bliver den.",
+  "nøgleord": [
+    "my cat",
+    "killing",
+    "kæledyr",
+    "dyr",
+    "pas på den",
+    "mis"
+  ],
   "url": "/spil/kat/",
   "orden": 137,
   "højscore": {

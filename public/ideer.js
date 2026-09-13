@@ -230,8 +230,9 @@ function oenske(spil, titel) {
   });
 }
 
-/** "Nyt spil?"-kortet nederst. */
-function nytSpil() {
+/** "Nyt spil?"-kortet nederst. `udkast` er tekst, der skal stå klar i feltet —
+ *  søgefeltet (/soeg.js) sender det, man ledte forgæves efter, med. */
+function nytSpil(udkast) {
   skriv({
     slags: 'nyt', spil: null,
     titel: 'Foreslå et nyt spil',
@@ -239,7 +240,7 @@ function nytSpil() {
     plads: 'Fx: et spil hvor man fanger faldende stjerner med en kurv, og det går hurtigere og hurtigere…',
     sendTekst: 'Send idé',
     takTekst: 'Din idé er gemt. Måske er den næste spil på zydy.dk!',
-  });
+  }, udkast);
 }
 
 /* ---------- Sådan sættes det på siden ---------- */
@@ -278,7 +279,7 @@ function nytSpilKort() {
   pil.setAttribute('aria-hidden', 'true');
   knap.appendChild(pil);
 
-  knap.addEventListener('click', nytSpil);
+  knap.addEventListener('click', () => nytSpil());   // uden argument: tomt felt, ikke selve klikket
   apps.insertAdjacentElement('afterend', knap);
 }
 

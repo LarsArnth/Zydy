@@ -1,6 +1,13 @@
 {
   "navn": "Helteriget",
   "beskrivelse": "Kortspil for to på én iPad: køb kort, hyr helte og slå modstanderen fra 50 liv ned til 0.",
+  "nøgleord": [
+    "hero realms",
+    "kortspil",
+    "deck",
+    "helte",
+    "to spillere"
+  ],
   "url": "/spil/helteriget/",
   "orden": 90,
   "højscore": {

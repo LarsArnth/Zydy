@@ -1,6 +1,14 @@
 {
   "navn": "Farvesortering",
   "beskrivelse": "Hæld farvet væske mellem glassene, til hver farve står for sig selv.",
+  "nøgleord": [
+    "water sort",
+    "vand",
+    "glas",
+    "farver",
+    "hælde",
+    "sortere"
+  ],
   "url": "/spil/farvesortering/",
   "orden": 60,
   "kapløb": true,

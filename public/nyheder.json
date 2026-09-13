@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 20,
+      "dato": "2026-09-13",
+      "spil": "",
+      "titel": "Søg efter et spil",
+      "hvad": "Der er over tyve spil på forsiden nu, så der står et søgefelt over listen. Skriv de første bogstaver, så bliver alt det andet væk med det samme. Du kan også søge på det, spillet ellers hedder: «roblox» finder Klodser, «block blast» finder Blokblast, «clash royale» finder Slotskamp og «my cat» finder Min kat. Tryk på retur, så er du inde i spillet — og finder vi ikke noget, kan du ønske dig det som et nyt spil med ét tryk.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 19,
       "dato": "2026-09-13",
       "spil": "",

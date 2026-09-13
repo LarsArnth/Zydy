@@ -1,6 +1,14 @@
 {
   "navn": "Obby",
   "beskrivelse": "Hop fra flyvende firkant til flyvende firkant. Pas på laserne, og fald ikke i lavaen. Hvor mange hop i træk kan du tage?",
+  "nøgleord": [
+    "roblox",
+    "parkour",
+    "platform",
+    "hop",
+    "laser",
+    "ét tryk"
+  ],
   "url": "/spil/obby/",
   "orden": 120,
   "kapløb": true,

@@ -1,6 +1,12 @@
 {
   "navn": "Ordle",
   "beskrivelse": "Gæt dagens danske ord på fem bogstaver. Du har seks forsøg.",
+  "nøgleord": [
+    "wordle",
+    "gæt ordet",
+    "fem bogstaver",
+    "dagens ord"
+  ],
   "url": "https://larsarnth.github.io/ordle/",
   "orden": 10,
   "ekstern": true

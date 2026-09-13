@@ -1,6 +1,15 @@
 {
   "navn": "Klodser",
   "beskrivelse": "Din egen 3D-verden af klodser: løb rundt, byg, riv ned – og find de 12 guldklodser så hurtigt du kan.",
+  "nøgleord": [
+    "roblox",
+    "minecraft",
+    "byg",
+    "verden",
+    "3d",
+    "guld",
+    "klods"
+  ],
   "url": "/spil/klodser/",
   "orden": 135,
   "kapløb": true,

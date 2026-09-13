@@ -1,6 +1,13 @@
 {
   "navn": "Imposter",
   "beskrivelse": "Alle får det samme ord – undtagen imposterne. Find dem, før de snyder sig til sejren.",
+  "nøgleord": [
+    "among us",
+    "bedrager",
+    "fest",
+    "party",
+    "mange spillere"
+  ],
   "url": "https://larsarnth.github.io/Imposter/",
   "orden": 30,
   "ekstern": true

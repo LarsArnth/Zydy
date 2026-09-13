@@ -1,6 +1,14 @@
 {
   "navn": "Tårn",
   "beskrivelse": "Stak blokkene præcist – alt der hænger ud over kanten, skæres af. Hvor højt kan du nå?",
+  "nøgleord": [
+    "tower",
+    "stable",
+    "stak",
+    "blokke",
+    "højde",
+    "point"
+  ],
   "url": "/spil/taarn/",
   "orden": 40,
   "kapløb": true,

@@ -1,6 +1,13 @@
 {
   "navn": "KlaverLær",
   "beskrivelse": "Lær at spille klaver med faldende noder og sjove sange. Bedst på iPad.",
+  "nøgleord": [
+    "piano",
+    "musik",
+    "noder",
+    "sange",
+    "lær at spille"
+  ],
   "url": "https://klaver.zydy.dk/",
   "orden": 140,
   "ekstern": true,

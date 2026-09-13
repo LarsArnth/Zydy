@@ -1,6 +1,14 @@
 {
   "navn": "Slotskamp",
   "beskrivelse": "Sæt riddere, bueskytter og kæmper ind for magi, send dem over broen og vælt modstanderens tårne, før tiden løber ud.",
+  "nøgleord": [
+    "clash royale",
+    "tårne",
+    "riddere",
+    "magi",
+    "strategi",
+    "kamp"
+  ],
   "url": "/spil/slotskamp/",
   "orden": 142,
   "kapløb": true,
