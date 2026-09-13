@@ -68,6 +68,25 @@ CREATE TABLE IF NOT EXISTS rum (
 CREATE INDEX IF NOT EXISTS rum_vaert ON rum (vaert, opdateret DESC);
 CREATE INDEX IF NOT EXISTS rum_gaest ON rum (gaest, opdateret DESC);
 
+-- Beskeder (src/beskeder.mjs): to venner der skriver sammen på forsiden.
+-- `samtale` er de to navne med små bogstaver, sorteret og samlet med '|'
+-- ('selma|sofie'), så begge retninger havner i den samme samtale. Tiden er ms
+-- siden epoch. Hvem der har læst hvad, står ikke her, men på telefonen.
+-- Tabellen laves også af Worker'en selv ved første besked (d1Beskeder), så den
+-- virker, selv om denne fil ikke er kørt mod den rigtige database.
+CREATE TABLE IF NOT EXISTS beskeder (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  samtale    TEXT    NOT NULL,             -- 'selma|sofie'
+  fra        TEXT    NOT NULL,             -- afsenderen (nøgle, små bogstaver)
+  fra_navn   TEXT    NOT NULL,             -- som skrevet, fx 'Sofie'
+  til        TEXT    NOT NULL,
+  til_navn   TEXT    NOT NULL,
+  tekst      TEXT    NOT NULL,             -- 1-200 tegn, renset i Worker'en
+  oprettet   INTEGER NOT NULL              -- ms siden epoch
+);
+CREATE INDEX IF NOT EXISTS beskeder_samtale ON beskeder (samtale, id);
+CREATE INDEX IF NOT EXISTS beskeder_fra ON beskeder (fra, oprettet);
+
 -- Idéer og ønsker (src/ideer.mjs): forslag til nye spil og ting der mangler i
 -- dem der findes. Hentes ned med `npm run ideer`.
 CREATE TABLE IF NOT EXISTS ideer (

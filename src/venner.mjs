@@ -138,9 +138,12 @@ async function status(lager, navn, ekstra = {}) {
 
 /**
  * Håndterer /api/venner. `lager` er d1Venner(env.DB) i drift og en
- * hukommelses-udgave i tests. Returnerer null hvis stien ikke er API'ets.
+ * hukommelses-udgave i tests. `beskeder` er beskedlageret (src/beskeder.mjs),
+ * som bruges til at rydde samtalen, når et venskab fjernes — den må gerne
+ * udelades, så venskaberne kan testes for sig.
+ * Returnerer null hvis stien ikke er API'ets.
  */
-export async function haandterVenner(request, lager) {
+export async function haandterVenner(request, lager, beskeder = null) {
   const url = new URL(request.url);
   if (url.pathname !== '/api/venner' && url.pathname !== '/api/venner/') return null;
 
@@ -164,7 +167,12 @@ export async function haandterVenner(request, lager) {
   if (handling === 'nej') {
     // Samme knap siger nej tak til et spørgsmål og fjerner en ven igen – i begge
     // tilfælde skal rækken bare væk, og så kan man spørge forfra en anden dag.
+    // Det, de to har skrevet til hinanden, følger med ud: man skal kunne gøre
+    // rent efter sig, og en samtale uden et venskab kan ingen af dem læse.
     if (par) await lager.slet(a, b);
+    // (nøglen er den samme som samtaleNoegle() i src/beskeder.mjs – skrevet ud
+    //  her, så venner.mjs ikke skal importere beskeder.mjs, som selv bruger os)
+    if (beskeder) await beskeder.sletSamtale([a, b].sort().join('|'));
     return status(lager, mig, { status: 'væk' });
   }
 

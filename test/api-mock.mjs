@@ -11,6 +11,7 @@
 //   api.scores          → rækkerne i højscore-lageret
 //   api.ideer.rows      → de idéer og ønsker der er sendt ind
 //   api.venner.rows     → venskaberne, [{ fra, til, fraNavn, tilNavn, svaret }]
+//   api.beskeder.rows   → det de har skrevet til hinanden
 //
 // Options: { scores: [{ spil, navn, score }] } lægger startrækker på toplisterne.
 import { haandterApi } from '../src/highscore.mjs';
@@ -18,6 +19,7 @@ import { haandterAktivitet } from '../src/aktivitet.mjs';
 import { haandterIdeer } from '../src/ideer.mjs';
 import { haandterVenner } from '../src/venner.mjs';
 import { haandterRum } from '../src/rum.mjs';
+import { haandterBeskeder, SAMTALE_MAKS } from '../src/beskeder.mjs';
 
 /** Højscore-lager i hukommelsen – samme seks metoder som d1Lager(). */
 export function huskLager(start = []) {
@@ -148,6 +150,42 @@ export function huskRum() {
   };
 }
 
+/** Besked-lager i hukommelsen – samme metoder som d1Beskeder(). */
+export function huskBeskeder() {
+  const rows = [];
+  let naeste = 0;
+  return {
+    rows,
+    async gem(b) {
+      const id = ++naeste;
+      rows.push({ id, ...b });
+      // Samme trimning som i D1: kun de nyeste SAMTALE_MAKS i hver samtale.
+      const mine = rows.filter(r => r.samtale === b.samtale);
+      for (const gammel of mine.slice(0, Math.max(0, mine.length - SAMTALE_MAKS))) {
+        rows.splice(rows.indexOf(gammel), 1);
+      }
+      return id;
+    },
+    async hent(samtale, efter, n) {
+      return rows.filter(r => r.samtale === samtale && r.id > efter).slice(-n);
+    },
+    async sidste(k, n) {
+      const sidst = new Map();
+      rows.filter(r => r.fra === k || r.til === k).forEach(r => sidst.set(r.samtale, r));
+      return [...sidst.values()].sort((a, b) => b.id - a.id).slice(0, n);
+    },
+    async antalEfter(samtale, efter) {
+      return rows.filter(r => r.samtale === samtale && r.id > efter).length;
+    },
+    async antalFra(fra, efter) {
+      return rows.filter(r => r.fra === fra && r.oprettet >= efter).length;
+    },
+    async sletSamtale(samtale) {
+      for (let i = rows.length - 1; i >= 0; i--) if (rows[i].samtale === samtale) rows.splice(i, 1);
+    },
+  };
+}
+
 /**
  * Sætter mocken op på `page`. Returnerer lagrene og en log over aktivitets-kald.
  * `opt.delMed` er et tidligere svar fra mockApi: så deler de to sider database,
@@ -160,6 +198,7 @@ export async function mockApi(page, opt = {}) {
   const ideer = delt ? delt.ideer : huskIdeer();
   const venner = delt ? delt.venner : huskVenner(hs, akt);
   const rum = delt ? delt.rum : huskRum();
+  const beskeder = delt ? delt.beskeder : huskBeskeder();
   const log = delt ? delt.log : { aktivitet: [], highscore: [] };
 
   // Cloudflare Web Analytics-beaconen holdes ude af testene. Den hører ikke til
@@ -186,8 +225,9 @@ export async function mockApi(page, opt = {}) {
     const request = new Request(req.url(), { method: metode, headers: req.headers(), body: krop });
     const svar = (await haandterAktivitet(request, akt, hs))
       || (await haandterIdeer(request, ideer))
-      || (await haandterVenner(request, venner))
+      || (await haandterVenner(request, venner, beskeder))
       || (await haandterRum(request, rum, venner))
+      || (await haandterBeskeder(request, beskeder, venner))
       || (await haandterApi(request, hs));
     if (!svar) return route.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"fejl":"Ikke API (mock)"}' });
     return route.fulfill({
@@ -197,5 +237,5 @@ export async function mockApi(page, opt = {}) {
     });
   });
 
-  return { hs, akt, ideer, venner, rum, log, get scores() { return hs.rows; } };
+  return { hs, akt, ideer, venner, rum, beskeder, log, get scores() { return hs.rows; } };
 }

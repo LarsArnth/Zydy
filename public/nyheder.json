@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 26,
+      "dato": "2026-09-13",
+      "spil": "",
+      "titel": "Skriv med dine venner",
+      "hvad": "BOBA ønskede sig, at man kan skrive med sine venner — og nu kan man det. Tryk på en ven i «Dine venner» øverst på forsiden, og der står «💬 Skriv til …». Så kan I skrive sammen, også når den anden ikke er her lige nu: beskeden står og venter. Har nogen skrevet til dig, kan du se det med det samme — der står «Selma skrev …» øverst i panelet, og der sidder et lille 💬 på vennen. Gider du ikke skrive på tastaturet, er der fire faste beskeder at trykke på: «Hej!», «Vil du spille?», 👍 og ❤️. Kun I to kan læse det, I skriver, og trykker I på «Ryd samtalen», er det væk for jer begge.",
+      "oensket": "BOBA"
+    },
+    {
       "nr": 25,
       "dato": "2026-09-13",
       "spil": "papir",

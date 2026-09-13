@@ -11,8 +11,8 @@
     • dem der har spurgt, om I skal være venner — med Ja tak / Nej tak
     • en knap til at finde en ven blandt de navne, vi har set på siden
 
-  Trykker man på en ven, kan man give hen et kælenavn — og invitere hen til at
-  spille sammen. Der er to slags: de spil, hvor man deler ét parti (data-sammen:
+  Trykker man på en ven, kan man skrive til hen (/beskeder.js), give hen et
+  kælenavn — og invitere hen til at spille sammen. Der er to slags: de spil, hvor man deler ét parti (data-sammen:
   Kryds og bolle, Dybet), og et **kapløb** i alle de andre (data-kaploeb), hvor
   man spiller hver sit spil og deler stillingen. Se scripts/byg-forside.mjs.
 
@@ -232,6 +232,34 @@ function tegnRum(kort) {
   });
 }
 
+/* ---------- Beskeder ---------- */
+/*
+  Selve chatten ligger i /beskeder.js; her er kun det, panelet skal vise: en
+  linje øverst, når nogen har skrevet, og et 💬-mærke på vennen. Er filen ikke
+  indlæst, sker der bare ingenting.
+*/
+
+/** Samtaler med noget ulæst i, nyeste først. */
+const nyeBeskeder = () =>
+  (window.Beskeder ? Beskeder.samtaler() : []).filter(s => s.nye > 0);
+
+/** Hvor meget en bestemt ven har skrevet, siden jeg sidst kiggede. */
+const ulaest = navn => (window.Beskeder ? Beskeder.nye(navn) : 0);
+
+/** "Selma skrev: hej!" øverst i panelet – lige under invitationerne. */
+function tegnBeskeder(kort) {
+  nyeBeskeder().forEach(s => {
+    const hvem = visNavn(s.ven);
+    const raekke = el('div', 'v-spoerg v-besked');
+    raekke.appendChild(el('span', 'v-spoerg-tekst',
+      '💬 ' + hvem + ' skrev: ' + s.sidst.tekst));
+    const svar = el('span', 'v-svar');
+    svar.appendChild(knap('v-knap v-vigtig v-laes', 'Læs', () => Beskeder.aabn(s.ven)));
+    raekke.appendChild(svar);
+    kort.appendChild(raekke);
+  });
+}
+
 /* ---------- Panelet ---------- */
 
 function tegn() {
@@ -260,6 +288,8 @@ function tegn() {
 
   // Allerøverst: "Selma vil spille Kryds og bolle med dig" – det haster mest.
   tegnRum(kort);
+  // Og lige efter: "Selma skrev …", hvis nogen har skrevet til mig.
+  tegnBeskeder(kort);
 
   // Dernæst: dem der har spurgt mig. Det skal man kunne svare på med ét tryk.
   data.venter.forEach(v => {
@@ -284,6 +314,8 @@ function tegn() {
       // Med kælenavn står det rigtige navn småt nedenunder, så man altid kan se hvem det er.
       t.appendChild(el('span', 'v-hvor', kn ? v.navn + ' · ' + h.tekst : h.tekst));
       b.appendChild(t);
+      const nye = ulaest(v.navn);
+      if (nye) b.appendChild(el('span', 'v-nyt', '💬 ' + nye));
       liste.appendChild(b);
     });
     kort.appendChild(liste);
@@ -393,6 +425,17 @@ function venDialog(hvem) {
     rod.appendChild(el('p', 'id-under', h.online
       ? (h.spil ? vis + ' spiller ' + h.spil.titel + ' lige nu.' : vis + ' er på zydy.dk lige nu.')
       : vis + ' er ikke på zydy.dk lige nu.'));
+
+    // Det nemmeste først: at skrive. Vennen behøver ikke at være her nu –
+    // beskeden står og venter, til hen kommer. Chatten har sin egen dialog, så
+    // vi lukker den her først; ellers ligger de to oven på hinanden.
+    if (window.Beskeder) {
+      const n = ulaest(hvem);
+      rod.appendChild(knap('id-knap v-skriv', n ? '💬 Læs de ' + n + ' nye' : '💬 Skriv til ' + vis, () => {
+        dlg.close();
+        Beskeder.aabn(hvem);
+      }));
+    }
 
     // Det bedste: at spille *sammen* – ét spil, to telefoner. Vi laver et rum og
     // hopper derind; den anden får invitationen på forsiden og kan hoppe med.
@@ -523,6 +566,14 @@ const css = `
 .v-kaele-hint{font-size:13px}
 .v-kaele-status:empty{display:none}
 
+/* Beskeder: "Selma skrev …" øverst, og et 💬-mærke på vennen selv */
+.v-besked{background:rgba(124,240,192,.12)}
+.v-besked .v-spoerg-tekst{font-weight:600;overflow-wrap:anywhere}
+.v-nyt{flex:0 0 auto;font-size:12px;font-weight:800;border-radius:999px;padding:3px 8px;
+  background:var(--sun,#ffd447);color:#1c1f4a}
+.v-skriv{display:block;width:100%;margin-top:4px;text-align:center;
+  background:rgba(255,255,255,.09);color:var(--text,#fff7e6)}
+
 /* Spil sammen: invitationen står øverst i panelet og lyser, så den ikke overses */
 .v-rum{background:rgba(94,224,168,.14)}
 .v-rum .v-hopmed{background:var(--mint,#5ee0a8);color:#10321f;animation:puls 1.8s ease-in-out infinite}
@@ -549,6 +600,8 @@ function start() {
   hentRum();
   // Forsiden henter /api/oversigt hvert halve minut – vi får resultatet gratis.
   document.addEventListener('zydy:oversigt', e => { if (e.detail) laesOversigt(e.detail); });
+  // Er der kommet en besked (/beskeder.js), skal mærket og linjen øverst med.
+  document.addEventListener('zydy:beskeder', () => tegn());
   // Navnet blev skrevet eller skiftet: så er det en anden persons venner, vi skal vise.
   document.addEventListener('zydy:navn', () => {
     data = { venner: [], venter: [], sendt: [], kendte: [] };
@@ -567,7 +620,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 else start();
 
 window.Venner = {
-  hent, tegn, hentRum, kaelenavn, saetKaelenavn, visNavn,
+  hent, tegn, hentRum, kaelenavn, saetKaelenavn, visNavn, ulaest,
   get data() { return data; },
   get rum() { return rum; },
 };

@@ -305,8 +305,9 @@ node ../zydy-feedback-loop.mjs --afvist 42 "hvorfor det ikke kan lade sig gøre"
 Øverst på forsiden står **«Dine venner»**: hvem du er venner med, og om de er
 på zydy.dk lige nu («Selma spiller Obby»). Spørger nogen, om I skal være
 venner, står spørgsmålet samme sted med *Ja tak* / *Nej*. Trykker man på en
-ven, kan man se hvor hen er, hoppe med ind i det spil, hen er i gang med — og
-invitere hen til at spille *sammen*, se [Spil sammen](#spil-sammen).
+ven, kan man se hvor hen er, [skrive til hen](#skriv-med-en-ven), hoppe med ind
+i det spil, hen er i gang med — og invitere hen til at spille *sammen*, se
+[Spil sammen](#spil-sammen).
 
 Der er **ingen konti og intet login** på zydy.dk, og det bliver der ikke. Man
 er det navn, man har skrevet på forsiden (`zydy.navn`), så et venskab er en
@@ -354,6 +355,54 @@ Kælenavnet er **mit navn til vennen, ikke vennens navn**, og derfor:
 
 Koden er `kaelenavn`/`saetKaelenavn`/`visNavn` øverst i `public/venner.js`
 (også på `window.Venner`, så testen kan nå dem).
+
+<a id="skriv-med-en-ven"></a>
+
+#### Skriv med en ven
+
+Trykker man på en ven, står **«💬 Skriv til Selma»** øverst i dialogen, og så
+kan de to skrive sammen — én samtale pr. par venner, på forsiden og ikke andre
+steder. Har nogen skrevet, står der en linje øverst i venne-panelet
+(«💬 Selma skrev: Hej! Skal vi spille?» med **Læs**) og et lille 💬-mærke på
+vennen selv. Samtalen er en dialog med de samme farver som resten af siden:
+mine beskeder til højre i gult, vennens til venstre, klokkeslæt under hver.
+Under feltet står fire faste beskeder — «Hej!», «Vil du spille?», 👍 og ❤️ —
+for på en iPad er tastaturet dét, der tager modet fra en.
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Database | tabellen `beskeder` i `schema.sql` | `beskeder(id, samtale, fra, fra_navn, til, til_navn, tekst, oprettet)`. `samtale` er de to navne med små bogstaver, sorteret og samlet med `\|` (`'selma\|sofie'`), så begge retninger havner samme sted. |
+| API | `src/worker.mjs` → `src/beskeder.mjs` | `GET /api/beskeder?navn=Sofie&set=selma:42` giver oversigten (sidste besked + hvor meget der er nyt pr. samtale), `GET …&ven=Selma&efter=42` giver selve samtalen, og `POST {navn, ven, tekst}` skriver. `POST {…, handling: 'ryd'}` rydder samtalen for dem begge. |
+| Klient | `public/beskeder.js` | Chatten, oversigten og 💬-mærket. Henter oversigten hvert 15. sekund — og hvert 2,5 sekund, mens samtalen står åben, for dér venter man på svar. Ændrer den sig, sendes hændelsen `zydy:beskeder`, som `public/venner.js` tegner panelet om efter. |
+
+Fire ting er værd at huske:
+
+1. **Man kan kun skrive med sine venner** (ja begge veje i `venner`) — også for
+   at *læse*. Det er hele værnet, præcis som ved «spil sammen»: der er stadig
+   hverken konti eller login, og et venskab er en aftale mellem to navne.
+2. **Hvem der har læst hvad, ligger på telefonen**, ikke i databasen
+   (`zydy.beskeder.set`, gemt under den der læste — samme mønster som
+   kælenavnene). Klienten sender sine mærker med som `set=selma:42`, og
+   serveren tæller, hvor meget der er kommet siden. Så kan ingen se, om den
+   anden har læst beskeden, og der er ikke noget at rydde op i.
+3. **Grænserne er der, fordi API'et er åbent**: en besked fylder højst 200 tegn
+   og står på én linje, man kan sende 20 beskeder i minuttet (`SPAM_MAKS`), og
+   en samtale husker de nyeste 200 beskeder. Fjerner man vennen igen, følger
+   samtalen med ud — `handling: 'nej'` i `src/venner.mjs` rydder den, så en
+   samtale uden et venskab ikke bliver liggende.
+4. **Tabellen laver Worker'en selv** ved første besked (`d1Beskeder`), så
+   beskeder virker, selv om `schema.sql` ikke er kørt mod den rigtige database.
+   Det sker én gang pr. worker og koster derefter ingenting.
+
+Skulle der komme skrald ind:
+
+```bash
+npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM beskeder WHERE samtale='selma|sofie'"
+```
+
+Test: `test/beskeder.test.mjs` (repoets fjerde to-browser-test: Sofie skriver,
+Selma får mærket på forsiden, læser og svarer med ét tryk, og svaret dukker op
+hos Sofie) + `test/unit/beskeder.test.mjs`.
 
 <a id="spil-sammen"></a>
 
@@ -994,7 +1043,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, kapløbets stilling, forsidens kort og søgning, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, kapløbets stilling, forsidens kort og søgning, nyhedslisten, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
@@ -1007,21 +1056,22 @@ const api = await mockApi(page);    // før testens egen page.route, som så vin
 ```
 
 og kan bagefter kigge i `api.log.aktivitet`, `api.scores`, `api.ideer.rows`,
-`api.venner.rows` og `api.rum.rows`. Tårn, Sæt, Dybet
+`api.venner.rows`, `api.rum.rows` og `api.beskeder.rows`. Tårn, Sæt, Dybet
 og Obby lægger deres egen `page.route('**/api/highscore/**')` ovenpå, når de
 har brug for en bestemt startliste. API'erne testes desuden hver for sig i
 `test/unit/highscore.test.mjs`, `test/unit/aktivitet.test.mjs`,
-`test/unit/ideer.test.mjs`, `test/unit/venner.test.mjs` og
-`test/unit/rum.test.mjs`. Forsiden har fem
+`test/unit/ideer.test.mjs`, `test/unit/venner.test.mjs`,
+`test/unit/rum.test.mjs` og `test/unit/beskeder.test.mjs`. Forsiden har seks
 browser-tests: `test/forside.test.mjs` (navn, ønsker, «hvem er her»),
 `test/soeg.test.mjs` (søgefeltet over listen),
 `test/venner.test.mjs` (spørg, sig ja, se hvem der spiller hvad, giv en ven et
 kælenavn, fjern en ven — den anden part spilles af testen selv gennem
 `api.venner`),
 `test/nyheder.test.mjs` («Nyt på Zydy», hvor en ekstra nyhed serveres gennem
-`page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til) og
-`test/rum.test.mjs` («spil sammen»). Den sidste er én af repoets tre tests med
-**to browsere** (de to andre er `test/dybet-sammen.test.mjs` og
+`page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til),
+`test/beskeder.test.mjs` («skriv med en ven») og
+`test/rum.test.mjs` («spil sammen»). De to sidste er blandt repoets fire tests
+med **to browsere** (de andre er `test/dybet-sammen.test.mjs` og
 `test/kaploeb.test.mjs`): Sofie og Selma har
 hver sit vindue med sit eget `localStorage`, men deler API'et
 (`mockApi(side, { delMed: api })`), så et helt parti Kryds og bolle — eller en
