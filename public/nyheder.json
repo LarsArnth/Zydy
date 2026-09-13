@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 25,
+      "dato": "2026-09-13",
+      "spil": "papir",
+      "titel": "Papirøen \u2013 farv papiret, f\u00f8r de andre g\u00f8r det",
+      "hvad": "Selma \u00f8nskede sig Paper.io, og nu er det her. Du er en klat p\u00e5 et stort stykke ternet papir. K\u00f8rer du ud fra dit eget omr\u00e5de, tr\u00e6kker du en streg efter dig \u2014 og kommer du hjem igen, bliver alt inden i sl\u00f8jfen dit, ogs\u00e5 det, en anden havde farvet. Men mens du er ude, er du i fare: k\u00f8rer Bo, Ida eller Mikkel over din streg, er du ude med det samme, og hele dit omr\u00e5de forsvinder fra papiret. Det g\u00e6lder ogs\u00e5 den anden vej, s\u00e5 du kan tage dem p\u00e5 deres streg. Pas p\u00e5 kanten af papiret \u2014 den er lige s\u00e5 farlig. Du styrer ved at tr\u00e6kke fingeren d\u00e9n vej, du vil k\u00f8re, og minikortet i hj\u00f8rnet viser hele papiret. Toplisten m\u00e5ler, hvor stor en del af papiret du n\u00e5ede at have.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 24,
       "dato": "2026-09-13",
       "spil": "mitliv",

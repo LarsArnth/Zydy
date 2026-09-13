@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; nitten spil
+afhængigheder. De store apps bor i egne repoer og linkes til; tyve spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet nitten spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet tyve spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen og Mit liv, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv og Papirøen, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -44,13 +44,14 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Weeee! | `public/spil/weee/` | Selmas ønske, der bare lød «Weeee» – lyden man laver, når det går stærkt ned ad bakke. Det er blevet til en kælketur ned ad en uendelig bjergside med ét eneste tryk: holder man fingeren nede, trykker man sig ned i sneen og får mere fart, men klæber også fast; slipper man på kanten af en bølge, letter man og flyver. I luften dykker man ved at holde igen, så man kan lande parallelt med bakken og beholde farten – en landing på tværs koster det meste. Bagved kommer en lavine, der bliver hurtigere for hvert sekund, så den eneste vej er fremad. Den gule streg på sneen viser, hvor man ville lette lige nu, og HUD'en siger hvad fingeren skal. Score = meter, online topliste. To filer: `bakke.mjs` (bakke, fysik og lavine, enhedstestet) og `index.html`. Se «Weeee! – det ene tryk og bjerget» nedenfor. |
 
 | Legebyen | `public/spil/legebyen/` | Selmas ønske om «Toca boca»: et dukkehus med fem rum – stuen, køkkenet, badeværelset, butikken og legepladsen – og seks figurer (fem børn og voksne plus hunden Vaks), man trækker rundt med fingeren. Slipper man en ved sofaen, badekarret, gyngen eller rutsjebanen, sætter den sig. Fra bakken nederst tager man ting frem: mad der bliver spist, hatte og solbriller der bliver taget på, og legetøj figuren holder i hånden. Møblerne kan man trykke på – køleskabet giver mad, komfuret en pizza, fjernsynet og bruseren tænder, kassen i butikken sælger, gyngen svinger. Ting man trykker på, ryger i **tasken** og kan komme med ind i et andet rum, og hver figur kan klædes på med hud, frisure, hårfarve, trøje og bukser. **Ingen point og ingen måde at tabe på** – det er fri leg, og byen står, som man forlod den. To filer: `by.mjs` (rum, figurer, ting og hvad der sker, når de mødes, enhedstestet) og `index.html`. Se «Legebyen – dukkehuset» nedenfor. |
+| Papirøen | `public/spil/papir/` | Selmas ønske om «Papir io 2»: et stort stykke ternet papir, hvor fire klatter farver hver sit område. Kører man ud fra sit eget, trækker man en streg efter sig – og kommer man hjem igen, bliver hele sløjfen ens, også det, en anden havde farvet inde i den. Men mens man er ude, er man i fare: kører Bo, Ida eller Mikkel over stregen, ryger man ud, og hele området forsvinder fra papiret. Det gælder begge veje, så man kan tage dem på deres streg – og tager man hele deres område, er de også ude. Kanten af papiret er lige så farlig. Man styrer med et lille joystick (træk fingeren dén vej, man vil køre), og minikortet i hjørnet viser hele papiret. Score = den største del af papiret, man nåede at have, i hele procent. To filer: `papir.mjs` (papiret, sløjfen og modstanderne, enhedstestet) og `index.html`. `?bots=0` giver papiret for sig selv. Se «Papirøen – sløjfen og de tre modstandere» nedenfor. |
 | Mit liv | `public/spil/mitliv/` | Selmas ønske om «The Sims»: et helt liv i ét hus, set oppefra. Man laver sin egen figur (hud, frisure, hårfarve, trøje, bukser), flytter ind med 600 kr. og fire møbler, og passer seks behov – mæt, energi, toilet, ren, sjov og selskab – der siver nedad, mens spiluret går (ét rigtigt sekund = fem spilminutter). Man trykker på et møbel, og figuren går selv derhen og bruger det, til behovet er fyldt. Om morgenen kører bussen på arbejde: man er væk i seks spiltimer og kommer hjem med løn, der følger humøret, og stjerner mod en forfremmelse – fra avisbud til astronaut i otte trin. Pengene bruges i **byg-tilstand**, hvor 20 møbler kan købes, flyttes og sælges for det halve. Når toilettet ikke kan vente, kommer der en pyt på gulvet, man skal tørre op, og telefonen henter en ven på besøg. Score = **formuen** (penge + alt i huset), online topliste. To filer: `liv.mjs` (behov, veje, møbler og arbejde, enhedstestet) og `index.html`. Se «Mit liv – huset, behovene og arbejdet» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp og Weeee! — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee! og Papirøen — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -419,8 +420,8 @@ pille øverst på skærmen hele tiden:
 
 Den **bedste runde** tæller, man må spille så mange runder man vil, og trykker
 man på pillen, folder hele stillingen sig ud med «Stop kapløbet» og en vej hjem.
-Elleve spil er med: Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er lava,
-Klodser, Miskmask, Blokblast, Slotskamp og Weeee!
+Tolv spil er med: Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er lava,
+Klodser, Miskmask, Blokblast, Slotskamp, Weeee! og Papirøen.
 
 | Del | Fil | Hvad |
 |---|---|---|
@@ -864,6 +865,59 @@ mens man er væk — det er et liv, man leger, ikke et kæledyr, der skal passes
 Test: `test/mitliv.test.mjs` (lever et liv igennem gennem skærmen) +
 `test/unit/mitliv.test.mjs`.
 
+### Papirøen – sløjfen og de tre modstandere
+
+Ønsket lød «Papir io 2» – altså Paper.io, hvor man farver et stykke papir ved at
+køre ud og hjem igen. Reglerne bor i `papir.mjs`, som ikke rører DOM'en;
+`index.html` tegner papiret og tager imod fingeren.
+
+**Erobringen er en flod udefra.** Når sløjfen lukkes, bliver stregen til
+område, og derefter flyder vi ind fra papirets kant gennem alt, der *ikke* er
+mit. Det, floden ikke kan nå, lå inde i sløjfen og bliver mit:
+
+```js
+for (let i = 0; i < FELTER; i++) if (!naaet[i] && s.ejer[i] !== p.id) s.ejer[i] = p.id;
+```
+
+Det er hele forklaringen på, hvorfor man ikke behøver vide, hvilken vej sløjfen
+gik – og hvorfor et hul i ens eget område fyldes af sig selv, første gang man
+kører en sløjfe om det. En anden spillers område inde i sløjfen bliver også
+mit; det er dét, der gør, at man kan tage nogen helt ud.
+
+**Man er kun sårbar, mens man er ude.** Hjemme på sit eget område er der ingen
+streg at køre over, så dér kan ingen tage en. Derfor handler spillet om at turde
+blive længe nok ude til, at sløjfen bliver stor. Til gengæld: **mister man hele
+sit område, er man ude** – ellers ville en spiller uden hjem køre rundt for
+evigt uden nogensinde at kunne lukke en sløjfe.
+
+**Der drejes på feltets midte.** Trykket gemmes i `p.næste` og slår først
+igennem, når klatten når næste felt (`vaelgRetning`). Ellers ville stregen
+knække midt mellem to felter, og de felter, man havde kørt over, ville ikke
+passe med det, man kunne se. En 180°-vending er ikke et træk: den ville være
+lige ind i ens egen streg.
+
+**Modstanderne er skruet sammen efter, hvor længe en runde skal vare.** Botten
+tegner et rektangel (ud i `maal` felter, om ad siden i `sideMaal`, og så hjem
+efter nærmeste eget felt) og kigger ét skridt frem, så den ikke maler sig op i
+et hjørne. Tre tal afgør, hvor hårdt det er at være menneske:
+
+| Tal | Hvorfor |
+|---|---|
+| `SPREDNING` (14 felter) | Der er mindst 14 felter mellem to klatter, når nogen kommer ind på papiret. Uden det startede to klatter side om side og kørte over hinandens streger, før nogen havde nået at lave en sløjfe – de første runder varede under to sekunder. |
+| `aggro` (0,05 / 0,12 / 0,2) | Chancen for, at en tur ud bliver en *jagt* på en fremmed streg. Bo jager næsten aldrig, Mikkel hver femte tur. Ved 0,26 var Ida alene nok til at gøre spillet uspilleligt. |
+| `JAGT_SKRIDT` (12) | Hvor længe en jagt holder ved, før botten går hjem igen. Uden loftet fulgte den efter for evigt. |
+
+Målestokken er `kør(seed, sekunder)`, som lader bot-hjernen styre spillerens
+egen klat: en gennemsnitlig runde skal vare **mere end 15 sekunder** for en bot,
+der slet ikke viger udenom – så har et barn tid nok. Det tjekker enhedstesten.
+
+`?bots=0` giver papiret for sig selv. Det er både til at øve sig og dét, testen
+bruger, når den skal være sikker på, at det var sløjfen, der farvede papiret, og
+kanten, der tog en – og ikke Bo.
+
+Test: `test/papir.test.mjs` (en rigtig finger, der drejer klatten, en sløjfe der
+farver, og en hel runde med botten ved rattet) + `test/unit/papir.test.mjs`.
+
 ### Legebyen – dukkehuset
 
 Ønsket lød «Lav Toca boga» – altså Toca Boca, hvor man ikke vinder noget, men
@@ -940,7 +994,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, kapløbets stilling, forsidens kort og søgning, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, kapløbets stilling, forsidens kort og søgning, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter

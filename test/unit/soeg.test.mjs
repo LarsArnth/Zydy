@@ -90,6 +90,7 @@ test('spillene kan findes på det, de også hedder', () => {
     'roblox': 'klodser',            // Selma spurgte efter Roblox, og det blev Klodser
     'minecraft': 'klodser',
     'block blast': 'blokblast',
+    'paper io': 'papir',            // Selma skrev «Papir io 2», og det blev Papirøen
     'clash royale': 'slotskamp',
     'my cat': 'kat',
     'toca boca': 'legebyen',       // Selma skrev «Toca boga», og det blev Legebyen
