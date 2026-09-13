@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; toogtyve spil
+afhængigheder. De store apps bor i egne repoer og linkes til; treogtyve spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet toogtyve spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet treogtyve spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen og Fiskedybet, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet og Copyright, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -48,6 +48,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Papirøen | `public/spil/papir/` | Selmas ønske om «Papir io 2»: et stort stykke ternet papir, hvor fire klatter farver hver sit område. Kører man ud fra sit eget, trækker man en streg efter sig – og kommer man hjem igen, bliver hele sløjfen ens, også det, en anden havde farvet inde i den. Men mens man er ude, er man i fare: kører Bo, Ida eller Mikkel over stregen, ryger man ud, og hele området forsvinder fra papiret. Det gælder begge veje, så man kan tage dem på deres streg – og tager man hele deres område, er de også ude. Kanten af papiret er lige så farlig. Man styrer med et lille joystick (træk fingeren dén vej, man vil køre), og minikortet i hjørnet viser hele papiret. Score = den største del af papiret, man nåede at have, i hele procent. `papir.mjs` (papiret, sløjfen og modstanderne) er enhedstestet. `?bots=0` giver papiret for sig selv. **Kan også spilles sammen med en ven**, én på hver telefon, på det samme stykke papir – se [Spil sammen](#spil-sammen) og [Papirøen sammen](#papir-sammen). Tre filer: `papir.mjs`, `sammen.mjs` (de to venner, enhedstestet) og `index.html`. Se «Papirøen – sløjfen og de tre modstandere» nedenfor. |
 | Fiskedybet | `public/spil/fisk/` | Timos ønske om «Fish It: Abyss»: en lille båd, fem farvande og en fiskebog, der skal fyldes. Man kaster snøren, og når der hugger, løber en viser frem og tilbage over en bar – et tryk tæller kun i det grønne felt, og store fisk kræver flere rammere og tåler færre forbiere. Fangsten sejles hjem til havnen og sælges, og pengene går til snøren (åbner et farvand mere), stangen (bredere felt), skroget (flere hjerter) og kølerummet (større last). Solskinshavet er trygt; i Hajvandet, Dybhavet, Afgrunden og Tomrummet hugger der ét uhyre hvert sted, og så skal man vælge: klippe snøren, eller tage kampen – taber man, eller når man ikke at bestemme sig, tager det en bid af båden. Går skroget i nul, bliver man slæbt i havn og mister lasten, men aldrig fiskebogen. Score = antal arter i bogen, online topliste. To filer: `hav.mjs` (farvande, dyr, kamp, økonomi og det gemte spil, enhedstestet) og `index.html`. Se «Fiskedybet – baren, farvandene og uhyrerne» nedenfor. |
 | Mit liv | `public/spil/mitliv/` | Selmas ønske om «The Sims»: et helt liv i ét hus, set oppefra. Man laver sin egen figur (hud, frisure, hårfarve, trøje, bukser), flytter ind med 600 kr. og fire møbler, og passer seks behov – mæt, energi, toilet, ren, sjov og selskab – der siver nedad, mens spiluret går (ét rigtigt sekund = fem spilminutter). Man trykker på et møbel, og figuren går selv derhen og bruger det, til behovet er fyldt. Om morgenen kører bussen på arbejde: man er væk i seks spiltimer og kommer hjem med løn, der følger humøret, og stjerner mod en forfremmelse – fra avisbud til astronaut i otte trin. Pengene bruges i **byg-tilstand**, hvor 20 møbler kan købes, flyttes og sælges for det halve. Når toilettet ikke kan vente, kommer der en pyt på gulvet, man skal tørre op, og telefonen henter en ven på besøg. Score = **formuen** (penge + alt i huset), online topliste. To filer: `liv.mjs` (behov, veje, møbler og arbejde, enhedstestet) og `index.html`. Se «Mit liv – huset, behovene og arbejdet» nedenfor. |
+| Copyright | `public/spil/copyright/` | Selmas ønske om et spil, hvor man «copyrighter en tegning og gætter, hvem der har copyrighten». Et tegne- og gættespil for 3-6 på én iPad, der går rundt: alle tegner det **samme** motiv hver for sig, og når man er færdig, slås ens copyright-stempel på tegningen – men dækket til, så de andre kun ser «©?». Derefter går enheden rundt igen, og hver spiller gætter, hvem der har copyright på hver af de andres tegninger. Afsløringen tager én tegning ad gangen: stemplet vendes, og man kan se, hvem der ramte rigtigt. 10 point for et rigtigt gæt, 5 til tegneren pr. narret – men narrer man **alle**, giver tegningen ingenting. Tre runder med hvert sit motiv. Score = vinderens point, online topliste. To filer: `regler.mjs` (motiver, gæt, point og runder, enhedstestet) og `index.html`. Se «Copyright – stemplet, gættet og pointene» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -1191,6 +1192,55 @@ ikke have en bold på hovedet. `mig`-figuren hedder det, der står i `zydy.navn`
 Test: `test/legebyen.test.mjs` (leger alle fem rum igennem gennem skærmen) +
 `test/unit/legebyen.test.mjs`.
 
+### Copyright – stemplet, gættet og pointene
+
+Ønsket lød: «Lav et spil hvor man skal copyright en tegning også skal man gætte
+hvem der er den der har copyrighten tegningen». Altså: man sætter sit mærke på
+sin egen tegning, og bagefter skal det gættes, hvis mærke der sidder på hvad.
+Spillet er hot-seat på én iPad, der går rundt – som Stenalder og Helteriget –
+og en runde har tre dele: **tegn → gæt → afslør**. Reglerne bor i `regler.mjs`
+uden DOM; `index.html` har lærredet, skærmene og stemplet.
+
+Fem valg er værd at kende:
+
+1. **Alle tegner det samme motiv.** Gør de ikke det, gætter man på *motivet*
+   («Selma tegner altid heste») i stedet for på hånden, og så er spillet noget
+   andet. Motivet trækkes fra `MOTIVER`, og det samme motiv kommer ikke to gange
+   i ét spil.
+2. **Narrer man alle, giver tegningen ingenting.** 10 point for et rigtigt gæt
+   og 5 til tegneren pr. narret – men kun hvis mindst én ramte rigtigt. Uden den
+   regel (den er fra Dixit) vinder en klat, for en klat kan ingen genkende. Nu
+   skal man tegne, så én kan kende ens streg, men ikke alle.
+3. **En tegning er streger, ikke et billede.** Hver streg gemmes som
+   `{ f: farveindeks, t: tykkelse i procent af papirets bredde, p: [x,y,…] med
+   0-1-koordinater }`. Derfor kan den samme tegning tegnes som frimærke i
+   gættelisten og stort på afsløringsskærmen uden at blive grynet – og uden at
+   der skal en `toDataURL()` gennem hukommelsen for hver tegning.
+   Under selve tegningen males kun det nye stykke af stregen (ikke hele
+   lærredet forfra), ellers hakker det på en iPad.
+4. **Der er en «giv den videre»-skærm før hver eneste tur** – både før man
+   tegner og før man gætter. Hemmeligheden *er* spillet, så enheden må aldrig gå
+   fra den ene til den anden med noget stående på skærmen. Man kan hverken gætte
+   på sin egen tegning (den vises ikke) eller på sig selv (ens eget navn er ikke
+   blandt knapperne), og «Færdig» siger «Mangler 2», til der er taget stilling
+   til alle.
+5. **Uret stempler selv.** Man har 60 sekunder (`TEGNETID`); løber de ud,
+   sættes stemplet på det, der er. Man kan ikke selv stemple en blank side, men
+   uret er ligeglad – ellers kan én spiller holde hele bordet fanget.
+
+Der er mindst tre spillere: med to er gættet «den anden», og det er ikke et
+spil. Det er heller ikke et «spil sammen»-spil: rummet i `src/rum.mjs` har plads
+til 4000 tegn, og tegninger fylder mere end det – men vigtigere er, at alle
+venter på den, der tegner, og dét venter man hellere på, når man sidder ved
+siden af hinanden. Score på toplisten er **vinderens point** efter tre runder,
+gemt under det navn, spilleren skrev på startskærmen (samme mønster som
+Stenalder, derfor `Highscore.hent/send/tegnListe` frem for `panel()`).
+
+Test: `test/copyright.test.mjs` (tegner et hus med en rigtig finger, lader uret
+stemple den tredje tegning, gætter både med et tryk på en chip og gennem
+`GAME.gaet`, og tjekker point, afsløring og topliste) +
+`test/unit/copyright.test.mjs`.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -1215,7 +1265,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om

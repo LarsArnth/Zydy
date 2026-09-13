@@ -1,0 +1,20 @@
+<svg viewBox="0 0 512 512"><defs>
+  <linearGradient id="cr-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232a63"/><stop offset="1" stop-color="#0d1024"/></linearGradient>
+</defs>
+  <rect width="512" height="512" fill="url(#cr-bg)"/>
+  <!-- Papiret med en lille tegning på -->
+  <g transform="rotate(-6 256 246)">
+    <rect x="96" y="86" width="320" height="320" rx="26" fill="#fff7ea"/>
+    <g fill="none" stroke="#5b8cff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M168 320c0-52 38-88 88-88s88 36 88 88"/>
+      <path d="M198 234l-14-42M314 234l14-42"/>
+    </g>
+    <g fill="#ff5c7a"><circle cx="216" cy="288" r="13"/><circle cx="296" cy="288" r="13"/></g>
+    <path d="M222 336c20 16 48 16 68 0" fill="none" stroke="#1d2036" stroke-width="14" stroke-linecap="round"/>
+  </g>
+  <!-- Copyright-stemplet -->
+  <g transform="rotate(-12 360 388)">
+    <circle cx="360" cy="388" r="74" fill="#1c1f4a" stroke="#ffd447" stroke-width="14"/>
+    <path d="M392 358a44 44 0 1 0 0 60" fill="none" stroke="#ffd447" stroke-width="20" stroke-linecap="round"/>
+  </g>
+</svg>

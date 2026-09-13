@@ -1,0 +1,744 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Copyright: alle tegner det samme, sætter deres copyright-stempel på – og så skal I gætte, hvem der har copyright på hver tegning.">
+<title>Copyright – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%23ffd447' stroke-width='5'/%3E%3Cpath d='M38 26a9 9 0 1 0 0 12' fill='none' stroke='%23ffd447' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  /*
+    Copyright – tegn det samme som de andre, stempl det med dit copyright,
+    og gæt så hvem der har copyright på hver tegning.
+    Reglerne og pointene bor i regler.mjs; her er kun skærm, streger og input.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --ink:#1c1f4a;
+    --papir:#fff7ea; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 14px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:40px;line-height:1;margin:0 0 8px;letter-spacing:-1.5px;font-weight:800}
+  h2{font-size:24px;line-height:1.1;margin:0 0 8px;font-weight:800;letter-spacing:-.5px}
+  p{margin:0 0 12px;color:var(--muted);font-size:16px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{width:100%;padding:16px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;min-height:44px}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:7px 13px;font-size:15px;color:var(--muted);white-space:nowrap}
+  [hidden]{display:none!important}
+
+  .screen{display:none;flex-direction:column;flex:1;width:100%;max-width:560px;margin:0 auto}
+  .screen.on{display:flex}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;min-height:44px}
+  .back{color:var(--muted);text-decoration:none;font-size:17px;font-weight:700;display:inline-flex;
+    align-items:center;min-height:44px;min-width:44px;padding:0 6px 0 2px;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .brand{font-weight:800;font-size:17px;letter-spacing:-.3px}
+  .content{flex:1;display:flex;flex-direction:column;justify-content:center}
+
+  /* ---- Startskærm ---- */
+  .label{font-weight:700;font-size:15px;margin:12px 0 6px}
+  .seg{display:flex;background:var(--bg2);border-radius:999px;padding:4px;gap:4px}
+  .seg button{flex:1;padding:10px 0;border-radius:999px;background:transparent;color:var(--muted);
+    font-weight:700;font-size:17px;min-height:44px}
+  .seg button.on{background:var(--sun);color:var(--ink)}
+  #navne{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  #navne label{display:flex;align-items:center;gap:8px}
+  #navne .nr{width:22px;flex:none;text-align:center;font-weight:800;color:var(--sun);font-size:15px}
+  #navne input{flex:1;font:inherit;font-size:17px;font-weight:600;padding:10px 12px;border-radius:14px;
+    border:2px solid transparent;background:var(--bg2);color:var(--text);outline:none;min-height:44px;
+    -webkit-user-select:text;user-select:text}
+  #navne input:focus{border-color:var(--sun)}
+  .regler{margin-top:14px;font-size:14px}
+  .regler b{color:var(--text)}
+
+  /* ---- Giv-enheden-videre ---- */
+  #giv .content{text-align:center}
+  #givNavn{font-size:34px;font-weight:800;letter-spacing:-1px;margin:0 0 6px;color:var(--sun)}
+  .hemmelig{font-size:60px;margin-bottom:6px}
+
+  /* ---- Tegneskærm ---- */
+  .motiv{text-align:center;font-size:15px;color:var(--muted);margin-bottom:6px}
+  .motiv b{color:var(--text);font-size:20px;display:block;font-weight:800;letter-spacing:-.4px;line-height:1.15}
+  .tid{height:8px;border-radius:4px;background:var(--bg2);overflow:hidden;margin:8px 0}
+  .tid i{display:block;height:100%;background:var(--mint);width:100%;transition:width .25s linear}
+  .tid.knap i{background:var(--coral)}
+  .papir{position:relative;width:min(90vw,44dvh,440px);aspect-ratio:1;margin:0 auto;
+    border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .papir canvas{display:block;width:100%;height:100%;background:var(--papir);touch-action:none}
+  .farver{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+  .farver button{width:38px;height:38px;border-radius:50%;border:3px solid transparent;padding:0}
+  .farver button.on{border-color:var(--text);transform:scale(1.08)}
+  .vaerktoej{display:flex;gap:8px;margin-top:8px}
+  .vaerktoej button{flex:1;background:var(--bg2);color:var(--text);border-radius:14px;padding:10px 4px;
+    font-size:15px;font-weight:700;min-height:44px}
+  .vaerktoej button.on{background:var(--bg3);box-shadow:inset 0 0 0 2px var(--sun)}
+  .vaerktoej .prik{display:inline-block;border-radius:50%;background:var(--text);vertical-align:middle}
+
+  /* ---- Stemplet ---- */
+  .segl{position:absolute;right:8px;bottom:8px;min-width:74px;padding:6px 10px;border-radius:14px;
+    background:rgba(28,31,74,.92);color:var(--sun);font-weight:800;font-size:15px;text-align:center;
+    border:2px solid var(--sun);transform:rotate(-8deg)}
+  .segl.skjult{color:var(--muted);border-color:var(--muted)}
+  .segl.slaa{animation:slaa .45s ease-out}
+  @keyframes slaa{0%{transform:rotate(-8deg) scale(2.6);opacity:0}60%{transform:rotate(-8deg) scale(.92);opacity:1}100%{transform:rotate(-8deg) scale(1)}}
+
+  /* ---- Gætteskærm ---- */
+  .kort{display:flex;gap:10px;align-items:center;background:var(--bg2);border-radius:18px;padding:10px;margin-bottom:10px}
+  .kort .papir{width:124px;flex:none;margin:0;border-radius:12px;box-shadow:none}
+  .kort .valg{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+  .chip{background:var(--bg3);color:var(--text);border-radius:999px;padding:9px 12px;font-size:15px;
+    font-weight:700;min-height:40px}
+  .chip.on{background:var(--sun);color:var(--ink)}
+  .liste{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
+
+  /* ---- Afsløring og stilling ---- */
+  .svar{display:flex;align-items:center;gap:8px;font-size:16px;padding:6px 2px;color:var(--muted)}
+  .svar b{color:var(--text)}
+  .svar .ok{color:var(--mint);font-weight:800}
+  .svar .nej{color:var(--coral);font-weight:800}
+  .plus{margin-left:auto;font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums}
+  .stil{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border-radius:14px;margin-bottom:6px}
+  .stil+.stil{margin-top:0}
+  .stil .p{width:26px;color:var(--muted);font-weight:800;flex:none}
+  .stil .n{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stil .v{font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums}
+  .stil.et{background:rgba(255,212,71,.16)}
+  .stil.et .p{color:var(--sun)}
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+
+  @media (min-width:600px){ h1{font-size:50px} .papir{width:min(78vw,50dvh,460px)} }
+  @media (max-height:560px){
+    .papir{width:min(60vw,62dvh,340px)}
+    h1{font-size:32px} .btn{padding:12px}
+  }
+  @media (prefers-reduced-motion:reduce){ .btn,.segl.slaa{transition:none;animation:none} }
+</style>
+</head>
+<body>
+
+<!-- ===== Startskærm ===== -->
+<div class="screen on" id="start">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Copyright</span>
+    <span class="pill">3 runder</span>
+  </div>
+  <div class="content">
+    <h1>Copyright</h1>
+    <p>I tegner det samme – hver for sig. Så gætter I, hvem der har copyright på hvilken tegning.</p>
+
+    <div class="label">Hvor mange spiller?</div>
+    <div class="seg" id="antalSpillere" role="radiogroup" aria-label="Antal spillere">
+      <button data-n="3" class="on" role="radio" aria-checked="true">3</button>
+      <button data-n="4" role="radio" aria-checked="false">4</button>
+      <button data-n="5" role="radio" aria-checked="false">5</button>
+      <button data-n="6" role="radio" aria-checked="false">6</button>
+    </div>
+    <div id="navne"></div>
+
+    <button class="btn" id="btnStart">Spil</button>
+
+    <p class="regler">Enheden går på skift rundt: først tegner I én ad gangen, så gætter I én ad gangen.
+      <b>10 point</b> for hvert rigtigt gæt, og <b>5 point</b> til tegneren for hver, du narrer –
+      men narrer du <b>alle</b>, er tegningen for godt gemt, og så giver den ingenting.</p>
+  </div>
+</div>
+
+<!-- ===== Giv enheden videre (bruges både før man tegner og før man gætter) ===== -->
+<div class="screen" id="giv">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Copyright</span>
+    <span class="pill" id="givPill">Runde 1</span>
+  </div>
+  <div class="content">
+    <div class="hemmelig" aria-hidden="true">🙈</div>
+    <h2 id="givNavn">Selma</h2>
+    <p id="givTekst">Din tur til at tegne. Lad være med at vise skærmen til de andre!</p>
+    <button class="btn" id="btnKlar">Jeg er klar</button>
+  </div>
+</div>
+
+<!-- ===== Tegneskærm ===== -->
+<div class="screen" id="tegn">
+  <div class="topbar">
+    <span class="pill" id="tegnNavn">Selma</span>
+    <span class="brand">Copyright</span>
+    <span class="pill" id="tidTal">60</span>
+  </div>
+  <div class="content">
+    <div class="motiv">Tegn<b id="motiv">en kat der spiller fodbold</b></div>
+    <div class="tid" id="tidBar"><i></i></div>
+    <div class="papir"><canvas id="lc" aria-label="Tegn her"></canvas></div>
+    <div class="farver" id="farver" role="radiogroup" aria-label="Farve"></div>
+    <div class="vaerktoej">
+      <button id="btnTynd" aria-label="Tynd streg"><span class="prik" style="width:8px;height:8px"></span></button>
+      <button id="btnTyk" aria-label="Tyk streg"><span class="prik" style="width:18px;height:18px"></span></button>
+      <button id="btnFortryd">↩︎ Fortryd</button>
+      <button id="btnRyd">Ryd</button>
+    </div>
+    <button class="btn" id="btnFaerdig" disabled>Færdig – stempl den ©</button>
+  </div>
+</div>
+
+<!-- ===== Stemplet: tegningen er min ===== -->
+<div class="screen" id="stempel">
+  <div class="topbar">
+    <span class="pill">Stemplet</span>
+    <span class="brand">Copyright</span>
+    <span class="pill" id="stempelPill">Runde 1</span>
+  </div>
+  <div class="content">
+    <h2 id="stempelTitel">Tegningen er din, Selma</h2>
+    <p>Stemplet er dækket til, så de andre kun kan se «©?».</p>
+    <div class="papir"><canvas id="stempelLc"></canvas><span class="segl" id="stempelSegl">© Selma</span></div>
+    <button class="btn" id="btnVidere">Videre</button>
+  </div>
+</div>
+
+<!-- ===== Gætteskærm ===== -->
+<div class="screen" id="gaet">
+  <div class="topbar">
+    <span class="pill" id="gaetNavn">Selma</span>
+    <span class="brand">Copyright</span>
+    <span class="pill" id="gaetPill">Runde 1</span>
+  </div>
+  <h2>Hvem har copyright?</h2>
+  <p id="gaetTekst">Alle tegnede «en kat der spiller fodbold». Tryk på et navn under hver tegning.</p>
+  <div class="liste" id="gaetKort"></div>
+  <button class="btn" id="btnGaetFaerdig" disabled>Færdig</button>
+</div>
+
+<!-- ===== Afsløring ===== -->
+<div class="screen" id="afsloer">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Copyright</span>
+    <span class="pill" id="afsloerPill">1 af 3</span>
+  </div>
+  <div class="content">
+    <div class="papir"><canvas id="afsloerLc"></canvas><span class="segl skjult" id="afsloerSegl">©?</span></div>
+    <div id="afsloerListe"></div>
+    <button class="btn" id="btnVis">Hvem har copyright?</button>
+    <button class="btn ghost" id="btnNaeste" hidden>Næste tegning</button>
+  </div>
+</div>
+
+<!-- ===== Stillingen efter en runde ===== -->
+<div class="screen" id="stilling">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Copyright</span>
+    <span class="pill" id="stillingPill">Runde 1 af 3</span>
+  </div>
+  <div class="content">
+    <h2 id="stillingTitel">Stillingen</h2>
+    <div id="stillingListe"></div>
+    <button class="btn" id="btnNaesteRunde">Næste runde</button>
+  </div>
+</div>
+
+<!-- ===== Slutskærm ===== -->
+<div class="screen" id="slut">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Copyright</span>
+    <span class="pill">Slut</span>
+  </div>
+  <div class="content">
+    <h1 id="slutTitel">Selma vandt!</h1>
+    <div id="slutListe"></div>
+    <div id="hs"></div>
+    <button class="btn" id="btnIgen">Spil igen</button>
+    <a class="btn ghost" href="/">Til zydy.dk</a>
+  </div>
+</div>
+<canvas id="confetti" hidden></canvas>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="copyright"></script>
+<script type="module">
+import { nytSpil, gemTegning, saetGaet, manglerGaet, tilGaet, faerdigMedGaet, afsloeres,
+         naesteAfsloering, naesteRunde, stilling, vindere, tomTegning,
+         MIN_SPILLERE, MAKS_SPILLERE, RUNDER, TEGNETID, POINT_RIGTIGT, POINT_NARRET } from './regler.mjs';
+
+const $ = s => document.querySelector(s);
+const el = (tag, cls, tekst) => { const e = document.createElement(tag); if (cls) e.className = cls; if (tekst != null) e.textContent = tekst; return e; };
+
+/* ---------- Seedbar tilfældighed, så en test kan gentage et parti ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const params = new URLSearchParams(location.search);
+const seed = parseInt(params.get('seed'), 10) || ((Math.random() * 2 ** 31) | 0);
+const rnd = mulberry32(seed);
+
+/* ---------- Farver og streger ----------
+   En streg gemmes som { f: farveindeks, t: tykkelse i procent af papirets
+   bredde, p: [x0,y0,x1,y1,…] med 0-1-koordinater }. Så kan den samme tegning
+   tegnes både stort på afsløringsskærmen og som frimærke i gætte-listen. */
+const FARVER = ['#1d2036', '#ff5c7a', '#ff9f43', '#ffd447', '#3fb96f', '#5b8cff', '#b07cff', '#a8724a'];
+const TYND = 1.1, TYK = 3.6;
+const GEM_NAVNE = 'zydy.copyright.navne';
+
+let S = null;                 // spiltilstand fra regler.mjs
+let streger = [];             // tegningen i gang
+let farve = 0, tyk = TYND;
+let aktiv = null;             // stregen fingeren er i gang med
+let tidRest = TEGNETID, tidUr = null;
+let efterGiv = 'tegn';        // hvad «Jeg er klar» fører til
+
+/* ---------- Skærme ---------- */
+const SKAERME = ['start', 'giv', 'tegn', 'stempel', 'gaet', 'afsloer', 'stilling', 'slut'];
+let skaerm = 'start';
+function visSkaerm(id) {
+  skaerm = id;
+  SKAERME.forEach(s => $('#' + s).classList.toggle('on', s === id));
+}
+
+/* ---------- Tegn streger på et lærred ---------- */
+function lærredMål(cv) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const b = cv.getBoundingClientRect();
+  const w = Math.round(b.width) || cv.clientWidth, h = Math.round(b.height) || cv.clientHeight;
+  if (!w || !h) return null;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  return { ctx, w, h };
+}
+
+function tegnStreger(cv, liste) {
+  const m = lærredMål(cv);
+  if (!m) return false;
+  const { ctx, w, h } = m;
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--papir').trim() || '#fff7ea';
+  ctx.fillRect(0, 0, w, h);
+  (liste || []).forEach(s => tegnEnStreg(ctx, s, w, h, 0));
+  return true;
+}
+
+/** Tegner en streg fra punkt `fra` og frem (0 = hele stregen). */
+function tegnEnStreg(ctx, s, w, h, fra) {
+  ctx.strokeStyle = FARVER[s.f] || FARVER[0];
+  ctx.lineWidth = Math.max(1, (s.t * w) / 100);
+  ctx.beginPath();
+  if (s.p.length === 2) {                       // en enkelt prik
+    ctx.arc(s.p[0] * w, s.p[1] * h, ctx.lineWidth / 2, 0, 6.284);
+    ctx.fillStyle = ctx.strokeStyle; ctx.fill();
+    return;
+  }
+  for (let i = Math.max(0, fra * 2 - 2); i < s.p.length; i += 2) {
+    const x = s.p[i] * w, y = s.p[i + 1] * h;
+    if (i === Math.max(0, fra * 2 - 2)) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+
+/* ---------- Selve tegningen ---------- */
+const lc = $('#lc');
+const tegnAlt = () => tegnStreger(lc, streger);
+
+function punkt(e) {
+  const b = lc.getBoundingClientRect();
+  const x = Math.min(1, Math.max(0, (e.clientX - b.left) / b.width));
+  const y = Math.min(1, Math.max(0, (e.clientY - b.top) / b.height));
+  return { x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000 };
+}
+
+lc.addEventListener('pointerdown', e => {
+  if (!S || S.fase !== 'tegn' || skaerm !== 'tegn') return;
+  e.preventDefault();
+  lc.setPointerCapture?.(e.pointerId);
+  const p = punkt(e);
+  aktiv = { f: farve, t: tyk, p: [p.x, p.y] };
+  streger.push(aktiv);
+  const m = lærredMål(lc);
+  if (m) tegnEnStreg(m.ctx, aktiv, m.w, m.h, 0);
+  opdaterVaerktoej();
+});
+lc.addEventListener('pointermove', e => {
+  if (!aktiv) return;
+  e.preventDefault();
+  const p = punkt(e);
+  const n = aktiv.p.length;
+  const dx = p.x - aktiv.p[n - 2], dy = p.y - aktiv.p[n - 1];
+  if (dx * dx + dy * dy < 0.00002) return;     // spring de bitte små ryk over
+  aktiv.p.push(p.x, p.y);
+  // Tegn kun det nye stykke – en fuld gentegning for hvert ryk hakker på en iPad.
+  const m = lærredMål(lc);
+  if (m) tegnEnStreg(m.ctx, aktiv, m.w, m.h, aktiv.p.length / 2 - 1);
+});
+const slipStreg = () => { if (aktiv) { aktiv = null; opdaterVaerktoej(); } };
+lc.addEventListener('pointerup', slipStreg);
+lc.addEventListener('pointercancel', slipStreg);
+lc.addEventListener('pointerleave', slipStreg);
+
+function opdaterVaerktoej() {
+  $('#btnFaerdig').disabled = tomTegning(streger);
+  $('#btnFortryd').disabled = !streger.length;
+  $('#btnRyd').disabled = !streger.length;
+  $('#btnTynd').classList.toggle('on', tyk === TYND);
+  $('#btnTyk').classList.toggle('on', tyk === TYK);
+}
+
+// Farvevælgeren
+$('#farver').innerHTML = FARVER.map((f, i) =>
+  `<button data-f="${i}" role="radio" aria-checked="${i === 0}" aria-label="Farve ${i + 1}" style="background:${f}"${i === 0 ? ' class="on"' : ''}></button>`).join('');
+$('#farver').addEventListener('click', e => {
+  const b = e.target.closest('button[data-f]'); if (!b) return;
+  farve = Number(b.dataset.f);
+  $('#farver').querySelectorAll('button').forEach(x => {
+    x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b ? 'true' : 'false');
+  });
+});
+$('#btnTynd').addEventListener('click', () => { tyk = TYND; opdaterVaerktoej(); });
+$('#btnTyk').addEventListener('click', () => { tyk = TYK; opdaterVaerktoej(); });
+$('#btnFortryd').addEventListener('click', () => { streger.pop(); tegnAlt(); opdaterVaerktoej(); });
+$('#btnRyd').addEventListener('click', () => { streger = []; tegnAlt(); opdaterVaerktoej(); });
+addEventListener('resize', () => { if (skaerm === 'tegn') tegnAlt(); });
+
+/* ---------- Uret ---------- */
+function startTid() {
+  stopTid();
+  tidRest = TEGNETID;
+  visTid();
+  tidUr = setInterval(() => {
+    tidRest = Math.max(0, tidRest - 0.25);
+    visTid();
+    if (tidRest <= 0) { stopTid(); faerdigTegning(); }
+  }, 250);
+}
+function stopTid() { if (tidUr) { clearInterval(tidUr); tidUr = null; } }
+function visTid() {
+  $('#tidTal').textContent = Math.ceil(tidRest);
+  $('#tidBar').querySelector('i').style.width = `${(tidRest / TEGNETID) * 100}%`;
+  $('#tidBar').classList.toggle('knap', tidRest <= 10);
+}
+
+/* ---------- Startskærmen ---------- */
+let antal = 3;
+const gemteNavne = (() => { try { return JSON.parse(localStorage.getItem(GEM_NAVNE) || 'null'); } catch (e) { return null; } })() || [];
+// Har man skrevet sit navn på forsiden, står det klar som spiller 1 – samme navn som toplisten bruger.
+if (!gemteNavne[0] && window.Highscore) gemteNavne[0] = Highscore.navn.hent();
+
+function tegnNavneFelter() {
+  const boks = $('#navne'); boks.innerHTML = '';
+  for (let i = 0; i < antal; i++) {
+    const raekke = el('label');
+    raekke.append(el('span', 'nr', String(i + 1)));
+    const inp = Object.assign(document.createElement('input'), {
+      type: 'text', placeholder: `Spiller ${i + 1}`, value: gemteNavne[i] || '', maxLength: 14, autocomplete: 'off',
+    });
+    inp.autocapitalize = 'words'; inp.spellcheck = false; inp.dataset.i = i;
+    raekke.append(inp);
+    boks.append(raekke);
+  }
+}
+$('#antalSpillere').addEventListener('click', e => {
+  const b = e.target.closest('button[data-n]'); if (!b) return;
+  antal = Number(b.dataset.n);
+  Array.from($('#antalSpillere').children).forEach(x => {
+    x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b ? 'true' : 'false');
+  });
+  tegnNavneFelter();
+});
+tegnNavneFelter();
+
+function start(navne) {
+  const valgte = navne ?? Array.from($('#navne').querySelectorAll('input')).map((inp, i) => inp.value.trim() || `Spiller ${i + 1}`);
+  try { localStorage.setItem(GEM_NAVNE, JSON.stringify(valgte)); } catch (e) {}
+  // Kender resten af zydy.dk slet ikke spilleren endnu, så lær navnet her.
+  if (window.Highscore && !Highscore.navn.hent() && !/^Spiller \d$/.test(valgte[0])) {
+    Highscore.navn.gem(Array.from(valgte[0]).slice(0, 12).join(''));
+  }
+  S = nytSpil({ navne: valgte, runder: Math.max(1, Number(params.get('runder')) || RUNDER), rnd });
+  tilTegner();
+}
+$('#btnStart').addEventListener('click', () => start());
+
+/* ---------- Giv enheden videre ---------- */
+function givTil(navn, tekst, naeste) {
+  efterGiv = naeste;
+  $('#givNavn').textContent = navn;
+  $('#givTekst').textContent = tekst;
+  $('#givPill').textContent = `Runde ${S.runde} af ${S.runder}`;
+  visSkaerm('giv');
+}
+function tilTegner() {
+  const navn = S.spillere[S.tegner].navn;
+  givTil(navn, 'Din tur til at tegne. Lad være med at vise skærmen til de andre!', 'tegn');
+}
+function tilGaetter() {
+  const navn = S.spillere[S.gaetter].navn;
+  givTil(navn, 'Din tur til at gætte, hvem der har copyright på tegningerne.', 'gaet');
+}
+$('#btnKlar').addEventListener('click', () => (efterGiv === 'tegn' ? aabnTegn() : aabnGaet()));
+
+/* ---------- Tegneskærmen ---------- */
+function aabnTegn() {
+  streger = []; aktiv = null;
+  $('#tegnNavn').textContent = S.spillere[S.tegner].navn;
+  $('#motiv').textContent = S.motiv;
+  visSkaerm('tegn');
+  opdaterVaerktoej();
+  requestAnimationFrame(tegnAlt);
+  startTid();
+}
+
+/** Stemplet sættes på: tegningen gemmes, og tegneren får den at se med sit navn på. */
+function faerdigTegning() {
+  if (!S || S.fase !== 'tegn') return;
+  stopTid();
+  const navn = S.spillere[S.tegner].navn;
+  const mine = streger;
+  gemTegning(S, mine, rnd);
+  $('#stempelTitel').textContent = `Tegningen er din, ${navn}`;
+  $('#stempelPill').textContent = `Runde ${S.runde} af ${S.runder}`;
+  const segl = $('#stempelSegl');
+  segl.textContent = `© ${navn}`;
+  segl.classList.remove('slaa');
+  visSkaerm('stempel');
+  requestAnimationFrame(() => {
+    tegnStreger($('#stempelLc'), mine);
+    segl.classList.add('slaa');
+  });
+  navigator.vibrate?.(30);
+}
+$('#btnFaerdig').addEventListener('click', faerdigTegning);
+$('#btnVidere').addEventListener('click', () => (S.fase === 'tegn' ? tilTegner() : tilGaetter()));
+
+/* ---------- Gætteskærmen ---------- */
+function aabnGaet() {
+  const jeg = S.gaetter;
+  $('#gaetNavn').textContent = S.spillere[jeg].navn;
+  $('#gaetPill').textContent = `Runde ${S.runde} af ${S.runder}`;
+  $('#gaetTekst').textContent = `Alle tegnede «${S.motiv}». Tryk på et navn under hver tegning.`;
+  const boks = $('#gaetKort'); boks.innerHTML = '';
+  tilGaet(S).forEach(t => {
+    const kort = el('div', 'kort'); kort.dataset.t = String(t);
+    const papir = el('div', 'papir');
+    const cv = document.createElement('canvas');
+    papir.append(cv); kort.append(papir);
+    const valg = el('div', 'valg');
+    S.spillere.forEach((p, i) => {
+      if (i === jeg) return;                    // man gætter ikke på sig selv
+      const chip = el('button', 'chip', p.navn);
+      chip.dataset.t = String(t); chip.dataset.s = String(i);
+      chip.setAttribute('aria-pressed', 'false');
+      valg.append(chip);
+    });
+    kort.append(valg);
+    boks.append(kort);
+    requestAnimationFrame(() => tegnStreger(cv, S.tegninger[t].streger));
+  });
+  visSkaerm('gaet');
+  opdaterGaet();
+}
+$('#gaetKort').addEventListener('click', e => {
+  const chip = e.target.closest('button.chip'); if (!chip) return;
+  if (!saetGaet(S, Number(chip.dataset.t), Number(chip.dataset.s))) return;
+  navigator.vibrate?.(15);
+  opdaterGaet();
+});
+function opdaterGaet() {
+  $('#gaetKort').querySelectorAll('button.chip').forEach(chip => {
+    const valgt = S.gaet[S.gaetter][Number(chip.dataset.t)] === Number(chip.dataset.s);
+    chip.classList.toggle('on', valgt);
+    chip.setAttribute('aria-pressed', valgt ? 'true' : 'false');
+  });
+  const mangler = manglerGaet(S).length;
+  const knap = $('#btnGaetFaerdig');
+  knap.disabled = mangler > 0;
+  knap.textContent = mangler ? `Mangler ${mangler}` : 'Færdig';
+}
+$('#btnGaetFaerdig').addEventListener('click', () => {
+  if (!faerdigMedGaet(S, rnd)) return;
+  if (S.fase === 'gaet') tilGaetter();
+  else aabnAfsloer();
+});
+
+/* ---------- Afsløringen ---------- */
+function aabnAfsloer() {
+  const o = afsloeres(S);
+  if (!o) return;
+  $('#afsloerPill').textContent = `${S.afsloer + 1} af ${S.opgoer.length}`;
+  const segl = $('#afsloerSegl');
+  segl.textContent = '©?'; segl.className = 'segl skjult';
+  $('#afsloerListe').innerHTML = '';
+  $('#btnVis').hidden = false;
+  $('#btnNaeste').hidden = true;
+  visSkaerm('afsloer');
+  requestAnimationFrame(() => tegnStreger($('#afsloerLc'), S.tegninger[o.tegning].streger));
+}
+
+function visEjer() {
+  const o = afsloeres(S);
+  if (!o) return;
+  const ejer = S.spillere[o.ejer].navn;
+  const segl = $('#afsloerSegl');
+  segl.textContent = `© ${ejer}`;
+  segl.className = 'segl slaa';
+  const liste = $('#afsloerListe');
+  liste.innerHTML = '';
+  o.svar.forEach(s => {
+    const raekke = el('div', 'svar');
+    raekke.append(el('span', s.rigtigt ? 'ok' : 'nej', s.rigtigt ? '✓' : '✗'));
+    const tekst = el('span');
+    tekst.innerHTML = `<b>${undvig(S.spillere[s.gaetter].navn)}</b> gættede ${undvig(S.spillere[s.valgt].navn)}`;
+    raekke.append(tekst);
+    if (s.rigtigt) raekke.append(el('span', 'plus', `+${POINT_RIGTIGT}`));
+    liste.append(raekke);
+  });
+  const opsamling = el('div', 'svar');
+  const t = el('span');
+  if (o.rigtige === 0) t.innerHTML = `<b>Ingen</b> fandt ${undvig(ejer)} – for godt gemt, ingen point`;
+  else if (o.narrede === 0) t.innerHTML = `<b>Alle</b> kendte ${undvig(ejer)}s streg`;
+  else t.innerHTML = `<b>${undvig(ejer)}</b> narrede ${o.narrede}`;
+  opsamling.append(t);
+  if (o.ejerPoint) opsamling.append(el('span', 'plus', `+${o.ejerPoint}`));
+  liste.append(opsamling);
+  $('#btnVis').hidden = true;
+  const sidste = S.afsloer >= S.opgoer.length - 1;
+  $('#btnNaeste').textContent = sidste ? 'Se stillingen' : 'Næste tegning';
+  $('#btnNaeste').hidden = false;
+  navigator.vibrate?.(o.rigtige ? [20, 40, 20] : 40);
+}
+$('#btnVis').addEventListener('click', visEjer);
+$('#btnNaeste').addEventListener('click', () => {
+  if (naesteAfsloering(S) === 'afsloer') aabnAfsloer();
+  else aabnStilling();
+});
+
+/* ---------- Stillingen ---------- */
+function tegnStilling(rod) {
+  rod.innerHTML = '';
+  stilling(S).forEach(r => {
+    const raekke = el('div', 'stil' + (r.plads === 1 ? ' et' : ''));
+    raekke.append(el('span', 'p', r.plads === 1 ? '🏆' : String(r.plads)));
+    raekke.append(el('span', 'n', r.navn));
+    raekke.append(el('span', 'v', `${r.point}`));
+    rod.append(raekke);
+  });
+}
+function aabnStilling() {
+  const sidste = S.runde >= S.runder;
+  if (sidste) { slutSpil(); return; }
+  $('#stillingPill').textContent = `Runde ${S.runde} af ${S.runder}`;
+  $('#stillingTitel').textContent = `Stillingen efter runde ${S.runde}`;
+  tegnStilling($('#stillingListe'));
+  $('#btnNaesteRunde').textContent = `Runde ${S.runde + 1} af ${S.runder} →`;
+  visSkaerm('stilling');
+}
+$('#btnNaesteRunde').addEventListener('click', () => { if (naesteRunde(S, rnd)) tilTegner(); });
+
+/* ---------- Slut ---------- */
+function slutSpil() {
+  naesteRunde(S, rnd);                // sidste runde: sætter fasen til 'slut'
+  const top = vindere(S);
+  $('#slutTitel').textContent = top.length > 1
+    ? `${top.map(v => v.navn).join(' og ')} deler førstepladsen!`
+    : `${top[0].navn} vandt!`;
+  tegnStilling($('#slutListe'));
+  visSkaerm('slut');
+  konfetti();
+  visTopliste($('#hs'), top[0].navn, top[0].point);
+}
+$('#btnIgen').addEventListener('click', () => start(S.spillere.map(p => p.navn)));
+
+/**
+ * Online topliste: score = vinderens point. Vi kender spillerens rigtige navn fra
+ * startskærmen, så vi gemmer direkte med det (Highscore.hent/send/tegnListe frem for
+ * panel(), som ville spørge om navn igen). Deler to førstepladsen, gemmer vi den første.
+ */
+async function visTopliste(rod, navn, point) {
+  if (!rod || !window.Highscore || !Number.isInteger(point) || point < 1) return;
+  rod.innerHTML = '<p class="hs-venter">Henter toplisten…</p>';
+  let top;
+  try { top = await Highscore.hent('copyright'); } catch (e) { Highscore.tegnFejl(rod); return; }
+  if (!Highscore.kvalificerer(top, point)) {
+    Highscore.tegnListe(rod, top.liste || [], navn, 'Flest point');
+    return;
+  }
+  try {
+    const svar = await Highscore.send('copyright', navn, point);
+    const titel = svar.uaendret ? `${navn}s rekord er stadig ${svar.score} point`
+      : svar.placering === 1 ? `${navn} er nr. 1 på toplisten!`
+      : svar.placering ? `${navn} er nr. ${svar.placering} på toplisten!`
+      : `Gemt – men uden for top ${Highscore.LAENGDE}`;
+    Highscore.tegnListe(rod, svar.liste || [], svar.id, titel);
+  } catch (e) {
+    Highscore.tegnFejl(rod, 'Kunne ikke gemme på toplisten.');
+  }
+}
+
+const undvig = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+/* ---------- Konfetti ---------- */
+function konfetti() {
+  if (matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  const cv = $('#confetti');
+  const ctx = cv.getContext('2d'); const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = innerWidth, H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); cv.hidden = false;
+  const ps = Array.from({ length: 110 }, () => ({
+    x: W / 2 + (Math.random() - .5) * 60, y: H * 0.4, vx: (Math.random() - .5) * 13, vy: -Math.random() * 13 - 4,
+    w: 6 + Math.random() * 8, h: 4 + Math.random() * 6, rot: Math.random() * 6.3, vr: (Math.random() - .5) * .3,
+    c: FARVER[1 + Math.floor(Math.random() * (FARVER.length - 1))],
+  }));
+  const t0 = performance.now();
+  function frame(now) {
+    const t = (now - t0) / 1000; ctx.clearRect(0, 0, W, H);
+    ps.forEach(p => {
+      p.vy += .35; p.x += p.vx; p.y += p.vy; p.vx *= .99; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.max(0, 1 - Math.max(0, t - 1.8) / .8);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+    });
+    if (t < 2.6) requestAnimationFrame(frame);
+    else { ctx.clearRect(0, 0, W, H); cv.hidden = true; }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Testkrog ---------- */
+window.GAME = {
+  get state() { return S; },
+  get skaerm() { return skaerm; },
+  get streger() { return streger; },
+  FARVER, TYND, TYK, POINT_RIGTIGT, POINT_NARRET, MIN_SPILLERE, MAKS_SPILLERE, seed,
+  start,
+  klar: () => $('#btnKlar').click(),
+  /** Sætter en tegning direkte (fx en firkant), så en test slipper for at tegne alt med fingeren. */
+  saetStreger(nye) { streger = nye; tegnAlt(); opdaterVaerktoej(); },
+  faerdigTegning,
+  videre: () => $('#btnVidere').click(),
+  gaet: (t, s) => { const ok = saetGaet(S, t, s); opdaterGaet(); return ok; },
+  faerdigGaet: () => $('#btnGaetFaerdig').click(),
+  vis: visEjer,
+  naeste: () => $('#btnNaeste').click(),
+  naesteRunde: () => $('#btnNaesteRunde').click(),
+  /** Skruer uret frem, så «tiden er gået» kan prøves uden at vente et minut. */
+  saetTid(sek) { tidRest = sek; visTid(); },
+  get tid() { return tidRest; },
+  stilling: () => stilling(S),
+};
+
+opdaterVaerktoej();
+</script>
+</body></html>

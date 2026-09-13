@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 30,
+      "dato": "2026-09-13",
+      "spil": "copyright",
+      "titel": "Copyright – tegn, stempl, og gæt hvem der har copyright",
+      "hvad": "Selma ønskede sig et spil, hvor man copyrighter en tegning og bagefter skal gætte, hvem der har copyright på den. Her er det. I er 3-6 om den samme iPad, og den går på skift rundt. Først tegner I: alle får det samme at tegne – «en kat der spiller fodbold», «et hus på månen» – og I har et minut hver. Når du er færdig, slår dit copyright-stempel ned på tegningen med dit navn, men det bliver dækket til, så de andre kun kan se «©?». Så går iPad'en rundt igen, og nu skal du gætte: her er alle de andres tegninger, hvem har copyright på hvilken? Til sidst vendes stemplerne ét ad gangen, så I kan se, hvem der ramte rigtigt. Du får 10 point for hvert rigtigt gæt, og 5 point for hver, du selv narrede – men narrer du ALLE, er din tegning for godt gemt, og så giver den ingenting. Så det kan ikke betale sig bare at lave en klat! I spiller tre runder, og den med flest point vinder og kommer på toplisten.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 29,
       "dato": "2026-09-13",
       "spil": "papir",
