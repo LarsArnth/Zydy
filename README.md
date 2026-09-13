@@ -60,19 +60,40 @@ på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
 ### Online topliste
 
-Slår man sig ind i top 10, kan man skrive sit navn og komme permanent på
-listen, som alle kan se. Det kører på Cloudflares gratis tier og består af
-tre dele:
+Har man spillet én gang, står man på listen, som alle kan se. Det kører på
+Cloudflares gratis tier og består af tre dele:
 
 | Del | Fil | Hvad |
 |---|---|---|
 | Database | Cloudflare **D1** `zydy-highscore` (SQLite), skema i `schema.sql` | Én tabel `scores(spil, navn, score, oprettet, token)`. Hvert navn står kun én gang pr. spil, med sin bedste score. Kun de bedste 100 pr. spil beholdes. `token` er den hemmelighed, klienten får ved gemning, og som kræves for at rette navnet bagefter; den kommer aldrig med ud i listerne. |
-| API | `src/worker.mjs` → `src/highscore.mjs` | `GET /api/highscore/<spil>` giver top 10 plus spillets regler (`retning`, `min`, `maks`, `unik`). `POST` med `{navn, score}` gemmer og svarer med placering og `token`; står spilleren allerede bedre, gemmes intet, og svaret siger `uaendret` med den stående rekord. `PATCH /api/highscore/<spil>/<id>` med `{navn, token}` retter navnet på en række, man selv har gemt. Rækker fra før reglen om ét navn pr. liste (2026-09-12) filtreres fra ved læsning (`udenDubletter`), så gamle dubletter forsvandt fra listerne med det samme og ryddes i databasen, næste gang navnet gemmer. Navne renses og klippes til 12 tegn, scoren skal være et heltal inden for grænserne i `SPIL`. `retning: 'asc'` bruges når laveste tal vinder (Sæt klassisk: tid i sekunder). Et spil med flere tilstande har én nøgle pr. tilstand (`saet-klassisk`, `saet-blitz`). |
-| Klient | `public/spil/highscore.js` | `Highscore.panel(el, { spil, score, format, titel })` henter listen og gemmer selv rekorden. Navnet spørges kun **første gang**; derefter huskes det i `localStorage` (`zydy.navn`, fælles for alle spil), og senere rekorder gemmes automatisk med overskriften «Sofie, du har slået rekorden!» og knappen «Ikke Sofie, der spiller?» til at skifte navn. Uden `score` vises bare listen; `format` gør tal til tekst (fx tid som m:ss). |
+| API | `src/worker.mjs` → `src/highscore.mjs` | `GET /api/highscore/<spil>` giver **hele listen** (højst `GEM_LAENGDE` = 100 navne) plus spillets regler (`retning`, `min`, `maks`, `unik`). `POST` med `{navn, score}` gemmer og svarer med placering og `token`; står spilleren allerede bedre, gemmes intet, og svaret siger `uaendret` med den stående rekord. `PATCH /api/highscore/<spil>/<id>` med `{navn, token}` retter navnet på en række, man selv har gemt. Rækker fra før reglen om ét navn pr. liste (2026-09-12) filtreres fra ved læsning (`udenDubletter`), så gamle dubletter forsvandt fra listerne med det samme og ryddes i databasen, næste gang navnet gemmer. Navne renses og klippes til 12 tegn, scoren skal være et heltal inden for grænserne i `SPIL`. `retning: 'asc'` bruges når laveste tal vinder (Sæt klassisk: tid i sekunder). Et spil med flere tilstande har én nøgle pr. tilstand (`saet-klassisk`, `saet-blitz`). |
+| Klient | `public/spil/highscore.js` | `Highscore.panel(el, { spil, score, format, titel })` henter listen og gemmer selv rekorden. Navnet spørges kun **første gang**; derefter huskes det i `localStorage` (`zydy.navn`, fælles for alle spil), og senere rekorder gemmes automatisk med overskriften «Sofie, du har slået rekorden!» og knappen «Ikke Sofie, der spiller?» til at skifte navn. Uden `score` vises bare listen; `format` gør tal til tekst (fx tid som m:ss). Listen viser de ti øverste og folder resten ud med «Vis alle 37» – se «Alle kommer med på listen» nedenfor. |
 
 Worker'en rammer kun `/api/*` (`run_worker_first` i `wrangler.jsonc`); alt
 andet serveres som før direkte fra `public/`. API'et er åbent uden login –
 det er et familie-site – så værnet mod pjat er kun validering og trimning.
+
+**Alle kommer med på listen** (Josephines ønske, 2026-09-13). Før skulle en
+score ind i top 10, før den overhovedet blev gemt — så en ny spiller kunne
+aldrig komme på en liste, der var fuld, og kunne heller ikke se sig selv.
+Nu hænger tre ting sammen:
+
+1. `kvalificerer()` i klienten spørger, om der er plads blandt de **100**
+   (`PLADSER` = serverens `GEM_LAENGDE`), ikke blandt de ti. Alle spil bruger
+   den som port foran `send()`, så alle får ændringen på én gang.
+2. Serveren sender **hele listen** i `liste` — både på `GET` og i svaret på
+   `POST`/`PATCH` — og `placering` er den rigtige placering i den (nr. 23),
+   ikke `null` for alle uden for de ti. 100 rækker er ~6 KB.
+3. `tegnListe()` viser de ti øverste. Står ens eget navn længere nede, hænges
+   rækken nederst efter et «···» med sin rigtige placering, og under listen
+   står «Vis alle 37», som folder resten ud (og ruller hen til ens egen
+   række). Listen ruller i sig selv (`max-height:38vh`), så knapperne under
+   den ikke skubbes ud af skærmen på en iPhone i højkant.
+
+Det koster en `POST` mere pr. spilomgang for dem, der ikke er i top 10 — det
+er billigt, og det er hele pointen: man kan se sig selv rykke op.
+`Highscore.iTop(top, score)` findes stadig til ordvalg («Ny rekord!» over for
+«Kom med på listen»). Testen er `test/topliste.test.mjs`.
 
 **Hvorfor auto-gem?** Børnene skulle før trykke «Gem» efter hvert spil, og
 glemte man det, forsvandt rekorden. Nu skrives navnet én gang, og listen

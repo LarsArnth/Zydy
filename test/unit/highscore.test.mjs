@@ -3,7 +3,7 @@
 // d1Lager(). Kør:  node --test test/unit/highscore.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { haandterApi, rensNavn, rensScore, reglerFor, LISTE_LAENGDE } from '../../src/highscore.mjs';
+import { haandterApi, rensNavn, rensScore, reglerFor, LISTE_LAENGDE, GEM_LAENGDE } from '../../src/highscore.mjs';
 
 /** Hukommelses-lager: samme sortering som SQL'en (bedste først efter retning, ældst først ved lighed). */
 function huskLager() {
@@ -96,14 +96,26 @@ test('ved lige score kommer den ældste først', async () => {
   assert.deepEqual(svar.liste.map(x => x.navn), ['Først', 'Sidst']);
 });
 
-test('listen viser højst LISTE_LAENGDE rækker, og placering er null uden for den', async () => {
+test('alle navne kommer med på listen – også uden for top 10, med deres rigtige placering', async () => {
+  // Josephines ønske: listen er ikke længere klippet til top 10, for man skal kunne se sig selv.
   const lager = huskLager();
-  for (let i = 0; i < LISTE_LAENGDE; i++) await post('/api/highscore/taarn', { navn: 'S' + i, score: 100 + i }, lager);
-  const r = await post('/api/highscore/taarn', { navn: 'Lille', score: 1 }, lager);
-  const svar = await r.json();
-  assert.equal(svar.liste.length, LISTE_LAENGDE);
-  assert.equal(svar.placering, null);
-  assert.equal(svar.ok, true, 'den gemmes stadig, bare uden for top 10');
+  for (let i = 0; i < LISTE_LAENGDE + 5; i++) await post('/api/highscore/taarn', { navn: 'S' + i, score: 100 + i }, lager);
+  const svar = await (await post('/api/highscore/taarn', { navn: 'Josephine', score: 1 }, lager)).json();
+  assert.equal(svar.ok, true);
+  assert.equal(svar.liste.length, LISTE_LAENGDE + 6, 'hele listen kommer med, ikke kun de ti bedste');
+  assert.equal(svar.placering, LISTE_LAENGDE + 6, 'sidst – men med sin rigtige placering');
+  assert.equal(svar.liste[svar.placering - 1].navn, 'Josephine');
+  const g = await (await get('/api/highscore/taarn', lager)).json();
+  assert.equal(g.liste.length, LISTE_LAENGDE + 6, 'GET giver også hele listen');
+});
+
+test('listen er klippet til GEM_LAENGDE, og den der ikke nåede med får placering null', async () => {
+  const lager = huskLager();
+  for (let i = 0; i < GEM_LAENGDE; i++) await lager.gem('taarn', 'S' + i, 100 + i, 'desc', 't');
+  const svar = await (await post('/api/highscore/taarn', { navn: 'Sidst', score: 1 }, lager)).json();
+  assert.equal(svar.liste.length, GEM_LAENGDE);
+  assert.equal(svar.placering, null, 'rækken blev trimmet væk igen');
+  assert.equal(svar.ok, true);
 });
 
 test('POST afviser ugyldigt navn og score', async () => {

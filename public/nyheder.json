@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 31,
+      "dato": "2026-09-13",
+      "spil": "",
+      "titel": "Alle kommer med på toplisterne",
+      "hvad": "Josephine ville gerne have, at alle navne kommer med på toplisten — og det gør de nu. Før skulle man ind blandt de ti bedste, før man overhovedet blev gemt, så en ny spiller kunne aldrig komme på en liste, der var fuld. Nu kommer du med, første gang du spiller, uanset hvor mange point du fik, og der er plads til 100 navne i hvert spil. Listen viser stadig de ti bedste øverst, men står du længere nede, hænger din egen række nederst med din rigtige placering — «··· 23. Josephine · 140» — så du altid kan se dig selv og hvor langt der er op. Under listen står «Vis alle 37»: tryk på den, og hele listen folder sig ud, så du kan se alle dem, der har spillet. Listen ruller i sig selv, så knapperne bliver, hvor de er.",
+      "oensket": "Josephine"
+    },
+    {
       "nr": 30,
       "dato": "2026-09-13",
       "spil": "copyright",

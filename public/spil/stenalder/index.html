@@ -758,7 +758,7 @@ async function visTopliste(rod, navn, point) {
     const titel = svar.uaendret ? `${navn}s rekord er stadig ${svar.score} point`
       : svar.placering === 1 ? `${navn} er nr. 1 på toplisten!`
       : svar.placering ? `${navn} er nr. ${svar.placering} på toplisten!`
-      : `Gemt – men uden for top ${Highscore.LAENGDE}`;
+      : 'Listen var fuld denne gang';
     Highscore.tegnListe(rod, svar.liste || [], svar.id, titel);
   } catch (e) {
     Highscore.tegnFejl(rod, 'Kunne ikke gemme på toplisten.');

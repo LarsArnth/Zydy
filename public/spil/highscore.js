@@ -16,6 +16,11 @@
   bestemmes af serveren (SPIL i src/highscore.mjs) og følger med i svaret.
   Options til panel(): { spil, score, format(score) → tekst, titel, knap, onGemt }.
 
+  Serveren sender hele listen (op til 100 navne), og alle, der har spillet, kommer
+  med på den – ikke kun de ti bedste (Josephines ønske). Listen viser de ti øverste
+  plus knappen «Vis alle 37», og står ens eget navn længere nede, hænges rækken
+  nederst med sin rigtige placering, så man altid kan se sig selv.
+
   Stilen bruger spillenes CSS-variabler (--muted, --sun, --bg2, --text, --ink,
   --mint) med fornuftige fallbacks, og knappen får klassen `btn`, som alle spil
   har. Ret via option { knap: 'min-klasse' } om nødvendigt.
@@ -25,7 +30,8 @@
 
 const API = '/api/highscore/';
 const KEY_NAVN = 'zydy.navn';
-const LAENGDE = 10;          // samme som LISTE_LAENGDE i Worker'en
+const LAENGDE = 10;          // samme som LISTE_LAENGDE i Worker'en: så mange vises med det samme
+const PLADSER = 100;         // samme som GEM_LAENGDE: så mange navne er der plads til i alt
 const NAVN_MAKS = 12;
 
 /* ---------- Navn (huskes på tværs af spil) ---------- */
@@ -70,13 +76,23 @@ const bedre = (a, b, retning) => retning === 'asc' ? a < b : a > b;
 
 /**
  * Kommer scoren på listen? `top` er serverens svar ({ retning, min, maks, liste }).
- * Ja hvis scoren er gyldig, og der er plads eller den slår den nederste.
+ * Ja hvis scoren er gyldig, og der er plads på listen eller den slår den nederste.
+ *
+ * Listen er hele listen (op til PLADSER navne), ikke top 10 — Josephines ønske var,
+ * at alle, der har spillet, kommer med. Før skulle man ind i top 10 for overhovedet
+ * at blive gemt, så en ny spiller aldrig kunne komme på en liste, der var fuld.
  */
 function kvalificerer(top, score) {
   if (!Number.isInteger(score) || score < (top.min == null ? 1 : top.min) || (top.maks != null && score > top.maks)) return false;
   const liste = top.liste || [];
-  if (liste.length < LAENGDE) return true;
+  if (liste.length < PLADSER) return true;
   return bedre(score, liste[liste.length - 1].score, top.retning);
+}
+
+/** Er scoren god nok til de ti øverste? Bruges kun til at vælge ord ("Ny rekord!" vs. "Kom med"). */
+function iTop(top, score) {
+  const liste = top.liste || [];
+  return liste.length < LAENGDE || bedre(score, liste[LAENGDE - 1].score, top.retning);
 }
 
 /* ---------- Tegning ---------- */
@@ -86,6 +102,47 @@ const el = (tag, cls, text) => {
   if (text != null) e.textContent = text;
   return e;
 };
+
+/** Én række på listen. `plads` er den rigtige placering (1-baseret), også når rækken hænges nederst. */
+function raekke(r, plads, mig, format) {
+  const li = el('li', 'hs-raekke' + (mig ? ' hs-mig' : ''));
+  li.appendChild(el('span', 'hs-nr', String(plads)));
+  li.appendChild(el('span', 'hs-navn', r.navn));
+  li.appendChild(el('span', 'hs-score', format ? format(r.score) : String(r.score)));
+  return li;
+}
+
+/**
+ * Tegner selve rækkerne i `boks`: de ti øverste, eller hele listen når `alle` er sat.
+ * To ting gør, at man altid kan finde sig selv (Josephines ønske):
+ *  - står ens egen række uden for de ti, hænges den nederst med «···» over og sin rigtige
+ *    placering, så man kan se hvor man ligger uden at folde noget ud;
+ *  - er der flere end ti, står knappen «Vis alle 37» under listen. Listen ruller i sig
+ *    selv (max-height i CSS'en), så knapperne under den ikke skubbes ud af skærmen.
+ */
+function tegnRaekker(boks, liste, mit, format, alle) {
+  boks.innerHTML = '';
+  const vis = alle ? liste.length : Math.min(LAENGDE, liste.length);
+  const ol = el('ol', 'hs-liste');
+  for (let i = 0; i < vis; i++) ol.appendChild(raekke(liste[i], i + 1, i === mit, format));
+  if (mit >= vis) {
+    ol.appendChild(el('li', 'hs-spring', '···'));
+    ol.appendChild(raekke(liste[mit], mit + 1, true, format));
+  }
+  boks.appendChild(ol);
+  if (liste.length > LAENGDE) {
+    const knap = el('button', 'hs-flere', alle ? 'Vis kun de ' + LAENGDE + ' bedste' : 'Vis alle ' + liste.length);
+    knap.type = 'button';
+    knap.addEventListener('click', () => {
+      tegnRaekker(boks, liste, mit, format, !alle);
+      // Rul hen til ens egen række i stedet for at lade folk lede i en lang liste.
+      // (scrollTop frem for scrollIntoView, så kun listen ruller – ikke hele skærmen.)
+      const ny = boks.querySelector('.hs-liste'), mig = boks.querySelector('.hs-mig');
+      if (!alle && mig) ny.scrollTop = Math.max(0, mig.offsetTop - ny.clientHeight / 2);
+    });
+    boks.appendChild(knap);
+  }
+}
 
 /**
  * Tegner toplisten i `rod`. `fremhaev` markerer spillerens egen række: et id (tal) eller et navn (tekst,
@@ -101,15 +158,9 @@ function tegnListe(rod, liste, fremhaev, overskrift, format) {
     rod.appendChild(el('p', 'hs-tom', 'Ingen på listen endnu – bliv den første!'));
     return;
   }
-  const ol = el('ol', 'hs-liste');
-  liste.forEach((r, i) => {
-    const li = el('li', 'hs-raekke' + (erMig(r) ? ' hs-mig' : ''));
-    li.appendChild(el('span', 'hs-nr', String(i + 1)));
-    li.appendChild(el('span', 'hs-navn', r.navn));
-    li.appendChild(el('span', 'hs-score', format ? format(r.score) : String(r.score)));
-    ol.appendChild(li);
-  });
-  rod.appendChild(ol);
+  const boks = el('div', 'hs-boks');
+  rod.appendChild(boks);
+  tegnRaekker(boks, liste, fremhaev == null ? -1 : liste.findIndex(erMig), format, false);
 }
 
 function tegnFejl(rod, besked) {
@@ -123,7 +174,7 @@ function titelEfterGem(svar, n, format) {
   if (svar.uaendret) return n + ', din rekord er stadig ' + f(svar.score);
   if (svar.placering === 1) return n + ', du har slået rekorden!';
   if (svar.placering) return n + ', du er nr. ' + svar.placering + '!';
-  return n + ', gemt – men uden for top ' + LAENGDE;
+  return n + ', listen var fuld denne gang';
 }
 
 /** Et navnefelt med knap. `onNavn(navn)` kaldes ved indsendelse; feltet er fokuseret, hvis det er tomt. */
@@ -198,7 +249,10 @@ async function panel(rod, opt) {
     // Første gang: spørg om navn.
     rod.innerHTML = '';
     const erNr1 = !liste.length || bedre(score, liste[0].score, top.retning);
-    rod.appendChild(el('div', 'hs-titel hs-jubel', erNr1 ? 'Ny rekord – hvad hedder du?' : 'Du er på toplisten – hvad hedder du?'));
+    rod.appendChild(el('div', 'hs-titel hs-jubel',
+      erNr1 ? 'Ny rekord – hvad hedder du?'
+        : iTop(top, score) ? 'Du er på toplisten – hvad hedder du?'
+        : 'Kom med på listen – hvad hedder du?'));
     navneFormular(rod, opt, '', 'Gem på listen', async n => {
       const svar = await send(spil, n, score);
       navn.gem(n);
@@ -218,11 +272,14 @@ async function panel(rod, opt) {
 const css = `
 .hs-titel{font-weight:800;font-size:17px;margin:14px 0 8px;color:var(--text,#fff)}
 .hs-jubel{color:var(--sun,#ffd447);font-size:20px}
-.hs-liste{list-style:none;margin:0;padding:0;max-height:38vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+.hs-liste{position:relative;list-style:none;margin:0;padding:0;max-height:38vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
   background:var(--bg2,rgba(255,255,255,.06));border-radius:16px;text-align:left}
 .hs-raekke{display:flex;align-items:center;gap:10px;padding:7px 14px;font-size:16px;color:var(--text,#fff)}
 .hs-raekke+.hs-raekke{border-top:1px solid rgba(255,255,255,.06)}
-.hs-nr{width:26px;color:var(--muted,#aaa);font-variant-numeric:tabular-nums;font-weight:700;flex:none}
+.hs-spring{display:block;text-align:center;color:var(--muted,#aaa);padding:2px 14px;letter-spacing:3px;
+  border-top:1px solid rgba(255,255,255,.06)}
+.hs-spring+.hs-raekke{border-top:1px solid rgba(255,255,255,.06)}
+.hs-nr{min-width:26px;color:var(--muted,#aaa);font-variant-numeric:tabular-nums;font-weight:700;flex:none}
 .hs-raekke:first-child .hs-nr{color:var(--sun,#ffd447)}
 .hs-navn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .hs-score{font-weight:800;font-variant-numeric:tabular-nums}
@@ -239,10 +296,12 @@ const css = `
 .hs-fejl{color:var(--coral,#ff5c7a)}
 .hs-skift{display:block;margin:6px auto 0;background:none;border:0;color:var(--muted,#aaa);font:inherit;font-size:14px;
   text-decoration:underline;padding:8px 12px;min-height:36px;cursor:pointer}
+.hs-flere{display:block;margin:8px auto 0;background:none;border:0;color:var(--sun,#ffd447);font:inherit;font-size:14px;
+  font-weight:700;text-decoration:underline;padding:8px 12px;min-height:36px;cursor:pointer}
 `;
 const style = document.createElement('style');
 style.textContent = css;
 document.head.appendChild(style);
 
-window.Highscore = { hent, send, omdoeb, kvalificerer, tegnListe, tegnFejl, panel, navn, LAENGDE };
+window.Highscore = { hent, send, omdoeb, kvalificerer, iTop, tegnListe, tegnFejl, panel, navn, LAENGDE, PLADSER };
 })();

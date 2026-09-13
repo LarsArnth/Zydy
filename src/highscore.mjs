@@ -4,6 +4,8 @@
 // (test/unit/highscore.test.mjs bytter D1 ud med et hukommelses-lager).
 //
 //   GET   /api/highscore/taarn           → { spil, retning, min, maks, unik, liste: [{ id, navn, score, oprettet }] }
+//                                          (hele listen, højst GEM_LAENGDE rækker – klienten viser de ti øverste
+//                                           og folder resten ud med «Vis alle 37»)
 //   POST  /api/highscore/taarn           body { navn, score }
 //                                        → { ok: true, id, token, placering, ...regler, liste }
 //                                          (uaendret: true hvis spilleren allerede stod bedre)
@@ -45,8 +47,8 @@ export function reglerFor(spil) {
   };
 }
 
-export const LISTE_LAENGDE = 10;   // hvor mange der vises
-const GEM_LAENGDE = 100;           // hvor mange der beholdes pr. spil
+export const LISTE_LAENGDE = 10;   // hvor mange klienten viser med det samme (resten foldes ud)
+export const GEM_LAENGDE = 100;    // hvor mange der beholdes – og sendes med – pr. spil
 const NAVN_MAKS = 12;
 
 /* ---------- Validering (ren, uden database) ---------- */
@@ -154,9 +156,13 @@ async function alleRaekker(lager, spil, regler) {
   return regler.unik ? udenDubletter(alle) : alle;
 }
 
-/** Svar med top 10 og placeringen (1-baseret) af rækken `id` i den, eller null. */
+/**
+ * Svar med hele listen og placeringen (1-baseret) af rækken `id` i den, eller null.
+ * Hele listen – ikke kun top 10 – fordi alle, der har spillet, skal kunne finde sig
+ * selv (Josephines ønske); klienten viser de ti øverste og folder resten ud.
+ */
 async function svarMedListe(lager, spil, regler, id, ekstra) {
-  const liste = (await alleRaekker(lager, spil, regler)).slice(0, LISTE_LAENGDE);
+  const liste = await alleRaekker(lager, spil, regler);
   const idx = liste.findIndex(r => r.id === id);
   return json({ ok: true, id, placering: idx === -1 ? null : idx + 1, ...ekstra, ...regler, liste });
 }
@@ -178,7 +184,7 @@ export async function haandterApi(request, lager) {
   const regler = reglerFor(spil);   // klienten får retning/min/maks/unik med, så den kan afgøre om en score kvalificerer
 
   if (request.method === 'GET' && id === null) {
-    return json({ spil, ...regler, liste: (await alleRaekker(lager, spil, regler)).slice(0, LISTE_LAENGDE) });
+    return json({ spil, ...regler, liste: await alleRaekker(lager, spil, regler) });
   }
 
   if (request.method === 'POST' && id === null) {
