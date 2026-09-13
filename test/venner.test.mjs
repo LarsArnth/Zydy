@@ -75,8 +75,47 @@ await page.waitForSelector('.v-dlg[open]');
 assert.match(await page.locator('.v-dlg .id-under').textContent(), /Selma spiller Obby lige nu/);
 assert.equal(await page.locator('.v-spil-med').getAttribute('href'), '/spil/obby/',
   'man kan hoppe med ind i det spil, vennen er i gang med');
+
+/* ---------- Selma får et kælenavn ---------- */
+await page.fill('.v-kaele-input', 'Smølfen');
+await page.click('.v-kaele-gem');
+await page.waitForSelector('.v-kaele-status:text-matches("Selma nu Smølfen")');
+assert.equal(await page.locator('.v-dlg .id-titel').textContent(), 'Smølfen', 'dialogen bruger kælenavnet');
+assert.equal(await page.locator('.v-rigtigt-navn').textContent(), 'hedder egentlig Selma',
+  'man kan stadig se, hvem det er');
+assert.match(await page.locator('.v-dlg .id-under').textContent(), /Smølfen spiller Obby lige nu/);
+await page.screenshot({ path: path.join(shots, 'venner-kaelenavn.png') });
 await page.click('.v-dlg .id-send');                       // "Luk"
 await page.waitForSelector('.v-dlg[open]', { state: 'hidden' });
+
+assert.equal(await page.locator('#venner .v-navn').textContent(), 'Smølfen', 'brikken hedder kælenavnet');
+assert.equal(await page.locator('#venner .v-hvor').textContent(), 'Selma · spiller Obby',
+  'det rigtige navn står småt nedenunder');
+
+// Kælenavnet gælder også de andre steder på forsiden, hvor vennen nævnes.
+await page.evaluate(() => document.dispatchEvent(new CustomEvent('zydy:aktivitet')));
+await page.waitForFunction(() => /Smølfen/.test(document.getElementById('undertekst').textContent));
+assert.equal(await page.locator('li[data-spil="obby"] .m.nu').textContent(), 'Smølfen spiller nu');
+
+// … men det er mit eget navn til hende: det er gemt her på telefonen, ikke sendt op.
+assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('zydy.kaelenavne'))),
+  { sofie: { selma: 'Smølfen' } }, 'kælenavnet er gemt under den, der har givet det');
+assert.ok(api.venner.rows.every(r => !JSON.stringify(r).includes('Smølfen')), 'intet kælenavn i databasen');
+
+// Det holder en genindlæsning ud, og kan fjernes igen med et tomt felt.
+await page.reload();
+await page.waitForSelector('#venner .v-ven');
+assert.equal(await page.locator('#venner .v-navn').textContent(), 'Smølfen', 'kælenavnet huskes');
+await page.click('#venner .v-ven');
+await page.waitForSelector('.v-dlg[open]');
+assert.equal(await page.inputValue('.v-kaele-input'), 'Smølfen', 'feltet står med det, der er givet');
+await page.fill('.v-kaele-input', '   ');
+await page.click('.v-kaele-gem');
+await page.waitForSelector('.v-kaele-status:text-matches("væk igen")');
+assert.equal(await page.locator('.v-dlg .id-titel').textContent(), 'Selma');
+await page.click('.v-dlg .id-send');                       // "Luk"
+await page.waitForSelector('.v-dlg[open]', { state: 'hidden' });
+assert.equal(await page.locator('#venner .v-navn').textContent(), 'Selma');
 
 /* ---------- Simon spørger, og Sofie siger ja ---------- */
 await api.venner.spoerg('simon', 'sofie', 'Simon', 'Sofie');
@@ -111,7 +150,8 @@ assert.match(await page.locator('#venner .v-venter').textContent(), /Venter på 
 /* ---------- Navnet skiftes: så er det en andens venner ---------- */
 await page.click('#navnKnap');
 await page.waitForSelector('.id-dlg[open]:not(.v-dlg)');
-await page.fill('.id-input', 'Simon');
+// Begge dialoger har et .id-input – navnefeltet er det i navne-dialogen.
+await page.fill('.id-dlg:not(.v-dlg) .id-input', 'Simon');
 await page.click('.id-dlg:not(.v-dlg) .id-send');
 await page.waitForFunction(() => /ingen venner her endnu/.test(document.getElementById('venner').textContent),
   null, { timeout: 5000 });

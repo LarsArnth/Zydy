@@ -246,6 +246,29 @@ Skulle der komme skrald ind:
 npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM venner WHERE fra='pjat' OR til='pjat'"
 ```
 
+#### Kælenavne — dit eget navn til en ven
+
+Trykker man på en ven, kan man give hen et **kælenavn**: «Selma» bliver til
+«Smølfen» overalt, hvor hun nævnes — på brikken i panelet, i invitationerne til
+at spille sammen, og i «spiller nu»/«er her nu» på forsiden (`navneliste()` i
+`public/index.html` spørger `Venner.visNavn`, hvis den findes). Det rigtige navn
+står småt under kælenavnet, så man altid kan se hvem det er. Et tomt felt
+fjerner kælenavnet igen.
+
+Kælenavnet er **mit navn til vennen, ikke vennens navn**, og derfor:
+
+- Det ligger kun i `localStorage` under `zydy.kaelenavne`, aldrig i databasen —
+  vennen kan hverken se eller ændre det, og der er ikke noget at rydde op i,
+  hvis det bliver til drilleri.
+- Det er gemt under den, der gav det (`{ "sofie": { "selma": "Smølfen" } }`), så
+  en delt iPad ikke blander to børns kælenavne sammen, når navnet skiftes med
+  «Ikke Sofie, der spiller?».
+- Toplisterne rører vi ikke: dér står det navn, man selv har skrevet. Ellers
+  ville en rekord kunne stå under et navn, ingen andre kender.
+
+Koden er `kaelenavn`/`saetKaelenavn`/`visNavn` øverst i `public/venner.js`
+(også på `window.Venner`, så testen kan nå dem).
+
 <a id="spil-sammen"></a>
 
 ### Spil sammen — venner kan joine hinanden
@@ -624,8 +647,9 @@ har brug for en bestemt startliste. API'erne testes desuden hver for sig i
 `test/unit/ideer.test.mjs`, `test/unit/venner.test.mjs` og
 `test/unit/rum.test.mjs`. Forsiden har fire
 browser-tests: `test/forside.test.mjs` (navn, ønsker, «hvem er her»),
-`test/venner.test.mjs` (spørg, sig ja, se hvem der spiller hvad, fjern en ven —
-den anden part spilles af testen selv gennem `api.venner`),
+`test/venner.test.mjs` (spørg, sig ja, se hvem der spiller hvad, giv en ven et
+kælenavn, fjern en ven — den anden part spilles af testen selv gennem
+`api.venner`),
 `test/nyheder.test.mjs` («Nyt på Zydy», hvor en ekstra nyhed serveres gennem
 `page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til) og
 `test/rum.test.mjs` («spil sammen»). Den sidste er én af repoets to tests med
@@ -645,6 +669,14 @@ Chromium med iPhone 13-profil: hvert spil spilles igennem via UI og
 `window.GAME`, der tjekkes for console-fejl og vandret scroll, og der gemmes et
 screenshot i `test/shots/`. Har man `playwright` i `node_modules`, kan
 `PLAYWRIGHT` udelades.
+
+Serveren tager port 4180 (`PORT=4190 node test/run.mjs` vælger en anden, når
+flere sessioner kører på én gang). Er porten allerede optaget — af en anden
+session eller af en server, der er blevet hængende fra en worktree, som siden er
+fjernet — så fejler `python3 -m http.server` stille, og *alle* tests rammer den
+fremmede server. Derfor tjekker `run.mjs`, at det er vores egen forside, der
+svarer, og prøver ellers den næste port og siger det højt. 22 tests, der fejler
+på én gang, er næsten altid dét og ikke 22 spilfejl.
 
 ## Tilføj en app — et nyt kort på forsiden
 

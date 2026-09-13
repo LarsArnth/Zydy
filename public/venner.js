@@ -11,11 +11,16 @@
     • dem der har spurgt, om I skal være venner — med Ja tak / Nej tak
     • en knap til at finde en ven blandt de navne, vi har set på siden
 
-  Trykker man på en ven, kan man invitere hen til et spil, som to kan spille
-  sammen over nettet (kortene med data-sammen, se scripts/byg-forside.mjs).
+  Trykker man på en ven, kan man give hen et kælenavn — og invitere hen til et
+  spil, som to kan spille sammen over nettet (kortene med data-sammen, se
+  scripts/byg-forside.mjs).
+
   Invitationen er et "rum" i /api/rum (src/rum.mjs), og begge sendes ind i
   spillet med ?rum=<kode>; selve kaldene ligger i /spil/rum.js, som deles med
   spillene.
+
+  Kælenavnene ligger kun i localStorage ('zydy.kaelenavne'), altså her på
+  telefonen: vennen får dem aldrig at vide, og de kommer aldrig på toplisterne.
 
   Selve venne-listen kommer fra /api/venner (src/venner.mjs). Hvem der er online,
   kommer derimod gratis fra forsidens eget kald til /api/oversigt: scriptet
@@ -31,7 +36,9 @@
 
 const API = '/api/venner';
 const KEY_NAVN = 'zydy.navn';        // fælles med /ideer.js og /spil/highscore.js
+const KEY_KAELE = 'zydy.kaelenavne'; // { "sofie": { "selma": "Smølfen" } } – kun på denne telefon
 const NAVN_MAKS = 12;
+const KAELE_MAKS = 16;
 const OPDATER_MS = 60_000;           // hvor tit vi spørger efter nye venner og spørgsmål
 const RUM_MS = 5_000;                // … og efter invitationer til at spille sammen (de haster)
 
@@ -39,6 +46,50 @@ const laesNavn = () => {
   try { return (localStorage.getItem(KEY_NAVN) || '').trim(); } catch (e) { return ''; }
 };
 const smaa = s => String(s || '').toLocaleLowerCase('da-DK');
+
+/* ---------- Kælenavne ---------- */
+/*
+  Et kælenavn er *mit* navn til en ven — ikke vennens navn. Derfor står det kun
+  her på telefonen og er gemt under den, der har givet det: skifter man navn på
+  forsiden ("Ikke Sofie, der spiller?"), er det den nye persons kælenavne, der
+  gælder. Vennen kan hverken se eller ændre det, og toplisterne rører vi ikke.
+*/
+
+/** Hele lageret: { "sofie": { "selma": "Smølfen" } }. Kan ikke læses → tomt. */
+function alleKaelenavne() {
+  try {
+    const o = JSON.parse(localStorage.getItem(KEY_KAELE) || '{}');
+    return o && typeof o === 'object' ? o : {};
+  } catch (e) { return {}; }
+}
+
+/** Mine kælenavne: ven med små bogstaver → kælenavn. */
+function mineKaelenavne() {
+  const o = alleKaelenavne()[smaa(laesNavn())];
+  return o && typeof o === 'object' ? o : {};
+}
+
+/** Kælenavnet til en ven, eller '' hvis hen ikke har fået et. */
+function kaelenavn(navn) {
+  const k = mineKaelenavne()[smaa(navn)];
+  return typeof k === 'string' ? k : '';
+}
+
+/** Sætter (eller fjerner, med tom tekst) et kælenavn. Giver det, der blev gemt. */
+function saetKaelenavn(navn, nyt) {
+  const mig = smaa(laesNavn());
+  if (!mig || !smaa(navn)) return '';
+  const rent = String(nyt || '').replace(/\s+/g, ' ').trim().slice(0, KAELE_MAKS);
+  const alle = alleKaelenavne();
+  const mine = alle[mig] && typeof alle[mig] === 'object' ? alle[mig] : {};
+  if (rent) mine[smaa(navn)] = rent; else delete mine[smaa(navn)];
+  alle[mig] = mine;
+  try { localStorage.setItem(KEY_KAELE, JSON.stringify(alle)); } catch (e) { /* fuld disk el.lign. */ }
+  return rent;
+}
+
+/** Det, en ven hedder på skærmen: kælenavnet, hvis der er et. */
+const visNavn = navn => kaelenavn(navn) || navn;
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -147,19 +198,20 @@ function tegnRum(kort) {
   const k = kortene();
   rum.forEach(r => {
     const titel = (k[r.spil] && k[r.spil].titel) || r.spil;
+    const hvem = visNavn(r.modspiller);          // kælenavnet, hvis vennen har fået et
     const raekke = el('div', 'v-spoerg v-rum');
     const svar = el('span', 'v-svar');
 
     if (r.status === 'igang') {
-      raekke.appendChild(el('span', 'v-spoerg-tekst', '🎮 Du spiller ' + titel + ' med ' + r.modspiller));
+      raekke.appendChild(el('span', 'v-spoerg-tekst', '🎮 Du spiller ' + titel + ' med ' + hvem));
       svar.appendChild(knap('v-knap v-vigtig', 'Tilbage', () => gaaTilRum(r)));
       svar.appendChild(knap('v-knap', 'Stop', () => Rum.forlad(r.kode).then(hentRum).catch(() => {})));
     } else if (r.rolle === 'gaest') {
-      raekke.appendChild(el('span', 'v-spoerg-tekst', r.modspiller + ' vil spille ' + titel + ' med dig'));
+      raekke.appendChild(el('span', 'v-spoerg-tekst', hvem + ' vil spille ' + titel + ' med dig'));
       svar.appendChild(knap('v-knap v-vigtig v-hopmed', 'Hop med!', () => gaaTilRum(r)));
       svar.appendChild(knap('v-knap', 'Nej tak', () => Rum.forlad(r.kode).then(hentRum).catch(() => {})));
     } else {
-      raekke.appendChild(el('span', 'v-spoerg-tekst', 'Venter på at ' + r.modspiller + ' hopper med i ' + titel));
+      raekke.appendChild(el('span', 'v-spoerg-tekst', 'Venter på at ' + hvem + ' hopper med i ' + titel));
       svar.appendChild(knap('v-knap v-vigtig', 'Tilbage', () => gaaTilRum(r)));
       svar.appendChild(knap('v-knap', 'Afbryd', () => Rum.forlad(r.kode).then(hentRum).catch(() => {})));
     }
@@ -213,11 +265,13 @@ function tegn() {
     const liste = el('div', 'v-liste');
     data.venner.forEach(v => {
       const h = hvor(v.navn);
+      const kn = kaelenavn(v.navn);
       const b = knap('v-ven' + (h.online ? ' online' : ''), null, () => venDialog(v.navn));
       b.appendChild(el('span', 'v-prik'));
       const t = el('span', 'v-navn-boks');
-      t.appendChild(el('span', 'v-navn', v.navn));
-      t.appendChild(el('span', 'v-hvor', h.tekst));
+      t.appendChild(el('span', 'v-navn', kn || v.navn));
+      // Med kælenavn står det rigtige navn småt nedenunder, så man altid kan se hvem det er.
+      t.appendChild(el('span', 'v-hvor', kn ? v.navn + ' · ' + h.tekst : h.tekst));
       b.appendChild(t);
       liste.appendChild(b);
     });
@@ -312,14 +366,22 @@ function findDialog() {
   });
 }
 
-/** Trykker man på en ven: hvor hen er, muligheden for at følge med – og for at fjerne venskabet. */
+/**
+ * Trykker man på en ven: hvor hen er, muligheden for at følge med, at give hen
+ * et kælenavn – og for at fjerne venskabet.
+ *
+ * `hvem` er altid det rigtige navn (nøglen); `vis` er det, der står på skærmen.
+ */
 function venDialog(hvem) {
   aabn(rod => {
     const h = hvor(hvem);
-    rod.appendChild(el('h2', 'id-titel', hvem));
+    const kn = kaelenavn(hvem);
+    const vis = kn || hvem;
+    rod.appendChild(el('h2', 'id-titel', vis));
+    if (kn) rod.appendChild(el('p', 'v-rigtigt-navn', 'hedder egentlig ' + hvem));
     rod.appendChild(el('p', 'id-under', h.online
-      ? (h.spil ? hvem + ' spiller ' + h.spil.titel + ' lige nu.' : hvem + ' er på zydy.dk lige nu.')
-      : hvem + ' er ikke på zydy.dk lige nu.'));
+      ? (h.spil ? vis + ' spiller ' + h.spil.titel + ' lige nu.' : vis + ' er på zydy.dk lige nu.')
+      : vis + ' er ikke på zydy.dk lige nu.'));
 
     // Det bedste: at spille *sammen* – ét spil, to telefoner. Vi laver et rum og
     // hopper derind; den anden får invitationen på forsiden og kan hoppe med.
@@ -328,13 +390,13 @@ function venDialog(hvem) {
     if (spil.length) {
       spil.forEach(s => {
         rod.appendChild(knap('id-knap v-sammen', '🎮 Spil ' + s.titel + ' sammen', () => {
-          status.textContent = 'Spørger ' + hvem + '…';
+          status.textContent = 'Spørger ' + vis + '…';
           Rum.inviter(hvem, s.id)
             .then(r => gaaTilRum(r))
             .catch(err => { status.textContent = err.message; });
         }));
       });
-      rod.appendChild(el('p', 'v-under', 'Invitationen står og venter på forsiden, til ' + hvem + ' kommer.'));
+      rod.appendChild(el('p', 'v-under', 'Invitationen står og venter på forsiden, til ' + vis + ' kommer.'));
     }
     rod.appendChild(status);
 
@@ -344,6 +406,34 @@ function venDialog(hvem) {
       gaa.href = h.spil.href;
       rod.appendChild(gaa);
     }
+
+    // Kælenavnet: dit eget navn til vennen. Feltet står med det, der allerede er
+    // givet, så «Gem» retter det, og et tomt felt fjerner det igen.
+    const kaeleStatus = el('p', 'id-status v-kaele-status', '');
+    const form = el('form', 'id-form v-form v-kaele');
+    const input = el('input', 'id-input v-input v-kaele-input');
+    input.type = 'text'; input.maxLength = KAELE_MAKS; input.value = kn;
+    input.placeholder = 'Kælenavn til ' + hvem;
+    input.setAttribute('aria-label', 'Kælenavn til ' + hvem);
+    input.autocapitalize = 'words'; input.spellcheck = false;
+    input.setAttribute('enterkeyhint', 'done'); input.setAttribute('autocomplete', 'off');
+    const gem = el('button', 'v-knap v-vigtig v-kaele-gem', 'Gem');
+    gem.type = 'submit';
+    form.appendChild(input);
+    form.appendChild(gem);
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const nyt = saetKaelenavn(hvem, input.value);
+      tegn();                                   // brikken i panelet skifter navn med det samme
+      venDialog(hvem);                          // dialogen tegnes forfra med det nye navn
+      const p = indhold.querySelector('.v-kaele-status');
+      if (p) p.textContent = nyt ? 'Hos dig hedder ' + hvem + ' nu ' + nyt + '.' : 'Kælenavnet er væk igen.';
+    });
+    rod.appendChild(el('h3', 'v-kaele-titel', kn ? 'Kælenavn' : 'Giv ' + hvem + ' et kælenavn'));
+    rod.appendChild(form);
+    rod.appendChild(el('p', 'v-under v-kaele-hint',
+      'Kælenavnet står kun på din telefon. ' + hvem + ' kan ikke se det, og på toplisterne står det rigtige navn.'));
+    rod.appendChild(kaeleStatus);
 
     const raekke = el('div', 'id-knapper');
     raekke.appendChild(knap('id-knap id-fortryd', 'Fjern ven', () => {
@@ -401,6 +491,12 @@ const css = `
 .v-spil-med{display:block;margin-top:14px;text-align:center;text-decoration:none;line-height:24px;
   background:rgba(255,255,255,.09);color:var(--text,#fff7e6)}
 
+/* Kælenavne: det rigtige navn står småt, så man kan se hvem "Smølfen" er */
+.v-rigtigt-navn{margin:2px 0 0;color:var(--muted,#a9acd6);font-size:14px}
+.v-kaele-titel{margin:18px 0 8px;font-size:16px;font-weight:800}
+.v-kaele-hint{font-size:13px}
+.v-kaele-status:empty{display:none}
+
 /* Spil sammen: invitationen står øverst i panelet og lyser, så den ikke overses */
 .v-rum{background:rgba(94,224,168,.14)}
 .v-rum .v-hopmed{background:var(--mint,#5ee0a8);color:#10321f;animation:puls 1.8s ease-in-out infinite}
@@ -438,5 +534,9 @@ function start() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
 else start();
 
-window.Venner = { hent, tegn, hentRum, get data() { return data; }, get rum() { return rum; } };
+window.Venner = {
+  hent, tegn, hentRum, kaelenavn, saetKaelenavn, visNavn,
+  get data() { return data; },
+  get rum() { return rum; },
+};
 })();

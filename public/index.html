@@ -803,9 +803,12 @@
   /* "Sofie", "Sofie og Selma", "Sofie, Selma og Simon", "Sofie, Selma og 3 mere".
      `antal` er alle – også dem uden navn – så en gæst der ikke har skrevet sit
      navn, tælles med som "1 mere". Der vises højst `maks` navne, så mærkaterne
-     ikke sprænger en telefonskærm, når hele familien er på. */
+     ikke sprænger en telefonskærm, når hele familien er på.
+     Har man givet en ven et kælenavn (/venner.js), står det i stedet for navnet. */
   function navneliste(navne, antal, maks) {
-    var dele = navne.slice(0, maks);
+    var dele = navne.slice(0, maks).map(function (n) {
+      return window.Venner && window.Venner.visNavn ? window.Venner.visNavn(n) : n;
+    });
     var rest = antal - dele.length;
     if (rest > 0) dele.push(rest + ' mere');
     if (dele.length === 0) return '';

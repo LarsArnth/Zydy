@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 18,
+      "dato": "2026-09-13",
+      "spil": "",
+      "titel": "Giv dine venner et kælenavn",
+      "hvad": "Tryk på en ven på forsiden og skriv et kælenavn til hende. Så hedder hun det overalt, hvor hun står: på brikken, i invitationerne og i «spiller nu». Det rigtige navn står småt nedenunder, så du kan se hvem det er — og kælenavnet er kun på din egen telefon, så din ven kan ikke se det.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 17,
       "dato": "2026-09-13",
       "spil": "dybet",
