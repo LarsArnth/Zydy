@@ -287,7 +287,7 @@ const state = {
   x: 0.5,                 // hundens plads på gulvet, 0 (venstre) – 1 (højre)
   maal: null,
   vend: 1,
-  bold: null,             // { x, fra, f, fase } – fase: 'flyver' | 'ligger' | 'munden'
+  bold: null,             // { x, fra, f, fase }: 'hjemme' (ved mine fødder) | 'flyver' | 'ligger' | 'munden'
   hjerter: [],
   blinkTil: 0, naesteBlink: 2,
   spiserTil: 0, madISkaal: false,
@@ -340,7 +340,7 @@ const gulvY = () => H * (skoleOppe ? 0.38 : 0.80);
 const hundH = () => Math.min(H * 0.44, W * 0.30);
 const xTil = f => W * (0.16 + 0.70 * f);            // hundens plads → pixels
 const fraX = px => Math.max(0, Math.min(1, (px / W - 0.16) / 0.70));
-const SKAAL_X = 0.06, KURV_X = 0.95, KAR_X = 0.5, MIG_X = 0.02, BOLD_X = 0.12;
+const SKAAL_X = 0.06, KURV_X = 0.95, KAR_X = 0.5, MIG_X = 0.03, BOLD_X = 0.12;
 const TUR_X = () => W * 0.34;                        // hvor hunden går på turen
 const PX_PR_M = () => W * 0.05;
 
@@ -434,12 +434,12 @@ function tegnKar() {
  */
 function tegnMig() {
   const x = W * MIG_X, gy = gulvY(), s = hundH() * 0.78;
-  ctx.fillStyle = '#3f5bbf';
-  rrect(ctx, x - s * 0.08, gy - s * 0.44, s * 0.20, s * 0.34, s * 0.07); ctx.fill();
-  rrect(ctx, x + s * 0.16, gy - s * 0.44, s * 0.20, s * 0.34, s * 0.07); ctx.fill();
-  ctx.fillStyle = '#ff5c7a';
-  rrect(ctx, x - s * 0.10, gy - s * 0.13, s * 0.34, s * 0.13, s * 0.06); ctx.fill();
-  rrect(ctx, x + s * 0.14, gy - s * 0.13, s * 0.34, s * 0.13, s * 0.06); ctx.fill();
+  ctx.fillStyle = '#3f5bbf';                        // to bukseben
+  rrect(ctx, x, gy - s * 0.46, s * 0.19, s * 0.36, s * 0.07); ctx.fill();
+  rrect(ctx, x + s * 0.23, gy - s * 0.46, s * 0.19, s * 0.36, s * 0.07); ctx.fill();
+  ctx.fillStyle = '#2b2440';                        // og to sko, der peger ind i stuen
+  rrect(ctx, x - s * 0.01, gy - s * 0.12, s * 0.26, s * 0.12, s * 0.05); ctx.fill();
+  rrect(ctx, x + s * 0.22, gy - s * 0.12, s * 0.26, s * 0.12, s * 0.05); ctx.fill();
 }
 
 /* ---------- Parken (gåturen) ---------- */
@@ -734,15 +734,21 @@ function tegnHoved(c, x, y, r, p, o) {
     ellipse(c, x - r * 0.34, y - r * 0.72, r * 0.30, r * 0.20, -0.35);
     c.globalAlpha = 1;
   } else {
-    const spids = (dx, vip) => {
+    // Spidse ører tegnes i pelsens egen farve med en lys inderside. I
+    // skyggefarven forsvandt de i den mørke baggrund på en sort hund.
+    const spids = (dx, vip, inder) => {
+      const k = inder ? 0.5 : 1;
+      c.fillStyle = inder ? '#e0a0a8' : p.krop;
       c.beginPath();
-      c.moveTo(x + dx - r * 0.26, y - r * 0.46);
-      c.lineTo(x + dx + r * 0.04 + vip, y - r * 1.26);
-      c.lineTo(x + dx + r * 0.36, y - r * 0.40);
+      c.moveTo(x + dx - r * 0.28 * k, y - r * 0.46);
+      c.lineTo(x + dx + r * 0.04 + vip, y - r * (inder ? 1.02 : 1.30));
+      c.lineTo(x + dx + r * 0.38 * k, y - r * 0.40);
       c.closePath(); c.fill();
     };
-    spids(-r * 0.60, -r * 0.08);
-    spids(r * 0.26, r * 0.08);
+    spids(-r * 0.60, -r * 0.08, false);
+    spids(-r * 0.60, -r * 0.08, true);
+    spids(r * 0.26, r * 0.08, false);
+    spids(r * 0.26, r * 0.08, true);
   }
 
   // Snude og kranie
@@ -1124,7 +1130,7 @@ function startBold() {
   if (!state.hund || state.tilstand === 'tur') return;
   stopAlt();
   state.tilstand = 'bold';
-  state.bold = { x: BOLD_X, fra: MIG_X, f: 1, fase: 'ligger' };
+  state.bold = { x: BOLD_X, fra: MIG_X, f: 1, fase: 'hjemme' };
   state.maal = null;
   sigNoget('Tryk på gulvet – så løber den efter bolden!');
   opdater();
@@ -1146,10 +1152,11 @@ function boldFrem(dt) {
     if (b.f >= 1) { b.f = 1; b.fase = 'ligger'; gaaMod(b.x); }
     return;
   }
+  // 'hjemme' er bolden, der ligger ved mine fødder og venter på et kast. Den
+  // har sin egen tilstand og ikke bare en plads på gulvet – ellers hentede og
+  // afleverede hunden den i ét væk, uden at man rørte en finger.
+  if (b.fase === 'hjemme') { state.maal = null; return; }
   if (b.fase === 'ligger') {
-    // Ligger bolden ved mine fødder, venter hunden på et kast – ellers ville den
-    // hente og aflevere i ét væk, uden at man rørte en finger.
-    if (b.x <= MIG_X + 0.08) { state.maal = null; return; }
     if (state.maal == null) gaaMod(b.x);
     if (Math.abs(b.x - state.x) < 0.05) {           // fat i den – løb tilbage
       b.fase = 'munden';
@@ -1166,7 +1173,7 @@ function boldFrem(dt) {
 
 function afleverBold() {
   const r = plej(state.hund, 'leg', LEG_PR_KAST);
-  state.bold = { x: BOLD_X, fra: MIG_X, f: 1, fase: 'ligger' };
+  state.bold = { x: BOLD_X, fra: MIG_X, f: 1, fase: 'hjemme' };
   state.maal = null;
   hjerte(2);
   if (state.hund.behov.leg >= 100) { sigNoget(`${state.hund.navn} er godt legesyg nu!`); }
