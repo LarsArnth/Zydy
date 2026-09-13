@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 28,
+      "dato": "2026-09-13",
+      "spil": "fisk",
+      "titel": "Fiskedybet – fisk dig hele vejen ned i Afgrunden",
+      "hvad": "Timo ønskede sig «Fish It: Abyss», og nu ligger det her. Du har en lille båd og en fiskebog, der skal fyldes. Kast snøren, og når der hugger, løber en viser frem og tilbage: tryk, når den er i det grønne felt. Store fisk kræver flere rammere og river sig løs, hvis du rammer forbi tre gange. Sejl fangsten hjem i havnen, sælg den, og køb en bedre båd — en længere snøre åbner et nyt farvand, en bedre stang gør det grønne felt bredere, et stærkere skrog tåler flere bid, og et større kølerum giver plads til mere fangst. Der er fem farvande: Solskinshavet, Hajvandet, Dybhavet, Afgrunden og Tomrummet, og de bliver mærkeligere, jo længere ned du kommer — til sidst fanger du ting, der ikke burde findes. Pas på dernede: hvert dybt farvand har et uhyre, og når det hugger, skal du bestemme dig i en fart. Klipper du snøren, sker der ingenting. Tager du kampen og taber — eller når du ikke at vælge — tager det en bid af båden, og går skroget i nul, bliver du slæbt i havn og mister hele lasten. Fiskebogen mister du aldrig, og det er den, toplisten tæller: flest arter vinder.",
+      "oensket": "Timo"
+    },
+    {
       "nr": 27,
       "dato": "2026-09-13",
       "spil": "hund",

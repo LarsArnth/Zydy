@@ -28,6 +28,7 @@ export const KORT = [
   { id: 'mitliv', navn: 'Mit liv', url: '/spil/mitliv/' },
   { id: 'papir', navn: 'Papirøen', url: '/spil/papir/' },
   { id: 'hund', navn: 'Min hund', url: '/spil/hund/' },
+  { id: 'fisk', navn: 'Fiskedybet', url: '/spil/fisk/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -55,6 +56,7 @@ export const SPIL = {
   mitliv: { maks: 1000000, unik: true },
   papir: { maks: 100, unik: true },
   hund: { maks: 50 },
+  fisk: { maks: 60, unik: true },
 };
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).

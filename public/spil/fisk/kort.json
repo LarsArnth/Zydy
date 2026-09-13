@@ -1,0 +1,20 @@
+{
+  "navn": "Fiskedybet",
+  "beskrivelse": "Fisk, sælg fangsten og køb en bedre båd – og sejl dybere ud, hvor der hugger ting, der ikke burde findes.",
+  "nøgleord": [
+    "fish it",
+    "fiskeri",
+    "fisk",
+    "hav",
+    "abyss",
+    "afgrunden",
+    "fang fisk",
+    "båd"
+  ],
+  "url": "/spil/fisk/",
+  "orden": 154,
+  "højscore": {
+    "maks": 60,
+    "unik": true
+  }
+}

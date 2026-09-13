@@ -1,0 +1,1339 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#05142e">
+<meta name="description" content="Fiskedybet: fisk, sælg fangsten, køb en bedre båd – og sejl dybere ud, hvor der hugger ting, der ikke burde findes.">
+<title>Fiskedybet – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2305142e'/%3E%3Cpath d='M14 34 q10 -12 22 0 q-12 12 -22 0z' fill='%235ee0a8'/%3E%3Cpath d='M36 34 l12 -8 v16z' fill='%235ee0a8'/%3E%3Ccircle cx='22' cy='31' r='2.5' fill='%2305142e'/%3E%3C/svg%3E">
+<style>
+  /*
+    Fiskedybet – Timos ønske «FISH IT: ABYSS».
+
+    Man har en lille båd, fisker i fem farvande, sejler fangsten hjem og sælger
+    den, og køber en bedre båd for pengene. Jo dybere man kommer ud, jo mærkeligere
+    bliver havet – og i de dybe farvande hugger der ting, der bider igen.
+
+    Reglerne bor i hav.mjs (enhedstestet); denne fil tegner havet og tager imod
+    fingeren. Fire ting er værd at kende:
+
+      1) Alt går gennem faserne: klar → venter (snøren er ude) → kamp (baren) →
+         tilbage til klar. Hugger der et uhyre, kommer «valg» imellem: klip
+         snøren, eller tag kampen. Gør man ingenting, bider det i båden.
+      2) Kampen er én bar: viseren løber frem og tilbage, og et tryk tæller kun
+         i det grønne felt. Hele baren ligger i hav.mjs, så den kan gennemspilles
+         i en test uden at vente på rigtige sekunder.
+      3) Havet tegnes i faste lag (himmel, vand, båd, snøre, dyr), og farverne
+         kommer fra STEMNING[zone]. Det er dét, der gør Afgrunden til Afgrunden.
+      4) Spillet kører i faste skridt på 1/60 sek. (DT), uanset hvor hurtigt
+         skærmen tegner – det er også dét, GAME.frem() bruger.
+  */
+  :root{
+    --bg:#05142e; --bg2:#102a4c; --bg3:#1d4270; --text:#eef6ff; --muted:#9fbcdd;
+    --sun:#ffd447; --coral:#ff4d5e; --mint:#5ee0a8; --sky:#6cc5ff; --ink:#062038; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}          /* .btn sætter display:block, og så gemmer hidden ikke af sig selv */
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 12px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 8px;letter-spacing:-1.6px;font-weight:800}
+  h2{font-size:22px;margin:0 0 10px;letter-spacing:-.6px}
+  p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:16px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;text-align:center;text-decoration:none;color:var(--ink);transition:transform .08s}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn:disabled{opacity:.45}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--sun);font-variant-numeric:tabular-nums}
+
+  .wrap{width:100%;max-width:820px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .brand{flex:1;text-align:center;font-weight:800;font-size:20px;letter-spacing:-.4px}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;margin-top:6px;background:#071c38}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Hvor er vi, og hvordan har båden det? */
+  .hud{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;
+    padding:10px 12px;pointer-events:none;gap:8px}
+  .hud .boks{background:rgba(5,18,40,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+    border-radius:14px;padding:6px 11px;font-size:13px;font-weight:700;color:var(--muted);line-height:1.35}
+  .hud b{display:block;color:var(--text);font-size:16px;letter-spacing:-.3px}
+  .hud .hoejre{text-align:right}
+  .hjerter{letter-spacing:1px;font-size:15px}
+  .hjerter .tom{opacity:.28}
+
+  /* Baren, man trykker på i kampen */
+  .bar{position:absolute;left:0;right:0;bottom:0;padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+    background:linear-gradient(transparent,rgba(5,18,40,.82) 30%)}
+  .bartekst{font-size:15px;font-weight:700;color:var(--text);text-align:center;margin-bottom:8px;
+    text-shadow:0 2px 8px rgba(0,0,0,.6)}
+  .bane{position:relative;height:34px;border-radius:999px;background:rgba(5,18,40,.75);
+    border:2px solid rgba(255,255,255,.18);overflow:hidden}
+  .felt{position:absolute;top:0;bottom:0;background:linear-gradient(180deg,#7dffc4,#1fa86e);opacity:.95}
+  .bar.uhyre .felt{background:linear-gradient(180deg,#ffb36b,#e0452f)}
+  .viser{position:absolute;top:-3px;bottom:-3px;width:6px;margin-left:-3px;border-radius:4px;background:#fff;
+    box-shadow:0 0 10px rgba(255,255,255,.9)}
+  .kampinfo{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:14px;font-weight:700}
+  .kampinfo .navn{color:var(--text)}
+  .kampinfo .prikker{color:var(--muted);letter-spacing:2px}
+
+  /* Uhyret hugger: klip snøren, eller tag kampen */
+  .valg{position:absolute;inset:auto 0 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+    background:linear-gradient(transparent,rgba(60,6,16,.9) 35%)}
+  .valg .advar{text-align:center;font-size:20px;font-weight:900;color:#ffb7b7;letter-spacing:-.5px;
+    text-shadow:0 2px 10px rgba(0,0,0,.7)}
+  .valg .hvad{text-align:center;font-size:14px;color:#ffd9d9;margin:2px 0 10px}
+  .valg .rk{display:flex;gap:10px}
+  .valg .rk .btn{margin-top:0;flex:1;padding:15px 8px;font-size:17px}
+  .valg .btn.fare{background:var(--coral);color:#fff}
+  .frist{height:7px;border-radius:999px;background:rgba(255,255,255,.2);overflow:hidden;margin-bottom:10px}
+  .frist i{display:block;height:100%;background:var(--coral);width:100%;transition:width .1s linear}
+
+  /* Råbet midt på fladen: «NY ART!», «+340 kr» */
+  .raab{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .25s}
+  .raab.on{opacity:1}
+  .raab .big{font-size:clamp(28px,10vw,56px);font-weight:900;letter-spacing:-2px;line-height:1;color:#fff;
+    text-shadow:0 0 26px rgba(94,224,168,.9),0 5px 0 #0b7a53,0 12px 30px rgba(0,0,0,.45);transform:rotate(-3deg)}
+  .raab.on .big{animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+  .raab.slem .big{text-shadow:0 0 26px rgba(255,77,94,.9),0 5px 0 #7a0b1c,0 12px 30px rgba(0,0,0,.45)}
+  .raab .sub{margin-top:10px;font-size:16px;font-weight:700;color:var(--text);
+    background:rgba(5,18,40,.72);border-radius:999px;padding:7px 15px}
+  @keyframes pop{from{transform:scale(.4) rotate(-3deg);opacity:0}to{transform:scale(1) rotate(-3deg);opacity:1}}
+
+  /* Knapperne under havet */
+  .knapper{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+  .rk{display:flex;gap:8px}
+  .rk .btn{margin-top:0;flex:1}
+  .rk .btn.lille{padding:12px 6px;font-size:15px}
+  .btn.stor{padding:19px;font-size:21px;font-weight:800}
+  .btn.mint{background:var(--mint)}
+  .btn.prik::after{content:'';position:absolute;top:8px;right:12px;width:10px;height:10px;border-radius:50%;
+    background:var(--coral);box-shadow:0 0 8px var(--coral)}
+  #bogBtn{position:relative}
+
+  /* Skærmene oven på havet */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:16px 18px 22px;background:rgba(5,18,40,.92);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:460px;text-align:center;margin:auto}
+  .lavet{margin:0 0 12px;font-size:14px;color:var(--muted);line-height:1.4}
+  .lavet b{color:var(--text)}
+  .regler{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:8px 12px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .hint{font-size:15px;margin:12px 0 0}
+
+  /* Sejlkortet */
+  .steder{display:flex;flex-direction:column;gap:8px;text-align:left}
+  .sted{display:flex;align-items:center;gap:12px;background:var(--bg2);border-radius:18px;padding:12px 14px;
+    width:100%;color:var(--text);text-align:left}
+  .sted:active{transform:scale(.98)}
+  .sted .em{font-size:26px;line-height:1}
+  .sted .txt{flex:1;min-width:0}
+  .sted .txt b{display:block;font-size:17px}
+  .sted .txt span{font-size:13px;color:var(--muted);display:block;line-height:1.3}
+  .sted.her{outline:2px solid var(--mint)}
+  .sted.laast{opacity:.5}
+  .sted .laas{font-size:13px;color:var(--sun);font-weight:700;white-space:nowrap}
+
+  /* Butikken */
+  .varer{display:flex;flex-direction:column;gap:8px;text-align:left}
+  .vare{display:flex;align-items:center;gap:12px;background:var(--bg2);border-radius:18px;padding:12px 14px;width:100%;color:var(--text)}
+  .vare .em{font-size:26px}
+  .vare .txt{flex:1;min-width:0}
+  .vare .txt b{display:block;font-size:17px}
+  .vare .txt span{font-size:13px;color:var(--muted);display:block;line-height:1.3}
+  .vare .pris{font-weight:800;color:var(--sun);white-space:nowrap;font-size:16px}
+  .vare:disabled{opacity:.5}
+  .vare.top .pris{color:var(--mint)}
+  .trin{display:flex;gap:3px;margin-top:5px}
+  .trin i{width:16px;height:6px;border-radius:3px;background:rgba(255,255,255,.18)}
+  .trin i.fyldt{background:var(--mint)}
+
+  /* Fiskebogen */
+  .bogzone{text-align:left;margin-bottom:14px}
+  .bogzone h3{margin:0 0 6px;font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;font-weight:800}
+  .bogliste{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:7px}
+  .art{background:var(--bg2);border-radius:14px;padding:8px 6px;text-align:center}
+  .art canvas{display:block;width:100%;height:42px}
+  .art b{display:block;font-size:12px;font-weight:700;line-height:1.15;margin-top:3px}
+  .art span{display:block;font-size:11px;color:var(--muted)}
+  .art.ukendt{opacity:.55}
+  .art.ukendt b{color:var(--muted)}
+  .tal{display:flex;justify-content:center;gap:14px;margin:0 0 12px}
+  .tal div{background:var(--bg2);border-radius:16px;padding:8px 14px;min-width:82px}
+  .tal b{display:block;font-size:24px;font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums}
+  .tal span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .hs{margin:10px 0}
+  .hs .hs-liste{max-height:26vh}
+
+  @media (max-height:680px){
+    h1{font-size:30px} .screen .btn{padding:13px} .regler span{font-size:14px;padding:7px 10px}
+    .btn.stor{padding:15px;font-size:19px} .bane{height:30px}
+  }
+  @media (max-width:380px){ .top .brand{display:none} }
+  @media (prefers-reduced-motion:reduce){ .btn,.raab.on .big{transition:none;animation:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="brand">Fiskedybet</div>
+    <div class="pill">🪙 <b id="moentPill">0</b></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Havet med båden, snøren og fiskene"></canvas>
+
+    <div class="hud" aria-live="off">
+      <div class="boks"><b id="stedNavn">Havnen</b><span id="stedUnder">Her sælger du fangsten</span></div>
+      <div class="boks hoejre">
+        <span class="hjerter" id="skrogEl">❤️❤️❤️</span>
+        <span id="lastEl">Last 0/4</span>
+      </div>
+    </div>
+
+    <div class="bar" id="barWrap" hidden>
+      <div class="bartekst" id="barTekst">Tryk, når viseren er i det grønne!</div>
+      <div class="bane" id="bane"><i class="felt" id="felt"></i><i class="viser" id="viser"></i></div>
+      <div class="kampinfo"><span class="navn" id="kampNavn"></span><span class="prikker" id="kampPrik"></span></div>
+    </div>
+
+    <div class="valg" id="valgWrap" hidden>
+      <div class="advar" id="valgTitel">DER ER NOGET STORT!</div>
+      <div class="hvad" id="valgUnder"></div>
+      <div class="frist"><i id="fristBar"></i></div>
+      <div class="rk">
+        <button class="btn ghost" id="klipBtn">✂️ Klip snøren</button>
+        <button class="btn fare" id="modBtn">💪 Tag kampen</button>
+      </div>
+    </div>
+
+    <div class="raab" id="raab">
+      <div class="big" id="raabTekst"></div>
+      <div class="sub" id="raabUnder"></div>
+    </div>
+
+    <!-- Startskærm -->
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Fiskedybet</h1>
+        <div class="lavet"><b>Timo</b> ønskede sig spillet · <b>Far</b> og <b>Claude</b> byggede det</div>
+        <div class="hs" id="hsListe"></div>
+        <button class="btn" id="startBtn">Sejl ud</button>
+        <!-- Reglerne står UNDER knappen med vilje: startskærmen skal kunne bruges
+             uden at rulle på en iPhone, og knappen er det vigtigste. -->
+        <div class="regler" aria-hidden="true">
+          <span>🎣 <b>Kast snøren</b> og tryk, når viseren er i det grønne</span>
+          <span>💰 <b>Sejl fangsten hjem</b> til havnen og sælg den</span>
+          <span>🛶 <b>Køb en bedre båd</b> – længere snøre, dybere hav</span>
+          <span>👁️ <b>Pas på dernede</b> – noget bider igen</span>
+        </div>
+        <p class="hint">Fem farvande: Solskinshavet, Hajvandet, Dybhavet, Afgrunden og Tomrummet. Du samler
+          arterne i fiskebogen – og det er dem, toplisten tæller.</p>
+      </div>
+    </div>
+
+    <!-- Sejlkortet -->
+    <div class="screen" id="sejlScreen">
+      <div class="card">
+        <h2>Hvor skal vi hen?</h2>
+        <div class="steder" id="steder"></div>
+        <button class="btn ghost" id="sejlLuk">Tilbage</button>
+      </div>
+    </div>
+
+    <!-- Butikken -->
+    <div class="screen" id="butikScreen">
+      <div class="card">
+        <h2>Bådebyggeren</h2>
+        <p id="butikSaldo">Du har 0 kr.</p>
+        <div class="varer" id="varer"></div>
+        <button class="btn ghost" id="butikLuk">Tilbage</button>
+      </div>
+    </div>
+
+    <!-- Fiskebogen -->
+    <div class="screen" id="bogScreen">
+      <div class="card">
+        <h2>Fiskebogen</h2>
+        <div class="tal">
+          <div><b id="bogArter">0</b><span>arter</span></div>
+          <div><b id="bogFangst">0</b><span>fangster</span></div>
+          <div><b id="bogTjent">0</b><span>kr tjent</span></div>
+        </div>
+        <div class="hs" id="hsBog"></div>
+        <div id="bogListe"></div>
+        <button class="btn ghost" id="bogLuk">Tilbage</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="knapper" id="knapper">
+    <div class="rk">
+      <button class="btn stor mint" id="kastBtn">🎣 Kast snøren</button>
+      <button class="btn stor" id="halBtn" hidden>HAL IND!</button>
+      <button class="btn stor" id="saelgBtn" hidden>💰 Sælg fangsten</button>
+    </div>
+    <div class="rk">
+      <button class="btn ghost lille" id="sejlBtn">⛵ Sejl</button>
+      <button class="btn ghost lille" id="repBtn" hidden>🔧 Reparér</button>
+      <button class="btn ghost lille" id="butikBtn" hidden>🛒 Butik</button>
+      <button class="btn ghost lille" id="bogBtn">📖 Fiskebog</button>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="fisk"></script>
+<script type="module">
+import {
+  ZONER, ARTER, OPGRADERINGER, MAKS_NIVEAU,
+  arten, arterIZone, zonen, zoneNr, nytSpil, froe, traek, bidAf,
+  nyKamp, kampSkridt, kampTryk, rammer, land, sejl, saelg, koeb, prisFor,
+  reparer, reparationsPris, skade, laastOp, maksSkrog, maksLast, lastVaerdi,
+  arterFanget, serialiser, laes, vaegtTekst, moentTekst,
+} from './hav.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const seed = Number.isFinite(fastSeed) ? fastSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
+const r = froe(seed);
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), g = canvas.getContext('2d');
+if (!g.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY = 'zydy.fisk.spil';
+const DT = 1 / 60;
+const BID_MIN = 0.9, BID_MAKS = 3.2;     // så længe kan der gå, før der hugger noget
+const FRIST = 3.4;                       // så lang tid har man til at bestemme sig over for et uhyre
+const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- Det gemte spil ---------- */
+function hentGemt() {
+  if (params.get('nyt') === '1') return nytSpil();     // frisk båd – til at prøve og til testen
+  try { return laes(JSON.parse(localStorage.getItem(KEY))) || nytSpil(); }
+  catch (e) { return nytSpil(); }
+}
+function gem() {
+  try { localStorage.setItem(KEY, JSON.stringify(serialiser(spil))); } catch (e) {}
+}
+
+let spil = hentGemt();
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';            // menu | klar | venter | valg | kamp
+let bid = null;               // hvad der har hugget
+let kamp = null;              // baren, når der kæmpes
+let tilBid = 0, frist = 0;    // nedtællinger
+let T = 0, sidst = 0, acc = 0;
+let krog = 0;                 // hvor langt snøren er ude, 0-1
+let raabTil = 0;
+let dyr = [];                 // de fisk, der svømmer forbi i baggrunden
+let plask = [];               // små bobler og stænk
+let nytIBog = false;          // prik på fiskebogs-knappen, til man har kigget
+let tvunget = null;           // GAME.tvingBid(): næste bid er bestemt på forhånd
+
+/* ---------- Stemningen i de fem farvande ---------- */
+const STEMNING = {
+  havn: { vand: ['#7fc8f0', '#1f5e92'], himmel: ['#8fd8ff', '#ffe9b0'], nat: 0, taage: 'rgba(255,255,255,.12)' },
+  sol: { vand: ['#7fd4f5', '#0f5c96'], himmel: ['#9ce0ff', '#ffedbe'], nat: 0, taage: 'rgba(255,255,255,.12)' },
+  haj: { vand: ['#3f9ecb', '#06325c'], himmel: ['#7fc0e8', '#e8dcc0'], nat: 0.15, taage: 'rgba(255,255,255,.08)' },
+  dyb: { vand: ['#123a63', '#020c1c'], himmel: ['#2b4a74', '#7a6a96'], nat: 0.55, taage: 'rgba(120,180,255,.06)' },
+  afgrund: { vand: ['#2a1030', '#08020a'], himmel: ['#1a1030', '#4a1230'], nat: 0.85, taage: 'rgba(255,80,110,.05)' },
+  tomrum: { vand: ['#150c2a', '#010008'], himmel: ['#0b0820', '#1b1040'], nat: 1, taage: 'rgba(180,150,255,.05)' },
+};
+const stemning = () => STEMNING[spil.sted] || STEMNING.havn;
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1, dpr = 1;
+function maal() {
+  const b = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(b.width)); H = Math.max(1, Math.round(b.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+maal();
+addEventListener('resize', maal);
+addEventListener('orientationchange', () => setTimeout(maal, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
+
+const vandY = () => H * 0.26;                       // vandoverfladen
+// Krogen går aldrig helt ned i bunden af billedet – dér står baren, og så kunne
+// man ikke se, hvad man havde fat i.
+const krogY = () => vandY() + (H - vandY()) * (0.12 + 0.5 * krog);
+
+/* ---------- Baggrundens dyr ---------- */
+function fyldHav() {
+  dyr = [];
+  if (spil.sted === 'havn') return;
+  const pulje = arterIZone(spil.sted).filter(a => !a.uhyre && a.form !== 'skrald');
+  const antal = spil.sted === 'tomrum' ? 3 : spil.sted === 'afgrund' ? 4 : 6;
+  for (let i = 0; i < antal; i++) dyr.push(nytDyr(pulje, true));
+}
+function nytDyr(pulje, hvorSomHelst) {
+  const a = pulje[Math.floor(r() * pulje.length) % pulje.length];
+  const retning = r() < 0.5 ? 1 : -1;
+  return {
+    art: a, retning,
+    x: hvorSomHelst ? r() : (retning > 0 ? -0.12 : 1.12),
+    y: 0.18 + r() * 0.74,
+    fart: (0.03 + r() * 0.07) * retning,
+    skala: 0.5 + r() * 0.7,
+    fase: r() * 7,
+  };
+}
+function flytDyr(dt) {
+  if (spil.sted === 'havn') return;
+  const pulje = arterIZone(spil.sted).filter(a => !a.uhyre && a.form !== 'skrald');
+  for (const d of dyr) {
+    d.x += d.fart * dt;
+    d.fase += dt * 3;
+    if (d.x < -0.2 || d.x > 1.2) Object.assign(d, nytDyr(pulje, false));
+  }
+}
+
+/* ---------- Spillets gang ---------- */
+function spilSkridt(dt) {
+  T += dt;
+  flytDyr(dt);
+
+  if (fase === 'venter') {
+    krog = Math.min(1, krog + dt * 0.9);
+    tilBid -= dt;
+    if (tilBid <= 0) huggerNoget();
+  } else if (fase === 'valg') {
+    frist -= dt;
+    fristBar.style.width = klem(frist / FRIST, 0, 1) * 100 + '%';
+    if (frist <= 0) uhyretBider();
+  } else if (fase === 'kamp') {
+    kampSkridt(kamp, dt);
+    // Fangsten hales synligt op, for hver gang man rammer – ellers kan man ikke
+    // se, at man er ved at vinde.
+    krog = Math.max(0.2, 1 - 0.75 * (kamp.ramt / kamp.kraevet));
+    tegnBar();
+    if (kamp.slut) afgoer();
+  } else if (fase === 'klar' || fase === 'menu') {
+    krog = Math.max(0, krog - dt * 1.6);
+  }
+
+  for (const p of plask) { p.t += dt; p.y -= p.op * dt; p.x += p.side * dt; }
+  plask = plask.filter(p => p.t < p.liv);
+  if (raabTil && T > raabTil) { raab.classList.remove('on'); raabTil = 0; }
+}
+
+function kast() {
+  if (fase !== 'klar' || spil.sted === 'havn') return false;
+  fase = 'venter';
+  bid = null; kamp = null;
+  tilBid = BID_MIN + r() * (BID_MAKS - BID_MIN);
+  visKnapper();
+  return true;
+}
+
+function huggerNoget() {
+  const art = tvunget ? arten(tvunget) : null;
+  tvunget = null;
+  bid = art ? bidAf(art, r) : traek(spil, r);
+  bobler(6);
+  if (bid.uhyre) {
+    fase = 'valg';
+    frist = FRIST;
+    $('valgTitel').textContent = 'DER ER NOGET STORT!';
+    $('valgUnder').textContent = arten(bid.art).om || 'Det er ikke en fisk.';
+    fristBar.style.width = '100%';
+    if (!roligt) navigator.vibrate && navigator.vibrate([30, 60, 30]);
+  } else {
+    startKamp();
+  }
+  visKnapper();
+}
+
+function startKamp() {
+  kamp = nyKamp(spil, bid, r);
+  fase = 'kamp';
+  barWrap.classList.toggle('uhyre', !!kamp.uhyre);
+  $('barTekst').textContent = kamp.uhyre ? 'Hal ind, når viseren er i det røde!' : 'Tryk, når viseren er i det grønne!';
+  $('kampNavn').textContent = kamp.uhyre ? kamp.navn : 'Der hugger noget!';
+  tegnBar();
+  visKnapper();
+}
+
+/** Et tryk på baren – eller et tryk et vilkårligt sted på havet, mens man kæmper. */
+function tryk() {
+  if (fase !== 'kamp' || !kamp || kamp.slut) return null;
+  const svar = kampTryk(kamp, r);
+  if (svar === 'ramt') bobler(3);
+  else if (!roligt) navigator.vibrate && navigator.vibrate(15);
+  tegnBar();
+  if (kamp.slut) afgoer();
+  return svar;
+}
+
+function afgoer() {
+  const vundet = kamp.slut === 'vundet';
+  if (vundet) {
+    const f = land(spil, kamp);
+    bobler(14);
+    if (f.nyArt) {
+      nytIBog = true;
+      // En ny art skal råbes op, også når kølerummet er fuldt – men så skal man
+      // have at vide, at pengene gik fløjten.
+      sigTil('NY ART!', `${kamp.navn} · ${vaegtTekst(kamp.vaegt)}` + (f.iLast ? '' : ' · lasten er fuld!'), 1.8);
+      sendRekord();
+    } else if (!f.iLast) {
+      sigTil('Lasten er fuld!', 'Sejl hjem i havn og sælg fangsten', 1.8);
+    } else {
+      sigTil('+' + moentTekst(kamp.vaerdi) + ' kr', `${kamp.navn} · ${vaegtTekst(kamp.vaegt)}`, 1.3);
+    }
+    if (!roligt) navigator.vibrate && navigator.vibrate(f.nyArt ? [40, 50, 40] : 25);
+  } else if (kamp.uhyre) {
+    uhyretBider();
+    return;
+  } else {
+    sigTil('Den slap væk!', kamp.navn + ' rev sig løs', 1.3);
+  }
+  slutTur();
+}
+
+/** Uhyret tager en bid af båden – enten fordi man tabte, eller fordi man tøvede. */
+function uhyretBider() {
+  const art = arten(bid.art);
+  const s = skade(spil, art.skade || 1);
+  if (!roligt) navigator.vibrate && navigator.vibrate([60, 40, 60, 40, 60]);
+  if (s.slaebt) {
+    sigTil('SLÆBT I HAVN!', s.tabt ? `Du mistede ${s.tabt} fisk til ${moentTekst(s.vaerdi)} kr` : 'Båden er lappet igen', 2.6, true);
+    fyldHav();
+  } else {
+    sigTil('AV!', `${art.navn} tog en bid af båden`, 1.8, true);
+  }
+  slutTur();
+}
+
+function slutTur() {
+  bid = null; kamp = null;
+  fase = 'klar';
+  krog = 0;
+  barWrap.hidden = true; valgWrap.hidden = true;
+  gem(); visHud(); visKnapper();
+}
+
+/* ---------- Havnen ---------- */
+function saelgAlt() {
+  const s = saelg(spil);
+  if (!s.antal) return s;
+  sigTil('+' + moentTekst(s.moenter) + ' kr', `${s.antal} solgt i havnen`, 1.6);
+  gem(); visHud(); visKnapper();
+  return s;
+}
+
+function lap() {
+  const n = reparer(spil);
+  if (n) { sigTil('Båden er lappet', n + (n === 1 ? ' hjerte' : ' hjerter') + ' tilbage', 1.4); gem(); visHud(); visKnapper(); }
+  return n;
+}
+
+function sejlTil(sted) {
+  if (!sejl(spil, sted)) return false;
+  slutTur();
+  fyldHav();
+  lukSkaerme();
+  const z = zonen(sted);
+  sigTil(sted === 'havn' ? 'I havn' : z.navn, sted === 'havn' ? 'Sælg fangsten og køb en bedre båd' : z.om, 1.8);
+  gem(); visHud(); visKnapper(); tegnSteder();
+  return true;
+}
+
+/* ---------- Skærmen ---------- */
+const barWrap = $('barWrap'), valgWrap = $('valgWrap'), fristBar = $('fristBar');
+const raab = $('raab');
+
+function sigTil(stor, lille, sek, slem) {
+  $('raabTekst').textContent = stor;
+  $('raabUnder').textContent = lille || '';
+  raab.classList.toggle('slem', !!slem);
+  raab.classList.remove('on'); void raab.offsetWidth; raab.classList.add('on');
+  raabTil = T + sek;
+}
+
+function visHud() {
+  const z = zonen(spil.sted);
+  $('stedNavn').textContent = z ? z.navn : 'Havnen';
+  $('stedUnder').textContent = z ? z.dybde + ' m dybt' : 'Her sælger du fangsten';
+  $('moentPill').textContent = moentTekst(spil.moenter);
+  const maks = maksSkrog(spil);
+  let hjerter = '';
+  for (let i = 0; i < maks; i++) hjerter += i < spil.skrog ? '❤️' : '🖤';
+  $('skrogEl').textContent = hjerter;
+  $('lastEl').textContent = `Last ${spil.last.length}/${maksLast(spil)}`;
+}
+
+/** Hvilke knapper der giver mening lige nu – resten er skjult, ikke bare grå. */
+function visKnapper() {
+  const iHavn = spil.sted === 'havn';
+  // Knapperne står under havet og hører til spillet – på startskærmen ville de
+  // bare rode, for dér er der kun én ting at gøre.
+  $('knapper').hidden = fase === 'menu';
+  $('kastBtn').hidden = !(fase === 'klar' && !iHavn);
+  $('halBtn').hidden = fase !== 'kamp';
+  $('saelgBtn').hidden = !(iHavn && fase !== 'kamp');
+  $('saelgBtn').disabled = !spil.last.length;
+  $('saelgBtn').textContent = spil.last.length
+    ? `💰 Sælg ${spil.last.length} (${moentTekst(lastVaerdi(spil))} kr)` : '💰 Intet at sælge';
+  $('repBtn').hidden = !(iHavn && spil.skrog < maksSkrog(spil));
+  $('repBtn').textContent = `🔧 Lap (${moentTekst(reparationsPris(spil))})`;
+  $('repBtn').disabled = spil.moenter < reparationsPris(spil);
+  $('butikBtn').hidden = !iHavn;
+  $('sejlBtn').disabled = fase === 'venter' || fase === 'kamp' || fase === 'valg';
+  $('bogBtn').classList.toggle('prik', nytIBog);
+  barWrap.hidden = fase !== 'kamp';
+  valgWrap.hidden = fase !== 'valg';
+  if (fase === 'venter') {
+    $('kastBtn').hidden = false;
+    $('kastBtn').disabled = true;
+    $('kastBtn').textContent = '… snøren er ude …';
+  } else {
+    $('kastBtn').disabled = false;
+    $('kastBtn').textContent = '🎣 Kast snøren';
+  }
+}
+
+/** Baren tegnes med DOM (ikke canvas), så den er skarp og kan læses af testen. */
+function tegnBar() {
+  if (!kamp) return;
+  $('felt').style.left = (kamp.maal * 100) + '%';
+  $('felt').style.width = (kamp.bredde * 100) + '%';
+  $('viser').style.left = (kamp.pos * 100) + '%';
+  let prikker = '';
+  for (let i = 0; i < kamp.kraevet; i++) prikker += i < kamp.ramt ? '●' : '○';
+  for (let i = 0; i < kamp.maksFejl; i++) prikker += i < kamp.fejl ? ' ✕' : '';
+  $('kampPrik').textContent = prikker;
+}
+
+function bobler(antal) {
+  if (roligt) return;
+  for (let i = 0; i < antal; i++) {
+    plask.push({
+      x: 0.5 + (r() - 0.5) * 0.06, y: krogY() / H,
+      op: 0.1 + r() * 0.25, side: (r() - 0.5) * 0.08,
+      s: 2 + r() * 5, t: 0, liv: 0.8 + r() * 0.9,
+    });
+  }
+}
+
+/* ---------- Tegningen ---------- */
+function tegn() {
+  const st = stemning();
+  // Himmel
+  const h = g.createLinearGradient(0, 0, 0, vandY());
+  h.addColorStop(0, st.himmel[0]); h.addColorStop(1, st.himmel[1]);
+  g.fillStyle = h; g.fillRect(0, 0, W, vandY());
+  tegnHimmellegeme(st);
+
+  // Vand
+  const v = g.createLinearGradient(0, vandY(), 0, H);
+  v.addColorStop(0, st.vand[0]); v.addColorStop(1, st.vand[1]);
+  g.fillStyle = v; g.fillRect(0, vandY(), W, H - vandY());
+  tegnStraaler(st);
+
+  if (spil.sted === 'havn') tegnHavn();
+  tegnDyrene();
+  tegnSnoere();
+  tegnBaad();
+  tegnPlask();
+  tegnBund();
+}
+
+function tegnHimmellegeme(st) {
+  if (st.nat < 0.5) {
+    g.fillStyle = 'rgba(255,224,130,.95)';
+    g.beginPath(); g.arc(W * 0.82, vandY() * 0.34, Math.min(W, H) * 0.07, 0, 7); g.fill();
+    g.globalAlpha = 0.5;
+    g.fillStyle = '#fff';
+    for (let i = 0; i < 3; i++) {
+      const x = W * (0.12 + i * 0.26), y = vandY() * (0.3 + (i % 2) * 0.3);
+      g.beginPath();
+      g.arc(x, y, 16, 0, 7); g.arc(x + 18, y - 6, 20, 0, 7); g.arc(x + 40, y, 14, 0, 7);
+      g.fill();
+    }
+    g.globalAlpha = 1;
+  } else {
+    // Stjerner – de står fast, fordi de tegnes ud fra en fast formel
+    g.fillStyle = '#fff';
+    for (let i = 0; i < 40; i++) {
+      const x = ((i * 97) % 100) / 100 * W, y = ((i * 61) % 100) / 100 * vandY();
+      const blink = 0.35 + 0.35 * Math.sin(T * 1.6 + i);
+      g.globalAlpha = blink * st.nat;
+      g.fillRect(x, y, 2, 2);
+    }
+    g.globalAlpha = 1;
+    if (spil.sted !== 'tomrum') {
+      g.fillStyle = 'rgba(230,235,255,.9)';
+      g.beginPath(); g.arc(W * 0.8, vandY() * 0.32, Math.min(W, H) * 0.05, 0, 7); g.fill();
+    }
+  }
+}
+
+/** Lysstrålerne ned gennem vandet – de forsvinder, jo dybere farvandet er. */
+function tegnStraaler(st) {
+  const styrke = 0.22 * (1 - st.nat);
+  if (styrke <= 0.01) return;
+  g.save();
+  g.globalAlpha = styrke;
+  g.fillStyle = '#fff';
+  for (let i = 0; i < 4; i++) {
+    const x = W * (0.15 + i * 0.23) + Math.sin(T * 0.3 + i) * 10;
+    g.beginPath();
+    g.moveTo(x, vandY());
+    g.lineTo(x + 26, vandY());
+    g.lineTo(x + 90, H);
+    g.lineTo(x - 10, H);
+    g.closePath(); g.fill();
+  }
+  g.restore();
+}
+
+/** Havnen: bro, huse og en kran, så man kan se, at man er hjemme. */
+function tegnHavn() {
+  const y = vandY();
+  const hus = (x, b, h, farve) => {
+    g.fillStyle = farve;
+    g.fillRect(x, y - h, b, h);
+    g.fillStyle = 'rgba(0,0,0,.25)';
+    g.beginPath(); g.moveTo(x - 6, y - h); g.lineTo(x + b / 2, y - h - b * 0.35); g.lineTo(x + b + 6, y - h); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,212,71,.85)';
+    for (let i = 0; i < 2; i++) g.fillRect(x + 7 + i * (b / 2), y - h + 12, 10, 12);
+  };
+  hus(W * 0.05, 52, 46, '#e0674f');
+  hus(W * 0.2, 40, 34, '#f0b45c');
+  hus(W * 0.31, 46, 52, '#68a3c9');
+  // Broen ud i vandet
+  g.fillStyle = '#8a5a34';
+  g.fillRect(0, y - 6, W * 0.42, 10);
+  for (let i = 0; i < 5; i++) g.fillRect(W * 0.05 + i * W * 0.08, y, 7, 26);
+}
+
+function tegnDyrene() {
+  for (const d of dyr) {
+    const x = d.x * W, y = vandY() + (H - vandY()) * d.y;
+    const s = Math.min(W, H) * 0.1 * d.skala;
+    g.save();
+    g.globalAlpha = spil.sted === 'sol' || spil.sted === 'havn' ? 0.85 : 0.7;
+    tegnDyr(g, d.art, x, y + Math.sin(d.fase) * 4, s, d.retning, T);
+    g.restore();
+  }
+  // Det, der har hugget, hænger i krogen
+  if ((fase === 'kamp' || fase === 'valg') && bid) {
+    const a = arten(bid.art);
+    const s = Math.min(W, H) * (bid.uhyre ? 0.3 : 0.16);
+    const ryk = fase === 'kamp' ? Math.sin(T * 9) * 7 : Math.sin(T * 3) * 4;
+    tegnDyr(g, a, W / 2 + ryk + s * 0.35, krogY() + Math.cos(T * 6) * 3, s, -1, T);
+  }
+}
+
+// Bådens mål ét sted, så snøren kan begynde i spidsen af stangen
+const baadB = () => Math.min(W * 0.34, 150);
+const stangSpids = () => ({ x: W / 2 + baadB() * 0.24, y: vandY() - baadB() * 0.6 });
+
+function tegnSnoere() {
+  if (krog <= 0.001) return;
+  const y = krogY(), s = stangSpids();
+  g.strokeStyle = 'rgba(255,255,255,.75)';
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.moveTo(s.x, s.y);
+  g.quadraticCurveTo(W / 2 + 8, (vandY() + y) / 2, W / 2, y);
+  g.stroke();
+  g.fillStyle = '#dfe8f5';
+  g.beginPath(); g.arc(W / 2, y, 3, 0, 7); g.fill();
+}
+
+/** Båden set fra siden – den vipper i bølgerne, og skroget viser skaderne. */
+function tegnBaad() {
+  const y = vandY() + Math.sin(T * 1.4) * 3;
+  const b = baadB();
+  const hoejde = b * 0.3;
+  g.save();
+  g.translate(W / 2, y);
+  g.rotate(Math.sin(T * 1.1) * 0.045);
+
+  // Bølgen foran og bagved
+  g.fillStyle = 'rgba(255,255,255,.3)';
+  g.beginPath(); g.ellipse(0, 2, b * 0.62, 7, 0, 0, 7); g.fill();
+
+  // Skroget: fladbundet jolle med stævnen mod højre, så den ligner en båd og
+  // ikke en skål.
+  g.fillStyle = '#e0674f';
+  g.beginPath();
+  g.moveTo(-b * 0.46, -hoejde * 0.55);
+  g.lineTo(b * 0.54, -hoejde * 0.75);
+  g.quadraticCurveTo(b * 0.44, hoejde * 0.6, b * 0.2, hoejde * 0.62);
+  g.lineTo(-b * 0.26, hoejde * 0.62);
+  g.quadraticCurveTo(-b * 0.44, hoejde * 0.5, -b * 0.46, -hoejde * 0.55);
+  g.closePath(); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.6)';                 // rælingen
+  g.beginPath();
+  g.moveTo(-b * 0.46, -hoejde * 0.55); g.lineTo(b * 0.54, -hoejde * 0.75);
+  g.lineTo(b * 0.54, -hoejde * 0.55); g.lineTo(-b * 0.46, -hoejde * 0.35);
+  g.closePath(); g.fill();
+  g.fillStyle = 'rgba(0,0,0,.18)';                      // vandlinjen
+  g.fillRect(-b * 0.42, hoejde * 0.2, b * 0.84, hoejde * 0.16);
+
+  // Huller i skroget, ét pr. mistet hjerte
+  const huller = maksSkrog(spil) - spil.skrog;
+  g.fillStyle = '#3a1010';
+  for (let i = 0; i < huller; i++) {
+    g.beginPath(); g.arc(-b * 0.26 + i * b * 0.16, -hoejde * 0.05, b * 0.05, 0, 7); g.fill();
+  }
+
+  // Fiskeren og stangen
+  g.fillStyle = '#2f6f9e';
+  g.beginPath(); g.roundRect(-b * 0.16, -hoejde * 1.05, b * 0.13, hoejde * 0.62, b * 0.03); g.fill();
+  g.fillStyle = '#f3c98b';
+  g.beginPath(); g.arc(-b * 0.095, -hoejde * 1.25, b * 0.075, 0, 7); g.fill();
+  g.fillStyle = '#ffd447';                              // sydvest
+  g.beginPath(); g.ellipse(-b * 0.095, -hoejde * 1.34, b * 0.11, b * 0.045, 0, Math.PI, 0); g.fill();
+  g.strokeStyle = '#c9a26a'; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(-b * 0.05, -hoejde * 0.95); g.lineTo(b * 0.24, -hoejde * 2); g.stroke();
+  g.restore();
+}
+
+function tegnPlask() {
+  g.fillStyle = 'rgba(255,255,255,.6)';
+  for (const p of plask) {
+    g.globalAlpha = Math.max(0, 1 - p.t / p.liv) * 0.7;
+    g.beginPath(); g.arc(p.x * W, p.y * H, p.s, 0, 7); g.fill();
+  }
+  g.globalAlpha = 1;
+}
+
+/** En anelse bund i bunden af billedet – ellers ser havet uendeligt ud. */
+function tegnBund() {
+  g.fillStyle = 'rgba(0,0,0,.35)';
+  g.beginPath();
+  g.moveTo(0, H);
+  for (let x = 0; x <= W; x += W / 8) g.lineTo(x, H - 14 - Math.sin(x * 0.02 + zoneNr(spil.sted)) * 8);
+  g.lineTo(W, H); g.closePath(); g.fill();
+}
+
+/* ---------- Dyrene tegnes i hånden (ingen billeder) ---------- */
+/**
+ * Tegner et dyr med midten i (x, y) og længden ca. `s`. `vend` er 1 eller -1.
+ * Formerne er med vilje enkle: en fisk skal kunne kendes på en telefon i fart.
+ */
+function tegnDyr(g2, a, x, y, s, vend, t) {
+  g2.save();
+  g2.translate(x, y);
+  g2.scale(vend, 1);
+  if (a.lys) {
+    const glød = g2.createRadialGradient(0, 0, 0, 0, 0, s * 0.9);
+    glød.addColorStop(0, a.lys + '99');
+    glød.addColorStop(1, 'rgba(0,0,0,0)');
+    g2.fillStyle = glød;
+    g2.beginPath(); g2.arc(0, 0, s * 0.9, 0, 7); g2.fill();
+  }
+  const F = a.farve, F2 = a.farve2;
+  const hale = (bredde, hoejde) => {
+    g2.fillStyle = F2;
+    g2.beginPath();
+    g2.moveTo(-s * 0.4, 0);
+    g2.lineTo(-s * 0.4 - bredde, -hoejde);
+    g2.lineTo(-s * 0.4 - bredde, hoejde);
+    g2.closePath(); g2.fill();
+  };
+  const oeje = (ox, oy, rr, pupil = '#0b1220') => {
+    g2.fillStyle = '#fff';
+    g2.beginPath(); g2.arc(ox, oy, rr, 0, 7); g2.fill();
+    g2.fillStyle = pupil;
+    g2.beginPath(); g2.arc(ox + rr * 0.25, oy, rr * 0.5, 0, 7); g2.fill();
+  };
+  const taender = (bx, by, bredde, antal) => {
+    g2.fillStyle = '#fff';
+    for (let i = 0; i < antal; i++) {
+      const tx = bx + (i / (antal - 1) - 0.5) * bredde;
+      g2.beginPath();
+      g2.moveTo(tx - s * 0.03, by); g2.lineTo(tx + s * 0.03, by); g2.lineTo(tx, by + s * 0.11);
+      g2.closePath(); g2.fill();
+    }
+  };
+
+  switch (a.form) {
+    case 'skrald':
+      g2.fillStyle = F;
+      g2.beginPath();
+      g2.moveTo(-s * 0.1, -s * 0.35); g2.lineTo(s * 0.15, -s * 0.35);
+      g2.lineTo(s * 0.15, s * 0.12); g2.lineTo(s * 0.42, s * 0.12);
+      g2.lineTo(s * 0.42, s * 0.34); g2.lineTo(-s * 0.1, s * 0.34);
+      g2.closePath(); g2.fill();
+      g2.fillStyle = F2; g2.fillRect(-s * 0.1, -s * 0.35, s * 0.25, s * 0.08);
+      break;
+    case 'flad':
+      g2.fillStyle = F;
+      g2.beginPath(); g2.ellipse(0, 0, s * 0.45, s * 0.26, 0, 0, 7); g2.fill();
+      hale(s * 0.14, s * 0.16);
+      g2.fillStyle = F2;
+      for (let i = 0; i < 4; i++) { g2.beginPath(); g2.arc(-s * 0.1 + i * s * 0.13, s * 0.02, s * 0.035, 0, 7); g2.fill(); }
+      oeje(s * 0.26, -s * 0.08, s * 0.055);
+      break;
+    case 'lang':
+      g2.fillStyle = F;
+      g2.beginPath();
+      for (let i = 0; i <= 12; i++) {
+        const p = i / 12, bx = -s * 0.55 + p * s * 1.1;
+        const by = Math.sin(p * 5 + t * 4) * s * 0.07;
+        const tyk = (0.02 + 0.1 * Math.sin(p * Math.PI)) * s;
+        i ? g2.lineTo(bx, by - tyk) : g2.moveTo(bx, by - tyk);
+      }
+      for (let i = 12; i >= 0; i--) {
+        const p = i / 12, bx = -s * 0.55 + p * s * 1.1;
+        const by = Math.sin(p * 5 + t * 4) * s * 0.07;
+        const tyk = (0.02 + 0.1 * Math.sin(p * Math.PI)) * s;
+        g2.lineTo(bx, by + tyk);
+      }
+      g2.closePath(); g2.fill();
+      oeje(s * 0.42, Math.sin(5 + t * 4) * s * 0.07 - s * 0.02, s * 0.045);
+      break;
+    case 'sverd':
+      g2.fillStyle = F;
+      g2.beginPath(); g2.ellipse(0, 0, s * 0.4, s * 0.16, 0, 0, 7); g2.fill();
+      hale(s * 0.16, s * 0.18);
+      g2.strokeStyle = F2; g2.lineWidth = s * 0.05;
+      g2.beginPath(); g2.moveTo(s * 0.38, 0); g2.lineTo(s * 0.66, 0); g2.stroke();
+      g2.fillStyle = F2;
+      g2.beginPath(); g2.moveTo(0, -s * 0.14); g2.lineTo(s * 0.1, -s * 0.34); g2.lineTo(-s * 0.1, -s * 0.14); g2.closePath(); g2.fill();
+      oeje(s * 0.26, -s * 0.04, s * 0.045);
+      break;
+    case 'haj':
+      g2.fillStyle = F;
+      g2.beginPath();
+      g2.moveTo(s * 0.52, 0);
+      g2.quadraticCurveTo(s * 0.1, -s * 0.24, -s * 0.4, -s * 0.1);
+      g2.lineTo(-s * 0.4, s * 0.1);
+      g2.quadraticCurveTo(s * 0.1, s * 0.22, s * 0.52, 0);
+      g2.closePath(); g2.fill();
+      hale(s * 0.18, s * 0.24);
+      g2.fillStyle = F2;
+      g2.beginPath(); g2.moveTo(0, -s * 0.2); g2.lineTo(s * 0.12, -s * 0.44); g2.lineTo(-s * 0.14, -s * 0.18); g2.closePath(); g2.fill();
+      g2.beginPath(); g2.moveTo(0, s * 0.16); g2.lineTo(s * 0.02, s * 0.34); g2.lineTo(-s * 0.16, s * 0.14); g2.closePath(); g2.fill();
+      taender(s * 0.34, s * 0.03, s * 0.22, 4);
+      oeje(s * 0.3, -s * 0.07, s * 0.04, '#111');
+      break;
+    case 'rokke':
+      g2.fillStyle = F;
+      g2.beginPath();
+      g2.moveTo(s * 0.3, 0);
+      g2.quadraticCurveTo(0, -s * 0.4, -s * 0.34, 0);
+      g2.quadraticCurveTo(0, s * 0.4, s * 0.3, 0);
+      g2.closePath(); g2.fill();
+      g2.strokeStyle = F2; g2.lineWidth = s * 0.04;
+      g2.beginPath(); g2.moveTo(-s * 0.3, 0); g2.lineTo(-s * 0.62, Math.sin(t * 3) * s * 0.1); g2.stroke();
+      oeje(s * 0.12, -s * 0.08, s * 0.04);
+      oeje(s * 0.12, s * 0.08, s * 0.04);
+      break;
+    case 'blaek':
+      g2.fillStyle = F;
+      g2.beginPath(); g2.ellipse(s * 0.1, -s * 0.1, s * 0.24, s * 0.3, 0, 0, 7); g2.fill();
+      g2.strokeStyle = F; g2.lineWidth = s * 0.07; g2.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const ax = s * (-0.08 + i * 0.07);
+        g2.beginPath();
+        g2.moveTo(ax, s * 0.14);
+        g2.quadraticCurveTo(ax - s * 0.14, s * 0.3 + Math.sin(t * 4 + i) * s * 0.06, ax - s * 0.3, s * 0.42);
+        g2.stroke();
+      }
+      oeje(s * 0.2, -s * 0.14, s * 0.06, '#120a18');
+      break;
+    case 'lygte':
+      g2.fillStyle = F;
+      g2.beginPath(); g2.arc(0, 0, s * 0.3, 0, 7); g2.fill();
+      hale(s * 0.12, s * 0.16);
+      g2.strokeStyle = F2; g2.lineWidth = s * 0.035;
+      g2.beginPath(); g2.moveTo(s * 0.1, -s * 0.28); g2.quadraticCurveTo(s * 0.4, -s * 0.5, s * 0.42, -s * 0.24); g2.stroke();
+      g2.fillStyle = a.lys || '#ffe6a0';
+      g2.beginPath(); g2.arc(s * 0.42, -s * 0.2, s * 0.07, 0, 7); g2.fill();
+      taender(s * 0.12, s * 0.1, s * 0.3, 5);
+      oeje(s * 0.14, -s * 0.1, s * 0.05, '#1a1020');
+      break;
+    case 'krabbe':
+      g2.fillStyle = F;
+      g2.beginPath(); g2.ellipse(0, 0, s * 0.32, s * 0.22, 0, 0, 7); g2.fill();
+      g2.strokeStyle = F2; g2.lineWidth = s * 0.05; g2.lineCap = 'round';
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < 3; i++) {
+          g2.beginPath();
+          g2.moveTo(side * s * (0.1 + i * 0.08), s * 0.1);
+          g2.lineTo(side * s * (0.24 + i * 0.12), s * 0.3);
+          g2.stroke();
+        }
+      }
+      g2.fillStyle = F2;
+      for (const side of [-1, 1]) {
+        g2.beginPath(); g2.ellipse(side * s * 0.4, -s * 0.16, s * 0.12, s * 0.08, side * 0.5, 0, 7); g2.fill();
+      }
+      oeje(-s * 0.08, -s * 0.16, s * 0.05);
+      oeje(s * 0.08, -s * 0.16, s * 0.05);
+      break;
+    case 'skelet':
+      g2.strokeStyle = F; g2.lineWidth = s * 0.045;
+      g2.beginPath(); g2.ellipse(0, 0, s * 0.4, s * 0.22, 0, 0, 7); g2.stroke();
+      g2.beginPath(); g2.moveTo(-s * 0.34, 0); g2.lineTo(s * 0.3, 0); g2.stroke();
+      for (let i = 0; i < 5; i++) {
+        const bx = -s * 0.26 + i * s * 0.12;
+        g2.beginPath(); g2.moveTo(bx, -s * 0.17); g2.lineTo(bx, s * 0.17); g2.stroke();
+      }
+      hale(s * 0.14, s * 0.18);
+      g2.fillStyle = F;
+      g2.beginPath(); g2.arc(s * 0.34, 0, s * 0.12, 0, 7); g2.fill();
+      g2.fillStyle = '#0b0b12';
+      g2.beginPath(); g2.arc(s * 0.37, -s * 0.03, s * 0.04, 0, 7); g2.fill();
+      break;
+    case 'blob': {
+      g2.fillStyle = F;
+      g2.beginPath();
+      for (let i = 0; i <= 20; i++) {
+        const v = (i / 20) * Math.PI * 2;
+        const rr = s * (0.3 + 0.05 * Math.sin(v * 3 + t * 2));
+        const bx = Math.cos(v) * rr, by = Math.sin(v) * rr * 0.8;
+        i ? g2.lineTo(bx, by) : g2.moveTo(bx, by);
+      }
+      g2.closePath(); g2.fill();
+      g2.fillStyle = F2;
+      for (let i = 0; i < 3; i++) {
+        g2.beginPath(); g2.arc(-s * 0.12 + i * s * 0.12, -s * 0.05, s * 0.05, 0, 7); g2.fill();
+      }
+      oeje(s * 0.14, -s * 0.12, s * 0.05);
+      break;
+    }
+    case 'mund':
+      g2.fillStyle = F;
+      g2.beginPath(); g2.ellipse(0, 0, s * 0.42, s * 0.3, 0, 0, 7); g2.fill();
+      g2.fillStyle = F2;
+      g2.beginPath(); g2.ellipse(s * 0.06, s * 0.02, s * 0.3, s * 0.17, 0, 0, 7); g2.fill();
+      taender(s * 0.06, -s * 0.12, s * 0.44, 7);
+      g2.save(); g2.scale(1, -1); taender(s * 0.06, -s * 0.13, s * 0.44, 7); g2.restore();
+      g2.fillStyle = a.lys || '#ff4d5e';
+      g2.beginPath(); g2.arc(-s * 0.22, -s * 0.16, s * 0.05, 0, 7); g2.fill();
+      g2.beginPath(); g2.arc(s * 0.26, -s * 0.18, s * 0.05, 0, 7); g2.fill();
+      break;
+    case 'oeje': {
+      g2.fillStyle = F;
+      g2.beginPath(); g2.arc(0, 0, s * 0.33, 0, 7); g2.fill();
+      g2.fillStyle = '#fff';
+      g2.beginPath(); g2.arc(0, 0, s * 0.24, 0, 7); g2.fill();
+      g2.fillStyle = a.lys || '#ffd447';
+      g2.beginPath(); g2.arc(Math.sin(t) * s * 0.06, 0, s * 0.14, 0, 7); g2.fill();
+      g2.fillStyle = '#08060f';
+      g2.beginPath(); g2.arc(Math.sin(t) * s * 0.06, 0, s * 0.07, 0, 7); g2.fill();
+      g2.strokeStyle = F2; g2.lineWidth = s * 0.045; g2.lineCap = 'round';
+      for (let i = 0; i < 7; i++) {
+        const v = (i / 7) * Math.PI * 2 + t * 0.4;
+        g2.beginPath();
+        g2.moveTo(Math.cos(v) * s * 0.3, Math.sin(v) * s * 0.3);
+        g2.lineTo(Math.cos(v) * s * 0.52, Math.sin(v) * s * 0.52 + Math.sin(t * 3 + i) * s * 0.04);
+        g2.stroke();
+      }
+      break;
+    }
+    default:                                   // 'fisk'
+      g2.fillStyle = F;
+      g2.beginPath(); g2.ellipse(0, 0, s * 0.4, s * 0.2, 0, 0, 7); g2.fill();
+      hale(s * 0.16, s * 0.18);
+      g2.fillStyle = F2;
+      g2.beginPath(); g2.moveTo(-s * 0.05, -s * 0.18); g2.lineTo(s * 0.12, -s * 0.36); g2.lineTo(-s * 0.16, -s * 0.16); g2.closePath(); g2.fill();
+      g2.beginPath(); g2.ellipse(-s * 0.02, s * 0.16, s * 0.12, s * 0.06, 0.4, 0, 7); g2.fill();
+      oeje(s * 0.24, -s * 0.05, s * 0.05);
+  }
+  g2.restore();
+}
+
+/* ---------- Løkken ---------- */
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!sidst) sidst = nu;
+  const dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  acc += dt;
+  let n = 0;
+  while (acc >= DT && n++ < 20) { spilSkridt(DT); acc -= DT; }
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ---------- Skærmene: sejlkort, butik og fiskebog ---------- */
+const skaerme = { sejl: $('sejlScreen'), butik: $('butikScreen'), bog: $('bogScreen'), start: $('startScreen') };
+
+function aabn(navn) {
+  lukSkaerme();
+  if (navn === 'sejl') tegnSteder();
+  if (navn === 'butik') tegnButik();
+  if (navn === 'bog') tegnBog();
+  skaerme[navn].classList.add('on');
+}
+function lukSkaerme() { for (const s of Object.values(skaerme)) s.classList.remove('on'); }
+
+function tegnSteder() {
+  const rod = $('steder');
+  rod.innerHTML = '';
+  const lav = (id, emoji, navn, under, laast, krav) => {
+    const b = document.createElement('button');
+    b.className = 'sted' + (spil.sted === id ? ' her' : '') + (laast ? ' laast' : '');
+    b.dataset.sted = id;
+    b.disabled = laast || spil.sted === id;
+    const em = document.createElement('span'); em.className = 'em'; em.textContent = emoji;
+    const txt = document.createElement('span'); txt.className = 'txt';
+    const n = document.createElement('b'); n.textContent = navn;
+    const u = document.createElement('span'); u.textContent = spil.sted === id ? 'Du er her' : under;
+    txt.append(n, u);
+    b.append(em, txt);
+    if (laast) {
+      const l = document.createElement('span'); l.className = 'laas';
+      l.textContent = '🔒 Snøre ' + (krav + 1);
+      b.appendChild(l);
+    }
+    b.addEventListener('click', () => sejlTil(id));
+    rod.appendChild(b);
+  };
+  lav('havn', '⚓', 'Havnen', 'Sælg fangsten og køb en bedre båd', false, 0);
+  for (const z of ZONER) {
+    const kan = laastOp(spil, z.id);
+    lav(z.id, z.emoji, z.navn, z.om, !kan, z.krav);
+  }
+}
+
+function tegnButik() {
+  $('butikSaldo').textContent = `Du har ${moentTekst(spil.moenter)} kr.`;
+  const rod = $('varer');
+  rod.innerHTML = '';
+  for (const o of OPGRADERINGER) {
+    const n = spil.opgradering[o.id], pris = prisFor(spil, o.id);
+    const b = document.createElement('button');
+    b.className = 'vare' + (pris == null ? ' top' : '');
+    b.dataset.vare = o.id;
+    b.disabled = pris == null || spil.moenter < pris;
+    const em = document.createElement('span'); em.className = 'em'; em.textContent = o.ikon;
+    const txt = document.createElement('span'); txt.className = 'txt';
+    const navn = document.createElement('b'); navn.textContent = o.navn;
+    const om = document.createElement('span'); om.textContent = o.id === 'snoer' && pris != null
+      ? `Åbner ${ZONER[Math.min(ZONER.length - 1, n + 1)].navn}` : o.om;
+    const trin = document.createElement('span'); trin.className = 'trin';
+    for (let i = 0; i <= MAKS_NIVEAU; i++) {
+      const t = document.createElement('i');
+      if (i <= n) t.className = 'fyldt';
+      trin.appendChild(t);
+    }
+    txt.append(navn, om, trin);
+    const p = document.createElement('span'); p.className = 'pris';
+    p.textContent = pris == null ? 'Bedste' : moentTekst(pris) + ' kr';
+    b.append(em, txt, p);
+    b.addEventListener('click', () => {
+      if (!koeb(spil, o.id)) return;
+      sigTil(o.navn + ' opgraderet!', o.id === 'snoer' ? 'Nu kan du sejle dybere ud' : o.om, 1.6);
+      gem(); visHud(); visKnapper(); tegnButik();
+    });
+    rod.appendChild(b);
+  }
+}
+
+function tegnBog() {
+  nytIBog = false;
+  $('bogBtn').classList.remove('prik');
+  const fangster = Object.values(spil.bog).reduce((s, f) => s + f.antal, 0);
+  $('bogArter').textContent = `${arterFanget(spil)}/${ARTER.length}`;
+  $('bogFangst').textContent = String(fangster);
+  $('bogTjent').textContent = moentTekst(spil.tjent);
+
+  const rod = $('bogListe');
+  rod.innerHTML = '';
+  for (const z of ZONER) {
+    const blok = document.createElement('div');
+    blok.className = 'bogzone';
+    const h = document.createElement('h3');
+    const kendte = arterIZone(z.id).filter(a => spil.bog[a.id]).length;
+    h.textContent = `${z.emoji} ${z.navn} · ${kendte}/${arterIZone(z.id).length}`;
+    const liste = document.createElement('div');
+    liste.className = 'bogliste';
+    for (const a of arterIZone(z.id)) {
+      const f = spil.bog[a.id];
+      const kort = document.createElement('div');
+      kort.className = 'art' + (f ? '' : ' ukendt');
+      kort.dataset.art = a.id;
+      const c = document.createElement('canvas');
+      c.width = 180; c.height = 84;
+      const cg = c.getContext('2d');
+      cg.save();
+      if (!f) { cg.globalAlpha = 1; }
+      tegnDyr(cg, f ? a : { ...a, farve: '#263a5c', farve2: '#1a2842', lys: null }, 90, 42, 90, 1, 0);
+      cg.restore();
+      if (!f) {
+        cg.fillStyle = 'rgba(159,188,221,.9)';
+        cg.font = 'bold 44px -apple-system,system-ui,sans-serif';
+        cg.textAlign = 'center'; cg.textBaseline = 'middle';
+        cg.fillText('?', 90, 46);
+      }
+      const navn = document.createElement('b');
+      navn.textContent = f ? a.navn : '???';
+      const under = document.createElement('span');
+      under.textContent = f ? `${f.antal} stk · ${vaegtTekst(f.bedste)}` : `${moentTekst(a.pris)} kr`;
+      kort.append(c, navn, under);
+      liste.appendChild(kort);
+    }
+    blok.append(h, liste);
+    rod.appendChild(blok);
+  }
+  Highscore.panel($('hsBog'), { spil: SPIL, score: arterFanget(spil), titel: 'Flest arter', format: n => n + ' arter' });
+}
+
+/* ---------- Toplisten ---------- */
+const SPIL = 'fisk';
+const KEY_MIN = 'zydy.fisk.min';
+let top = null;
+const minRaekke = {
+  hent() { try { return JSON.parse(localStorage.getItem(KEY_MIN)) || null; } catch (e) { return null; } },
+  gem(v) { try { localStorage.setItem(KEY_MIN, JSON.stringify(v)); } catch (e) {} },
+};
+
+async function hentListe() {
+  const rod = $('hsListe');
+  rod.innerHTML = '<p class="hs-venter">Henter toplisten…</p>';
+  try {
+    top = await Highscore.hent(SPIL);
+    Highscore.tegnListe(rod, top.liste || [], Highscore.navn.hent() || null, 'Flest arter', n => n + ' arter');
+  } catch (e) { Highscore.tegnFejl(rod); }
+}
+
+/**
+ * En ny art sendes ind med det samme, hvis vi kender spillerens navn fra et
+ * andet spil. Kender vi det ikke, venter den, til man åbner fiskebogen –
+ * dér spørger panel() om navnet. Sådan bliver man aldrig afbrudt midt i et hug.
+ */
+async function sendRekord() {
+  const navn = Highscore.navn.hent();
+  const score = arterFanget(spil);
+  if (!navn || !top || !Highscore.kvalificerer(top, score)) return;
+  try {
+    const svar = await Highscore.send(SPIL, navn, score);
+    if (svar.token) minRaekke.gem({ id: svar.id, token: svar.token });
+    top = { ...top, liste: svar.liste };
+  } catch (e) { /* toplisten er pynt – fiskeriet kører videre */ }
+}
+
+/* ---------- Knapper ---------- */
+$('startBtn').addEventListener('click', () => {
+  lukSkaerme();
+  fase = 'klar';
+  fyldHav();
+  visHud(); visKnapper();
+  if (spil.sted === 'havn') aabn('sejl');
+});
+$('kastBtn').addEventListener('click', kast);
+$('halBtn').addEventListener('click', tryk);
+$('klipBtn').addEventListener('click', () => klip());
+$('modBtn').addEventListener('click', () => tagKampen());
+$('saelgBtn').addEventListener('click', saelgAlt);
+$('repBtn').addEventListener('click', lap);
+$('sejlBtn').addEventListener('click', () => aabn('sejl'));
+$('butikBtn').addEventListener('click', () => aabn('butik'));
+$('bogBtn').addEventListener('click', () => aabn('bog'));
+$('sejlLuk').addEventListener('click', lukSkaerme);
+$('butikLuk').addEventListener('click', lukSkaerme);
+$('bogLuk').addEventListener('click', lukSkaerme);
+
+/** Klipper snøren over: uhyret får lov at gå, og båden er hel. */
+function klip() {
+  if (fase !== 'valg') return false;
+  sigTil('Snøren klippet', bid.navn + ' forsvandt ned i mørket', 1.4);
+  slutTur();
+  return true;
+}
+
+/** Tager kampen mod uhyret – taber man, bider det i båden. */
+function tagKampen() {
+  if (fase !== 'valg') return false;
+  startKamp();
+  return true;
+}
+
+// Et tryk et vilkårligt sted på havet tæller også som «hal ind» – man skal
+// ikke ramme en knap, mens det spræller.
+stage.addEventListener('pointerdown', e => {
+  if (fase !== 'kamp') return;
+  if (e.target.closest('.screen')) return;
+  e.preventDefault();
+  tryk();
+});
+
+addEventListener('keydown', e => {
+  if (e.code !== 'Space' && e.code !== 'Enter') return;
+  e.preventDefault();
+  if (fase === 'kamp') tryk();
+  else if (fase === 'klar') kast();
+});
+
+/* ---------- Start ---------- */
+visHud(); visKnapper(); fyldHav(); hentListe();
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  seed,
+  start: () => $('startBtn').click(),
+  kast, tryk, klip, tagKampen, aabn, luk: lukSkaerme,
+  sejl: sted => sejlTil(sted),
+  saelg: saelgAlt,
+  reparer: lap,
+  koeb: id => { const ok = koeb(spil, id); if (ok) { gem(); visHud(); visKnapper(); } return ok; },
+  /** Bestemmer hvad der hugger næste gang – ellers er det op til terningen. */
+  tvingBid(artId) { tvunget = arten(artId) ? artId : null; return !!tvunget; },
+  /** Kun til test og leg: lægger mønter i kassen. */
+  saetMoenter(n) { spil.moenter = Math.max(0, Math.round(n)); gem(); visHud(); visKnapper(); },
+  /** Spoler frem med de samme faste skridt som spillet selv. */
+  frem(sek) {
+    const n = Math.max(1, Math.round(sek / DT));
+    for (let i = 0; i < n; i++) spilSkridt(DT);
+    return this.state;
+  },
+  /** Kæmper kampen færdig ved at trykke, hver gang viseren er i feltet. */
+  spilKamp(maksSkridt = 4000) {
+    for (let i = 0; i < maksSkridt && fase === 'kamp'; i++) {
+      if (kamp && rammer(kamp)) tryk();
+      else this.frem(DT);
+    }
+    return this.state;
+  },
+  nulstil() { spil = nytSpil(); gem(); fyldHav(); visHud(); visKnapper(); return this.state; },
+  get state() {
+    return {
+      fase, sted: spil.sted, moenter: spil.moenter, tjent: spil.tjent,
+      skrog: spil.skrog, maksSkrog: maksSkrog(spil),
+      last: spil.last.length, maksLast: maksLast(spil), lastVaerdi: lastVaerdi(spil),
+      arter: arterFanget(spil), bog: { ...spil.bog },
+      opgradering: { ...spil.opgradering },
+      bid: bid ? { art: bid.art, uhyre: bid.uhyre, vaegt: bid.vaegt, vaerdi: bid.vaerdi } : null,
+      kamp: kamp ? {
+        art: kamp.art, ramt: kamp.ramt, kraevet: kamp.kraevet, fejl: kamp.fejl, maksFejl: kamp.maksFejl,
+        pos: kamp.pos, maal: kamp.maal, bredde: kamp.bredde, rammer: rammer(kamp), slut: kamp.slut,
+      } : null,
+      frist,
+    };
+  },
+};
+</script>
+</body></html>

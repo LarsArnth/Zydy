@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; enogtyve spil
+afhængigheder. De store apps bor i egne repoer og linkes til; toogtyve spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet enogtyve spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet toogtyve spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv og Papirøen, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen og Fiskedybet, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -46,6 +46,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Legebyen | `public/spil/legebyen/` | Selmas ønske om «Toca boca»: et dukkehus med fem rum – stuen, køkkenet, badeværelset, butikken og legepladsen – og seks figurer (fem børn og voksne plus hunden Vaks), man trækker rundt med fingeren. Slipper man en ved sofaen, badekarret, gyngen eller rutsjebanen, sætter den sig. Fra bakken nederst tager man ting frem: mad der bliver spist, hatte og solbriller der bliver taget på, og legetøj figuren holder i hånden. Møblerne kan man trykke på – køleskabet giver mad, komfuret en pizza, fjernsynet og bruseren tænder, kassen i butikken sælger, gyngen svinger. Ting man trykker på, ryger i **tasken** og kan komme med ind i et andet rum, og hver figur kan klædes på med hud, frisure, hårfarve, trøje og bukser. **Ingen point og ingen måde at tabe på** – det er fri leg, og byen står, som man forlod den. To filer: `by.mjs` (rum, figurer, ting og hvad der sker, når de mødes, enhedstestet) og `index.html`. Se «Legebyen – dukkehuset» nedenfor. |
 | Papirøen | `public/spil/papir/` | Selmas ønske om «Papir io 2»: et stort stykke ternet papir, hvor fire klatter farver hver sit område. Kører man ud fra sit eget, trækker man en streg efter sig – og kommer man hjem igen, bliver hele sløjfen ens, også det, en anden havde farvet inde i den. Men mens man er ude, er man i fare: kører Bo, Ida eller Mikkel over stregen, ryger man ud, og hele området forsvinder fra papiret. Det gælder begge veje, så man kan tage dem på deres streg – og tager man hele deres område, er de også ude. Kanten af papiret er lige så farlig. Man styrer med et lille joystick (træk fingeren dén vej, man vil køre), og minikortet i hjørnet viser hele papiret. Score = den største del af papiret, man nåede at have, i hele procent. To filer: `papir.mjs` (papiret, sløjfen og modstanderne, enhedstestet) og `index.html`. `?bots=0` giver papiret for sig selv. Se «Papirøen – sløjfen og de tre modstandere» nedenfor. |
+| Fiskedybet | `public/spil/fisk/` | Timos ønske om «Fish It: Abyss»: en lille båd, fem farvande og en fiskebog, der skal fyldes. Man kaster snøren, og når der hugger, løber en viser frem og tilbage over en bar – et tryk tæller kun i det grønne felt, og store fisk kræver flere rammere og tåler færre forbiere. Fangsten sejles hjem til havnen og sælges, og pengene går til snøren (åbner et farvand mere), stangen (bredere felt), skroget (flere hjerter) og kølerummet (større last). Solskinshavet er trygt; i Hajvandet, Dybhavet, Afgrunden og Tomrummet hugger der ét uhyre hvert sted, og så skal man vælge: klippe snøren, eller tage kampen – taber man, eller når man ikke at bestemme sig, tager det en bid af båden. Går skroget i nul, bliver man slæbt i havn og mister lasten, men aldrig fiskebogen. Score = antal arter i bogen, online topliste. To filer: `hav.mjs` (farvande, dyr, kamp, økonomi og det gemte spil, enhedstestet) og `index.html`. Se «Fiskedybet – baren, farvandene og uhyrerne» nedenfor. |
 | Mit liv | `public/spil/mitliv/` | Selmas ønske om «The Sims»: et helt liv i ét hus, set oppefra. Man laver sin egen figur (hud, frisure, hårfarve, trøje, bukser), flytter ind med 600 kr. og fire møbler, og passer seks behov – mæt, energi, toilet, ren, sjov og selskab – der siver nedad, mens spiluret går (ét rigtigt sekund = fem spilminutter). Man trykker på et møbel, og figuren går selv derhen og bruger det, til behovet er fyldt. Om morgenen kører bussen på arbejde: man er væk i seks spiltimer og kommer hjem med løn, der følger humøret, og stjerner mod en forfremmelse – fra avisbud til astronaut i otte trin. Pengene bruges i **byg-tilstand**, hvor 20 møbler kan købes, flyttes og sælges for det halve. Når toilettet ikke kan vente, kommer der en pyt på gulvet, man skal tørre op, og telefonen henter en ven på besøg. Score = **formuen** (penge + alt i huset), online topliste. To filer: `liv.mjs` (behov, veje, møbler og arbejde, enhedstestet) og `index.html`. Se «Mit liv – huset, behovene og arbejdet» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
@@ -1018,6 +1019,63 @@ kanten, der tog en – og ikke Bo.
 Test: `test/papir.test.mjs` (en rigtig finger, der drejer klatten, en sløjfe der
 farver, og en hel runde med botten ved rattet) + `test/unit/papir.test.mjs`.
 
+<a id="fiskedybet"></a>
+
+### Fiskedybet – baren, farvandene og uhyrerne
+
+Ønsket hed «FISH IT: ABYSS» og var skrevet på engelsk af Timo: en lille båd, der
+fisker, sælger fangsten, køber opgraderinger og låser dybere farvande op —
+med den tvist, at havet bliver mærkeligere, jo længere man kommer ned. Reglerne
+bor i `hav.mjs`, som ikke rører DOM'en; `index.html` tegner havet og tager imod
+fingeren. Fem ting er værd at kende:
+
+**1. Kampen er én bar.** En viser løber frem og tilbage (0-1), og et tryk tæller
+kun, hvis den er inde i det grønne felt. Feltet **flytter sig, hver gang man
+rammer** — ellers kunne man bare trykke i takt og aldrig ramme forbi. Store dyr
+kræver flere rammere (`kamp`, 1-5), løber hurtigere (`fart`) og har et smallere
+felt (`vindue`); stangen gør feltet bredere med 17 % pr. niveau. Tre forbiere,
+og fisken slipper væk (et uhyre tåler kun to). Kampen giver desuden op af sig
+selv efter `maksTid` — uden den ville en telefon, man lagde fra sig midt i et
+hug, stå i «kamp» for evigt.
+
+**2. Uhyret er et valg, ikke en kamp.** I de fire dybe farvande hugger der ét
+uhyre hvert sted. Så stopper spillet op: *klip snøren* (intet tabt, intet
+vundet) eller *tag kampen* (svær, men dyret er 2-4 gange så meget værd som alt
+andet i farvandet). **Gør man ingenting i 3,4 sekunder, bider det i båden** —
+det er dét, der gør tøven farlig, og derfor er der en nedtællingsstribe under
+teksten.
+
+**3. Bogen og lasten er to forskellige ting.** Alt, hvad man fanger, står i
+fiskebogen for altid — og det er bogen, der er scoren. Pengene ligger derimod i
+lasten, til man har sejlet dem hjem i havn. Går skroget i nul, bliver man slæbt
+i havn og mister **lasten**, aldrig bogen: et uheld i Afgrunden må gerne koste
+en dyr tur, men ikke en samling, man har brugt en uge på. Af samme grund
+noterer `land()` arten i bogen, selv når kølerummet er fuldt — så koster en fuld
+last kun pengene.
+
+**4. Snøren er den opgradering, der åbner noget nyt.** `ZONER[i].krav === i`, så
+snørens niveau er præcis det farvand, man kan nå. De tre andre (stang, skrog,
+kølerum) gør turen lettere; snøren er den, der giver nye dyr at fange, og derfor
+den dyreste. Havnen er det eneste sted, man kan sælge, reparere og købe — ellers
+ville der ikke være nogen risiko ved at blive dernede med en fuld last.
+
+**5. Dyrene tegnes i hånden, ikke som emoji.** Hver art har en `form`
+(`fisk`, `haj`, `blaek`, `lygte`, `skelet`, `mund`, `oeje` …), to farver og evt.
+en `lys`-farve, der giver den en glød i mørket. `tegnDyr()` bruger de samme
+former både i havet og på kortene i fiskebogen, hvor ufangede arter tegnes i
+blåt med et «?» henover — så kan man se, hvad man mangler, uden at få det at
+vide.
+
+Score = antal arter i bogen. En ny art sendes ind på toplisten med det samme,
+hvis vi kender navnet fra et andet spil (`zydy.navn`); gør vi ikke, venter den,
+til man åbner fiskebogen, hvor `Highscore.panel()` spørger. Sådan bliver man
+aldrig afbrudt midt i et hug. Spillet ligger i `localStorage` under
+`zydy.fisk.spil`, og `?nyt=1` giver en frisk båd (det er dét, testen bruger).
+
+Test: `test/fisk.test.mjs` (et hug med en rigtig finger på baren, en fuld last,
+salg og opgradering i havnen, et uhyre både klippet og tabt, og båden slæbt i
+havn) + `test/unit/fisk.test.mjs`.
+
 ### Legebyen – dukkehuset
 
 Ønsket lød «Lav Toca boga» – altså Toca Boca, hvor man ikke vinder noget, men
@@ -1094,7 +1152,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Fiskedybets farvande, kamp og økonomi, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om
