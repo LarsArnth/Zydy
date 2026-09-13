@@ -31,7 +31,8 @@ await page.route('**/api/highscore/**', async route => {
     const krop = req.postDataJSON(); sendte.push(krop);
     const id = 1000 + sendte.length;
     const ny = { id, navn: krop.navn, score: krop.score, oprettet: '2026-09-12T12:00:00.000Z' };
-    liste = [...liste, ny].sort((a, b) => b.score - a.score || a.oprettet.localeCompare(b.oprettet)).slice(0, 10);
+    // Som serveren: hele listen kommer med i svaret (den trimmes først ved 100).
+    liste = [...liste, ny].sort((a, b) => b.score - a.score || a.oprettet.localeCompare(b.oprettet)).slice(0, 100);
     const idx = liste.findIndex(r => r.id === id);
     return route.fulfill({ json: { ok: true, id, token: 'tok' + id, placering: idx === -1 ? null : idx + 1, liste } });
   }
@@ -129,12 +130,12 @@ assert.equal(await page.locator('#bestPill').textContent(), 'Bedste: 4');
 assert.equal(await page.locator('#overPoint').textContent(), '+160 points · i alt 160', 'rundens points og totalen');
 assert.equal(await page.evaluate(() => localStorage.getItem('zydy.taarn.point')), '160', 'points gemt i localStorage');
 
-// Toplisten er fuld med højere scorer → ingen navneformular, bare listen med 10 rækker
-await page.waitForSelector('#hs .hs-liste');
-assert.equal(await page.locator('#hs .hs-raekke').count(), 10, 'top 10 vises');
-assert.equal(await page.locator('#hs .hs-form').count(), 0, 'score 4 kvalificerer ikke til en fuld liste');
-assert.equal(await page.locator('#hs .hs-raekke').first().locator('.hs-navn').textContent(), 'Spiller 1');
-assert.equal(sendte.length, 0, 'intet sendt til API\'et');
+// Toplisten er fuld med højere scorer – men alle kommer med på listen nu (Josephines ønske),
+// så der spørges om navn, bare med andre ord end når man er i top 10.
+await page.waitForSelector('#hs .hs-form');
+assert.equal(await page.locator('#hs .hs-titel').textContent(), 'Kom med på listen – hvad hedder du?',
+  'uden for top 10 loves der ikke en plads på toplisten');
+assert.equal(sendte.length, 0, 'intet sendt til API\'et, før man har skrevet et navn');
 
 // Spil igen → nyt spil, best bevaret
 await page.getByRole('button', { name: 'Spil igen' }).click();

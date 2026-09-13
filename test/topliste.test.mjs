@@ -22,7 +22,8 @@ page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 
 await mockApi(page, { scores });
-await ctx.addInitScript(() => localStorage.setItem('zydy.navn', 'Josephine'));
+// Kun første gang: længere nede skifter testen navn og genindlæser.
+await ctx.addInitScript(() => { if (!localStorage.getItem('zydy.navn')) localStorage.setItem('zydy.navn', 'Josephine'); });
 await page.goto(`${BASE}/spil/taarn/?seed=1`);
 
 /* ---------- Top 10 plus ens egen række nederst ---------- */
