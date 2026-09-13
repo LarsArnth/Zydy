@@ -192,6 +192,9 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="miskmask"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 <script type="module">
 import {
   LIV, MIKROSPIL, MIKRO, pose, nyRunde, lavRunde, tryk as trykRunde, tik as tikRunde, facit, svaerhed,
@@ -326,6 +329,8 @@ function slut() {
   slutScreen.classList.add('on');
   tegnListe();
   sendRekord(score);
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(score, score + ' klaret');
   visHud();
 }
 

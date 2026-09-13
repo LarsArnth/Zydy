@@ -3,6 +3,7 @@
   "beskrivelse": "Stak blokkene præcist – alt der hænger ud over kanten, skæres af. Hvor højt kan du nå?",
   "url": "/spil/taarn/",
   "orden": 40,
+  "kapløb": true,
   "højscore": {
     "maks": 2000
   }

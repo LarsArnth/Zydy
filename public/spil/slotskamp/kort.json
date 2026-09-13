@@ -3,6 +3,7 @@
   "beskrivelse": "Sæt riddere, bueskytter og kæmper ind for magi, send dem over broen og vælt modstanderens tårne, før tiden løber ud.",
   "url": "/spil/slotskamp/",
   "orden": 142,
+  "kapløb": true,
   "højscore": {
     "maks": 200,
     "unik": true

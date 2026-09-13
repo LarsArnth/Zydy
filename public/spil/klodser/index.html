@@ -248,6 +248,9 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="klodser"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 <script type="module">
 import {
   BREDDE, HOEJDE, BLOKKE, PALET, LUFT, VAND, VAND_NIVEAU, GULD_ANTAL,
@@ -749,6 +752,8 @@ function faerdig() {
   slutScreen.classList.add('on');
   navigator.vibrate && navigator.vibrate([40, 60, 40]);
   Highscore.panel($('hsSlut'), { spil: 'klodser', score: sek, format: tidTekst });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(sek, tidTekst(sek), 'asc');
 }
 
 function fraStart() {

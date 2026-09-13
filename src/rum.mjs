@@ -33,7 +33,7 @@
 // bytter D1 ud med et hukommelses-lager).
 import { rensNavn } from './highscore.mjs';
 import { noegle, rensPar } from './venner.mjs';
-import { SAMMEN } from './spil-data.mjs';
+import { SAMMEN, KAPLOEB } from './spil-data.mjs';
 
 export const STATUS = ['inviteret', 'igang', 'slut'];
 export const HANDLINGER = ['se', 'kom', 'nej', 'gem'];
@@ -216,7 +216,9 @@ export async function haandterRum(request, lager, venner, nu = Date.now()) {
   const { mig, dig, fejl: galt } = rensPar(krop.navn, krop.ven);
   if (galt) return fejl(400, galt);
   const spil = typeof krop.spil === 'string' ? krop.spil.trim() : '';
-  if (!SAMMEN.includes(spil)) return fejl(400, 'Det spil kan man ikke spille sammen');
+  // To slags rum: ét delt parti (SAMMEN) eller et kapløb, hvor de to spiller hver
+  // sit spil og deler stillingen (KAPLOEB). Serveren behandler dem ens.
+  if (!SAMMEN.includes(spil) && !KAPLOEB.includes(spil)) return fejl(400, 'Det spil kan man ikke spille sammen');
 
   const [a, b] = [noegle(mig), noegle(dig)];
   const venskab = await venner.par(a, b);

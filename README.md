@@ -46,6 +46,11 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
+Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
+lava, Klodser, Miskmask, Blokblast, Slotskamp og Weeee! — kan desuden spilles som
+et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
+på skærmen hele tiden. Se [Kapløb](#kaploeb).
+
 ### Online topliste
 
 Slår man sig ind i top 10, kan man skrive sit navn og komme permanent på
@@ -273,6 +278,10 @@ Koden er `kaelenavn`/`saetKaelenavn`/`visNavn` øverst i `public/venner.js`
 
 ### Spil sammen — venner kan joine hinanden
 
+Der er to slags: de spil, hvor de to deler ét parti (her), og et **kapløb** i
+alle de andre ([se nedenfor](#kaploeb)) — det er den, der gør, at man kan joine
+hinanden i næsten alle spil uden at skulle skrive netværkskode i hvert enkelt.
+
 Trykker man på en ven, står der en knap pr. spil, to kan spille sammen — i dag
 **«🎮 Spil Kryds og bolle sammen»** og **«🎮 Spil Dybet sammen»**. Så laves
 der et *rum*, man selv sendes ind i (`/spil/kryds/?rum=K7QFD`), og vennen får
@@ -285,7 +294,7 @@ vide («Selma gik») i stedet for at sidde og vente.
 | Del | Fil | Hvad |
 |---|---|---|
 | Database | tabellen `rum` i `schema.sql` | Ét rum pr. par: `rum(kode, spil, vaert, vaert_navn, gaest, gaest_navn, status, version, tilstand, opdateret)`. `status` er `'inviteret'`, `'igang'` eller `'slut'`. `tilstand` er spillets egen JSON. Rum uden aktivitet i tre timer ryddes (`RUM_TIMER`). |
-| API | `src/worker.mjs` → `src/rum.mjs` | `POST /api/rum {navn, ven, spil}` inviterer (kun en ven, og kun til et spil i `SAMMEN`). `GET /api/rum?navn=` giver mine invitationer og igangværende spil. `GET`/`POST /api/rum/<kode>` med `handling`: `'kom'` (hop med), `'nej'` (nej tak / jeg går), `'gem'` (skriv stillingen), `'se'`. |
+| API | `src/worker.mjs` → `src/rum.mjs` | `POST /api/rum {navn, ven, spil}` inviterer (kun en ven, og kun til et spil i `SAMMEN` eller `KAPLOEB`). `GET /api/rum?navn=` giver mine invitationer og igangværende spil. `GET`/`POST /api/rum/<kode>` med `handling`: `'kom'` (hop med), `'nej'` (nej tak / jeg går), `'gem'` (skriv stillingen), `'se'`. |
 | Klient i spillene | `public/spil/rum.js` | `Rum.kode()`, `hent`, `kom`, `forlad`, `gem` og `foelg(kode, naar)`, som kigger efter den andens træk hvert 1,2 sekund, mens fanen er fremme. |
 | Klient på forsiden | `public/venner.js` | Invitationerne øverst i venne-panelet (hentes hvert 5. sekund — de haster) og «Spil … sammen»-knapperne i venne-dialogen. |
 
@@ -313,6 +322,78 @@ med `Rum.foelg`. Kryds og bolle er det enkle forbilledet
 (`public/spil/kryds/index.html`, afsnittet «Spil sammen: rummet»); Dybet viser,
 hvordan man gør det med et spil, der er alt for stort til at sende — se
 nedenfor.
+
+<a id="kaploeb"></a>
+
+### Kapløb — join hinanden i alle de andre spil
+
+At dele ét parti er dejligt, men det koster netværkskode i hvert enkelt spil, og
+de fleste af spillene her er alene-spil, hvor der slet ikke er noget parti at
+dele. Et **kapløb** er den lette udgave, som virker alle vegne: de to spiller
+hver sit spil på hver sin telefon i det samme rum, og stillingen står i en lille
+pille øverst på skærmen hele tiden:
+
+```
+🏁 Du 420 m · 👑Selma 560 m
+```
+
+Den **bedste runde** tæller, man må spille så mange runder man vil, og trykker
+man på pillen, folder hele stillingen sig ud med «Stop kapløbet» og en vej hjem.
+Elleve spil er med: Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er lava,
+Klodser, Miskmask, Blokblast, Slotskamp og Weeee!
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Reglerne | `public/spil/kaploeb-regler.mjs` | Ren JS uden browser: stillingen, «bedste runde», fletning og teksterne. Enhedstestet i `test/unit/kaploeb.test.mjs`. |
+| Skærm og netværk | `public/spil/kaploeb.js` | Modul, der henter rummet, hopper med som gæst, tegner pillen og panelet, og skriver min halvdel op med `Rum.gem`. |
+| Rummet | `src/rum.mjs` (uændret) | Et kapløb er et helt almindeligt rum — serveren kender stadig ingen regler. |
+| Forsiden | `public/venner.js` | «🏁 Tag et kapløb» i venne-dialogen: ét mærke pr. spil med `data-kaploeb`. |
+
+**Gør et spil kapløbs-klar** — tre ting, og ingen delte filer:
+
+```jsonc
+// public/spil/<id>/kort.json
+{ "kapløb": true, "højscore": { "maks": 2000 } }   // og kør node scripts/byg-forside.mjs
+```
+
+```html
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+```
+
+```js
+// dér hvor runden er slut (samme sted som Highscore-kaldet)
+if (window.Kaploeb) Kaploeb.slut(score, score + ' blokke');
+if (window.Kaploeb) Kaploeb.slut(sek, tidTekst(sek), 'asc');   // hurtigst vinder
+```
+
+Fire ting er værd at huske:
+
+1. **Hver skriver kun sin egen halvdel** af `tilstand` (`vaert`/`gaest`), så de
+   to aldrig skændes om det samme felt. Kommer man for sent (rummet har skiftet
+   version), skriver man bare sin halvdel oven i det friske rum og er færdig —
+   ingen fletning af andres data, ingen tabte runder.
+2. **Min egen halvdel er den lokale**, ikke serverens: pillen viser min score i
+   samme nu, runden er slut, uanset om nettet er med. Ved genindlæsning fletter
+   `flet()` med det, der står i rummet, så en tidligere runde ikke forsvinder.
+3. **Man må spille, før vennen hopper med.** Værten sendes ind i spillet med det
+   samme, og en score, der ikke kunne skrives endnu (rummet står på
+   `'inviteret'`), bliver liggende og prøves igen hvert 3. sekund — derfor står
+   der «🏁 Du 3 blokke · venter på Selma…» og ikke bare «venter».
+4. **Pillen ligger oven på spillets egen top.** Den er med vilje lille og kun
+   der, mens man er i et kapløb; `?rum=` i adressen er hele kontakten, så uden
+   den kører spillet præcis som før. Stopper man kapløbet, fjernes `?rum=` fra
+   adressen, så en genindlæsning bare er det almindelige spil.
+
+Ikke alle spil er med, og det er med vilje: Kryds og bolle og Dybet deler et
+rigtigt parti (bedre end et kapløb), Helteriget og Stenalder er hot-seat for to
+på én iPad, Ordstige har én opgave om dagen, og Min kat er en killing, der vokser
+over uger — ingen af dem har en «runde», man kan måle mod hinanden.
+
+Test: `test/kaploeb.test.mjs` (repoets tredje to-browser-test: Sofie udfordrer
+Selma i Tårn, begge spiller rigtige runder, føringen skifter, og den ene stopper)
++ `test/unit/kaploeb.test.mjs`, som også fejler, hvis et spil siger `"kapløb":
+true` uden at have ledningerne i.
 
 <a id="dybet-sammen"></a>
 
@@ -627,7 +708,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, kapløbets stilling, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
@@ -652,8 +733,9 @@ kælenavn, fjern en ven — den anden part spilles af testen selv gennem
 `api.venner`),
 `test/nyheder.test.mjs` («Nyt på Zydy», hvor en ekstra nyhed serveres gennem
 `page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til) og
-`test/rum.test.mjs` («spil sammen»). Den sidste er én af repoets to tests med
-**to browsere** (den anden er `test/dybet-sammen.test.mjs`): Sofie og Selma har
+`test/rum.test.mjs` («spil sammen»). Den sidste er én af repoets tre tests med
+**to browsere** (de to andre er `test/dybet-sammen.test.mjs` og
+`test/kaploeb.test.mjs`): Sofie og Selma har
 hver sit vindue med sit eget `localStorage`, men deler API'et
 (`mockApi(side, { delMed: api })`), så et helt parti Kryds og bolle — eller en
 tur ned i Dybet — kan spilles på tværs af to telefoner, præcis som i drift.
@@ -675,7 +757,7 @@ flere sessioner kører på én gang). Er porten allerede optaget — af en anden
 session eller af en server, der er blevet hængende fra en worktree, som siden er
 fjernet — så fejler `python3 -m http.server` stille, og *alle* tests rammer den
 fremmede server. Derfor tjekker `run.mjs`, at det er vores egen forside, der
-svarer, og prøver ellers den næste port og siger det højt. 22 tests, der fejler
+svarer, og prøver ellers den næste port og siger det højt. 23 tests, der fejler
 på én gang, er næsten altid dét og ikke 22 spilfejl.
 
 ## Tilføj en app — et nyt kort på forsiden
@@ -699,6 +781,7 @@ node scripts/byg-forside.mjs    # skriver kortene ind i public/index.html og src
   "beskrivelse": "Slip blokken i det rigtige øjeblik og byg tårnet så højt du kan.",
   "url": "/spil/taarn/",       // absolut https://… for apps der bor et andet sted, sammen med "ekstern": true
   "orden": 40,                 // placering før popularitets-sorteringen; vælg et tal ingen andre har
+  "kapløb": true,              // to venner kan tage et kapløb i spillet – se Kapløb
   "højscore": { "maks": 2000 } // udelad, hvis spillet ikke har en topliste
 }
 ```
@@ -708,7 +791,7 @@ Generatoren skriver to filer, som **ikke må rettes i hånden**:
 | Genereret | Bruges til |
 |---|---|
 | kort-listen i `public/index.html` (alt mellem markøren og `</ul>`) | selve forsiden |
-| `src/spil-data.mjs` (`KORT` + `SPIL`) | Workerens topliste (`SPIL`) og aktivitetstælling (`FORSIDE_SPIL`) |
+| `src/spil-data.mjs` (`KORT` + `SPIL` + `SAMMEN` + `KAPLOEB`) | Workerens topliste (`SPIL`), aktivitetstælling (`FORSIDE_SPIL`) og hvad man må invitere en ven til (`SAMMEN`/`KAPLOEB`) |
 
 Før stod det samme spil tre steder i hånden — forsiden, `SPIL` i
 `src/highscore.mjs` og `FORSIDE_SPIL` i `src/aktivitet.mjs`. Fordi flere

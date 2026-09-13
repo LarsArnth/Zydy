@@ -154,6 +154,9 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="blokblast"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 <script type="module">
 import {
   SIDE, BAKKE, FORM, nytBræt, kanLægges, læg, nogenPasser, trækBrikker, bedsteTræk, fuldeLinjer,
@@ -317,6 +320,8 @@ function slut() {
   $('nyRekord').hidden = !rekord;
   slutScreen.classList.add('on');
   visHud(); tegnListe(); sendRekord(score);
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(score, score + ' point');
 }
 
 function tilMenu() {

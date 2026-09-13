@@ -210,6 +210,9 @@ button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="saet"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 <script>
 (() => {
 'use strict';
@@ -559,6 +562,8 @@ function finish() {
   Highscore.panel($('hs'), blitz
     ? { spil: 'saet-blitz', score, titel: 'Topliste · Blitz' }
     : { spil: 'saet-klassisk', score, titel: 'Topliste · Klassisk', format: fmt });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(score, blitz ? score + ' sæt' : fmt(score), blitz ? 'desc' : 'asc');
 }
 
 function stop() {

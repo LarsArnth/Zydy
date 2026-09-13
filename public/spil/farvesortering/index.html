@@ -220,6 +220,9 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="farvesortering"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 <script>
 (function(){
 'use strict';
@@ -616,6 +619,8 @@ function showOverlay(){
     knap.addEventListener('click', () => Highscore.panel(hs, { spil: SPIL, titel: 'Højeste niveau', format: fmtNiveau }));
     hs.appendChild(knap);
   }
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(state.level, 'niveau ' + state.level);
   $('overlay').classList.add('on');
   navigator.vibrate && navigator.vibrate([40, 60, 40]);
 }

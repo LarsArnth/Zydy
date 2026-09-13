@@ -153,6 +153,9 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="taarn"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 <script>
 (() => {
 'use strict';
@@ -405,6 +408,8 @@ function gameOver() {
   updateHud();
   // Online topliste (zydy.dk/api/highscore/taarn): viser navneformular hvis scoren er blandt de 10 bedste.
   Highscore.panel($('hs'), { spil: 'taarn', score });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(score, score + ' blokke');
 }
 
 /* ---------- Væltet ---------- */

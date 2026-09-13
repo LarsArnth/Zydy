@@ -3,6 +3,7 @@
   "beskrivelse": "Træk brikkerne ned på brættet og fyld hele rækker og søjler, så de blæser væk. Hvor mange point kan du nå, før der ikke er plads til flere?",
   "url": "/spil/blokblast/",
   "orden": 139,
+  "kapløb": true,
   "højscore": {
     "maks": 200000,
     "unik": true

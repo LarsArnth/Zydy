@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 19,
+      "dato": "2026-09-13",
+      "spil": "",
+      "titel": "Tag et kapløb med en ven i næsten alle spil",
+      "hvad": "Før kunne I kun joine hinanden i Kryds og bolle og Dybet. Nu kan du trykke på en ven og vælge «Tag et kapløb» i elleve spil mere — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er lava, Klodser, Miskmask, Blokblast, Slotskamp og Weeee! I spiller hver for sig på hver sin telefon, og stillingen står i en lille pille øverst på skærmen hele tiden: «🏁 Du 420 m · 👑 Selma 560 m». Den bedste runde tæller, og I må spille så mange runder I vil.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 18,
       "dato": "2026-09-13",
       "spil": "",

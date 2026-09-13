@@ -3,6 +3,7 @@
   "beskrivelse": "Hurtige reflex-runder: to spillere på én telefon – eller alene mod botten.",
   "url": "/spil/duel/",
   "orden": 80,
+  "kapløb": true,
   "højscore": {
     "retning": "asc",
     "min": 80,

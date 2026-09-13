@@ -204,6 +204,9 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="weee"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 <script type="module">
 import {
   G, LUFT_MIN, LAV_HALE, MAKS_FART,
@@ -411,6 +414,8 @@ function doed() {
   $('nyRekord').hidden = !ny;
   slutScreen.classList.add('on');
   visHud(); tegnListe(); sendRekord(m);
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(m, m + ' m');
 }
 
 function tilMenu() {

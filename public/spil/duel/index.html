@@ -232,6 +232,9 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="duel"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 
 <!-- ===== Spilfladen: to halvdele ===== -->
 <div id="arena" hidden>
@@ -612,6 +615,8 @@ function visTopliste(){
     format: n => n + ' ms',
     score: h ? h.ms : undefined,
   });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb && h) Kaploeb.slut(h.ms, h.ms + ' ms', 'asc');
 }
 
 function quit(){

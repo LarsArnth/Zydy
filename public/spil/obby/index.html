@@ -243,6 +243,9 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="obby"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 <script>
 (() => {
 'use strict';
@@ -688,6 +691,8 @@ function die(hvorfor) {
   }
   const ny = streak > best;
   if (ny) { best = streak; saveBest(best); sendRekord(streak); }
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(streak, streak + ' hop');
   nyRekord.hidden = !ny;
   // Fortæl hvor man lander henne, så det er til at se at checkpointet virker
   tryAgainTekst.textContent = checkpoint && checkpoint.i > 0

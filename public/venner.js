@@ -11,9 +11,10 @@
     • dem der har spurgt, om I skal være venner — med Ja tak / Nej tak
     • en knap til at finde en ven blandt de navne, vi har set på siden
 
-  Trykker man på en ven, kan man give hen et kælenavn — og invitere hen til et
-  spil, som to kan spille sammen over nettet (kortene med data-sammen, se
-  scripts/byg-forside.mjs).
+  Trykker man på en ven, kan man give hen et kælenavn — og invitere hen til at
+  spille sammen. Der er to slags: de spil, hvor man deler ét parti (data-sammen:
+  Kryds og bolle, Dybet), og et **kapløb** i alle de andre (data-kaploeb), hvor
+  man spiller hver sit spil og deler stillingen. Se scripts/byg-forside.mjs.
 
   Invitationen er et "rum" i /api/rum (src/rum.mjs), og begge sendes ind i
   spillet med ?rum=<kode>; selve kaldene ligger i /spil/rum.js, som deles med
@@ -142,7 +143,8 @@ function kortene() {
       id: li.dataset.spil,
       titel: h.textContent,
       href: a ? a.getAttribute('href') : null,
-      sammen: li.hasAttribute('data-sammen'),      // kan spilles sammen over nettet
+      sammen: li.hasAttribute('data-sammen'),      // ét parti delt mellem to telefoner
+      kaploeb: li.hasAttribute('data-kaploeb'),    // hver sit spil, fælles stilling
     };
   });
   return ud;
@@ -150,6 +152,9 @@ function kortene() {
 
 /** De spil to venner kan spille sammen, i den rækkefølge kortene står. */
 const sammenSpil = () => Object.values(kortene()).filter(k => k.sammen && k.href);
+
+/** De spil man kan tage et kapløb i (alle de andre, med en score). */
+const kaploebSpil = () => Object.values(kortene()).filter(k => k.kaploeb && k.href);
 
 /**
  * Laver navn → hvor, ud fra forsidens /api/oversigt. Navne i et spil får
@@ -198,20 +203,26 @@ function tegnRum(kort) {
   const k = kortene();
   rum.forEach(r => {
     const titel = (k[r.spil] && k[r.spil].titel) || r.spil;
+    const kap = !!(k[r.spil] && k[r.spil].kaploeb && !k[r.spil].sammen);   // kapløb eller delt parti
     const hvem = visNavn(r.modspiller);          // kælenavnet, hvis vennen har fået et
     const raekke = el('div', 'v-spoerg v-rum');
     const svar = el('span', 'v-svar');
 
     if (r.status === 'igang') {
-      raekke.appendChild(el('span', 'v-spoerg-tekst', '🎮 Du spiller ' + titel + ' med ' + hvem));
+      raekke.appendChild(el('span', 'v-spoerg-tekst', kap
+        ? '🏁 Du er i kapløb med ' + hvem + ' i ' + titel
+        : '🎮 Du spiller ' + titel + ' med ' + hvem));
       svar.appendChild(knap('v-knap v-vigtig', 'Tilbage', () => gaaTilRum(r)));
       svar.appendChild(knap('v-knap', 'Stop', () => Rum.forlad(r.kode).then(hentRum).catch(() => {})));
     } else if (r.rolle === 'gaest') {
-      raekke.appendChild(el('span', 'v-spoerg-tekst', hvem + ' vil spille ' + titel + ' med dig'));
+      raekke.appendChild(el('span', 'v-spoerg-tekst', kap
+        ? hvem + ' udfordrer dig i ' + titel
+        : hvem + ' vil spille ' + titel + ' med dig'));
       svar.appendChild(knap('v-knap v-vigtig v-hopmed', 'Hop med!', () => gaaTilRum(r)));
       svar.appendChild(knap('v-knap', 'Nej tak', () => Rum.forlad(r.kode).then(hentRum).catch(() => {})));
     } else {
-      raekke.appendChild(el('span', 'v-spoerg-tekst', 'Venter på at ' + hvem + ' hopper med i ' + titel));
+      raekke.appendChild(el('span', 'v-spoerg-tekst',
+        (kap ? 'Venter på at ' + hvem + ' tager kapløbet i ' : 'Venter på at ' + hvem + ' hopper med i ') + titel));
       svar.appendChild(knap('v-knap v-vigtig', 'Tilbage', () => gaaTilRum(r)));
       svar.appendChild(knap('v-knap', 'Afbryd', () => Rum.forlad(r.kode).then(hentRum).catch(() => {})));
     }
@@ -386,17 +397,32 @@ function venDialog(hvem) {
     // Det bedste: at spille *sammen* – ét spil, to telefoner. Vi laver et rum og
     // hopper derind; den anden får invitationen på forsiden og kan hoppe med.
     const status = el('p', 'id-status', '');
+    const inviter = (s, siger) => {
+      status.textContent = 'Spørger ' + vis + '…';
+      Rum.inviter(hvem, s.id)
+        .then(r => gaaTilRum(r))
+        .catch(err => { status.textContent = err.message; });
+      return siger;
+    };
+
     const spil = sammenSpil();
     if (spil.length) {
       spil.forEach(s => {
-        rod.appendChild(knap('id-knap v-sammen', '🎮 Spil ' + s.titel + ' sammen', () => {
-          status.textContent = 'Spørger ' + vis + '…';
-          Rum.inviter(hvem, s.id)
-            .then(r => gaaTilRum(r))
-            .catch(err => { status.textContent = err.message; });
-        }));
+        rod.appendChild(knap('id-knap v-sammen', '🎮 Spil ' + s.titel + ' sammen', () => inviter(s)));
       });
       rod.appendChild(el('p', 'v-under', 'Invitationen står og venter på forsiden, til ' + vis + ' kommer.'));
+    }
+
+    // Og i alle de andre spil: et kapløb. Hver sit spil, samme stilling øverst
+    // på skærmen – så kan man joine hinanden, uanset hvad man har lyst til.
+    const kap = kaploebSpil();
+    if (kap.length) {
+      rod.appendChild(el('h3', 'v-kaele-titel', '🏁 Tag et kapløb'));
+      rod.appendChild(el('p', 'v-under',
+        'I spiller hver for sig på hver sin telefon, og stillingen står øverst på skærmen. Den bedste runde vinder.'));
+      const liste = el('div', 'v-kaploeb');
+      kap.forEach(s => liste.appendChild(knap('v-knap v-kap-spil', s.titel, () => inviter(s))));
+      rod.appendChild(liste);
     }
     rod.appendChild(status);
 
@@ -502,6 +528,12 @@ const css = `
 .v-rum .v-hopmed{background:var(--mint,#5ee0a8);color:#10321f;animation:puls 1.8s ease-in-out infinite}
 .v-sammen{display:block;width:100%;margin-top:14px;text-align:center;
   background:var(--sun,#ffd447);color:#1c1f4a;font-weight:800}
+
+/* Kapløb: ét mærke pr. spil, så listen kan være der uden at fylde hele dialogen */
+.v-kaploeb{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;max-height:34vh;overflow-y:auto;
+  -webkit-overflow-scrolling:touch}
+.v-kap-spil{background:rgba(94,224,168,.16);color:#bff7e0;font-size:15px;padding:10px 14px}
+.v-kap-spil:hover{background:rgba(94,224,168,.28)}
 @media (prefers-reduced-motion:reduce){ .v-rum .v-hopmed{animation:none} }
 @media (prefers-reduced-motion:reduce){ .v-ven.online .v-prik{animation:none} }
 `;

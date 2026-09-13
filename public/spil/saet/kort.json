@@ -3,6 +3,7 @@
   "beskrivelse": "Find tre kort, hvor antal, form, farve og fyld er helt ens eller helt forskellige.",
   "url": "/spil/saet/",
   "orden": 50,
+  "kapløb": true,
   "højscore": {
     "klassisk": {
       "retning": "asc",

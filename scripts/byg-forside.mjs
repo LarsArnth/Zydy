@@ -50,7 +50,7 @@ const undvig = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g,
  *  knapper på li[data-spil] og læser titlen i <h2>. */
 function liFor(k) {
   const ikon = k.ikon.split('\n').map(l => (l ? '        ' + l : l)).join('\n');
-  return `    <li data-spil="${k.id}"${k.ekstern ? ' data-ekstern' : ''}${k.sammen ? ' data-sammen' : ''}><a class="app" href="${k.url}">
+  return `    <li data-spil="${k.id}"${k.ekstern ? ' data-ekstern' : ''}${k.sammen ? ' data-sammen' : ''}${k.kapløb ? ' data-kaploeb' : ''}><a class="app" href="${k.url}">
       <span class="icon" aria-hidden="true">
 ${ikon}
       </span>
@@ -108,6 +108,11 @@ ${Object.entries(spil).map(linje).join('\n')}
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).
  *  src/rum.mjs bruger listen, og forsiden kender dem på data-sammen på kortet. */
 export const SAMMEN = [${kort.filter(k => k.sammen).map(k => str(k.id)).join(', ')}];
+
+/** Spil to venner kan tage et kapløb i: samme spil, hver sin telefon, bedste
+ *  runde vinder ("kapløb": true i kort.json). Forsiden kender dem på
+ *  data-kaploeb, og de må inviteres til gennem /api/rum ligesom SAMMEN. */
+export const KAPLOEB = [${kort.filter(k => k.kapløb).map(k => str(k.id)).join(', ')}];
 `;
 }
 

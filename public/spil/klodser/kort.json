@@ -3,6 +3,7 @@
   "beskrivelse": "Din egen 3D-verden af klodser: løb rundt, byg, riv ned – og find de 12 guldklodser så hurtigt du kan.",
   "url": "/spil/klodser/",
   "orden": 135,
+  "kapløb": true,
   "højscore": {
     "retning": "asc",
     "min": 10,

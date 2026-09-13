@@ -3,6 +3,7 @@
   "beskrivelse": "Hop fra flyvende firkant til flyvende firkant. Pas på laserne, og fald ikke i lavaen. Hvor mange hop i træk kan du tage?",
   "url": "/spil/obby/",
   "orden": 120,
+  "kapløb": true,
   "højscore": {
     "maks": 10000,
     "unik": true

@@ -204,6 +204,9 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="slotskamp"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 <script type="module">
 import {
   BREDDE, HØJDE, FLOD_Y, FLOD_H, BRO_X, MAGI_MAKS, DOBBELT_FRA, TÅRN, KORT, KORT_VED,
@@ -324,6 +327,8 @@ function slut() {
   slutScreen.classList.add('on');
   visHud(); tegnListe();
   if (rekord) sendRekord(stime);
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(stime, stime === 1 ? '1 sejr' : stime + ' sejre');
   if (!roligt && vinder === 'ned') navigator.vibrate && navigator.vibrate([30, 60, 30]);
 }
 

@@ -80,7 +80,12 @@ test('man kan kun invitere en ven til et spil, der kan spilles sammen', async ()
   assert.equal(fremmed.status, 400);
   assert.match(fremmed.krop.fejl, /ikke venner/i);
 
-  const forkertSpil = await kald(post('/api/rum', { navn: 'Sofie', ven: 'Selma', spil: 'taarn' }), o);
+  // Tårn *kan* man invitere til (et kapløb), men Min kat er hverken det ene
+  // eller det andet – en killing, der vokser over uger, giver ingen runder.
+  const kaploeb = await kald(post('/api/rum', { navn: 'Sofie', ven: 'Selma', spil: 'taarn' }), o);
+  assert.equal(kaploeb.krop.ok, true, 'et kapløb i Tårn er i orden');
+
+  const forkertSpil = await kald(post('/api/rum', { navn: 'Sofie', ven: 'Selma', spil: 'kat' }), o);
   assert.equal(forkertSpil.status, 400);
   assert.match(forkertSpil.krop.fejl, /sammen/i);
 

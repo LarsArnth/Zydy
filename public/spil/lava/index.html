@@ -188,6 +188,9 @@
 
 <script src="/spil/highscore.js"></script>
 <script src="/spil/aktivitet.js" data-spil="lava"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
 <script type="module">
 import {
   RUM, KANT, SP_B, SP_H, VX, H_HOP, G, VJ, TRAMPOLIN, COYOTE, BUFFER,
@@ -414,6 +417,8 @@ function doed() {
   slutScreen.classList.add('on');
   visHud();
   Highscore.panel($('hsSlut'), { spil: 'lava', score: hoejde, format: v => v + ' m' });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(hoejde, hoejde + ' m');
 }
 
 function tilMenu() {

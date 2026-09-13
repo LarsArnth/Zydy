@@ -3,6 +3,7 @@
   "beskrivelse": "Hæld farvet væske mellem glassene, til hver farve står for sig selv.",
   "url": "/spil/farvesortering/",
   "orden": 60,
+  "kapløb": true,
   "højscore": {
     "maks": 10000
   }
