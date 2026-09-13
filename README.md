@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; tyve spil
+afhængigheder. De store apps bor i egne repoer og linkes til; enogtyve spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -902,8 +902,9 @@ To ting i UI'et er værd at huske:
    længe `#skole` er åben, og hele stuen følger med. Testen tjekker det ved at
    sammenligne gulvlinjen med arkets overkant.
 2. **Bolden bliver liggende, til man kaster igen.** Hunden løber kun efter en
-   bold, der ligger *væk* fra fødderne (`b.x > MIG_X + 0.08`); ellers hentede og
-   afleverede den i ét væk af sig selv, og så var der ingen leg i det.
+   bold, der ligger *væk* fra fødderne (`b.x > MIG_X + 0.08` i `boldFrem`);
+   ellers hentede og afleverede den i ét væk af sig selv, uden at man rørte en
+   finger, og så var der ingen leg i det.
 
 Som i Min kat gives mønter og erfaring kun for **forskellen** – `plej()`
 belønner det, der faktisk blev fyldt op. En mæt hund giver ingenting for mere

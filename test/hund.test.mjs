@@ -111,6 +111,11 @@ assert.equal(await page.locator('#hundBrand').textContent(), 'Trofast', 'hunden 
   const efter = (await hund()).behov.leg;
   assert.ok(efter > foer, `Trofast henter bolden og bliver gladere (${foer.toFixed(0)} → ${efter.toFixed(0)})`);
   assert.equal((await state()).bold.fase, 'ligger', 'og afleverer den ved dine fødder');
+
+  // Bolden bliver liggende, til man kaster igen – hunden henter ikke af sig selv
+  const hvile = (await hund()).behov.leg;
+  await tik(4);
+  assert.equal((await hund()).behov.leg <= hvile, true, 'man kan ikke stå og få gratis point af en bold, der ligger stille');
   await tegn();
   await page.screenshot({ path: SHOTS + 'hund.png' });
   await lukArk();                                         // et nyt niveau kan have åbnet toplisten
