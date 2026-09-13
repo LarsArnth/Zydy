@@ -1,0 +1,1109 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Mit liv: lav din egen figur, indret huset, pas dine behov og gå på arbejde – fra avisbud til astronaut.">
+<title>Mit liv – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Cpath d='M12 30 L32 14 L52 30 Z' fill='%23ff5c7a'/%3E%3Crect x='18' y='30' width='28' height='20' rx='3' fill='%23fff7e6'/%3E%3Ccircle cx='32' cy='38' r='4' fill='%235b8cff'/%3E%3Crect x='29' y='42' width='6' height='8' fill='%235b8cff'/%3E%3C/svg%3E">
+<style>
+  /*
+    Mit liv – et Sims-agtigt liv i et hus, man selv indretter.
+    Reglerne (behov, møbler, arbejde og huset) bor i liv.mjs;
+    her er huset set oppefra, figuren og fingrene på skærmen.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --ink:#1c1f4a; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none;overflow:hidden}
+  body{display:flex;flex-direction:column;height:100vh;height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 10px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 6px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 10px;color:var(--muted);font-size:16px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  [hidden]{display:none!important}
+  .btn{width:100%;padding:16px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:8px;transition:transform .08s;min-height:44px}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn:disabled{opacity:.45}
+  .pill{background:var(--bg2);border-radius:999px;padding:6px 12px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--text)}
+
+  .screen{display:none;flex-direction:column;flex:1;width:100%;max-width:620px;margin:0 auto;min-height:0}
+  .screen.on{display:flex}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;min-height:44px}
+  .back{color:var(--muted);text-decoration:none;font-size:17px;font-weight:700;display:inline-flex;
+    align-items:center;min-height:44px;min-width:44px;padding:0 6px 0 2px;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .brand{font-weight:800;font-size:18px;letter-spacing:-.3px}
+
+  /* ======== Startskærm: lav din figur ======== */
+  /* Ikke centreret: er skærmen lav, skærer et centreret indhold toppen af
+     overskriften væk, og så kan man ikke rulle op til den igen. */
+  #start .indhold{flex:1;display:flex;flex-direction:column;overflow-y:auto}
+  #forhaandsvisning{width:100%;max-width:132px;aspect-ratio:1;display:block;margin:0 auto}
+  .navnefelt{font:inherit;font-size:20px;font-weight:700;text-align:center;padding:12px;border-radius:16px;
+    border:2px solid transparent;background:var(--bg2);color:var(--text);outline:none;width:100%;
+    -webkit-user-select:text;user-select:text}
+  .navnefelt:focus{border-color:var(--sun)}
+  .navnefelt::placeholder{color:var(--muted);font-weight:500}
+  .vaelg{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .vaelg .label{font-weight:700;font-size:14px;color:var(--muted);width:76px;flex:none}
+  .vaelg .prikker{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+  .prik{width:34px;height:34px;border-radius:50%;border:3px solid transparent;background:var(--bg2);
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--text);padding:0}
+  .prik.on{border-color:var(--sun)}
+
+  /* ======== Spilskærm ======== */
+  #spil{min-height:0}
+  .status{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+  .status .job{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hus{flex:1;min-height:0;position:relative;border-radius:var(--r);overflow:hidden;background:#20244d}
+  .hus canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #besked{position:absolute;left:8px;right:8px;bottom:6px;text-align:center;font-size:15px;font-weight:700;
+    color:var(--text);text-shadow:0 2px 8px rgba(0,0,0,.65);pointer-events:none}
+  #arbejdskort{position:absolute;inset:0;background:rgba(9,11,26,.86);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:10px;text-align:center;padding:16px}
+  #arbejdskort .em{font-size:56px}
+  #arbejdskort .spor{width:80%;max-width:260px;height:12px;border-radius:999px;background:var(--bg2);overflow:hidden}
+  #arbejdskort .spor i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--mint),var(--sun))}
+
+  .behov{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0 0}
+  .maaler{background:var(--bg2);border-radius:12px;padding:5px 7px 6px;text-align:center}
+  .maaler .hoved{font-size:11px;color:var(--muted);font-weight:700;white-space:nowrap}
+  .maaler .spor{display:block;height:8px;border-radius:999px;background:rgba(255,255,255,.10);margin-top:4px;overflow:hidden}
+  .maaler .spor i{display:block;height:100%;width:50%;border-radius:999px;background:var(--mint);transition:width .25s,background .25s}
+  .maaler.lav .spor i{background:var(--coral)}
+  .maaler.halv .spor i{background:var(--sun)}
+
+  .knapper{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+  .knapper button{background:var(--bg2);color:var(--text);border-radius:16px;padding:8px 2px;
+    font-size:13px;font-weight:700;min-height:54px;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:2px;transition:transform .08s}
+  .knapper button .em{font-size:20px;line-height:1}
+  .knapper button:active{transform:scale(.96)}
+  .knapper button.on{background:var(--sun);color:var(--ink)}
+  .knapper button:disabled{opacity:.4}
+
+  /* ======== Byg-bakken ======== */
+  #bygbakke{margin-top:8px}
+  .bakkeTop{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+  .bakkeTop .hvad{font-size:14px;color:var(--muted);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bakkeTop button{background:var(--bg2);color:var(--text);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:700;min-height:40px;flex:none}
+  .bakkeTop button.faerdig{background:var(--sun);color:var(--ink)}
+  .varer{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;scrollbar-width:none}
+  .varer::-webkit-scrollbar{display:none}
+  .vare{flex:none;width:76px;background:var(--bg2);border-radius:14px;padding:5px 4px 6px;display:flex;
+    flex-direction:column;align-items:center;gap:2px;border:3px solid transparent;color:var(--text);font-size:11px;font-weight:700;text-align:center}
+  .vare canvas{width:48px;height:48px;display:block}
+  .vare .pris{color:var(--sun);font-size:11px;font-weight:800}
+  .vare.valgt{border-color:var(--sun)}
+  .vare.dyr{opacity:.45}
+
+  /* ======== Ark der glider op ======== */
+  .ark{position:fixed;inset:0;background:rgba(9,11,26,.72);display:none;align-items:flex-end;z-index:40}
+  .ark.on{display:flex}
+  .ark .kort{background:var(--bg);width:100%;max-width:620px;margin:0 auto;border-radius:26px 26px 0 0;
+    padding:16px 16px calc(env(safe-area-inset-bottom) + 16px);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .ark h2{margin:0;font-size:24px;letter-spacing:-.5px}
+  .arkTop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .luk{background:var(--bg2);color:var(--text);border-radius:999px;width:44px;height:44px;font-size:20px;flex:none}
+
+  @media (max-height:620px){
+    h1{font-size:30px} #forhaandsvisning{max-width:104px} .knapper button{min-height:48px}
+    .maaler .hoved{font-size:10px}
+  }
+  @media (prefers-reduced-motion:reduce){ .btn,.knapper button,.maaler .spor i{transition:none} }
+</style>
+</head>
+<body>
+
+<!-- ===== Startskærm: lav din figur ===== -->
+<div class="screen on" id="start">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Mit liv</span>
+    <span class="pill" id="startPill">Nyt liv</span>
+  </div>
+  <div class="indhold">
+    <h1>Mit liv</h1>
+    <p id="startTekst">Lav din figur, og flyt ind i huset.</p>
+    <canvas id="forhaandsvisning" aria-label="Din figur"></canvas>
+    <input class="navnefelt" id="navnefelt" type="text" maxlength="12" placeholder="Dit navn"
+           enterkeyhint="done" autocapitalize="words" spellcheck="false" autocomplete="off" aria-label="Dit navn">
+    <div id="vaelgere"></div>
+    <button class="btn" id="startBtn">Flyt ind</button>
+    <button class="btn ghost" id="fortsaetBtn" hidden>Tilbage til huset</button>
+    <div id="hsStart"></div>
+  </div>
+</div>
+
+<!-- ===== Spilskærm ===== -->
+<div class="screen" id="spil">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand" id="uret">Dag 1 · 08.00</span>
+    <span class="pill" id="pengePill">💰 <b>0</b></span>
+  </div>
+
+  <div class="status">
+    <span class="pill job" id="jobPill">📰 Avisbud</span>
+    <span class="pill" id="formuePill">🏠 0</span>
+  </div>
+
+  <div class="hus" id="hus">
+    <canvas id="laerred"></canvas>
+    <div id="besked"></div>
+    <div id="arbejdskort" hidden>
+      <div class="em" id="arbejdEm">🍦</div>
+      <div id="arbejdTekst">På arbejde …</div>
+      <span class="spor"><i id="arbejdBar"></i></span>
+    </div>
+  </div>
+
+  <div class="behov" id="behov"></div>
+
+  <div class="knapper" id="knapper">
+    <button id="bygBtn"><span class="em">🔨</span>Byg</button>
+    <button id="arbejdBtn"><span class="em">💼</span>Arbejde</button>
+    <button id="toplisteBtn"><span class="em">🏆</span>Topliste</button>
+  </div>
+
+  <div id="bygbakke" hidden>
+    <div class="bakkeTop">
+      <span class="hvad" id="bygTekst">Vælg noget, og tryk hvor det skal stå.</span>
+      <button id="saelgBtn" hidden>🗑 Sælg</button>
+      <button class="faerdig" id="bygFaerdig">Færdig</button>
+    </div>
+    <div class="varer" id="varer"></div>
+  </div>
+</div>
+
+<!-- ===== Toplisten ===== -->
+<div class="ark" id="toplisteArk">
+  <div class="kort">
+    <div class="arkTop">
+      <h2 id="hsTitel">Topliste</h2>
+      <button class="luk" id="hsLuk" aria-label="Luk toplisten">✕</button>
+    </div>
+    <p id="hsTekst">Din formue er pengene i lommen plus alt det, huset er fyldt med.</p>
+    <div id="hsPanel"></div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="mitliv"></script>
+<script type="module">
+import {
+  BREDDE, HOEJDE, DOER, BEHOV, BEHOV_NAVN, TING, JOBS, HUD, HAAR, HAARFARVER, TROEJER, BUKSER,
+  STJERNER_PR_NIVEAU, ARBEJDE_TIMER, GAEST_TIMER,
+  nytHjem, laes, serialiser, tik, tryk, brug, stop, koeb, saelg, flyt, kanBygges, paaFeltet, frit,
+  kanArbejde, arbejdeBesked, tagPaaArbejde, jobbet, humoer, hygge, formue, mestTraengende, laver,
+  hvor, gaar, klokken, dagen, tingen, pudsUdseende, ringTilVen,
+} from './liv.mjs';
+
+const $ = s => document.querySelector(s);
+const KEY = 'zydy.mitliv.v1';
+const SPIL = 'mitliv';
+const MIN_PR_SEK = 5;            // spilminutter pr. rigtigt sekund
+const FART_SOVER = 4;            // … men natten går hurtigere
+const FART_ARBEJDE = 12;         // … og arbejdsdagen allerhurtigst
+
+/* ---------- Seedbar tilfældighed, så ?seed=123 giver den samme gæst ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const params = new URLSearchParams(location.search);
+const seed = parseInt(params.get('seed'), 10) || ((Math.random() * 2 ** 31) | 0);
+const rnd = mulberry32(seed);
+
+/* ================= Tilstand ================= */
+const state = {
+  skaerm: 'start',
+  hjem: null,
+  t: 0,                       // rigtige sekunder siden siden blev åbnet
+  byg: false,                 // er vi i byg-tilstand?
+  vare: null,                 // valgt vare i butikken
+  iHaanden: null,             // møbel man har taget op ({ id, fra })
+  besked: '',
+  udseende: { hud: 0, haar: 0, haarfarve: 0, troeje: 0, bukser: 0 },
+  seed,
+};
+const GAME = window.GAME = { state, seed };
+let koerer = true, sidstTid = 0, sidsteGem = 0, beskedTil = 0;
+
+/* ================= Gem og hent ================= */
+function gemNu() {
+  if (!state.hjem) return;
+  try { localStorage.setItem(KEY, JSON.stringify(serialiser(state.hjem))); } catch (e) {}
+  sidsteGem = state.t;
+}
+function hentGemt() {
+  try {
+    const raa = localStorage.getItem(KEY);
+    return raa ? laes(JSON.parse(raa)) : null;
+  } catch (e) { return null; }
+}
+
+/* ================= Tegning ================= */
+const laerred = $('#laerred');
+const ctx = laerred.getContext('2d');
+let W = 320, H = 240, dpr = 1, S = 24, OX = 0, OY = 0, VH = 16;
+const VAEG = 0.62;              // bagvæggens mindste højde i felter
+
+function maalOp() {
+  const r = $('#hus').getBoundingClientRect();
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  W = Math.max(160, Math.round(r.width)); H = Math.max(160, Math.round(r.height));
+  laerred.width = Math.round(W * dpr); laerred.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  S = Math.min(W / BREDDE, H / (HOEJDE + VAEG));
+  OX = (W - BREDDE * S) / 2;
+  // Den plads, der bliver til overs i højden, får bagvæggen (op til halvanden
+  // felthøjde) – ellers står der bare en tom stribe over huset.
+  VH = Math.max(VAEG * S, Math.min(H - HOEJDE * S, S * 1.5));
+  OY = VH + (H - HOEJDE * S - VH) / 2;
+}
+addEventListener('resize', () => { maalOp(); tegn(); });
+// Huset bliver lavere, når byg-bakken folder sig ud. Måler vi ikke om, passer
+// feltet under fingeren ikke længere med det, der er tegnet – og man sætter
+// møblerne et helt andet sted, end man trykkede.
+if (window.ResizeObserver) new ResizeObserver(() => { maalOp(); tegn(); }).observe($('#hus'));
+
+const px = gx => OX + gx * S;
+const py = gy => OY + gy * S;
+
+/** Afrundet rektangel (ældre Safari har ikke ctx.roundRect). */
+function rrect(c, x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  c.beginPath();
+  c.moveTo(x + rr, y);
+  c.arcTo(x + w, y, x + w, y + h, rr);
+  c.arcTo(x + w, y + h, x, y + h, rr);
+  c.arcTo(x, y + h, x, y, rr);
+  c.arcTo(x, y, x + w, y, rr);
+  c.closePath();
+}
+const fyld = (c, f, x, y, w, h, r = 0) => { c.fillStyle = f; rrect(c, x, y, w, h, r); c.fill(); };
+const ellipse = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); c.fill(); };
+
+/* ---------- Rummene ---------- */
+/*
+  Huset er ét stort rum, men gulvet er delt i fire hjørner, så man kan se hvor
+  sengen hører hjemme. Møbler må stå hvor som helst – rummene er en hjælp,
+  ikke en regel.
+*/
+const RUM = {
+  sove:    { navn: 'Soveværelse', gulv: '#5c4a7a', gulv2: '#66528a' },
+  bad:     { navn: 'Bad',         gulv: '#3f6a84', gulv2: '#477693' },
+  koekken: { navn: 'Køkken',      gulv: '#6a7383', gulv2: '#747e8f' },
+  stue:    { navn: 'Stue',        gulv: '#6b4b36', gulv2: '#77543d' },
+};
+function rumFor(x, y) {
+  if (y <= 3 && x <= 3) return 'sove';
+  if (y <= 3 && x >= 7) return 'bad';
+  if (y >= 4 && x <= 3) return 'koekken';
+  return 'stue';
+}
+
+function tegnGulv() {
+  const nat = erNat();
+  for (let y = 0; y < HOEJDE; y++) {
+    for (let x = 0; x < BREDDE; x++) {
+      const r = RUM[rumFor(x, y)];
+      ctx.fillStyle = (x + y) % 2 ? r.gulv : r.gulv2;
+      ctx.fillRect(px(x), py(y), S + 0.6, S + 0.6);
+    }
+  }
+  if (nat) { ctx.fillStyle = 'rgba(12,14,40,.46)'; ctx.fillRect(px(0), py(0), BREDDE * S, HOEJDE * S); }
+
+  // Rummenes navne står svagt oppe i hjørnerne
+  ctx.fillStyle = 'rgba(255,247,230,.22)';
+  ctx.font = `700 ${Math.max(8, S * 0.30)}px -apple-system, sans-serif`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText('Soveværelse', px(0) + S * 0.12, py(0) + S * 0.1);
+  ctx.fillText('Bad', px(7) + S * 0.12, py(0) + S * 0.1);
+  ctx.fillText('Køkken', px(0) + S * 0.12, py(HOEJDE - 1) + S * 0.62);
+  ctx.fillText('Stue', px(BREDDE - 2) + S * 0.1, py(HOEJDE - 1) + S * 0.62);
+}
+
+function tegnVaegge() {
+  const nat = erNat();
+  const vh = VH;
+  // Bagvæg med vindue
+  fyld(ctx, nat ? '#2a2c55' : '#4a4682', px(0), OY - vh, BREDDE * S, vh);
+  fyld(ctx, nat ? '#1a1b3a' : '#7fc8f2', px(5.4), OY - vh * 0.86, S * 1.9, vh * 0.72, S * 0.1);
+  ctx.fillStyle = nat ? '#ffe9a8' : '#ffd447';
+  ellipse(ctx, px(6.9), OY - vh * 0.55, S * 0.22, S * 0.22);
+  if (nat) { ctx.fillStyle = nat ? '#1a1b3a' : '#7fc8f2'; ellipse(ctx, px(6.78), OY - vh * 0.62, S * 0.19, S * 0.19); }
+  ctx.strokeStyle = nat ? '#3b3d6e' : '#fff7e6'; ctx.lineWidth = Math.max(1.5, S * 0.06);
+  ctx.strokeRect(px(5.4), OY - vh * 0.86, S * 1.9, vh * 0.72);
+
+  // Et billede på væggen, så den ikke er helt tom
+  fyld(ctx, nat ? '#3a3c66' : '#ff8fb0', px(1.6), OY - vh * 0.78, S * 1.1, vh * 0.56, S * 0.08);
+  fyld(ctx, nat ? '#4a4c80' : '#5ee0a8', px(1.78), OY - vh * 0.66, S * 0.74, vh * 0.32, S * 0.05);
+
+  // Døren i bundvæggen
+  const dx = px(DOER.x), dy = py(HOEJDE);
+  fyld(ctx, '#8c5a2f', dx + S * 0.08, dy - S * 0.14, S * 0.84, S * 0.3, S * 0.06);
+  ctx.fillStyle = '#ffd447';
+  ellipse(ctx, dx + S * 0.74, dy + S * 0.01, S * 0.05, S * 0.05);
+  ctx.fillStyle = 'rgba(255,247,230,.55)';
+  ctx.font = `700 ${Math.max(7, S * 0.26)}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('ud', dx + S * 0.5, dy + S * 0.16);
+}
+
+/* ---------- Møblerne ---------- */
+/*
+  Hvert møbel tegnes inde i sit felt: (x, y) er feltets øverste venstre hjørne
+  og `s` feltets størrelse. Alt er brøkdele af s, så huset skalerer med skærmen.
+*/
+function tegnMoebel(c, id, x, y, s) {
+  const f = (a, b, w, h, r, farve) => fyld(c, farve, x + a * s, y + b * s, w * s, h * s, r * s);
+  switch (id) {
+    case 'seng':
+    case 'himmelseng': {
+      const dyne = id === 'seng' ? '#5b8cff' : '#b45fc4';
+      f(0.10, 0.06, 0.80, 0.88, 0.10, '#c98a3c');
+      f(0.16, 0.10, 0.68, 0.26, 0.08, '#fff7e6');            // pude
+      f(0.16, 0.38, 0.68, 0.52, 0.08, dyne);
+      f(0.16, 0.38, 0.68, 0.10, 0.04, 'rgba(255,255,255,.35)');
+      if (id === 'himmelseng') {
+        for (const a of [0.08, 0.84]) for (const b of [0.02, 0.86]) f(a, b, 0.08, 0.12, 0.03, '#ffd447');
+        f(0.04, 0.00, 0.92, 0.10, 0.05, '#ffd447');
+      }
+      break;
+    }
+    case 'sofa':
+      f(0.06, 0.16, 0.88, 0.70, 0.14, '#ff5c7a');
+      f(0.14, 0.10, 0.72, 0.26, 0.10, '#ff8fb0');            // ryglæn
+      f(0.16, 0.44, 0.30, 0.34, 0.08, '#ffb3c6');
+      f(0.54, 0.44, 0.30, 0.34, 0.08, '#ffb3c6');
+      break;
+    case 'toilet':
+    case 'guldtoilet': {
+      const farve = id === 'toilet' ? '#f3f1ea' : '#ffd447';
+      f(0.22, 0.08, 0.56, 0.24, 0.06, farve);                // cisterne
+      c.fillStyle = farve; ellipse(c, x + s * 0.5, y + s * 0.58, s * 0.28, s * 0.26);
+      c.fillStyle = id === 'toilet' ? '#c9c6ba' : '#c99a13';
+      ellipse(c, x + s * 0.5, y + s * 0.58, s * 0.17, s * 0.15);
+      if (id === 'guldtoilet') {
+        c.fillStyle = '#fff7e6';
+        c.font = `${s * 0.24}px -apple-system, sans-serif`;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText('👑', x + s * 0.5, y + s * 0.2);
+      }
+      break;
+    }
+    case 'brus':
+      f(0.08, 0.08, 0.84, 0.84, 0.10, '#9fd8f2');
+      f(0.60, 0.10, 0.10, 0.34, 0.04, '#cfd6e6');            // rør
+      c.fillStyle = '#cfd6e6'; ellipse(c, x + s * 0.65, y + s * 0.46, s * 0.14, s * 0.07);
+      c.fillStyle = 'rgba(255,255,255,.75)';
+      for (let i = 0; i < 4; i++) f(0.50 + i * 0.08, 0.56, 0.03, 0.28, 0.02, 'rgba(255,255,255,.7)');
+      break;
+    case 'badekar':
+      f(0.06, 0.18, 0.88, 0.66, 0.22, '#f3f1ea');
+      f(0.14, 0.26, 0.72, 0.50, 0.18, '#6fc2ea');
+      c.fillStyle = 'rgba(255,255,255,.7)';
+      ellipse(c, x + s * 0.36, y + s * 0.46, s * 0.08, s * 0.06);
+      ellipse(c, x + s * 0.62, y + s * 0.62, s * 0.06, s * 0.05);
+      break;
+    case 'koeleskab':
+      f(0.14, 0.06, 0.72, 0.88, 0.08, '#e8ecf5');
+      f(0.14, 0.42, 0.72, 0.04, 0, '#b9c0d0');
+      f(0.72, 0.20, 0.06, 0.16, 0.03, '#8e97ad');
+      f(0.72, 0.54, 0.06, 0.16, 0.03, '#8e97ad');
+      f(0.24, 0.12, 0.16, 0.14, 0.03, '#ffd447');            // magnet
+      break;
+    case 'komfur':
+      f(0.10, 0.08, 0.80, 0.84, 0.08, '#5a6180');
+      f(0.16, 0.46, 0.68, 0.40, 0.06, '#2b2440');
+      f(0.22, 0.54, 0.56, 0.24, 0.04, '#ff8f3c');            // ovnrude
+      for (const [a, b] of [[0.24, 0.14], [0.56, 0.14], [0.24, 0.30], [0.56, 0.30]]) {
+        c.fillStyle = '#2b2440'; ellipse(c, x + s * (a + 0.1), y + s * (b + 0.06), s * 0.09, s * 0.07);
+      }
+      break;
+    case 'bord':
+      f(0.06, 0.20, 0.88, 0.60, 0.12, '#c98a3c');
+      f(0.12, 0.26, 0.76, 0.48, 0.10, '#e0a95c');
+      c.fillStyle = '#fff7e6'; ellipse(c, x + s * 0.38, y + s * 0.5, s * 0.12, s * 0.10);
+      c.fillStyle = '#ff5c7a'; ellipse(c, x + s * 0.66, y + s * 0.46, s * 0.07, s * 0.06);
+      break;
+    case 'tv':
+      f(0.08, 0.14, 0.84, 0.56, 0.08, '#2b2440');
+      f(0.13, 0.19, 0.74, 0.46, 0.05, '#5b8cff');
+      f(0.20, 0.26, 0.28, 0.14, 0.03, 'rgba(255,255,255,.5)');
+      f(0.40, 0.72, 0.20, 0.10, 0.03, '#2b2440');
+      f(0.26, 0.82, 0.48, 0.08, 0.04, '#2b2440');
+      break;
+    case 'computer':
+      f(0.12, 0.10, 0.76, 0.50, 0.06, '#2b2440');
+      f(0.17, 0.15, 0.66, 0.40, 0.04, '#5ee0a8');
+      f(0.40, 0.60, 0.20, 0.08, 0.02, '#3a3f66');
+      f(0.10, 0.70, 0.80, 0.16, 0.04, '#8e97ad');
+      break;
+    case 'bogreol':
+      f(0.08, 0.06, 0.84, 0.88, 0.06, '#8c5a2f');
+      for (let r = 0; r < 3; r++) {
+        const b = 0.12 + r * 0.28;
+        const farver = ['#ff5c7a', '#5ee0a8', '#ffd447', '#5b8cff', '#b45fc4'];
+        for (let i = 0; i < 5; i++) f(0.15 + i * 0.14, b, 0.10, 0.22, 0.02, farver[(i + r) % 5]);
+      }
+      break;
+    case 'guitar':
+      c.fillStyle = '#c98a3c';
+      ellipse(c, x + s * 0.5, y + s * 0.66, s * 0.28, s * 0.24);
+      ellipse(c, x + s * 0.5, y + s * 0.44, s * 0.20, s * 0.16);
+      c.fillStyle = '#2b2440'; ellipse(c, x + s * 0.5, y + s * 0.62, s * 0.09, s * 0.08);
+      f(0.44, 0.06, 0.12, 0.34, 0.03, '#6b4a26');
+      f(0.40, 0.02, 0.20, 0.10, 0.03, '#2b2440');
+      break;
+    case 'arkade':
+      f(0.12, 0.04, 0.76, 0.92, 0.10, '#b45fc4');
+      f(0.18, 0.12, 0.64, 0.40, 0.05, '#2b2440');
+      f(0.24, 0.18, 0.52, 0.28, 0.03, '#5ee0a8');
+      c.fillStyle = '#ff5c7a'; ellipse(c, x + s * 0.38, y + s * 0.66, s * 0.07, s * 0.07);
+      c.fillStyle = '#ffd447'; ellipse(c, x + s * 0.60, y + s * 0.66, s * 0.07, s * 0.07);
+      f(0.20, 0.78, 0.60, 0.10, 0.04, '#2b2440');
+      break;
+    case 'hoejttaler':
+      f(0.22, 0.06, 0.56, 0.88, 0.08, '#2b2440');
+      c.fillStyle = '#8e97ad'; ellipse(c, x + s * 0.5, y + s * 0.34, s * 0.18, s * 0.18);
+      c.fillStyle = '#5a6180'; ellipse(c, x + s * 0.5, y + s * 0.70, s * 0.12, s * 0.12);
+      c.fillStyle = '#ffd447';
+      c.font = `${s * 0.3}px -apple-system, sans-serif`;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('♪', x + s * 0.12, y + s * 0.2);
+      break;
+    case 'telefon':
+      f(0.14, 0.30, 0.72, 0.50, 0.10, '#ff5c7a');
+      f(0.20, 0.14, 0.60, 0.22, 0.10, '#fff7e6');
+      c.strokeStyle = '#fff7e6'; c.lineWidth = Math.max(1, s * 0.05);
+      c.beginPath(); c.arc(x + s * 0.5, y + s * 0.58, s * 0.14, 0, Math.PI * 2); c.stroke();
+      break;
+    case 'plante':
+      f(0.32, 0.58, 0.36, 0.34, 0.06, '#c96f2c');
+      c.fillStyle = '#5ee0a8';
+      ellipse(c, x + s * 0.5, y + s * 0.36, s * 0.14, s * 0.26);
+      ellipse(c, x + s * 0.32, y + s * 0.44, s * 0.20, s * 0.12, -0.5);
+      ellipse(c, x + s * 0.68, y + s * 0.44, s * 0.20, s * 0.12, 0.5);
+      break;
+    case 'lampe':
+      f(0.36, 0.72, 0.28, 0.16, 0.05, '#5a6180');
+      f(0.46, 0.36, 0.08, 0.40, 0.02, '#8e97ad');
+      c.fillStyle = erNat() ? '#ffe9a8' : '#ffd447';
+      c.beginPath();
+      c.moveTo(x + s * 0.26, y + s * 0.38); c.lineTo(x + s * 0.74, y + s * 0.38);
+      c.lineTo(x + s * 0.64, y + s * 0.10); c.lineTo(x + s * 0.36, y + s * 0.10);
+      c.closePath(); c.fill();
+      if (erNat()) {
+        c.fillStyle = 'rgba(255,212,71,.18)';
+        ellipse(c, x + s * 0.5, y + s * 0.5, s * 0.8, s * 0.8);
+      }
+      break;
+    case 'taeppe':
+      c.fillStyle = '#b45fc4'; ellipse(c, x + s * 0.5, y + s * 0.5, s * 0.44, s * 0.36);
+      c.fillStyle = '#ff8fb0'; ellipse(c, x + s * 0.5, y + s * 0.5, s * 0.30, s * 0.24);
+      c.fillStyle = '#ffd447'; ellipse(c, x + s * 0.5, y + s * 0.5, s * 0.14, s * 0.11);
+      break;
+    default:
+      f(0.2, 0.2, 0.6, 0.6, 0.1, '#8e97ad');
+  }
+}
+
+/* ---------- Figuren ---------- */
+/*
+  Figuren tegnes stående i sit felt, set lidt skråt forfra. `retning` afgør,
+  om ansigtet vender mod os (ned), væk (op) eller til siden.
+*/
+function tegnFigur(c, cx, gulv, h, u, o = {}) {
+  const hudF = HUD[u.hud], haarF = HAARFARVER[u.haarfarve];
+  const t = o.t || 0;
+  const skridt = o.gaar ? Math.sin(t * 9) : 0;
+  const bob = o.gaar ? Math.abs(Math.sin(t * 9)) * h * 0.03 : Math.sin(t * 1.6) * h * 0.012;
+  const y = gulv - bob;
+  const ligger = o.ligger;
+
+  c.save();
+  if (ligger) { c.translate(cx, y); c.rotate(-Math.PI / 2); c.translate(-cx, -y + h * 0.1); }
+
+  // Skygge
+  c.fillStyle = 'rgba(0,0,0,.22)';
+  ellipse(c, cx, gulv + h * 0.02, h * 0.22, h * 0.07);
+
+  // Ben
+  c.fillStyle = BUKSER[u.bukser];
+  rrect(c, cx - h * 0.17 + skridt * h * 0.05, y - h * 0.30, h * 0.14, h * 0.30, h * 0.05); c.fill();
+  rrect(c, cx + h * 0.03 - skridt * h * 0.05, y - h * 0.30, h * 0.14, h * 0.30, h * 0.05); c.fill();
+
+  // Krop
+  c.fillStyle = TROEJER[u.troeje];
+  rrect(c, cx - h * 0.22, y - h * 0.62, h * 0.44, h * 0.36, h * 0.10); c.fill();
+  // Arme
+  c.fillStyle = hudF;
+  rrect(c, cx - h * 0.30, y - h * 0.60, h * 0.10, h * 0.26, h * 0.05); c.fill();
+  rrect(c, cx + h * 0.20, y - h * 0.60, h * 0.10, h * 0.26, h * 0.05); c.fill();
+
+  // Hoved
+  const hy = y - h * 0.76;
+  c.fillStyle = hudF;
+  ellipse(c, cx, hy, h * 0.19, h * 0.20);
+
+  // Ansigt (ikke når man vender ryggen til)
+  if (o.retning !== 'op') {
+    const side = o.retning === 'venstre' ? -1 : o.retning === 'hoejre' ? 1 : 0;
+    c.fillStyle = '#2b2440';
+    const oejne = side === 0 ? [-0.08, 0.08] : [side * 0.04, side * 0.12];
+    for (const dx of oejne) ellipse(c, cx + h * dx, hy - h * 0.02, h * 0.023, h * (o.sover ? 0.008 : 0.03));
+    c.strokeStyle = '#b5644f'; c.lineWidth = h * 0.018; c.lineCap = 'round';
+    c.beginPath();
+    const mx = cx + h * side * 0.06;
+    if (o.glad) { c.arc(mx, hy + h * 0.05, h * 0.06, 0.1 * Math.PI, 0.9 * Math.PI); }
+    else if (o.trist) { c.arc(mx, hy + h * 0.12, h * 0.06, 1.1 * Math.PI, 1.9 * Math.PI); }
+    else { c.moveTo(mx - h * 0.05, hy + h * 0.08); c.lineTo(mx + h * 0.05, hy + h * 0.08); }
+    c.stroke();
+  }
+
+  // Hår
+  c.fillStyle = haarF;
+  const haar = HAAR[u.haar];
+  if (haar === 'kort') {
+    c.beginPath(); c.arc(cx, hy - h * 0.02, h * 0.195, Math.PI, 0); c.fill();
+  } else if (haar === 'langt') {
+    rrect(c, cx - h * 0.21, hy - h * 0.16, h * 0.42, h * 0.44, h * 0.14); c.fill();
+    c.fillStyle = hudF; ellipse(c, cx, hy + h * 0.02, h * 0.155, h * 0.165);
+  } else if (haar === 'tot') {
+    c.beginPath(); c.arc(cx, hy - h * 0.03, h * 0.185, Math.PI, 0); c.fill();
+    rrect(c, cx - h * 0.03, hy - h * 0.30, h * 0.06, h * 0.12, h * 0.03); c.fill();
+  } else if (haar === 'krøller') {
+    for (const [dx, dy] of [[-0.16, -0.04], [-0.06, -0.14], [0.06, -0.14], [0.16, -0.04], [0, -0.18]]) {
+      ellipse(c, cx + h * dx, hy + h * dy, h * 0.085, h * 0.085);
+    }
+  } else {
+    c.beginPath(); c.arc(cx, hy - h * 0.02, h * 0.195, Math.PI, 0); c.fill();
+    ellipse(c, cx + h * 0.24, hy - h * 0.02, h * 0.07, h * 0.14);   // hestehale
+  }
+  c.restore();
+}
+
+/** Et lille ansigt uden krop – bruges til gæsten på knapperne i butikken. */
+const gaestUdseende = navn => {
+  let n = 0;
+  for (const t of navn) n = (n * 31 + t.charCodeAt(0)) >>> 0;
+  return pudsUdseende({ hud: n % HUD.length, haar: (n >> 3) % HAAR.length, haarfarve: (n >> 6) % HAARFARVER.length,
+    troeje: (n >> 9) % TROEJER.length, bukser: (n >> 12) % BUKSER.length });
+};
+
+/* ---------- Hele huset ---------- */
+const erNat = () => { const h = state.hjem ? (state.hjem.minut % 1440) / 60 : 12; return h < 6.5 || h >= 21; };
+
+function tegn() {
+  const hjem = state.hjem;
+  if (!hjem) return;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#20244d'; ctx.fillRect(0, 0, W, H);
+  tegnGulv();
+  tegnVaegge();
+
+  // Pytter på gulvet
+  for (const p of hjem.pytter) {
+    ctx.fillStyle = 'rgba(255,212,71,.55)';
+    ellipse(ctx, px(p.x + 0.5), py(p.y + 0.62), S * 0.32, S * 0.18);
+    ctx.fillStyle = 'rgba(255,255,255,.4)';
+    ellipse(ctx, px(p.x + 0.4), py(p.y + 0.56), S * 0.08, S * 0.05);
+  }
+
+  // Møbler
+  hjem.ting.forEach((m, i) => {
+    if (state.iHaanden?.nr === i) return;              // den ligger jo i hånden
+    tegnMoebel(ctx, m.id, px(m.x), py(m.y), S);
+  });
+
+  // Byg-tilstand: gitter og hvor man må sætte den valgte ting
+  if (state.byg) {
+    const vaelger = state.vare || state.iHaanden;
+    ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1;
+    for (let x = 0; x <= BREDDE; x++) { ctx.beginPath(); ctx.moveTo(px(x), py(0)); ctx.lineTo(px(x), py(HOEJDE)); ctx.stroke(); }
+    for (let y = 0; y <= HOEJDE; y++) { ctx.beginPath(); ctx.moveTo(px(0), py(y)); ctx.lineTo(px(BREDDE), py(y)); ctx.stroke(); }
+    if (vaelger) {
+      for (let y = 0; y < HOEJDE; y++) for (let x = 0; x < BREDDE; x++) {
+        if (!kanBygges(hjem, x, y)) continue;
+        ctx.fillStyle = 'rgba(94,224,168,.09)';
+        ctx.fillRect(px(x) + 2, py(y) + 2, S - 4, S - 4);
+      }
+    }
+  }
+
+  // Gæsten
+  const g = hjem.gaest;
+  if (g?.kommet) {
+    tegnFigur(ctx, px(g.x + 0.5), py(g.y + 0.92), S * 1.15, gaestUdseende(g.navn), { t: state.t, retning: 'ned', glad: true });
+    ctx.fillStyle = 'rgba(17,20,42,.7)';
+    const b = Math.max(9, S * 0.3);
+    ctx.font = `700 ${b}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    const w = ctx.measureText(g.navn).width + b * 0.6;
+    fyld(ctx, 'rgba(17,20,42,.72)', px(g.x + 0.5) - w / 2, py(g.y) - b * 1.3, w, b * 1.25, b * 0.5);
+    ctx.fillStyle = '#fff7e6';
+    ctx.fillText(g.navn, px(g.x + 0.5), py(g.y) - b * 0.2);
+  }
+
+  // Figuren
+  if (!hjem.arbejde) {
+    const h = hjem.handling;
+    const iSeng = h?.slags === 'ting' && tingen(hjem.ting[h.ting]?.id)?.sover ? hjem.ting[h.ting] : null;
+    // Ligger man i sengen, tegnes man oven på den – ikke stående ved siden af
+    const p = iSeng ? { x: iSeng.x, y: iSeng.y + 0.1 } : hvor(hjem);
+    const hum = humoer(hjem);
+    const sover = !!iSeng || h?.slags === 'besvimet';
+    tegnFigur(ctx, px(p.x + 0.5), py(p.y + 0.92), S * (iSeng ? 1.0 : 1.2), hjem.udseende, {
+      t: state.t, gaar: gaar(hjem) && !iSeng, retning: iSeng ? 'ned' : hjem.figur.retning,
+      glad: hum >= 65 && !sover, trist: hum < 35 && !sover, sover, ligger: h?.slags === 'besvimet',
+    });
+    if (sover) {
+      ctx.fillStyle = 'rgba(255,247,230,.9)';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      for (let i = 0; i < 3; i++) {
+        const f = (state.t * 0.5 + i / 3) % 1;
+        ctx.globalAlpha = 0.9 * (1 - f);
+        ctx.font = `800 ${S * (0.3 + 0.2 * f)}px -apple-system, sans-serif`;
+        ctx.fillText('z', px(p.x + 1) + f * S * 0.4, py(p.y) - f * S * 0.6);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Møblet man har i hånden, følger fingeren
+  if (state.iHaanden && state.iHaanden.peger) {
+    const { x, y } = state.iHaanden.peger;
+    ctx.globalAlpha = 0.8;
+    tegnMoebel(ctx, state.iHaanden.id, px(x), py(y), S);
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ================= Spillets gang ================= */
+
+/** Hvor hurtigt tiden går lige nu. */
+function tidsfart() {
+  const hjem = state.hjem;
+  if (!hjem) return 0;
+  if (hjem.arbejde) return MIN_PR_SEK * FART_ARBEJDE;
+  const h = hjem.handling;
+  const sover = !!tingen(hjem.ting[h?.ting]?.id)?.sover || h?.slags === 'besvimet';
+  return MIN_PR_SEK * (sover ? FART_SOVER : 1);
+}
+
+/** Lader `sek` rigtige sekunder gå. */
+function tikSek(sek) {
+  const hjem = state.hjem;
+  if (!hjem) return;
+  state.t += sek;
+  const haendelser = tik(hjem, sek * tidsfart(), rnd);
+  for (const h of haendelser) fortael(h);
+  if (state.t - sidsteGem > 5) gemNu();
+}
+
+/** Siger noget om det, der lige skete. */
+function fortael(h) {
+  const hjem = state.hjem;
+  if (h.slags === 'loen') {
+    const stjerner = h.stjerner ? ` ${'⭐'.repeat(h.stjerner)}` : ' – du var for træt til at gøre et godt stykke arbejde';
+    sigNoget(`Hjemme igen med ${h.kr} kr.${stjerner}`);
+  } else if (h.slags === 'forfremmet') {
+    sigNoget(`🎉 Forfremmet! Du er ${h.job} nu.`);
+    fejrForfremmelse();                     // en forfremmelse er dagen, man vil på listen
+  } else if (h.slags === 'uheld') {
+    sigNoget('Uhh – du nåede ikke på toilettet! Tryk på pytten for at tørre op.');
+  } else if (h.slags === 'besvimet') {
+    sigNoget('Du var så træt, at du faldt i søvn på gulvet …');
+  } else if (h.slags === 'vaagnede') {
+    sigNoget('Du vågnede. Gå i seng næste gang!');
+  } else if (h.slags === 'gaest') {
+    sigNoget(`${h.navn} er kommet på besøg! Tryk på ${h.navn} for at snakke.`);
+  } else if (h.slags === 'gaestGik') {
+    sigNoget(`${h.navn} gik hjem igen.`);
+  } else if (h.slags === 'ryddet') {
+    sigNoget('Så er der tørret op.');
+  }
+}
+
+function sigNoget(tekst) {
+  state.besked = tekst;
+  beskedTil = state.t + 5;
+  $('#besked').textContent = tekst;
+}
+
+function standardBesked() {
+  const hjem = state.hjem;
+  if (!hjem) return '';
+  if (hjem.arbejde) return 'Du er på arbejde …';
+  const mangler = mestTraengende(hjem);
+  if (hjem.behov[mangler] < 30) {
+    const hint = {
+      mad: 'Du er sulten – gå ud i køkkenet.',
+      energi: 'Du er hundetræt – smut i seng.',
+      toilet: 'Du skal på toilettet. Nu!',
+      renhed: 'Du trænger til et bad.',
+      sjov: 'Du keder dig – find på noget sjovt.',
+      selskab: 'Du er ensom – ring til en ven fra telefonen.',
+    };
+    return hint[mangler];
+  }
+  return laver(hjem);
+}
+
+/* ================= Skærmen ================= */
+const BEHOV_EM = { mad: '🍽', energi: '⚡', toilet: '🚽', renhed: '🚿', sjov: '🎮', selskab: '💬' };
+
+function byggMaalere() {
+  $('#behov').innerHTML = BEHOV.map(b =>
+    `<div class="maaler" data-b="${b}"><div class="hoved">${BEHOV_EM[b]} ${BEHOV_NAVN[b]}</div>` +
+    `<span class="spor"><i></i></span></div>`).join('');
+}
+
+function opdater() {
+  const hjem = state.hjem;
+  if (!hjem) return;
+  const job = jobbet(hjem);
+  $('#uret').textContent = `Dag ${dagen(hjem.minut)} · ${klokken(hjem.minut)}`;
+  $('#pengePill').innerHTML = `💰 <b>${Math.round(hjem.penge)}</b>`;
+  $('#formuePill').textContent = `🏠 ${formue(hjem)}`;
+  $('#jobPill').textContent = `${job.emoji} ${job.navn} ${'★'.repeat(hjem.job.stjerner)}${'☆'.repeat(Math.max(0, STJERNER_PR_NIVEAU - hjem.job.stjerner))}`;
+
+  for (const b of BEHOV) {
+    const el = $(`.maaler[data-b="${b}"]`);
+    if (!el) continue;
+    const v = hjem.behov[b];
+    el.querySelector('i').style.width = `${Math.max(2, Math.round(v))}%`;
+    el.classList.toggle('lav', v < 25);
+    el.classList.toggle('halv', v >= 25 && v < 55);
+  }
+
+  $('#arbejdBtn').disabled = !kanArbejde(hjem) || state.byg;
+  $('#bygBtn').classList.toggle('on', state.byg);
+  $('#arbejdskort').hidden = !hjem.arbejde;
+  if (hjem.arbejde) {
+    const gaaet = 1 - (hjem.arbejde.til - hjem.minut) / (ARBEJDE_TIMER * 60);
+    $('#arbejdBar').style.width = `${Math.max(0, Math.min(100, gaaet * 100))}%`;
+    $('#arbejdEm').textContent = job.emoji;
+    $('#arbejdTekst').textContent = `${hjem.navn} er på arbejde som ${job.navn.toLowerCase()}`;
+  }
+  if (state.t >= beskedTil) $('#besked').textContent = standardBesked();
+  if (state.byg) opdaterBygTekst();
+}
+
+/* ---------- Byg-tilstand ---------- */
+function tegnVarer() {
+  const hjem = state.hjem;
+  const rod = $('#varer');
+  rod.innerHTML = '';
+  for (const t of TING) {
+    const knap = document.createElement('button');
+    knap.className = 'vare' + (state.vare === t.id ? ' valgt' : '') + (hjem.penge < t.pris ? ' dyr' : '');
+    knap.type = 'button';
+    knap.dataset.vare = t.id;
+    const c = document.createElement('canvas');
+    const d = Math.min(devicePixelRatio || 1, 2);
+    c.width = 48 * d; c.height = 48 * d;
+    const k = c.getContext('2d');
+    k.setTransform(d, 0, 0, d, 0, 0);
+    tegnMoebel(k, t.id, 0, 0, 48);
+    knap.appendChild(c);
+    const navn = document.createElement('span');
+    navn.textContent = t.navn;
+    knap.appendChild(navn);
+    const pris = document.createElement('span');
+    pris.className = 'pris';
+    pris.textContent = `${t.pris} kr.`;
+    knap.appendChild(pris);
+    knap.addEventListener('click', () => vaelgVare(t.id));
+    rod.appendChild(knap);
+  }
+}
+
+function vaelgVare(id) {
+  state.iHaanden = null;
+  state.vare = state.vare === id ? null : id;
+  tegnVarer();
+  opdater();
+  tegn();
+}
+
+function opdaterBygTekst() {
+  const hjem = state.hjem;
+  const h = state.iHaanden;
+  $('#saelgBtn').hidden = !h;
+  if (h) {
+    $('#bygTekst').textContent = `${tingen(h.id).navn} i hånden – tryk hvor den skal stå.`;
+  } else if (state.vare) {
+    const t = tingen(state.vare);
+    $('#bygTekst').textContent = hjem.penge >= t.pris
+      ? `${t.navn}, ${t.pris} kr. – tryk hvor den skal stå.`
+      : `${t.navn} koster ${t.pris} kr. – du mangler ${t.pris - Math.round(hjem.penge)}.`;
+  } else {
+    $('#bygTekst').textContent = 'Vælg noget, eller tryk på et møbel for at flytte det.';
+  }
+}
+
+function saetByg(paa) {
+  state.byg = paa;
+  state.vare = null;
+  state.iHaanden = null;
+  if (paa) { stop(state.hjem); tegnVarer(); }
+  $('#bygbakke').hidden = !paa;
+  $('#knapper').hidden = paa;
+  opdater();
+  tegn();
+}
+
+/** Et tryk på et felt i byg-tilstand. */
+function bygTryk(x, y) {
+  const hjem = state.hjem;
+  if (state.iHaanden) {
+    if (flyt(hjem, state.iHaanden.nr, x, y)) { state.iHaanden = null; gemNu(); }
+    else sigNoget('Der kan den ikke stå.');
+  } else if (state.vare) {
+    const t = tingen(state.vare);
+    if (koeb(hjem, state.vare, x, y)) {
+      sigNoget(`${t.navn} købt for ${t.pris} kr.`);
+      navigator.vibrate?.(18);
+      gemNu();
+    } else if (hjem.penge < t.pris) {
+      sigNoget(`${t.navn} koster ${t.pris} kr. – du mangler ${t.pris - Math.round(hjem.penge)}.`);
+    } else {
+      sigNoget('Der er ikke plads – og døren skal kunne nås.');
+    }
+    tegnVarer();
+  } else {
+    const m = paaFeltet(hjem, x, y);
+    if (m) { state.iHaanden = { nr: m.nr, id: m.id }; sigNoget(`${m.ting.navn} taget op.`); }
+  }
+  opdater();
+  tegn();
+}
+
+function saelgIHaanden() {
+  const h = state.iHaanden;
+  if (!h) return;
+  const navn = tingen(h.id).navn;
+  const kr = saelg(state.hjem, h.nr);
+  state.iHaanden = null;
+  sigNoget(`${navn} solgt for ${kr} kr.`);
+  gemNu(); tegnVarer(); opdater(); tegn();
+}
+
+/* ---------- Arbejde og topliste ---------- */
+function paaArbejde() {
+  const hjem = state.hjem;
+  if (!tagPaaArbejde(hjem)) { sigNoget(arbejdeBesked(hjem)); opdater(); return false; }
+  sigNoget(`Af sted på arbejde som ${jobbet(hjem).navn.toLowerCase()}!`);
+  opdater(); tegn();
+  return true;
+}
+
+const aabn = el => el.classList.add('on');
+const luk = el => el.classList.remove('on');
+
+function aabnTopliste() {
+  const hjem = state.hjem;
+  const f = Math.max(hjem.bedste, formue(hjem));
+  hjem.bedste = f;
+  $('#hsTitel').textContent = `Formue: ${f} kr.`;
+  aabn($('#toplisteArk'));
+  Highscore.panel($('#hsPanel'), {
+    spil: SPIL, score: f, titel: 'Rigeste liv',
+    format: s => `${s} kr.`,
+  });
+}
+
+function fejrForfremmelse() {
+  navigator.vibrate?.([30, 60, 30]);
+  aabnTopliste();
+}
+
+/* ================= Startskærmen ================= */
+const VAELGERE = [
+  { felt: 'hud', navn: 'Hud', liste: HUD, farve: v => v },
+  { felt: 'haar', navn: 'Frisure', liste: HAAR, tekst: v => ({ kort: 'Kort', langt: 'Langt', tot: 'Tot', 'krøller': 'Krøl', hestehale: 'Hale' })[v] },
+  { felt: 'haarfarve', navn: 'Hårfarve', liste: HAARFARVER, farve: v => v },
+  { felt: 'troeje', navn: 'Trøje', liste: TROEJER, farve: v => v },
+  { felt: 'bukser', navn: 'Bukser', liste: BUKSER, farve: v => v },
+];
+
+function byggVaelgere() {
+  const rod = $('#vaelgere');
+  rod.innerHTML = '';
+  for (const v of VAELGERE) {
+    const raekke = document.createElement('div');
+    raekke.className = 'vaelg';
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = v.navn;
+    raekke.appendChild(label);
+    const prikker = document.createElement('div');
+    prikker.className = 'prikker';
+    v.liste.forEach((vaerdi, i) => {
+      const knap = document.createElement('button');
+      knap.type = 'button';
+      knap.className = 'prik' + (state.udseende[v.felt] === i ? ' on' : '');
+      knap.dataset.felt = v.felt;
+      knap.dataset.nr = String(i);
+      if (v.farve) knap.style.background = v.farve(vaerdi);
+      else knap.textContent = v.tekst(vaerdi);
+      knap.setAttribute('aria-label', `${v.navn} ${i + 1}`);
+      knap.addEventListener('click', () => {
+        state.udseende[v.felt] = i;
+        byggVaelgere();
+        tegnForhaandsvisning();
+      });
+      prikker.appendChild(knap);
+    });
+    raekke.appendChild(prikker);
+    rod.appendChild(raekke);
+  }
+}
+
+function tegnForhaandsvisning() {
+  const c = $('#forhaandsvisning');
+  const s = 150, d = Math.min(devicePixelRatio || 1, 2);
+  c.width = s * d; c.height = s * d;
+  const k = c.getContext('2d');
+  k.setTransform(d, 0, 0, d, 0, 0);
+  k.clearRect(0, 0, s, s);
+  tegnFigur(k, s / 2, s * 0.94, s * 0.95, pudsUdseende(state.udseende), { t: state.t, retning: 'ned', glad: true });
+}
+
+function flytInd(navn) {
+  const n = (navn ?? $('#navnefelt').value ?? '').trim() || Highscore.navn.hent() || 'Mig';
+  state.hjem = nytHjem(n, state.udseende);
+  if (!Highscore.navn.hent()) Highscore.navn.gem(state.hjem.navn);
+  gemNu();
+  tilSpil();
+  sigNoget(`Velkommen hjem, ${state.hjem.navn}! Tryk på et møbel for at bruge det.`);
+}
+
+function tilSpil() {
+  state.skaerm = 'spil';
+  $('#start').classList.remove('on');
+  $('#spil').classList.add('on');
+  maalOp();
+  opdater();
+  tegn();
+}
+
+/* ================= Input ================= */
+function feltFor(e) {
+  const r = laerred.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left - OX) / S);
+  const y = Math.floor((e.clientY - r.top - OY) / S);
+  return { x, y };
+}
+
+laerred.addEventListener('pointerdown', e => {
+  const hjem = state.hjem;
+  if (!hjem || hjem.arbejde) return;
+  const { x, y } = feltFor(e);
+  if (x < 0 || y < 0 || x >= BREDDE || y >= HOEJDE) return;
+  if (state.byg) { bygTryk(x, y); return; }
+  const svar = tryk(hjem, x, y);
+  if (!svar) {
+    const m = paaFeltet(hjem, x, y);
+    if (m) sigNoget(`Du kan ikke komme hen til ${m.ting.navn.toLowerCase()}.`);
+  } else if (svar === 'bruger') {
+    const m = paaFeltet(hjem, x, y);
+    if (m) sigNoget(`${hjem.navn} går hen til ${m.ting.navn.toLowerCase()}.`);
+  }
+  opdater();
+  tegn();
+});
+
+$('#bygBtn').addEventListener('click', () => saetByg(!state.byg));
+$('#bygFaerdig').addEventListener('click', () => saetByg(false));
+$('#saelgBtn').addEventListener('click', saelgIHaanden);
+$('#arbejdBtn').addEventListener('click', paaArbejde);
+$('#toplisteBtn').addEventListener('click', aabnTopliste);
+$('#hsLuk').addEventListener('click', () => luk($('#toplisteArk')));
+for (const ark of document.querySelectorAll('.ark')) {
+  ark.addEventListener('click', e => { if (e.target === ark) luk(ark); });
+}
+$('#startBtn').addEventListener('click', () => flytInd());
+$('#navnefelt').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); flytInd(); } });
+$('#fortsaetBtn').addEventListener('click', tilSpil);
+
+document.addEventListener('visibilitychange', () => { if (document.hidden) gemNu(); });
+addEventListener('pagehide', gemNu);
+
+/* ================= Løkken ================= */
+let sidsteOpdater = 0;
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (state.skaerm !== 'spil') {
+    sidstTid = nu;
+    if (state.skaerm === 'start') { state.t += 1 / 60; tegnForhaandsvisning(); }
+    return;
+  }
+  const dt = Math.min(0.1, (nu - sidstTid) / 1000 || 0);
+  sidstTid = nu;
+  if (koerer) tikSek(dt);
+  else state.t += dt;
+  // Målerne og teksterne rører DOM'en, så de opdateres nogle få gange i sekundet.
+  if (state.t - sidsteOpdater > 0.25) { sidsteOpdater = state.t; opdater(); }
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ================= Start ================= */
+{
+  const gemt = hentGemt();
+  byggMaalere();
+  const kendt = Highscore.navn.hent();
+  if (kendt) $('#navnefelt').value = kendt;
+  if (gemt) {
+    state.hjem = gemt;
+    state.udseende = { ...gemt.udseende };
+    $('#startPill').textContent = `${jobbet(gemt).emoji} ${jobbet(gemt).navn}`;
+    $('#startTekst').textContent = `${gemt.navn} bor i huset med ${Math.round(gemt.penge)} kr. på lommen. Velkommen tilbage!`;
+    $('#fortsaetBtn').hidden = false;
+    $('#fortsaetBtn').textContent = `Tilbage til ${gemt.navn}`;
+    $('#startBtn').textContent = 'Start forfra med et nyt liv';
+    $('#startBtn').classList.add('ghost');
+  }
+  byggVaelgere();
+  tegnForhaandsvisning();
+  Highscore.panel($('#hsStart'), { spil: SPIL, titel: 'Rigeste liv', format: s => `${s} kr.` });
+  maalOp();
+}
+
+/* ================= Til test ================= */
+Object.assign(GAME, {
+  tegn, opdater, tilSpil, flytInd,
+  tik: min => { const h = tik(state.hjem, min, rnd); for (const e of h) fortael(e); opdater(); tegn(); return h; },
+  tikSek,
+  tryk: (x, y) => { const s = tryk(state.hjem, x, y); opdater(); tegn(); return s; },
+  brug: nr => { const s = brug(state.hjem, nr); opdater(); tegn(); return s; },
+  byg: saetByg, vaelgVare, bygTryk, saelgIHaanden,
+  arbejd: paaArbejde,
+  ringTilVen: navn => { const n = ringTilVen(state.hjem, navn, rnd); opdater(); return n; },
+  // Midten af et felt i lærredets egne pixels – så en test kan trykke præcis på et møbel
+  punktFor: (x, y) => ({ x: OX + (x + 0.5) * S, y: OY + (y + 0.5) * S }),
+  formue: () => formue(state.hjem),
+  humoer: () => humoer(state.hjem),
+  hygge: () => hygge(state.hjem),
+  aabnTopliste,
+  gemNu, hentGemt,
+  pause: () => { koerer = false; },
+  resume: () => { koerer = true; },
+});
+Object.defineProperty(GAME, 'hjem', { get: () => state.hjem });
+</script>
+</body></html>

@@ -1,0 +1,19 @@
+{
+  "navn": "Mit liv",
+  "beskrivelse": "Lav din egen figur, indret huset, pas dine behov og gå på arbejde – fra avisbud til astronaut.",
+  "nøgleord": [
+    "the sims",
+    "sims",
+    "livet",
+    "hus",
+    "indret",
+    "møbler",
+    "job"
+  ],
+  "url": "/spil/mitliv/",
+  "orden": 149,
+  "højscore": {
+    "maks": 1000000,
+    "unik": true
+  }
+}
