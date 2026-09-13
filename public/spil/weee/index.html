@@ -1,0 +1,792 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1a3a">
+<meta name="description" content="Weeee! Kælk ned ad bjerget: hold fingeren nede på de stejle stykker og slip på kanten, så flyver du. Hvor langt når du, før lavinen tager dig?">
+<title>Weeee! – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f1a3a'/%3E%3Cpath d='M0 40c14 2 24-8 30-18 6 10 18 22 34 24v18H0z' fill='%23eaf4ff'/%3E%3Ccircle cx='24' cy='20' r='6' fill='%23ffd447'/%3E%3Crect x='14' y='26' width='20' height='5' rx='2.5' fill='%23ff4d5e' transform='rotate(-20 24 28)'/%3E%3C/svg%3E">
+<style>
+  /*
+    Weeee! – Selmas ønske, der bare lød «Weeee».
+
+    Det er lyden, man laver, når det går stærkt ned ad bakke – så det er spillet:
+    en kælketur ned ad et stejlt bjerg, hvor man holder fingeren nede for at få
+    fart og slipper på kanterne for at flyve. Bagved kommer lavinen.
+
+    Bakken og fysikken bor i bakke.mjs (enhedstestet); denne fil tegner det og
+    tager imod fingeren. Tre ting er værd at kende:
+
+      1) Ét tryk, to betydninger. På sneen klæber man fast og kører stærkere;
+         i luften dykker man. Derfor står der «hold» og «slip» i HUD'en, og
+         derfor lyser kanten op, hvor man kan lette – ellers er det umuligt at
+         gætte, hvornår man skal slippe.
+      2) Verdenen regnes i meter, og alt tegnes gennem sx()/sy(). Skærmen viser
+         ~38 m ad gangen, og kælken sidder i venstre tredjedel, så man kan se
+         den næste kant komme.
+      3) Fysikken kører i faste skridt på 1/120 sek. (DT), uanset hvor hurtigt
+         skærmen tegner. Det er også dét, GAME.frem() bruger, så en test kan
+         spole en hel tur igennem uden at vente på rigtige sekunder.
+  */
+  :root{
+    --bg:#0f1a3a; --bg2:#1b2a56; --bg3:#2b3d72; --text:#f2f7ff; --muted:#9fb3dd;
+    --sun:#ffd447; --coral:#ff4d5e; --mint:#5ee0a8; --sky:#6cc5ff; --ink:#0d1530; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}          /* .btn sætter display:block, og så gemmer hidden ikke af sig selv */
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 12px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:42px;line-height:1;margin:0 0 8px;letter-spacing:-1.6px;font-weight:800}
+  p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:17px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;text-align:center;text-decoration:none;color:var(--ink);transition:transform .08s}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--text);font-variant-numeric:tabular-nums}
+
+  .wrap{width:100%;max-width:820px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .brand{flex:1;text-align:center;font-weight:800;font-size:20px;letter-spacing:-.4px}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;margin-top:6px;background:#12203f}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Meterne i venstre hjørne, farten i højre – kun mens man kører */
+  .hud{position:absolute;left:14px;top:10px;pointer-events:none;text-shadow:0 3px 14px rgba(0,0,0,.55);
+    opacity:0;transition:opacity .25s}
+  .stage.igang .hud{opacity:1}
+  .hud .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px}
+  #meter{display:block;font-size:48px;font-weight:900;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+  #meter small{font-size:20px;font-weight:700;color:var(--muted);letter-spacing:0}
+  .hud.hoejre{left:auto;right:14px;text-align:right}
+  #fartVal{display:block;font-size:28px;font-weight:800;line-height:1.1;color:var(--sky);font-variant-numeric:tabular-nums}
+  #fartVal small{font-size:14px;color:var(--muted)}
+
+  /* Sig hvad fingeren skal – ellers gætter man aldrig «slip på kanten» */
+  .styr{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;pointer-events:none;
+    background:rgba(13,21,48,.62);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+    border-radius:999px;padding:9px 18px;font-size:16px;font-weight:700;opacity:0;transition:opacity .25s;white-space:nowrap}
+  .stage.igang .styr{opacity:1}
+  .styr.slip{color:var(--sun)}
+  .styr.hold{color:var(--sky)}
+
+  /* Råbet midt på fladen */
+  .raab{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .25s}
+  .raab.on{opacity:1}
+  .raab .big{font-size:clamp(34px,13vw,74px);font-weight:900;letter-spacing:-2px;line-height:1;color:#fff;
+    text-shadow:0 0 30px var(--sky),0 6px 0 #2a5fb0,0 12px 34px rgba(0,0,0,.55);transform:rotate(-4deg)}
+  .raab.on .big{animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+  .raab .sub{margin-top:12px;font-size:16px;font-weight:700;color:var(--text);
+    background:rgba(13,21,48,.6);border-radius:999px;padding:7px 15px}
+  @keyframes pop{from{transform:scale(.35) rotate(-4deg);opacity:0}to{transform:scale(1) rotate(-4deg);opacity:1}}
+
+  /* Rød kant når lavinen er lige bag ved */
+  .fare{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;
+    box-shadow:inset 90px 0 90px -40px rgba(255,255,255,.5),inset 0 0 70px rgba(120,170,255,.4)}
+
+  /* Start- og slutskærm oven på fladen */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:16px 18px 22px;background:rgba(15,26,58,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .lavet{margin:0 0 12px;font-size:14px;color:var(--muted);line-height:1.4}
+  .lavet b{color:var(--text)}
+  .regler{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:8px 12px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .rekord-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0 4px}
+  .rekord-row span{color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:14px}
+  .rekord-row b{font-size:30px;font-weight:800;color:var(--sun);letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  .slutscore{font-size:70px;font-weight:900;line-height:1;letter-spacing:-3px;margin:2px 0 2px;
+    color:var(--sun);font-variant-numeric:tabular-nums}
+  .slutscore small{font-size:28px;color:var(--muted);letter-spacing:0}
+  .slutsub{font-size:16px;color:var(--muted);margin:0 0 10px}
+  .ny{color:var(--mint);font-weight:800;font-size:19px;margin:0 0 8px}
+  #nameBtn{position:relative}
+  #nameBtn small{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-top:2px}
+  #nameBtn.tom{color:var(--muted)}
+  #nameForm{margin-top:10px}
+  #nameForm input{width:100%;padding:15px;border-radius:var(--r);border:2px solid var(--bg3);background:var(--bg2);
+    color:var(--text);font:inherit;font-size:18px;text-align:center}
+  .hint{font-size:15px;margin:12px 0 0}
+
+  /* Toplisten (fælles klient) */
+  .hs{margin-bottom:10px}
+  .hs .hs-liste{max-height:26vh}
+
+  @media (max-height:660px){
+    h1{font-size:32px} #meter{font-size:38px} .slutscore{font-size:50px}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+  }
+  @media (max-width:380px){ .top .brand{display:none} }
+  @media (prefers-reduced-motion:reduce){ .btn,.raab.on .big{transition:none;animation:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="brand">Weeee!</div>
+    <div class="pill">Rekord <b id="rekPill">0</b> m</div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Kælketur ned ad bjerget"></canvas>
+
+    <div class="hud" aria-live="off">
+      <span class="lbl">Meter</span>
+      <b id="meter">0<small> m</small></b>
+    </div>
+    <div class="hud hoejre">
+      <span class="lbl">Fart</span>
+      <b id="fartVal">0<small> km/t</small></b>
+    </div>
+
+    <div class="fare" id="fare"></div>
+    <div class="styr hold" id="styr">Hold fingeren nede</div>
+
+    <div class="raab" id="raab">
+      <div class="big" id="raabTekst">WEEEE!</div>
+      <div class="sub" id="raabUnder"></div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Weeee!</h1>
+        <div class="lavet"><b>Selma</b> ønskede sig spillet · <b>Far</b> og <b>Claude</b> byggede det</div>
+        <div class="hs" id="hsListe"></div>
+        <div class="rekord-row"><span>Rekord</span><b id="rekordVal">0</b></div>
+        <button class="btn ghost tom" id="nameBtn">Skriv dit navn</button>
+        <form id="nameForm" hidden autocomplete="off">
+          <input id="nameInput" type="text" maxlength="12" placeholder="Skriv dit navn" aria-label="Dit navn"
+            enterkeyhint="done" autocapitalize="words" spellcheck="false">
+          <button class="btn" type="submit">OK</button>
+        </form>
+        <button class="btn" id="startBtn">Spil</button>
+        <!-- Reglerne står UNDER Spil-knappen med vilje: startskærmen skal kunne
+             bruges uden at rulle på en iPhone, og knappen er det vigtigste. -->
+        <div class="regler" aria-hidden="true">
+          <span>🖐️ <b>Hold fingeren nede</b> ned ad de stejle stykker – så tager du fart</span>
+          <span>✨ <b>Slip på den gule kant</b> – så letter du og råber weeee</span>
+          <span>🎿 <b>Hold igen i luften</b> for at dykke og lande langs bakken</span>
+        </div>
+        <p class="hint">Lavinen kommer bagfra og bliver hurtigere og hurtigere. Den eneste måde at slippe væk på er at
+          holde farten – og man kører hurtigst gennem luften.</p>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1>Lavinen tog dig!</h1>
+        <div class="slutscore" id="slutMeter">0<small> m</small></div>
+        <p class="slutsub" id="slutSub"></p>
+        <p class="ny" id="nyRekord" hidden>Ny rekord!</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Kør igen</button>
+        <button class="btn ghost" id="menuBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="weee"></script>
+<script type="module">
+import {
+  G, LUFT_MIN, LAV_HALE, MAKS_FART,
+  nyTur, tik, fart, bot, mulberry32,
+} from './bakke.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const harFastSeed = Number.isFinite(fastSeed);
+let seed = harFastSeed ? fastSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), g = canvas.getContext('2d');
+if (!g.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const meterEl = $('meter'), fartEl = $('fartVal'), rekPill = $('rekPill'), rekordVal = $('rekordVal');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen'), fareEl = $('fare'), styrEl = $('styr');
+const raab = $('raab'), raabTekst = $('raabTekst'), raabUnder = $('raabUnder');
+const nameBtn = $('nameBtn'), nameForm = $('nameForm'), nameInput = $('nameInput');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY_BEST = 'zydy.weee.best';
+const hentBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const gemBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+
+const DT = 1 / 120;                 // fast fysik-trin
+const BREDDE_ØNSKE = 38;            // så mange meter af bjerget vil vi helst se ad gangen
+const HØJDE_MIN = 24;               // … men på en bred skærm må vi hellere zoome lidt ind
+const KÆLK_X = 0.3;                 // kælken sidder i venstre tredjedel, så man kan se kanten komme
+const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1, dpr = 1, u = 10, Bu = BREDDE_ØNSKE, Hu = 40;
+function maal() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  u = Math.max(4, Math.min(W / BREDDE_ØNSKE, H / HØJDE_MIN));
+  Bu = W / u; Hu = H / u;
+}
+maal();
+addEventListener('resize', maal);
+addEventListener('orientationchange', () => setTimeout(maal, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';                  // menu | spil | doed
+let s = nyTur(seed);                // turen (bakke.mjs)
+let holder = false;                 // fingeren
+let camX = 0, camY = 0, T = 0;
+let best = hentBest();
+let sne = [], fnug = [], sidst = 0, acc = 0;
+let visMeter = 0;
+let råbTil = 0, råber = false;      // beskeden midt på fladen og hvornår den går væk
+
+function nulstil() {
+  if (!harFastSeed) seed = (Math.random() * 4294967296) >>> 0;
+  s = nyTur(seed);
+  holder = false; T = 0; visMeter = 0;
+  sne = [];
+  camX = s.x - Bu * KÆLK_X; camY = s.y - Hu * 0.45;
+  lavFnug();
+  visHud();
+}
+
+/** Snefnug der driver forbi – de ligger i skærmkoordinater, så de aldrig slipper op. */
+function lavFnug() {
+  const r = mulberry32(seed ^ 0x9e37);
+  fnug = Array.from({ length: roligt ? 0 : 60 }, () => ({
+    x: r(), y: r(), s: 0.5 + r() * 2, f: 0.25 + r() * 0.75,
+  }));
+}
+
+/* ---------- Spillets gang ---------- */
+function skridt(dt) {
+  T += dt;
+  if (fase === 'spil') {
+    const e = tik(s, dt, holder);
+    // Råbet kommer først, når hoppet er langt nok til at være et rigtigt hop.
+    if (!s.paa && s.luft > 0.55 && !råber) sigTil('WEEEE!', 'Se, du flyver!', 1.1);
+    if (e.landet) landing(e.landet);
+    if (e.doed) doed();
+    støv(dt);
+  } else if (fase === 'doed') {
+    s.lavine += 6 * dt;                               // lavinen ruller videre ind over skærmen
+  }
+
+  // Kameraet følger kælken – og aldrig så langsomt, at den kan nå ud af billedet.
+  const målX = s.x - Bu * KÆLK_X, målY = s.y - Hu * 0.45;
+  camX += (målX - camX) * Math.min(1, dt * 9);
+  camY += (målY - camY) * Math.min(1, dt * 7);
+  camX = klem(camX, s.x - Bu * 0.62, s.x - Bu * 0.16);
+  camY = klem(camY, s.y - Hu * 0.78, s.y - Hu * 0.22);
+
+  for (const q of sne) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy -= G * 0.35 * dt; }
+  sne = sne.filter(q => q.t < q.liv);
+
+  if (råbTil && T > råbTil) { raab.classList.remove('on'); råbTil = 0; råber = false; }
+
+  const m = Math.max(0, Math.floor(s.x));
+  if (m !== visMeter) { visMeter = m; visHud(); }
+
+  // Hvidt skær fra venstre, når lavinen er lige bag ved
+  const afstand = s.x - s.lavine;
+  fareEl.style.opacity = fase === 'spil' && afstand < LAV_HALE * 0.55
+    ? String(klem(1 - afstand / (LAV_HALE * 0.55), 0.1, 0.85)) : '0';
+}
+
+/** Sneen der står op om kælken, når den kører – mere jo hurtigere det går. */
+function støv(dt) {
+  if (roligt || !s.paa) return;
+  const v = fart(s);
+  if (v < 6) return;
+  const antal = Math.min(3, Math.floor(v * dt * 3));
+  for (let i = 0; i < antal; i++) {
+    sne.push({
+      x: s.x - 0.5, y: s.y + 0.1,
+      vx: -v * (0.1 + Math.random() * 0.35), vy: 1 + Math.random() * 4,
+      r: 0.06 + Math.random() * 0.16, t: 0, liv: 0.3 + Math.random() * 0.5,
+    });
+  }
+  if (sne.length > 220) sne.splice(0, sne.length - 220);
+}
+
+function landing(l) {
+  if (l.perfekt) {
+    sigTil('PERFEKT!', 'Lige ned ad bakken – ekstra fart', 0.9);
+    navigator.vibrate && navigator.vibrate(20);
+  } else if (l.luft >= LUFT_MIN && l.kvalitet < 0.45) {
+    sigTil('AV!', 'Du landede på tværs og mistede farten', 0.9);
+    navigator.vibrate && navigator.vibrate(40);
+  }
+  if (!roligt && l.luft >= LUFT_MIN) {
+    for (let i = 0; i < 16; i++) {
+      sne.push({
+        x: s.x, y: s.y + 0.1,
+        vx: (Math.random() - 0.3) * 8, vy: 1 + Math.random() * 7,
+        r: 0.08 + Math.random() * 0.2, t: 0, liv: 0.35 + Math.random() * 0.55,
+      });
+    }
+  }
+}
+
+function sigTil(stor, lille, sek) {
+  raabTekst.textContent = stor; raabUnder.textContent = lille || '';
+  raab.classList.remove('on'); void raab.offsetWidth; raab.classList.add('on');
+  råbTil = T + sek; råber = true;
+}
+
+/* ---------- Skærmene ---------- */
+function visHud() {
+  meterEl.innerHTML = visMeter + '<small> m</small>';
+  fartEl.innerHTML = Math.round(fart(s) * 3.6) + '<small> km/t</small>';
+  rekPill.textContent = String(best);
+  rekordVal.textContent = String(best);
+}
+
+/** Fortæller hvad fingeren skal lige nu – ellers er «slip på kanten» umuligt at gætte. */
+function visStyr() {
+  const kan = kanLette(s.x);
+  const tekst = !s.paa
+    ? (holder ? 'Dykker …' : 'Weeee! Hold for at dykke')
+    : kan ? 'SLIP NU – og flyv!' : (holder ? 'Holder fast – god fart' : 'Hold fingeren nede');
+  if (styrEl.textContent !== tekst) styrEl.textContent = tekst;
+  styrEl.classList.toggle('slip', s.paa && kan);
+  styrEl.classList.toggle('hold', !(s.paa && kan));
+}
+
+/**
+ * Ville man lette her, hvis man slap – og blive i luften længe nok til, at det
+ * er værd at gøre? Det første er præcis betingelsen i bakke.mjs (farten gange
+ * krumningen skal slå tyngdekraften); KANT er det andet. Uden KANT lyser hele
+ * den stejle side gult, når man kører hurtigt, for dér ville man også lette –
+ * og så siger den gule streg ikke længere «slip her».
+ */
+const KANT = 0.075;
+function kanLette(x, v = fart(s)) {
+  const k = s.bakke.krum(x);
+  return -k > KANT && v * v * -k > G;
+}
+
+function start() {
+  nulstil();
+  fase = 'spil';
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  stage.classList.add('igang');
+  sigTil('KØR!', 'Hold fingeren nede', 1.2);
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+function doed() {
+  if (fase !== 'spil') return;
+  fase = 'doed'; holder = false;
+  navigator.vibrate && navigator.vibrate([60, 40, 60]);
+  raab.classList.remove('on'); råbTil = 0; råber = false;
+  stage.classList.remove('igang');
+  const m = s.meter, ny = m > best;
+  if (ny) { best = m; gemBest(best); }
+  $('slutMeter').innerHTML = m + '<small> m</small>';
+  $('slutSub').textContent = `${s.hop} hop · længste flyvetur ${s.længsteLuft.toFixed(1).replace('.', ',')} sek.`
+    + (s.perfekte ? ` · ${s.perfekte} perfekte landinger` : '');
+  $('nyRekord').hidden = !ny;
+  slutScreen.classList.add('on');
+  visHud(); tegnListe(); sendRekord(m);
+}
+
+function tilMenu() {
+  fase = 'menu';
+  nulstil();
+  slutScreen.classList.remove('on'); startScreen.classList.add('on');
+  stage.classList.remove('igang');
+  raab.classList.remove('on'); råbTil = 0; råber = false;
+  visHud(); hentListe();
+}
+
+/* ---------- Løkken ---------- */
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!sidst) sidst = nu;
+  const dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  acc += dt;
+  let n = 0;
+  while (acc >= DT && n++ < 40) { skridt(DT); acc -= DT; }
+  if (fase === 'spil') visStyr();       // én gang pr. billede, ikke pr. fysik-skridt
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ---------- Tegning ---------- */
+const sx = wx => (wx - camX) * u;
+const sy = wy => H - (wy - camY) * u;
+const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
+
+/** Himlen: kold blå oppe, lys og rosa nede mod horisonten. */
+function tegnHimmel() {
+  const gr = g.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, '#16265a');
+  gr.addColorStop(0.45, '#3c5aa6');
+  gr.addColorStop(0.8, '#8fa8d8');
+  gr.addColorStop(1, '#ffc9a8');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+
+  // Solen står lavt. Den ligger fast på skærmen – rykkede den med kameraet,
+  // ville den hoppe, hver gang man havde kørt en skærmbredde ned ad bjerget.
+  const solX = W * 0.78, solY = H * 0.17, r = Math.max(14, u * 2.2);
+  const glød = g.createRadialGradient(solX, solY, r * 0.8, solX, solY, r * 3);
+  glød.addColorStop(0, 'rgba(255,236,180,.5)');
+  glød.addColorStop(1, 'rgba(255,236,180,0)');
+  g.fillStyle = glød;
+  g.beginPath(); g.arc(solX, solY, r * 3, 0, 7); g.fill();
+  g.fillStyle = 'rgba(255,240,196,.97)';
+  g.beginPath(); g.arc(solX, solY, r, 0, 7); g.fill();
+}
+
+/** To lag bjerge i det fjerne, tegnet som takker der ruller forbi langsommere end bakken. */
+function tegnFjerneBjerge() {
+  const lag = [
+    { fart: 0.12, hoejde: 0.30, bund: 0.62, farve: '#5c76b8', takker: 90 },
+    { fart: 0.26, hoejde: 0.22, bund: 0.78, farve: '#93a9d9', takker: 60 },
+  ];
+  for (const l of lag) {
+    const skub = -camX * u * l.fart;
+    const y0 = H * l.bund + klem(-camY * u * 0.02, -H * 0.2, H * 0.2);
+    g.fillStyle = l.farve;
+    g.beginPath();
+    g.moveTo(0, H);
+    for (let x = -l.takker; x <= W + l.takker; x += l.takker / 2) {
+      const px = x + ((skub % l.takker) + l.takker) % l.takker;
+      const t = Math.sin((px - skub) * 0.013) * Math.cos((px - skub) * 0.0047 + 1.7);
+      g.lineTo(px, y0 - H * l.hoejde * (0.45 + 0.55 * Math.abs(t)));
+    }
+    g.lineTo(W + l.takker, H); g.closePath(); g.fill();
+  }
+}
+
+/** Snefnug der driver ned over skærmen. */
+function tegnFnug() {
+  g.fillStyle = 'rgba(255,255,255,.75)';
+  for (const f of fnug) {
+    const px = ((f.x + T * 0.02 * f.f - camX * 0.004 * f.f) % 1 + 1) % 1 * W;
+    const py = ((f.y + T * 0.05 * f.f) % 1 + 1) % 1 * H;
+    g.beginPath(); g.arc(px, py, f.s, 0, 7); g.fill();
+  }
+}
+
+/** Selve bjergsiden – og den gule kant, hvor man kan lette. */
+function tegnBakke() {
+  const skridtPx = 3;
+  const punkter = [];
+  for (let px = -skridtPx; px <= W + skridtPx; px += skridtPx) {
+    const wx = camX + px / u;
+    punkter.push([px, sy(s.bakke.h(wx)), wx]);
+  }
+  g.beginPath();
+  g.moveTo(punkter[0][0], punkter[0][1]);
+  for (const p of punkter) g.lineTo(p[0], p[1]);
+  g.lineTo(W + skridtPx, H + 10); g.lineTo(-skridtPx, H + 10); g.closePath();
+  const gr = g.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, '#ffffff');
+  gr.addColorStop(0.6, '#eef4ff');
+  gr.addColorStop(1, '#d7e3f8');
+  g.fillStyle = gr; g.fill();
+
+  // Skyggen lige under overfladen, så kanten kan ses
+  g.save(); g.clip();
+  g.strokeStyle = 'rgba(150,180,225,.55)';
+  g.lineWidth = Math.max(2, u * 0.5);
+  g.beginPath();
+  punkter.forEach((p, i) => (i ? g.lineTo(p[0], p[1] + u * 0.75) : g.moveTo(p[0], p[1] + u * 0.75)));
+  g.stroke();
+  g.restore();
+
+  // Den gule kant: dér ville man lette, hvis man slap nu
+  if (fase === 'spil') {
+    const v = fart(s);
+    g.strokeStyle = 'rgba(255,212,71,.95)';
+    g.lineWidth = Math.max(3, u * 0.35);
+    g.lineCap = 'round';
+    let i = 0;
+    while (i < punkter.length) {
+      if (kanLette(punkter[i][2], v)) {
+        g.beginPath(); g.moveTo(punkter[i][0], punkter[i][1] - u * 0.12);
+        while (i < punkter.length && kanLette(punkter[i][2], v)) {
+          g.lineTo(punkter[i][0], punkter[i][1] - u * 0.12);
+          i++;
+        }
+        g.stroke();
+      }
+      i++;
+    }
+  }
+}
+
+/** Lavinen: en væg af sne, der vælter ned ad bjerget bag en. */
+function tegnLavine() {
+  const front = sx(s.lavine);
+  if (front < -u * 8) return;
+  const bag = -u * 30;
+  g.beginPath();
+  g.moveTo(bag, H + 10);
+  for (let px = bag; px <= front; px += 4) {
+    const wx = camX + px / u;
+    const bølge = 1.6 * Math.sin(wx * 0.6 + T * 5) + 1.1 * Math.sin(wx * 1.7 - T * 7);
+    g.lineTo(px, sy(s.bakke.h(wx) + 7 + bølge + (front - px) / u * 0.12));
+  }
+  g.lineTo(front, sy(s.bakke.h(s.lavine)));
+  g.lineTo(front, H + 10);
+  g.closePath();
+  const gr = g.createLinearGradient(bag, 0, front, 0);
+  gr.addColorStop(0, '#f4f8ff');
+  gr.addColorStop(1, '#d3e0f5');
+  g.fillStyle = gr; g.fill();
+
+  // Skum langs fronten
+  g.fillStyle = 'rgba(255,255,255,.85)';
+  for (let i = 0; i < 16; i++) {
+    const wy = s.bakke.h(s.lavine) + i * 0.55;
+    const r = (2.2 - i * 0.1) * u * 0.35 * (0.7 + 0.3 * Math.sin(T * 6 + i));
+    g.beginPath(); g.arc(front - r * 0.3 + Math.sin(T * 4 + i) * u * 0.3, sy(wy), Math.max(2, r), 0, 7); g.fill();
+  }
+}
+
+/** Kælken med barnet på – drejet, så den følger bakken eller flyveturen. */
+function tegnKælk() {
+  const px = sx(s.x), py = sy(s.y);
+  g.save();
+  g.translate(px, py);
+  g.rotate(-s.vinkel);
+  // Kælken tegnes halvanden gang så stor som den «er» (fysikken er et punkt) –
+  // ellers er barnet på en telefon kun en håndfuld pixels og bare en klat.
+  const k = u * 1.4;
+
+  // Skygge på sneen
+  if (s.paa) { g.fillStyle = 'rgba(120,150,200,.35)'; rr(-k * 0.9, -k * 0.05, k * 1.9, k * 0.3, k * 0.15); g.fill(); }
+
+  // Kælken
+  g.fillStyle = '#e03b4e';
+  rr(-k * 0.85, -k * 0.42, k * 1.75, k * 0.3, k * 0.14); g.fill();
+  g.fillStyle = '#b02a3c';
+  rr(-k * 0.85, -k * 0.18, k * 1.75, k * 0.12, k * 0.06); g.fill();
+  g.beginPath();                                   // opad-bøjet næse
+  g.moveTo(k * 0.9, -k * 0.42);
+  g.quadraticCurveTo(k * 1.25, -k * 0.5, k * 1.1, -k * 0.95);
+  g.lineWidth = Math.max(2, k * 0.14); g.strokeStyle = '#e03b4e'; g.lineCap = 'round';
+  g.stroke();
+
+  // Barnet: krop, hoved, hue og tørklæde – armene ryger op, når man flyver
+  const flyver = !s.paa;
+  g.fillStyle = '#2f6fd0';
+  rr(-k * 0.42, -k * 1.15, k * 0.78, k * 0.78, k * 0.22); g.fill();
+  g.strokeStyle = '#2f6fd0'; g.lineWidth = Math.max(2, k * 0.16);
+  g.beginPath();                                   // arme
+  g.moveTo(k * 0.05, -k * 0.95);
+  if (flyver) { g.lineTo(k * 0.5, -k * 1.75); g.moveTo(k * 0.05, -k * 0.95); g.lineTo(k * 0.62, -k * 1.5); }
+  else { g.lineTo(k * 0.7, -k * 0.75); }
+  g.stroke();
+  g.fillStyle = '#ffd9b8';                          // hoved
+  g.beginPath(); g.arc(k * 0.05, -k * 1.42, k * 0.34, 0, 7); g.fill();
+  g.fillStyle = '#ffd447';                          // hue
+  g.beginPath(); g.arc(k * 0.05, -k * 1.52, k * 0.36, Math.PI, 2 * Math.PI); g.fill();
+  rr(-k * 0.33, -k * 1.56, k * 0.76, k * 0.16, k * 0.08); g.fill();
+  g.beginPath(); g.arc(-k * 0.35, -k * 1.72, k * 0.16, 0, 7); g.fill();
+  g.fillStyle = '#1a2540';                          // øje
+  g.beginPath(); g.arc(k * 0.18, -k * 1.42, k * 0.07, 0, 7); g.fill();
+  g.strokeStyle = '#5ee0a8';                        // tørklædet blafrer bagud
+  g.lineWidth = Math.max(2, k * 0.13);
+  g.beginPath();
+  g.moveTo(-k * 0.12, -k * 1.18);
+  const vift = Math.sin(T * 14) * k * 0.16;
+  g.quadraticCurveTo(-k * 0.55, -k * 1.35 + vift, -k * 1.0, -k * 1.1 - vift);
+  g.stroke();
+  g.restore();
+}
+
+function tegnSne() {
+  g.fillStyle = 'rgba(255,255,255,.9)';
+  for (const q of sne) {
+    const a = Math.max(0, 1 - q.t / q.liv);
+    g.globalAlpha = a;
+    g.beginPath(); g.arc(sx(q.x), sy(q.y), Math.max(1, q.r * u), 0, 7); g.fill();
+  }
+  g.globalAlpha = 1;
+}
+
+/** Fartstriber, der løber bagud, når det går rigtig stærkt – ellers kan man ikke mærke farten. */
+function tegnFart() {
+  const v = fart(s);
+  if (roligt || v < 22 || fase !== 'spil') return;
+  g.strokeStyle = `rgba(255,255,255,${klem((v - 22) / (MAKS_FART - 22), 0, 1) * 0.4})`;
+  g.lineWidth = 2;
+  for (let i = 0; i < 7; i++) {
+    const l = 40 + (i % 3) * 30;
+    const x = W - ((T * v * 22 + i * 160) % (W + l));
+    const y = (i * 97 + i * H / 7) % H;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y - l * 0.35); g.stroke();
+  }
+}
+
+function tegn() {
+  tegnHimmel();
+  tegnFjerneBjerge();
+  tegnBakke();
+  tegnLavine();
+  tegnSne();
+  tegnKælk();
+  tegnFnug();
+  tegnFart();
+}
+
+/* ---------- Fingeren ---------- */
+function ned(e) {
+  if (fase !== 'spil') return;
+  e.preventDefault();
+  holder = true;
+}
+function op() { holder = false; }
+canvas.addEventListener('pointerdown', ned);
+canvas.addEventListener('pointerup', op);
+canvas.addEventListener('pointercancel', op);
+canvas.addEventListener('pointerleave', op);
+addEventListener('blur', op);
+addEventListener('keydown', e => {
+  if (e.repeat) return;
+  if (e.code === 'Space' || e.code === 'ArrowDown') { e.preventDefault(); if (fase === 'spil') holder = true; }
+  else if (e.code === 'Enter' && fase !== 'spil') start();
+});
+addEventListener('keyup', e => { if (e.code === 'Space' || e.code === 'ArrowDown') holder = false; });
+
+/* ---------- Topliste (navnet skrives på startskærmen som i Obby) ---------- */
+const SPIL = 'weee';
+const navn = () => Highscore.navn.hent();
+const KEY_MIN = 'zydy.weee.min';
+let top = null;
+const minRække = {
+  hent() { try { return JSON.parse(localStorage.getItem(KEY_MIN)) || null; } catch (e) { return null; } },
+  gem(v) { try { localStorage.setItem(KEY_MIN, JSON.stringify(v)); } catch (e) {} },
+};
+const somMeter = v => v + ' m';
+
+function visNavn() {
+  const n = navn();
+  nameBtn.classList.toggle('tom', !n);
+  nameBtn.innerHTML = '';
+  if (n) {
+    nameBtn.appendChild(document.createTextNode(n));
+    const s2 = document.createElement('small');
+    s2.textContent = 'Tryk for at ændre navn';
+    nameBtn.appendChild(s2);
+  } else nameBtn.textContent = 'Skriv dit navn';
+}
+
+function tegnListe() {
+  if (!top) return;
+  const liste = top.liste || [], mig = navn() || null;
+  Highscore.tegnListe($('hsListe'), liste, mig, 'Topliste', somMeter);
+  Highscore.tegnListe($('hsSlut'), liste, mig, 'Topliste', somMeter);
+}
+
+async function hentListe() {
+  const rod = $('hsListe');
+  if (!top) rod.innerHTML = '<p class="hs-venter">Henter toplisten…</p>';
+  try { top = await Highscore.hent(SPIL); tegnListe(); }
+  catch (e) { if (!top) Highscore.tegnFejl(rod); }
+}
+
+async function sendRekord(m) {
+  const n = navn();
+  if (!n || !top || !Highscore.kvalificerer(top, m)) return;
+  try {
+    const svar = await Highscore.send(SPIL, n, m);
+    if (svar.token) minRække.gem({ id: svar.id, token: svar.token });
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { /* toplisten er pynt – spillet kører videre */ }
+}
+
+async function omdøbMigSelv(nyt) {
+  const m = minRække.hent();
+  if (!m || !m.id || !m.token) return;
+  try {
+    const svar = await Highscore.omdoeb(SPIL, m.id, m.token, nyt);
+    if (svar.id !== m.id) minRække.gem(null);
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { minRække.gem(null); }
+}
+
+/* ---------- Knapper ---------- */
+$('startBtn').addEventListener('click', start);
+$('igenBtn').addEventListener('click', start);
+$('menuBtn').addEventListener('click', tilMenu);
+nameBtn.addEventListener('click', () => {
+  nameBtn.hidden = true; nameForm.hidden = false;
+  nameInput.value = navn();
+  setTimeout(() => nameInput.focus({ preventScroll: true }), 30);
+});
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const n = nameInput.value.replace(/\s+/g, ' ').trim().slice(0, 12);
+  const før = navn();
+  if (n) Highscore.navn.gem(n);
+  nameForm.hidden = true; nameBtn.hidden = false;
+  visNavn(); tegnListe();
+  if (n && før && n !== før) omdøbMigSelv(n);
+});
+
+/* ---------- Start ---------- */
+nulstil(); visNavn(); visHud(); hentListe();
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  seed, start, tilMenu, bot,
+  /** Sætter fingeren, som om nogen holdt på skærmen. */
+  saetHold(v) { holder = !!v && fase === 'spil'; return holder; },
+  /**
+   * Spoler `sek` sekunder frem med de samme faste skridt som spillet selv.
+   * `styring` kan være true/false (fingeren ligger stille) eller en funktion,
+   * der får turen og svarer true/false. Uden noget spiller botten.
+   */
+  frem(sek, styring) {
+    const vælg = typeof styring === 'function' ? styring : (styring == null ? bot : () => !!styring);
+    const n = Math.round(sek / DT);
+    for (let i = 0; i < n && fase === 'spil'; i++) { holder = !!vælg(s); skridt(DT); }
+    return this.state;
+  },
+  /** Kører turen færdig (til lavinen tager en) – bruges af testen. */
+  botTur(maksSek = 240) {
+    this.frem(maksSek, bot);
+    return this.state;
+  },
+  get state() {
+    return {
+      fase, seed, holder, best,
+      meter: s.meter, x: s.x, y: s.y, t: s.t,
+      fart: fart(s), paa: s.paa, luft: s.luft, længsteLuft: s.længsteLuft,
+      hop: s.hop, perfekte: s.perfekte, doed: s.doed,
+      lavine: s.lavine, afstand: s.x - s.lavine,
+      kanLette: kanLette(s.x),
+    };
+  },
+};
+</script>
+</body></html>

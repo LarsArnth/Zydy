@@ -1,0 +1,10 @@
+{
+  "navn": "Weeee!",
+  "beskrivelse": "Kælk ned ad bjerget: hold fingeren nede på de stejle stykker og slip på kanten, så flyver du. Hvor langt når du, før lavinen tager dig?",
+  "url": "/spil/weee/",
+  "orden": 145,
+  "højscore": {
+    "maks": 20000,
+    "unik": true
+  }
+}
