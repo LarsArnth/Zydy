@@ -27,6 +27,7 @@ export const KORT = [
   { id: 'legebyen', navn: 'Legebyen', url: '/spil/legebyen/' },
   { id: 'mitliv', navn: 'Mit liv', url: '/spil/mitliv/' },
   { id: 'papir', navn: 'Papirøen', url: '/spil/papir/' },
+  { id: 'hund', navn: 'Min hund', url: '/spil/hund/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -53,6 +54,7 @@ export const SPIL = {
   weee: { maks: 20000, unik: true },
   mitliv: { maks: 1000000, unik: true },
   papir: { maks: 100, unik: true },
+  hund: { maks: 50 },
 };
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).

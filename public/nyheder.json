@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 27,
+      "dato": "2026-09-13",
+      "spil": "hund",
+      "titel": "Min hund – din egen hvalp, der skal luftes",
+      "hvad": "Selma ønskede sig «Min hund», og nu står den her. Du henter en hvalp, giver den et navn og passer på den: mad i skålen, bolden du kaster (den henter den og lægger den ved dine fødder) og et bad, når den er blevet beskidt. Men en hund skal ud at gå — «Luftet» er den måler, der falder hurtigst, og den eneste, du ikke kan fylde op hjemme i stuen. Tryk på Gåtur, så ruller parken forbi, og du skal nå at trykke på det, I møder: lygtepæle at snuse til, pinde, en kat at gø ad, en anden hund at hilse på og posen, man samler op med. Mudderpytten er omvendt — dér skal du trække i snoren i tide, ellers skal hunden i bad bagefter. I hundeskolen kan den lære seks tricks: sit, giv pote, dæk, snurr rundt, spring og dødsmand. De åbner et ad gangen, efterhånden som hunden bliver klogere, og den lærer dem kun lidt ad gangen — og en sulten hund, der ikke har været ude, hører dårligt efter. Mønter tjener du ved at give hunden det, den mangler, og de kan bruges på pelse, hatte og halsbånd. Toplisten viser, hvis hund der er nået længst op i niveau.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 26,
       "dato": "2026-09-13",
       "spil": "",

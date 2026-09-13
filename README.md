@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet tyve spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet enogtyve spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv og Papirøen, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv og Papirøen, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -38,6 +38,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Klodser | `public/spil/klodser/` | Selmas ønske om Roblox, oversat til noget der kan ligge her: en 3D-verden af klodser (WebGL på canvas, ingen biblioteker) med sin egen klodsefigur set bagfra. Verdenen er en ø på 40 × 40 klodser med bakker, søer, strande og træer, og havet uden om går ud til horisonten. Man løber rundt med joystick + HOP, kigger ved at trække på skærmen, bygger og river ned med ti farver klodser, og kan skifte til første person. 12 guldklodser er gemt rundt omkring – hver med en lysstråle op i luften, så de kan findes – og tiden det tager at samle dem alle er scoren på toplisten (laveste vinder). Verdenen gemmes i `localStorage` som «frø + de klodser du selv har ændret», så det man har bygget står der næste gang. Man træder automatisk op ad én klods, så bakker ikke kræver hop. To filer: `verden.mjs` (verden, fysik og sigte, enhedstestet) og `index.html`. |
 | Miskmask | `public/spil/miskmask/` | Selmas ønske om «en verity app» – en *variety* app, altså én app med mange forskellige småting i. Det er blevet til 13 bittesmå spil i en pose: tryk på knappen, find den anderledes, prik ballonerne, fang den, det største tal, passer regnestykket, find farven, find bogstavet, hvor mange, tag stjernerne (ikke bomben), tryk N gange, tryk tallene i rækkefølge – og «RØR IKKE!», som man vinder ved at holde fingrene i skødet. Ét ad gangen, med 5 sekunder i starten og 2,2 ved fuld fart (runde 21), og tre liv. Alle minispil deler den samme regel – nogle felter er rigtige, resten er fælder – så et nyt minispil kun skal beskrive, hvad der står på skærmen. Posen trækkes som sedler, så alle 13 kommer, før nogen kommer igen. Score = antal klarede minispil, online topliste. To filer: `mikro.mjs` (de 13 spil og reglerne, enhedstestet) og `index.html`. Se «Miskmask – kvadratet og de 13 minispil» nedenfor. |
 | Min kat | `public/spil/kat/` | Selmas ønske om «My Cat»: et kæledyr man passer. Man adopterer en killing, giver den et navn, og så har den fire behov – mæt, glad, ren og frisk – som siver nedad med tiden, også mens man er væk. Man giver mad i skålen, kaster garnnøglet (tryk på gulvet, katten løber efter det), børster pelsen med fingeren og putter den i kurven, hvor stuen bliver mørk og månen kommer frem. Katten tegnes på canvas (ingen billeder) og blinker, logrer, spinder når man klapper den, og får snavsede pletter, hvis den ikke bliver børstet. Man tjener mønter og erfaring for **det, man faktisk fylder op** – en mæt kat giver ingenting, så man kan ikke trykke sig til mønter – og køber pelse, hatte og halsbånd i butikken. Score = kattens niveau, online topliste. To filer: `kat.mjs` (behov, erfaring, butik og den gemte kat, enhedstestet) og `index.html`. |
+| Min hund | `public/spil/hund/` | Selmas ønske, der bare lød «Min hund»: kæledyrsspillet ved siden af Min kat, men med det, der gør en hund til en hund. Man henter en hvalp, giver den et navn og passer fire behov – mæt, glad, ren og **luftet** – hvor «luftet» falder hurtigst og er det eneste, man ikke kan fylde op hjemme i stuen. Man giver mad i skålen, kaster bolden (hunden løber efter den og afleverer den ved dine fødder), sæber den ind i badekarret med fingeren – og går tur i parken, hvor lygtepæle, pinde, katte, en anden hund, mudderpytter og en pose kommer imod jer, og man skal nå at trykke på dem. Hunden kan desuden lære seks tricks i **hundeskolen** (sit, giv pote, dæk, snurr rundt, spring, dødsmand), som låses op efterhånden som den bliver klogere; et trick sidder ikke fast med det samme, og en hund, der er sulten og ikke har været ude, hører dårligere efter. Mønter og erfaring gives kun for **det, man faktisk fylder op**, så en mæt hund og et trick, den allerede kan, giver ingenting. Score = hundens niveau, online topliste. To filer: `hund.mjs` (behov, gåtur, tricks, butik og den gemte hund, enhedstestet) og `index.html`. Se «Min hund – gåturen og hundeskolen» nedenfor. |
 | Blokblast | `public/spil/blokblast/` | Selmas ønske om «Block blast»: et bræt på 8 × 8 og tre brikker ad gangen, som man trækker ned på brættet – ingen drejning, ingen tyngdekraft. Fylder man en hel række eller søjle, blæser den væk. Ét point pr. felt man lægger, 10 × linjer² for det man rydder, og en stime, der ganger op til ×2,5, hvis man rydder flere gange i træk. Nye brikker kommer først, når alle tre er brugt, og der trækkes om, indtil mindst én af dem kan være på brættet. Spillet er slut, når ingen af de tre kan ligge nogen steder; brættet gemmes undervejs, så man kan lukke fanen og fortsætte. Score = point, online topliste. To filer: `blokke.mjs` (bræt, brikker, rydning og point, enhedstestet) og `index.html`. Se «Blokblast – brikken over fingeren» nedenfor. |
 
 | Slotskamp | `public/spil/slotskamp/` | Selmas ønske om «Clash royale»: en kamp på to minutter mod en computermodstander. Banen er delt af en flod med to broer, og hver side har et kongetårn og to vagttårne. Man har otte kort i bunken, fire på hånden, og magi, der fylder op af sig selv (dobbelt de sidste 40 sekunder). Tropperne går selv frem, slår på det, de møder, og går efter tårnene; Kæmpen går udenom alt andet, Kanonen står stille, og Ildkugle og Lyn kan kastes hvor som helst. Et vagttårn giver én krone, kongetårnet vinder med det samme, og står det lige, spilles der forlænget, hvor det første tårn afgør det. Modstanderen bliver hårdere for hver anden sejr i træk (Nybegynder → Øvet → Skarp → Mester). Score = **sejre i træk**, online topliste. To filer: `kamp.mjs` (bane, kort, tropper, tårne og modstanderen, enhedstestet) og `index.html`. Se «Slotskamp – kampen og modstanderen» nedenfor. |
@@ -861,6 +862,54 @@ ved høj fart ville man teknisk set lette på hele den stejle side, så `KANT` i
 index.html kræver, at krumningen også er der. Ellers lyser det halve bjerg, og
 stregen holder op med at betyde «slip her».
 
+### Min hund – gåturen og hundeskolen
+
+Ønsket lød bare «Min hund». Der var allerede et Min kat, så det oplagte var at
+lave den samme slags spil – men en hund, der bare er en kat med slappe ører, er
+ikke noget værd. To ting bærer forskellen, og de bor begge i `hund.mjs`:
+
+**«Luftet» kan kun fyldes udenfor.** Det er det behov, der falder hurtigst
+(`FORFALD.tur`), og hverken mad, bold eller bad rører det. Trykker man på
+Gåtur, ruller parken forbi (`TUR_FART` spil-meter i sekundet, `TUR_LAENGDE`
+meter i alt), og `gaa()` skriver meterne ind i hunden. Bemærk **TUR_BID**:
+belønningen afregnes 12 meter ad gangen. Regnede vi pr. billede, ville
+erfaringen for én meter runde ned til nul, og man kunne gå en hel tur uden at få
+noget for den. Kilometertælleren (`hund.meter`) tæller kun det afregnede, så den
+og «luftet» aldrig kommer i utakt.
+
+Undervejs møder man seks slags ting (`TUR_TING`), og alle håndteres af den samme
+`turStop(hund, slags, ramt)`. Fem af dem giver noget, hvis man **når at trykke**
+– lygtepælen, pinden, katten, den anden hund og posen, man samler op efter
+hunden. Mudderpytten er vendt om (`undgaa: true`): dér er trykket redningen, og
+det er dét at lade være, der koster et bad. Det er den eneste ting i spillet,
+man kan tabe på, og derfor den eneste, der er værd at holde øje med.
+
+**Hundeskolen** er den anden halvdel. Seks tricks låses op efter niveau
+(`TRICKS[i].niveau`), så en nyhentet hvalp ikke kan spille dødsmand samme
+eftermiddag. Et trick sidder ikke fast med det samme: `traen()` flytter det
+`LAERT_OK` point, når hunden gør det rigtigt, og `LAERT_FEJL`, når den ikke gør
+– den lærer altså også af at kigge den anden vej – og ved `MESTRET` (100) kan
+den det. Chancen for at den gør det rigtigt (`trickChance`) vokser med, hvor
+godt den kan tricket, men **ganges med trivslen**: en sulten hund, der ikke har
+været ude i to dage, hører ikke efter. Det er dét, der binder tricksene sammen
+med resten af spillet i stedet for at være en knap for sig.
+
+To ting i UI'et er værd at huske:
+
+1. **Stuen løftes op, mens skolens ark er åbent.** Arket dækker den nederste
+   halvdel af skærmen, og dér stod hunden – man kunne læse, at den satte sig,
+   men ikke se det. Nu flytter `gulvY()` gulvlinjen op til 38 % af lærredet, så
+   længe `#skole` er åben, og hele stuen følger med. Testen tjekker det ved at
+   sammenligne gulvlinjen med arkets overkant.
+2. **Bolden bliver liggende, til man kaster igen.** Hunden løber kun efter en
+   bold, der ligger *væk* fra fødderne (`b.x > MIG_X + 0.08`); ellers hentede og
+   afleverede den i ét væk af sig selv, og så var der ingen leg i det.
+
+Som i Min kat gives mønter og erfaring kun for **forskellen** – `plej()`
+belønner det, der faktisk blev fyldt op. En mæt hund giver ingenting for mere
+mad, og et trick, hunden allerede kan, er gratis sjov uden løn. Ellers kunne
+børnene trykke sig til en guldkrone.
+
 ### Mit liv – huset, behovene og arbejdet
 
 Ønsket lød bare «The sims». Det er blevet et liv i ét hus set oppefra: behov,
@@ -1043,7 +1092,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, kapløbets stilling, forsidens kort og søgning, nyhedslisten, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, kapløbets stilling, forsidens kort og søgning, nyhedslisten, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
