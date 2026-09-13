@@ -40,15 +40,57 @@ await page.click('.id-send');
 await page.waitForSelector('#venner .v-kort:not(.v-tom)');
 assert.match(await page.locator('#venner').textContent(), /Du har ingen venner her endnu/);
 
+/* ---------- Den tomme liste siger, hvad man gør ---------- */
+// Olivers ønske «Bliv venner» var et signal om, at funktionen var svær at finde:
+// en ny spiller skal kunne spørge nogen uden først at gætte sig til en knap.
+await page.waitForSelector('#venner .v-hurtig-navn');
+assert.equal(await page.locator('#venner .v-find-stor').count(), 1, 'en stor knap, ikke kun mærket i hjørnet');
+assert.deepEqual((await page.locator('#venner .v-hurtig-navn').allTextContents()).slice().sort(),
+  ['Selma', 'Simon'], 'navnene kan trykkes direkte i panelet');
+await page.screenshot({ path: path.join(shots, 'venner-tom.png') });
+
+await page.locator('#venner .v-hurtig-navn', { hasText: 'Simon' }).click();
+await page.waitForSelector('#venner .v-besked-linje:text-matches("Vi har spurgt Simon")');
+assert.match(await page.locator('#venner .v-besked-linje').textContent(),
+  /Simon skal sige ja, før I er venner/, 'man får at vide, hvad der nu sker');
+assert.match(await page.locator('#venner .v-venter').textContent(), /Venter på svar fra Simon/);
+
+// … og man kan fortryde igen. Uden den knap blev et navn, man havde stavet
+// forkert, stående for evigt – ingen kunne svare på det, og pladsen var optaget.
+await page.click('#venner .v-sendt .v-fortryd');
+await page.waitForFunction(() => document.querySelectorAll('#venner .v-sendt').length === 0);
+assert.deepEqual(api.venner.rows, [], 'spørgsmålet er væk igen');
+
 /* ---------- Find en ven og spørg ---------- */
+// Simon er på zydy.dk lige nu, så han skal stå først dér, hvor man leder.
+await api.akt.markerAktiv('klientsimon', 'forsiden', Date.now(), 'Simon');
+await page.evaluate(() => document.dispatchEvent(new CustomEvent('zydy:aktivitet')));
+await page.waitForFunction(() => window.Venner.forslagFor('').some(f => f.online));
+
 await page.click('.v-find');
 await page.waitForSelector('.v-forslag');
-const forslag = await page.locator('.v-forslag-navn').allTextContents();
-assert.deepEqual(forslag.slice().sort(), ['Selma', 'Simon'], 'dem vi har set på siden foreslås');
+assert.deepEqual(await page.locator('.v-forslag-navn').allTextContents(), ['Simon', 'Selma'],
+  'dem vi har set på siden foreslås, og den der er her nu står først');
+assert.ok(await page.locator('.v-forslag-navn').first().evaluate(b => b.classList.contains('online')));
+
+// Man skal kunne finde en ven uden at kunne stave – børnene kan ikke.
+await page.fill('.v-input', 'sim');
+await page.waitForFunction(() => document.querySelectorAll('.v-forslag-navn').length === 1);
+assert.deepEqual(await page.locator('.v-forslag-navn').allTextContents(), ['Simon'], 'begyndelsen er nok');
+await page.fill('.v-input', 'selmq');
+await page.waitForFunction(() =>
+  document.querySelectorAll('.v-forslag-navn').length === 1
+  && document.querySelector('.v-forslag-navn').textContent === 'Selma');
+assert.deepEqual(await page.evaluate(() => window.Venner.forslagFor('SELMA ').map(f => f.navn)), ['Selma'],
+  'store bogstaver og et mellemrum for meget er den samme person');
+await page.fill('.v-input', '');
+await page.waitForFunction(() => document.querySelectorAll('.v-forslag-navn').length === 2);
 await page.screenshot({ path: path.join(shots, 'venner-find.png') });
 
 await page.locator('.v-forslag-navn', { hasText: 'Selma' }).click();
 await page.waitForSelector('.id-status:text-matches("Vi har spurgt Selma")');
+assert.match(await page.locator('.v-dlg .id-status').textContent(),
+  /Selma skal sige ja, før I er venner/, 'der står, at den anden skal sige ja');
 assert.deepEqual(api.venner.rows.map(r => [r.fra, r.til, r.svaret]), [['sofie', 'selma', null]],
   'spørgsmålet er gemt, men der er ikke svaret endnu');
 await page.click('.v-dlg .id-send');                       // "Luk"
@@ -122,6 +164,8 @@ await api.venner.spoerg('simon', 'sofie', 'Simon', 'Sofie');
 await page.evaluate(() => window.Venner.hent());
 await page.waitForSelector('#venner .v-spoerg');
 assert.match(await page.locator('.v-spoerg-tekst').textContent(), /Simon vil være din ven/);
+assert.equal(await page.locator('#venner .v-maerke').textContent(), '1 vil være din ven',
+  'et spørgsmål må ikke kunne overses – mærkatet står ved overskriften');
 await page.screenshot({ path: path.join(shots, 'venner-spoergsmaal.png') });
 
 await page.locator('.v-spoerg .v-vigtig').click();         // "Ja tak"
@@ -143,6 +187,8 @@ await page.fill('.v-input', 'Far');
 await page.click('.v-spoerg-knap');
 await page.waitForSelector('.id-status:text-matches("Vi har spurgt Far")');
 assert.ok(api.venner.rows.some(r => r.til === 'far' && !r.svaret), 'Far er spurgt');
+assert.match(await page.locator('.v-dlg .id-status').textContent(), /aldrig set Far her før/,
+  'et navn, vi aldrig har set, er som regel stavet forkert – og så siger vi det');
 await page.click('.v-dlg .id-send');                       // "Luk"
 await page.waitForSelector('.v-dlg[open]', { state: 'hidden' });
 assert.match(await page.locator('#venner .v-venter').textContent(), /Venter på svar fra Far/);

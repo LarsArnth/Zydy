@@ -39,10 +39,11 @@ test('sorterRaekker deler op i venner, dem der har spurgt mig, og dem jeg har sp
     { fra: 'sofie', til: 'selma', fraNavn: 'Sofie', tilNavn: 'Selma', svaret: '2026-01-01' },
     { fra: 'far', til: 'sofie', fraNavn: 'Far', tilNavn: 'Sofie', svaret: null },
     { fra: 'sofie', til: 'simon', fraNavn: 'Sofie', tilNavn: 'Simon', svaret: null },
+    { fra: 'anna', til: 'sofie', fraNavn: 'Anna', tilNavn: 'Sofie', svaret: null },
   ];
   assert.deepEqual(sorterRaekker(raekker, 'sofie'), {
     venner: [{ navn: 'Selma' }],
-    venter: [{ navn: 'Far' }],
+    venter: [{ navn: 'Anna' }, { navn: 'Far' }],   // alle tre lister står alfabetisk
     sendt: [{ navn: 'Simon' }],
   });
 });
@@ -139,6 +140,23 @@ test('forslagene er navne, vi har set på siden – uden mig selv og dem jeg ken
   await svarPaa(post({ navn: 'Sofie', ven: 'Selma' }), lager);
   assert.ok(!(await svarPaa(get('Sofie'), lager)).kendte.includes('Selma'),
     'en vi allerede har spurgt, foreslås ikke igen');
+});
+
+test('et spørgsmål til et navn, vi aldrig har set, siger til om det', async () => {
+  const lager = lagerMed({ scores: [{ spil: 'taarn', navn: 'Selma', score: 10 }] });
+
+  const kendt = await svarPaa(post({ navn: 'Sofie', ven: 'Selma' }), lager);
+  assert.equal(kendt.kendt, true, 'Selma har sat en rekord, så hende har vi set');
+
+  // "Selmq" er en tastefejl: spørgsmålet gemmes, men ingen vil nogensinde se det,
+  // og derfor skal den, der spurgte, have det at vide.
+  const ukendt = await svarPaa(post({ navn: 'Sofie', ven: 'Selmq' }), lager);
+  assert.equal(ukendt.kendt, false);
+  assert.deepEqual(ukendt.sendt.map(v => v.navn), ['Selma', 'Selmq'], 'begge står som sendt');
+
+  // Og man kan fortryde igen, så pladsen ikke er optaget for evigt.
+  const fortrudt = await svarPaa(post({ navn: 'Sofie', ven: 'Selmq', handling: 'nej' }), lager);
+  assert.deepEqual(fortrudt.sendt.map(v => v.navn), ['Selma']);
 });
 
 test('det samme navn foreslås kun én gang, uanset hvor mange rekorder det har', async () => {

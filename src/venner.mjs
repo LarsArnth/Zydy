@@ -7,7 +7,8 @@
 //        venter  = de har spurgt mig, og jeg skal svare
 //        sendt   = jeg har spurgt dem, og de har ikke svaret endnu
 //        kendte  = andre navne vi har set på siden (toplisterne + dem der er her nu),
-//                  minus mig selv og dem jeg allerede har et forhold til
+//                  minus mig selv og dem jeg allerede har et forhold til.
+//                  Klienten søger selv i listen, så den må gerne være lang.
 //
 //   POST /api/venner   body { navn, ven, handling }
 //        handling 'spoerg' (standard) → spørg om I skal være venner. Har den
@@ -15,6 +16,9 @@
 //        handling 'ja'                → sig ja til en der har spurgt mig
 //        handling 'nej'               → sig nej tak, eller fjern en ven igen
 //        → { ok: true, status: 'venner' | 'sendt' | 'væk', …samme felter som GET }
+//        Et nyt spørgsmål får desuden `kendt: true|false` — har vi aldrig set
+//        navnet på siden, er det som regel stavet forkert, og så bliver
+//        spørgsmålet aldrig set af nogen. Klienten siger det til den, der spurgte.
 //
 // Der er ingen login på zydy.dk — man er det navn, man har skrevet på forsiden
 // ('zydy.navn'). Så et venskab er en aftale mellem to navne, ikke mellem to
@@ -30,7 +34,10 @@
 import { rensNavn } from './highscore.mjs';
 
 export const VENNER_MAKS = 50;        // hvor mange venner + ubesvarede spørgsmål én person må have
-export const KENDTE_MAKS = 30;        // hvor mange navne "Find en ven" foreslår
+// Forslagene er dem, man kan søge i på forsiden, så listen skal være lang nok
+// til at en ven, der ikke har spillet i et par dage, stadig er med. Navne er
+// korte, så 60 af dem fylder under to kilobyte.
+export const KENDTE_MAKS = 60;        // hvor mange navne "Find en ven" foreslår
 
 /** Nøglen et navn kendes på: små bogstaver, så "Sofie" og "sofie" er samme person. */
 export const noegle = navn => navn.toLocaleLowerCase('da-DK');
@@ -64,7 +71,7 @@ export function sorterRaekker(raekker, k) {
     else sendt.push({ navn });                       // jeg har spurgt dem
   }
   const efterNavn = (a, b) => a.navn.localeCompare(b.navn, 'da-DK');
-  return { venner: venner.sort(efterNavn), venter, sendt: sendt.sort(efterNavn) };
+  return { venner: venner.sort(efterNavn), venter: venter.sort(efterNavn), sendt: sendt.sort(efterNavn) };
 }
 
 /* ---------- Lager ---------- */
@@ -190,5 +197,9 @@ export async function haandterVenner(request, lager, beskeder = null) {
   if (dine.length >= VENNER_MAKS) return fejl(400, dig + ' har rigeligt med venner');
 
   await lager.spoerg(a, b, mig, dig);
-  return status(lager, mig, { status: 'sendt' });
+  // Har vi aldrig set navnet på siden, er det næsten altid en stavefejl – og et
+  // spørgsmål til et navn, ingen bruger, bliver aldrig besvaret. Vi gemmer det
+  // alligevel (vennen kan være helt ny), men siger det til den, der spurgte.
+  const kendt = (await lager.kendteNavne()).some(n => noegle(n) === b);
+  return status(lager, mig, { status: 'sendt', kendt });
 }

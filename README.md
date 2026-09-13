@@ -333,6 +333,42 @@ ven, kan man se hvor hen er, [skrive til hen](#skriv-med-en-ven), hoppe med ind
 i det spil, hen er i gang med — og invitere hen til at spille *sammen*, se
 [Spil sammen](#spil-sammen).
 
+#### At blive venner — hvad en ny spiller ser
+
+Oliver ønskede sig «Bliv venner», selv om funktionen fandtes: den var bare
+svær at få øje på og besværlig at bruge. Fem ting løser det, og de er værd at
+holde fast i, hvis panelet bygges om:
+
+1. **Den tomme liste siger, hvad man gør.** Har man ingen venner endnu, står
+   der ikke bare «du har ingen»: der står et par navne (`.v-hurtig-navn`), man
+   kan trykke på og spørge med det samme, og en stor gul «＋ Find en ven»
+   (`.v-find-stor`). Den lille knap oppe i hjørnet er nok for en, der kender
+   panelet — ikke for en, der aldrig har set det.
+2. **Man skal ikke kunne stave.** «Find en ven» er et *søgefelt*, ikke et
+   skrivefelt: listen filtreres, mens man skriver. `form()` skærer store
+   bogstaver, accenter, mellemrum, punktummer og emoji væk (`Søren B.` →
+   `sorenb`), og `traef()` rangerer begyndelsen før midten før **én tastefejl**
+   (Levenshtein ≤ 1 i navne på mindst fire bogstaver). Trykker man Spørg med et
+   navn, vi kender, sendes hens egen stavemåde (`retStavemaade`), så ja'et
+   lander det rigtige sted.
+3. **De, der er her lige nu, står først** og har en grøn prik — det er dem, man
+   kan nå at aftale det med. Det koster ingenting: hvem der er online, ligger
+   allerede i `hvorErDe` fra forsidens `/api/oversigt`.
+4. **Man får at vide, hvad der så sker**: «Vi har spurgt Selma. Selma skal sige
+   ja, før I er venner – spørgsmålet står og venter, til Selma er på zydy.dk
+   igen.» Og har vi aldrig set navnet på siden (`kendt: false` fra API'et), er
+   det næsten altid en tastefejl — så står der også det, for ellers venter man
+   på et svar, der aldrig kan komme.
+5. **Man kan fortryde.** Hver «Venter på svar fra …» har en *Fortryd*
+   (`handling: 'nej'`). Før kunne et forkert stavet navn hverken besvares eller
+   fjernes og blev stående på en af de 50 pladser for evigt — det var den
+   eneste rigtige blindgyde i flowet.
+
+Dertil: et ubesvaret spørgsmål får et mærkat ved overskriften («1 vil være din
+ven», `.v-maerke`) på samme måde som «✨ Nyt på Zydy», og mens nogen venter på
+et ja — i den ene eller den anden retning — hentes listen hvert 12. sekund i
+stedet for hvert minut, for dér sidder de to som regel ved siden af hinanden.
+
 Der er **ingen konti og intet login** på zydy.dk, og det bliver der ikke. Man
 er det navn, man har skrevet på forsiden (`zydy.navn`), så et venskab er en
 aftale mellem to *navne*. Det er nok her: navnene står i forvejen offentligt på
@@ -342,8 +378,8 @@ ville gøre siden meget tungere at bruge for et barn med en iPad.
 | Del | Fil | Hvad |
 |---|---|---|
 | Database | tabellen `venner` i `schema.sql` | Én række pr. par: `venner(fra, til, fra_navn, til_navn, oprettet, svaret)`. `fra`/`til` er navnet med små bogstaver (nøglen), `fra_navn`/`til_navn` er stavemåden til visning. `svaret` er tomt, indtil den anden har sagt ja. |
-| API | `src/worker.mjs` → `src/venner.mjs` | `GET /api/venner?navn=Sofie` giver `venner`, `venter` (de har spurgt mig), `sendt` (jeg har spurgt dem) og `kendte` (navne vi har set på siden, som forslag). `POST /api/venner` med `{navn, ven, handling}`: `'spoerg'` (standard), `'ja'` og `'nej'` (som også fjerner en ven igen). |
-| Klient | `public/venner.js` + `<section id="venner">` i `public/index.html` | Tegner panelet og henter listen hvert minut. Hvem der er online, kommer gratis fra forsidens eget kald til `/api/oversigt`, som sendes videre som hændelsen `zydy:oversigt` — så det samme ikke hentes to gange. Dialogen genbruger stilen fra `/ideer.js`, der altid indlæses først. |
+| API | `src/worker.mjs` → `src/venner.mjs` | `GET /api/venner?navn=Sofie` giver `venner`, `venter` (de har spurgt mig), `sendt` (jeg har spurgt dem) og `kendte` (indtil `KENDTE_MAKS` = 60 navne, vi har set på siden — klienten søger selv i dem). `POST /api/venner` med `{navn, ven, handling}`: `'spoerg'` (standard), `'ja'` og `'nej'` (som også fortryder et spørgsmål og fjerner en ven igen). Et nyt spørgsmål svarer desuden `kendt: true|false` — har vi aldrig set navnet, er det som regel stavet forkert. |
+| Klient | `public/venner.js` + `<section id="venner">` i `public/index.html` | Tegner panelet og henter listen hvert minut (hvert 12. sekund, mens nogen venter på et ja). Hvem der er online, kommer gratis fra forsidens eget kald til `/api/oversigt`, som sendes videre som hændelsen `zydy:oversigt` — så det samme ikke hentes to gange. Dialogen genbruger stilen fra `/ideer.js`, der altid indlæses først. `form`, `traef` og `forslagFor` ligger på `window.Venner`, så testen kan nå dem. |
 
 Værnet mod pjat er, at **begge** skal sige ja, at man ikke kan være ven med sig
 selv, og at ingen kan have mere end 50 rækker (`VENNER_MAKS`). Store og små
@@ -1321,9 +1357,10 @@ har brug for en bestemt startliste. API'erne testes desuden hver for sig i
 `test/unit/rum.test.mjs` og `test/unit/beskeder.test.mjs`. Forsiden har seks
 browser-tests: `test/forside.test.mjs` (navn, ønsker, «hvem er her»),
 `test/soeg.test.mjs` (søgefeltet over listen),
-`test/venner.test.mjs` (spørg, sig ja, se hvem der spiller hvad, giv en ven et
-kælenavn, fjern en ven — den anden part spilles af testen selv gennem
-`api.venner`),
+`test/venner.test.mjs` (den tomme liste med navne til ét tryk, søg uden at
+stave rigtigt, fortryd et spørgsmål, spørg, sig ja, se hvem der spiller hvad,
+giv en ven et kælenavn, fjern en ven — den anden part spilles af testen selv
+gennem `api.venner`),
 `test/nyheder.test.mjs` («Nyt på Zydy», hvor en ekstra nyhed serveres gennem
 `page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til),
 `test/beskeder.test.mjs` («skriv med en ven») og

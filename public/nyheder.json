@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 32,
+      "dato": "2026-09-13",
+      "spil": "",
+      "titel": "Det er blevet nemt at blive venner",
+      "hvad": "Oliver ønskede sig «Bliv venner» — og man kunne faktisk godt i forvejen, det var bare svært at finde ud af. Nu står der i «Dine venner» øverst på forsiden, hvad man gør, hvis man ikke har nogen endnu: et par navne, du kan trykke på med det samme, og en stor «Find en ven». Inde i «Find en ven» kan du nu søge, og du behøver ikke stave rigtigt — skriv «sel», og Selma dukker op, og skriver du forkert med ét bogstav, finder vi hende alligevel. De, der er på zydy.dk lige nu, står øverst med en grøn prik. Når du har spurgt nogen, står der tydeligt, hvad der sker: den anden skal sige ja, og spørgsmålet venter, til hen er på zydy.dk igen. Har nogen spurgt dig, lyser der et mærkat ved «Dine venner», så du ikke overser det. Og fortryder du — eller kom du til at stave navnet forkert — kan du trykke «Fortryd» og spørge en anden.",
+      "oensket": "Oliver"
+    },
+    {
       "nr": 31,
       "dato": "2026-09-13",
       "spil": "",

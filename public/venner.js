@@ -9,7 +9,16 @@
     • invitationer: "Selma vil spille Kryds og bolle med dig" — med Hop med!
     • dine venner, og om de er her lige nu ("Selma spiller Obby")
     • dem der har spurgt, om I skal være venner — med Ja tak / Nej tak
+    • dem du selv har spurgt, med Fortryd
     • en knap til at finde en ven blandt de navne, vi har set på siden
+
+  Har man ingen venner endnu, står der i stedet, hvad man gør: et par navne man
+  kan trykke på med det samme, og en stor "Find en ven". Det er hele grunden til,
+  at panelet findes — «Bliv venner» var Olivers ønske, og funktionen var der
+  allerede; den var bare svær at få øje på.
+
+  I "Find en ven" *søger* man: man skal ikke kunne stave vennens navn rigtigt,
+  for det kan børnene ikke. Se `form()` og `traef()` nedenfor.
 
   Trykker man på en ven, kan man skrive til hen (/beskeder.js), give hen et
   kælenavn — og invitere hen til at spille sammen. Der er to slags: de spil, hvor man deler ét parti (data-sammen:
@@ -41,7 +50,10 @@ const KEY_KAELE = 'zydy.kaelenavne'; // { "sofie": { "selma": "Smølfen" } } –
 const NAVN_MAKS = 12;
 const KAELE_MAKS = 16;
 const OPDATER_MS = 60_000;           // hvor tit vi spørger efter nye venner og spørgsmål
+const HURTIG_MS = 12_000;            // … men tiere, mens nogen venter på et ja (så sidder man tit sammen)
 const RUM_MS = 5_000;                // … og efter invitationer til at spille sammen (de haster)
+const FORSLAG_MAKS = 14;             // hvor mange navne der vises ad gangen i "Find en ven"
+const BESKED_MS = 20_000;            // hvor længe "Vi har spurgt Selma …" står i panelet
 
 const laesNavn = () => {
   try { return (localStorage.getItem(KEY_NAVN) || '').trim(); } catch (e) { return ''; }
@@ -92,6 +104,69 @@ function saetKaelenavn(navn, nyt) {
 /** Det, en ven hedder på skærmen: kælenavnet, hvis der er et. */
 const visNavn = navn => kaelenavn(navn) || navn;
 
+/* ---------- At finde en ven uden at stave rigtigt ---------- */
+/*
+  Før kunne man kun trykke på et navn i en uordnet bunke eller skrive det
+  *præcis* rigtigt i et felt. Skrev man forkert, blev spørgsmålet sendt til et
+  navn, ingen bruger — og så skete der aldrig noget. Derfor sammenlignes navne
+  på en form uden store bogstaver, accenter, mellemrum og tegn, og der er plads
+  til én tastefejl i et navn på mindst fire bogstaver.
+*/
+
+/** Navnet som det sammenlignes: "Søren B." og "soren b" er det samme. */
+function form(s) {
+  return String(s || '')
+    .toLocaleLowerCase('da-DK')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')       // é → e, å → a
+    .replace(/ø/g, 'o').replace(/æ/g, 'ae')
+    .replace(/[^a-z0-9]/g, '');                            // mellemrum, punktummer, emoji
+}
+
+/** Levenshtein-afstand, men kun op til `maks` – derover er svaret lige meget. */
+function afstand(a, b, maks) {
+  if (Math.abs(a.length - b.length) > maks) return maks + 1;
+  let forrige = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const raekke = [i];
+    let mindst = i;
+    for (let j = 1; j <= b.length; j++) {
+      raekke[j] = Math.min(forrige[j] + 1, raekke[j - 1] + 1, forrige[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (raekke[j] < mindst) mindst = raekke[j];
+    }
+    if (mindst > maks) return maks + 1;                    // hele rækken er for langt væk
+    forrige = raekke;
+  }
+  return forrige[b.length];
+}
+
+/** Hvor godt et navn passer på det, man har skrevet. 0 er bedst, null = passer ikke. */
+function traef(navn, soegt) {
+  const n = form(navn), s = form(soegt);
+  if (!s || n === s) return 0;
+  if (n.startsWith(s)) return 1;
+  if (n.includes(s)) return 2;
+  if (s.length >= 4 && afstand(n, s, 1) <= 1) return 3;    // én tastefejl er tilgivet
+  return null;
+}
+
+/**
+ * Forslagene til "Find en ven": bedste træf først, så dem der er på zydy.dk
+ * lige nu (dem kan man nå at aftale det med), og til sidst alfabetisk.
+ * `soegt` må være tomt – så er det hele listen.
+ */
+function forslagFor(soegt) {
+  return (data.kendte || [])
+    .map(navn => ({ navn, rang: traef(navn, soegt), online: hvor(navn).online }))
+    .filter(f => f.rang !== null)
+    .sort((a, b) => a.rang - b.rang || (b.online - a.online) || a.navn.localeCompare(b.navn, 'da-DK'));
+}
+
+/** Det navn, vi kender, som er stavet som `soegt` – ellers teksten selv. */
+function retStavemaade(soegt) {
+  const f = (data.kendte || []).find(n => form(n) === form(soegt));
+  return f || soegt;
+}
+
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -130,7 +205,8 @@ async function kald(krop) {
 }
 
 /** Henter listen igen; fejl er lige meget her, så står der bare det samme som før. */
-function hent() { kald(null).catch(() => {}); }
+let sidstHentet = 0;
+function hent() { sidstHentet = Date.now(); kald(null).catch(() => {}); }
 
 /* ---------- Hvem er hvor ---------- */
 
@@ -262,6 +338,51 @@ function tegnBeskeder(kort) {
 
 /* ---------- Panelet ---------- */
 
+// Svaret på det seneste tryk ("Vi har spurgt Selma …"). Det står i panelet, fordi
+// man kan spørge derfra – og forsvinder af sig selv, så det ikke står i morgen.
+let besked = '', beskedTid = 0;
+function sigTil(tekst) { besked = tekst; beskedTid = Date.now(); tegn(); }
+
+/**
+ * Spørger `hvem`, om I skal være venner, og fortæller hvad der så sker.
+ * `naar` får beskeden (dialogen viser den selv); uden den står den i panelet.
+ */
+function spoergOm(hvem, naar) {
+  const vis = t => (naar ? naar(t) : sigTil(t));
+  vis('Spørger ' + hvem + '…');
+  kald({ ven: hvem, handling: 'spoerg' })
+    .then(d => {
+      if (d.status === 'venner') { vis('I er venner nu – ' + hvem + ' havde allerede spurgt dig!'); return; }
+      // Det vigtigste er, at man ikke står og venter på noget, der allerede er sket:
+      // den anden skal sige ja, og spørgsmålet står, til hen er her igen.
+      let t = 'Vi har spurgt ' + hvem + '. ' + hvem + ' skal sige ja, før I er venner'
+        + ' – spørgsmålet står og venter, til ' + hvem + ' er på zydy.dk igen.';
+      if (d.kendt === false) {
+        t += ' Men vi har aldrig set ' + hvem + ' her før: er navnet stavet, som ' + hvem + ' selv skriver det?';
+      }
+      vis(t);
+    })
+    .catch(err => vis(err.message));
+}
+
+/**
+ * "Venter på svar fra Far · Fortryd". Fortryd-knappen er vigtig: uden den blev
+ * et navn, man havde stavet forkert, stående for evigt og optog en af de 50
+ * pladser, uden at nogen nogensinde kunne svare på det.
+ */
+function sendtRaekke(navn, efter) {
+  const raekke = el('div', 'v-spoerg v-sendt');
+  raekke.appendChild(el('span', 'v-spoerg-tekst v-venter', 'Venter på svar fra ' + navn));
+  const svar = el('span', 'v-svar');
+  svar.appendChild(knap('v-knap v-fortryd', 'Fortryd', () => {
+    kald({ ven: navn, handling: 'nej' })
+      .then(() => { besked = ''; tegn(); if (efter) efter(); })   // «Vi har spurgt …» passer ikke længere
+      .catch(() => {});
+  }));
+  raekke.appendChild(svar);
+  return raekke;
+}
+
 function tegn() {
   const rod = document.getElementById('venner');
   if (!rod) return;
@@ -283,7 +404,13 @@ function tegn() {
   const kort = el('div', 'v-kort');
   const top = el('div', 'v-top');
   top.appendChild(el('h2', 'v-titel', 'Dine venner'));
-  top.appendChild(knap('v-knap v-find', '＋ Find en ven', findDialog));
+  // Et spørgsmål må ikke kunne overses – mærkatet lyser ligesom "✨ Nyt på Zydy".
+  if (data.venter.length) {
+    top.appendChild(el('span', 'v-maerke', data.venter.length === 1
+      ? '1 vil være din ven'
+      : data.venter.length + ' vil være dine venner'));
+  }
+  top.appendChild(knap('v-knap v-find', '＋ Find en ven', () => findDialog()));
   kort.appendChild(top);
 
   // Allerøverst: "Selma vil spille Kryds og bolle med dig" – det haster mest.
@@ -320,14 +447,41 @@ function tegn() {
     });
     kort.appendChild(liste);
   } else if (!data.venter.length) {
-    kort.appendChild(el('p', 'v-under', 'Du har ingen venner her endnu. Tryk på «Find en ven» og spørg en.'));
+    // Den vigtigste skærm på hele panelet: en der aldrig har set det før, skal
+    // kunne se hvad man gør – og helst kunne gøre det med ét tryk.
+    kort.appendChild(el('p', 'v-under',
+      'Du har ingen venner her endnu. Bliv venner med en, der også spiller – så kan I se '
+      + 'hinanden på forsiden, skrive sammen og spille sammen.'));
+    const hurtige = forslagFor('').slice(0, 4);
+    if (hurtige.length) {
+      kort.appendChild(el('p', 'v-under v-hurtig-titel', 'Er en af dem her din ven? Tryk, så spørger vi:'));
+      const liste = el('div', 'v-hurtige');
+      hurtige.forEach(f => liste.appendChild(navneKnap(f, 'v-hurtig-navn', () => spoergOm(f.navn))));
+      kort.appendChild(liste);
+    }
+    kort.appendChild(knap('v-knap v-vigtig v-find-stor', '＋ Find en ven', () => findDialog()));
   }
 
-  if (data.sendt.length) {
-    kort.appendChild(el('p', 'v-venter', 'Venter på svar fra ' + data.sendt.map(v => v.navn).join(', ')));
-  }
+  // Dem jeg selv har spurgt – med en vej ud, hvis jeg skrev navnet forkert.
+  data.sendt.forEach(v => kort.appendChild(sendtRaekke(v.navn)));
+
+  if (besked && Date.now() - beskedTid < BESKED_MS) kort.appendChild(el('p', 'v-under v-besked-linje', besked));
+  else besked = '';
 
   rod.appendChild(kort);
+}
+
+/** Et navn man kan trykke på for at spørge. Grøn prik = hen er her lige nu. */
+function navneKnap(f, cls, naar) {
+  const b = knap('v-knap ' + cls + (f.online ? ' online' : ''), null, naar);
+  if (f.online) {
+    const prik = el('span', 'v-prik');
+    prik.setAttribute('aria-hidden', 'true');
+    b.appendChild(prik);
+  }
+  b.appendChild(el('span', 'v-forslag-tekst', f.navn));
+  if (f.online) b.setAttribute('aria-label', f.navn + ' (er her nu)');
+  return b;
 }
 
 /* ---------- Dialoger (samme stil som /ideer.js) ---------- */
@@ -347,44 +501,60 @@ function aabn(tegnIndhold) {
   if (!dlg.open) dlg.showModal();
 }
 
-/** "Find en ven": navnene vi kender, og et felt til et der ikke står på listen. */
+/**
+ * "Find en ven": et søgefelt og de navne, vi har set på siden.
+ *
+ * Listen filtreres, mens man skriver, og man behøver ikke ramme stavemåden
+ * (`traef()`). Kun listen og "venter på svar" tegnes om undervejs, så feltet
+ * beholder tastaturet og markøren — det var ellers det, der gjorde det
+ * besværligt at lede efter nogen på en telefon.
+ */
 function findDialog() {
+  let soegt = '';
   aabn(rod => {
     rod.appendChild(el('h2', 'id-titel', 'Find en ven'));
     rod.appendChild(el('p', 'id-under',
-      'Tryk på et navn, så spørger vi. Når den anden siger ja, kan I se hinanden her på forsiden.'));
+      'Tryk på et navn, så spørger vi. I er venner, når den anden siger ja – og så kan I se '
+      + 'hinanden på forsiden, skrive sammen og spille sammen.'));
 
     const status = el('p', 'id-status', '');
+    const liste = el('div', 'v-forslag');
+    const sendtBoks = el('div', 'v-sendt-liste');
 
-    // Efter et tryk tegnes dialogen forfra med den nye liste (navnet er flyttet
-    // fra forslagene over i "venter på svar"), og beskeden skrives i den nye.
+    const tegnSendt = () => {
+      sendtBoks.innerHTML = '';
+      data.sendt.forEach(v => sendtBoks.appendChild(sendtRaekke(v.navn, () => { tegnSendt(); tegnListe(); })));
+    };
+
     function spoerg(hvem) {
-      status.textContent = 'Spørger ' + hvem + '…';
-      kald({ ven: hvem, handling: 'spoerg' })
-        .then(d => {
-          findDialog();
-          const p = indhold.querySelector('.id-status');
-          if (p) p.textContent = d.status === 'venner'
-            ? 'I er venner nu – ' + hvem + ' havde allerede spurgt dig!'
-            : 'Vi har spurgt ' + hvem + '. Nu venter vi på svar.';
-        })
-        .catch(err => { status.textContent = err.message; });
+      spoergOm(hvem, t => { status.textContent = t; tegnListe(); tegnSendt(); });
     }
 
-    if (data.kendte.length) {
-      const liste = el('div', 'v-forslag');
-      data.kendte.forEach(n => liste.appendChild(knap('v-knap v-forslag-navn', n, () => spoerg(n))));
-      rod.appendChild(liste);
-    } else {
-      rod.appendChild(el('p', 'v-under', 'Vi kender ikke andre navne endnu – skriv det selv herunder.'));
+    function tegnListe() {
+      liste.innerHTML = '';
+      const fundet = forslagFor(soegt);
+      fundet.slice(0, FORSLAG_MAKS).forEach(f =>
+        liste.appendChild(navneKnap(f, 'v-forslag-navn', () => spoerg(f.navn))));
+      if (!fundet.length) {
+        liste.appendChild(el('p', 'v-under v-intet', soegt
+          ? 'Vi kender ingen, der hedder noget i retning af «' + soegt + '». Tryk på Spørg, '
+            + 'hvis du er sikker på, at det er sådan, hen skriver sit navn.'
+          : 'Vi har ikke set andre navne på siden endnu. Skriv navnet herunder, så spørger vi.'));
+      } else if (fundet.length > FORSLAG_MAKS) {
+        liste.appendChild(el('p', 'v-under v-flere', 'Og ' + (fundet.length - FORSLAG_MAKS)
+          + ' til – skriv lidt af navnet, så finder vi det.'));
+      }
     }
 
+    // Søgefeltet er også feltet, man skriver et helt nyt navn i: har man skrevet
+    // en, vi kender, spørger vi med *hens* stavemåde, så ja'et lander rigtigt.
     const form = el('form', 'id-form v-form');
     const input = el('input', 'id-input v-input');
-    input.type = 'text'; input.maxLength = NAVN_MAKS; input.placeholder = 'Skriv et navn';
-    input.setAttribute('aria-label', 'Navnet på den du vil være venner med');
+    input.type = 'text'; input.maxLength = NAVN_MAKS; input.placeholder = 'Søg efter et navn';
+    input.setAttribute('aria-label', 'Søg efter den du vil være venner med');
     input.autocapitalize = 'words'; input.spellcheck = false;
-    input.setAttribute('enterkeyhint', 'done'); input.setAttribute('autocomplete', 'off');
+    input.setAttribute('enterkeyhint', 'search'); input.setAttribute('autocomplete', 'off');
+    input.addEventListener('input', () => { soegt = input.value; tegnListe(); });
     form.appendChild(input);
     const spoergKnap = el('button', 'v-knap v-vigtig v-spoerg-knap', 'Spørg');
     spoergKnap.type = 'submit';
@@ -392,16 +562,16 @@ function findDialog() {
     form.addEventListener('submit', e => {
       e.preventDefault();
       const n = input.value.trim();
-      if (!n) { status.textContent = 'Skriv et navn først.'; input.focus(); return; }
-      spoerg(n);
+      if (!n) { status.textContent = 'Skriv et navn først, eller tryk på et af navnene.'; input.focus(); return; }
+      spoerg(retStavemaade(n));
     });
     rod.appendChild(form);
 
+    rod.appendChild(liste);
     rod.appendChild(status);
-
-    if (data.sendt.length) {
-      rod.appendChild(el('p', 'v-venter', 'Venter på svar fra ' + data.sendt.map(v => v.navn).join(', ')));
-    }
+    rod.appendChild(sendtBoks);
+    tegnListe();
+    tegnSendt();
 
     const raekke = el('div', 'id-knapper');
     raekke.appendChild(knap('id-knap id-send', 'Luk', () => dlg.close()));
@@ -530,6 +700,18 @@ const css = `
 .v-tom{text-align:left}
 .v-tom .v-knap{margin-top:12px}
 
+/* "2 vil være dine venner" ved siden af overskriften – samme greb som "3 nye" i ✨ Nyt på Zydy */
+.v-maerke{flex:0 0 auto;font-size:13px;font-weight:800;border-radius:999px;padding:3px 10px;
+  background:var(--sun,#ffd447);color:#1c1f4a;animation:puls 1.8s ease-in-out infinite}
+
+/* Den tomme liste: her skal en ny spiller kunne se, hvad man gør */
+.v-hurtig-titel{margin-top:12px;font-size:14px}
+.v-hurtige{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.v-hurtig-navn{font-size:16px;padding:10px 16px;min-height:44px}
+.v-find-stor{display:block;width:100%;margin-top:14px;font-size:17px;padding:14px;min-height:52px}
+.v-besked-linje{margin-top:12px;color:var(--text,#fff7e6);background:rgba(255,212,71,.12);
+  border-radius:16px;padding:10px 12px;font-size:14px}
+
 /* "Selma vil være din ven" – skal kunne besvares med ét tryk */
 .v-spoerg{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;
   background:rgba(255,212,71,.12);border-radius:18px;padding:10px 12px}
@@ -552,11 +734,23 @@ const css = `
 .v-hvor{font-size:12px}
 
 /* Dialogen "Find en ven" */
-.v-forslag{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
+.v-forslag{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px;max-height:38vh;overflow-y:auto;
+  -webkit-overflow-scrolling:touch}
 .v-forslag-navn{background:rgba(255,255,255,.09);font-size:16px;padding:10px 16px;min-height:44px}
+/* Dem der er her lige nu, står først og lyser – dem kan man nå at aftale det med */
+.v-forslag-navn.online,.v-hurtig-navn.online{background:rgba(94,224,168,.18);color:#bff7e0}
+.v-forslag-navn.online:hover,.v-hurtig-navn.online:hover{background:rgba(94,224,168,.3)}
+.v-forslag-navn,.v-hurtig-navn{display:inline-flex;align-items:center;gap:8px}
+.v-forslag-navn .v-prik,.v-hurtig-navn .v-prik{opacity:1;animation:puls 1.8s ease-in-out infinite}
+.v-intet,.v-flere{flex:1 0 100%;margin:0}
 .v-form{display:flex;gap:8px;align-items:stretch}
 .v-input{flex:1;min-width:0;font-size:17px;text-align:left;padding:12px 14px}
 .v-spoerg-knap{flex:0 0 auto;font-size:16px;padding:0 18px}
+
+/* "Venter på svar fra Far · Fortryd" – roligere end et spørgsmål, man skal svare på */
+.v-sendt{background:rgba(255,255,255,.06)}
+.v-sendt .v-venter{margin:0;font-size:14px;font-weight:600;color:var(--muted,#a9acd6)}
+.v-fortryd{font-size:13px;padding:6px 12px;min-height:36px}
 .v-spil-med{display:block;margin-top:14px;text-align:center;text-decoration:none;line-height:24px;
   background:rgba(255,255,255,.09);color:var(--text,#fff7e6)}
 
@@ -586,7 +780,8 @@ const css = `
 .v-kap-spil{background:rgba(94,224,168,.16);color:#bff7e0;font-size:15px;padding:10px 14px}
 .v-kap-spil:hover{background:rgba(94,224,168,.28)}
 @media (prefers-reduced-motion:reduce){ .v-rum .v-hopmed{animation:none} }
-@media (prefers-reduced-motion:reduce){ .v-ven.online .v-prik{animation:none} }
+@media (prefers-reduced-motion:reduce){ .v-ven.online .v-prik,.v-forslag-navn .v-prik,
+  .v-hurtig-navn .v-prik,.v-maerke{animation:none} }
 `;
 const style = document.createElement('style');
 style.textContent = css;
@@ -608,7 +803,13 @@ function start() {
     rum = [];
     tegn(); hent(); hentRum();
   });
-  setInterval(() => { if (document.visibilityState === 'visible') hent(); }, OPDATER_MS);
+  // Venter nogen på et ja – enten mig eller den anden – kigger vi tiere efter:
+  // det er lige dér, de to som regel sidder ved siden af hinanden og prøver.
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    const hvornaar = data.venter.length || data.sendt.length ? HURTIG_MS : OPDATER_MS;
+    if (Date.now() - sidstHentet >= hvornaar) hent();
+  }, 5_000);
   // Invitationer hentes tiere: den anden står og venter på, at man hopper med.
   setInterval(() => { if (document.visibilityState === 'visible') hentRum(); }, RUM_MS);
   document.addEventListener('visibilitychange', () => {
@@ -621,6 +822,7 @@ else start();
 
 window.Venner = {
   hent, tegn, hentRum, kaelenavn, saetKaelenavn, visNavn, ulaest,
+  form, traef, forslagFor, findDialog, spoergOm,
   get data() { return data; },
   get rum() { return rum; },
 };
