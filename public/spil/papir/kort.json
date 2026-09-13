@@ -1,0 +1,20 @@
+{
+  "navn": "Papirøen",
+  "beskrivelse": "Kør ud på papiret og hjem igen, så bliver hele sløjfen din. Men pas på: kører nogen over din streg, er du ude.",
+  "nøgleord": [
+    "paper io",
+    "paperio",
+    "papir io",
+    "erobre",
+    "område",
+    "farve papiret",
+    "klat"
+  ],
+  "url": "/spil/papir/",
+  "orden": 150,
+  "kapløb": true,
+  "højscore": {
+    "maks": 100,
+    "unik": true
+  }
+}
