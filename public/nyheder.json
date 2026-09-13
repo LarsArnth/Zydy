@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 16,
+      "dato": "2026-09-13",
+      "spil": "weee",
+      "titel": "Nyt spil: Weeee!",
+      "hvad": "Kælk ned ad et stejlt bjerg. Hold fingeren nede, når det går nedad, og slip på den gule kant – så letter du og flyver. Lavinen kommer bagfra og bliver hurtigere og hurtigere, så du skal holde farten. Toplisten tæller, hvor mange meter du nåede.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 15,
       "dato": "2026-09-12",
       "spil": "kryds",

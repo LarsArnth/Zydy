@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; seksten spil
+afhængigheder. De store apps bor i egne repoer og linkes til; sytten spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet seksten spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet sytten spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder og Dybet, der er tre,
-og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask, Blokblast og Slotskamp, der er to). De udrulles sammen
+og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask, Blokblast, Slotskamp og Weeee!, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -41,6 +41,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Blokblast | `public/spil/blokblast/` | Selmas ønske om «Block blast»: et bræt på 8 × 8 og tre brikker ad gangen, som man trækker ned på brættet – ingen drejning, ingen tyngdekraft. Fylder man en hel række eller søjle, blæser den væk. Ét point pr. felt man lægger, 10 × linjer² for det man rydder, og en stime, der ganger op til ×2,5, hvis man rydder flere gange i træk. Nye brikker kommer først, når alle tre er brugt, og der trækkes om, indtil mindst én af dem kan være på brættet. Spillet er slut, når ingen af de tre kan ligge nogen steder; brættet gemmes undervejs, så man kan lukke fanen og fortsætte. Score = point, online topliste. To filer: `blokke.mjs` (bræt, brikker, rydning og point, enhedstestet) og `index.html`. Se «Blokblast – brikken over fingeren» nedenfor. |
 
 | Slotskamp | `public/spil/slotskamp/` | Selmas ønske om «Clash royale»: en kamp på to minutter mod en computermodstander. Banen er delt af en flod med to broer, og hver side har et kongetårn og to vagttårne. Man har otte kort i bunken, fire på hånden, og magi, der fylder op af sig selv (dobbelt de sidste 40 sekunder). Tropperne går selv frem, slår på det, de møder, og går efter tårnene; Kæmpen går udenom alt andet, Kanonen står stille, og Ildkugle og Lyn kan kastes hvor som helst. Et vagttårn giver én krone, kongetårnet vinder med det samme, og står det lige, spilles der forlænget, hvor det første tårn afgør det. Modstanderen bliver hårdere for hver anden sejr i træk (Nybegynder → Øvet → Skarp → Mester). Score = **sejre i træk**, online topliste. To filer: `kamp.mjs` (bane, kort, tropper, tårne og modstanderen, enhedstestet) og `index.html`. Se «Slotskamp – kampen og modstanderen» nedenfor. |
+| Weeee! | `public/spil/weee/` | Selmas ønske, der bare lød «Weeee» – lyden man laver, når det går stærkt ned ad bakke. Det er blevet til en kælketur ned ad en uendelig bjergside med ét eneste tryk: holder man fingeren nede, trykker man sig ned i sneen og får mere fart, men klæber også fast; slipper man på kanten af en bølge, letter man og flyver. I luften dykker man ved at holde igen, så man kan lande parallelt med bakken og beholde farten – en landing på tværs koster det meste. Bagved kommer en lavine, der bliver hurtigere for hvert sekund, så den eneste vej er fremad. Den gule streg på sneen viser, hvor man ville lette lige nu, og HUD'en siger hvad fingeren skal. Score = meter, online topliste. To filer: `bakke.mjs` (bakke, fysik og lavine, enhedstestet) og `index.html`. Se «Weeee! – det ene tryk og bjerget» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -477,6 +478,65 @@ uret er ude, spilles der forlænget i 60 sekunder, hvor det første tårn, der
 falder, afgør det. Falder der intet, vinder den, hvis mest forslåede tårn står
 bedst – ellers ville alt for mange kampe ende i ingenting.
 
+### Weeee! – det ene tryk og bjerget
+
+Ønsket var ét ord: «Weeee». Det er lyden, man laver, når det går stærkt ned ad
+bakke – så spillet er en kælketur, og alt i det handler om at genskabe netop den
+lyd. Fysikken bor i `bakke.mjs` (ren JS, enhedstestet); `index.html` tegner den.
+
+**Ét tryk med to betydninger.** På sneen trykker man sig ned: bakken trækker
+`TUNG` (2,6) gange hårdere, så man tager fart – men man **letter ikke**, mens
+man holder. I luften dykker man med den samme faktor. Kunsten er derfor «hold
+nede på det stejle, slip på kanten», og det er dét, hele spillet er bygget op
+om. Prisen for at holde hele vejen er, at man aldrig kommer i luften — og
+luften er hurtigere end sneen, fordi `LUFT_MOD` er en brøkdel af `JORD_MOD`.
+Enhedstesten måler netop dét: en spiller, der bare holder fingeren nede hele
+turen, kommer ~30 % kortere end den, der bruger kanterne.
+
+**Man letter, når bakken falder væk under en.** Betingelsen i `jordSkridt` er,
+at jorden falder mere på det næste skridt, end et frit fald ville: `jordFald <
+vy·dt − ½g·dt²`. Det svarer til, at farten i anden gange bakkens krumning slår
+tyngdekraften, og det er derfor `lavBakke` også giver `krum(x)`. To ting faldt
+ud af det undervejs:
+
+- **Luftskridtet skal bruge nøjagtig den samme formel.** Regner man højden som
+  `vy·dt` (og trækker tyngdekraften fra farten først), falder man dobbelt så
+  meget i det første skridt som betingelsen for at lette regnede med – og så
+  lander man i samme skridt, man lettede. Hoppene blev ét skridt lange, og
+  spillet så ud, som om det slet ikke virkede.
+- **Bølgerne skal være krumme nok, ikke høje nok.** Krumningen er
+  `højde·(2π/bølgelængde)²`, så korte bølger giver kant. Til gengæld må bølgerne
+  ikke være så høje, at man kan komme til at skulle *op* ad bakke: bjerget
+  falder 1,25 m pr. meter (`HÆLD`), mere end bølgerne kan hæve det, så det går
+  nedad hele vejen. Enhedstesten går 3 km igennem og fejler, hvis man nogen
+  steder skal mere end 2 m op – ellers kunne man stå fast i en dal og vente på
+  lavinen uden selv at have gjort noget forkert.
+
+**Landingen er en vinkel.** `landingsKvalitet` sammenligner farten
+retning med bakkens hældning: helt parallelt beholder man farten (og får
+`PERFEKT_SKUB` oveni), på tværs mister man det meste. Det er både straffen for
+at flyve i blinde og grunden til, at man holder igen i luften for at få næsen
+ned.
+
+**Lavinen er uret.** Den starter 70 m bagude, bliver 0,35 m/s hurtigere for hvert
+sekund og sakker aldrig mere end `LAV_HALE` (70 m) bagud. Derfor slutter alle
+ture – en god på 60-80 sekunder, en dårlig på 40 – og derfor er der noget på
+spil ved at køre langsomt. Score = meter.
+
+**Botten er en målestok, ikke en regel.** `bot(s)` spiller turen videre to
+gange – én hvor den holder, én hvor den slipper – og vælger det, der bringer den
+længst efter 2,5 sekunder. Den er hverken klog eller pæn, men den er
+uafhængig af, hvad vi *tror* er den rigtige måde at spille på, og det er
+netop dét, der gør den brugbar til at afgøre, om det kan betale sig at flyve.
+Playwright-testen bruger den samme bot til at køre en hel tur igennem med
+`GAME.botTur()`.
+
+**Den gule streg** på sneen viser, hvor man ville lette, hvis man slap nu. Uden
+den kan man ikke gætte, hvornår man skal slippe – men den skal være **kort**:
+ved høj fart ville man teknisk set lette på hele den stejle side, så `KANT` i
+index.html kræver, at krumningen også er der. Ellers lyser det halve bjerg, og
+stregen holder op med at betyde «slip her».
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -501,7 +561,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, forsidens kort, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter

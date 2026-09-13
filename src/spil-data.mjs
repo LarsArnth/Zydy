@@ -23,6 +23,7 @@ export const KORT = [
   { id: 'blokblast', navn: 'Blokblast', url: '/spil/blokblast/' },
   { id: 'klaver', navn: 'KlaverLær', url: 'https://klaver.zydy.dk/', ekstern: true },
   { id: 'slotskamp', navn: 'Slotskamp', url: '/spil/slotskamp/' },
+  { id: 'weee', navn: 'Weeee!', url: '/spil/weee/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -45,6 +46,7 @@ export const SPIL = {
   miskmask: { maks: 500, unik: true },
   blokblast: { maks: 200000, unik: true },
   slotskamp: { maks: 200, unik: true },
+  weee: { maks: 20000, unik: true },
 };
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).
