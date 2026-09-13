@@ -1094,8 +1094,22 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, kapløbets stilling, forsidens kort og søgning, nyhedslisten, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
 ```
+
+**Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om
+de samme porte, og dét har kostet tid nok til at fortjene et afsnit. Alle
+worktrees serverer den samme forside, så et svar med `id="apps"` kan *ikke*
+bruges til at afgøre, om serveren på porten er ens egen. Gør man det alligevel,
+overtager man den anden sessions port — ens egen python er død stille, fordi
+porten var optaget — og når den anden bliver færdig og lukker sin server,
+fejler alle resterende tests med `ERR_CONNECTION_REFUSED`. Det ligner tyve
+spilfejl, men er en portkollision. Derfor ligger portvalget i
+`test/testserver.mjs`, som spørger om noget, der faktisk kan skelnes: **lever
+vores egen python stadig?** (den afslutter med det samme, hvis porten er
+optaget). `test/run.mjs` tjekker desuden mellem hver test, at serveren stadig
+svarer, og rejser en ny, hvis den er faldet fra. Vælg stadig din egen port med
+`PORT=419x`, men en kollision vælter ikke længere kørslen.
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
 serveren op i hukommelsen: den kalder den **rigtige** Worker-kode
