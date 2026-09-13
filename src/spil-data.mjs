@@ -24,6 +24,7 @@ export const KORT = [
   { id: 'klaver', navn: 'KlaverLær', url: 'https://klaver.zydy.dk/', ekstern: true },
   { id: 'slotskamp', navn: 'Slotskamp', url: '/spil/slotskamp/' },
   { id: 'weee', navn: 'Weeee!', url: '/spil/weee/' },
+  { id: 'legebyen', navn: 'Legebyen', url: '/spil/legebyen/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis

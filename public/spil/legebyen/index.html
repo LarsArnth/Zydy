@@ -1,0 +1,1291 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Legebyen: et dukkehus hvor du flytter figurerne rundt i fem rum, giver dem mad, tøj og legetøj – og selv finder på historien.">
+<title>Legebyen – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Cpath d='M12 30 L32 14 L52 30 v20 H12 Z' fill='%23ffd447'/%3E%3Ccircle cx='26' cy='38' r='4' fill='%231c1f4a'/%3E%3Ccircle cx='38' cy='38' r='4' fill='%231c1f4a'/%3E%3C/svg%3E">
+<style>
+  /*
+    Legebyen – et dukkehus uden point og uden at kunne tabe.
+    Byen, figurerne og tingene bor i by.mjs; her er rummene, tegningen og
+    fingrene på skærmen.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --ink:#1c1f4a; --r:20px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none;overflow:hidden}
+  body{display:flex;flex-direction:column;height:100vh;height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 8px) 10px calc(env(safe-area-inset-bottom) + 8px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  [hidden]{display:none!important}   /* .btn og .chip sætter display, og så gemmer hidden ikke af sig selv */
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:-.6px}
+  p{margin:0 0 10px;color:var(--muted);font-size:16px;line-height:1.45}
+
+  .ramme{display:flex;flex-direction:column;flex:1;width:100%;max-width:760px;margin:0 auto;min-height:0;gap:8px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
+  .back{color:var(--muted);text-decoration:none;font-size:17px;font-weight:700;display:inline-flex;
+    align-items:center;min-height:44px;min-width:44px;padding:0 6px 0 2px;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .brand{font-weight:800;font-size:18px;letter-spacing:-.3px}
+  .rund{background:var(--bg2);color:var(--text);border-radius:999px;min-width:44px;height:44px;
+    font-size:19px;font-weight:700;padding:0 12px;display:inline-flex;align-items:center;gap:6px}
+  .rund:disabled{opacity:.35}
+  .rund.on{background:var(--sun);color:var(--ink)}
+
+  /* ======== Rummet ======== */
+  .rum{flex:1;min-height:150px;position:relative;border-radius:var(--r);overflow:hidden;background:#2a2350}
+  .rum canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  #besked{position:absolute;left:8px;right:8px;bottom:8px;text-align:center;font-size:15px;font-weight:700;
+    color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none;transition:opacity .3s}
+  #hint{position:absolute;left:8px;right:8px;top:8px;text-align:center;font-size:14px;font-weight:700;
+    color:var(--ink);pointer-events:none}
+  #hint span{background:var(--sun);border-radius:999px;padding:5px 12px;display:inline-block}
+
+  /* ======== Rummene man kan gå til ======== */
+  .steder{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .steder::-webkit-scrollbar{display:none}
+  .steder button{flex:1 0 auto;background:var(--bg2);color:var(--text);border-radius:14px;padding:8px 10px;
+    font-size:14px;font-weight:700;min-height:44px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+  .steder button.on{background:var(--bg3);box-shadow:inset 0 0 0 2px var(--sun)}
+
+  /* ======== Bakken nederst ======== */
+  .bakketop{display:flex;align-items:center;gap:6px}
+  .faner{display:flex;gap:4px;background:var(--bg2);border-radius:14px;padding:4px;flex:1;min-width:0}
+  .faner button{flex:1;background:transparent;color:var(--muted);border-radius:11px;padding:7px 4px;
+    font-size:14px;font-weight:700;min-height:38px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .faner button.on{background:var(--sun);color:var(--ink)}
+  .bakke{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;min-height:88px;align-items:stretch}
+  .bakke::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;width:76px;background:var(--bg2);color:var(--text);border-radius:16px;padding:4px 2px 5px;
+    display:flex;flex-direction:column;align-items:center;gap:1px;border:3px solid transparent;
+    font-size:12px;font-weight:700;min-height:84px}
+  .chip canvas{width:52px;height:52px;display:block}
+  .chip .hvor{color:var(--muted);font-size:11px;font-weight:600}
+  .chip.on{border-color:var(--sun)}
+  .tom{color:var(--muted);font-size:15px;align-self:center;padding:0 6px}
+
+  /* ======== Ark der glider op ======== */
+  .ark{position:fixed;inset:0;background:rgba(9,11,26,.72);display:none;align-items:flex-end;z-index:40}
+  .ark.on{display:flex}
+  .ark .kort{background:var(--bg);width:100%;max-width:620px;margin:0 auto;border-radius:26px 26px 0 0;
+    padding:16px 16px calc(env(safe-area-inset-bottom) + 16px);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .ark h2{margin:0;font-size:23px;letter-spacing:-.5px}
+  .arkTop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .luk{background:var(--bg2);color:var(--text);border-radius:999px;width:44px;height:44px;font-size:20px;flex:none}
+  .label{font-weight:700;font-size:15px;margin:12px 0 5px}
+  .valg{display:flex;gap:8px;flex-wrap:wrap}
+  .farve{width:46px;height:46px;border-radius:999px;border:3px solid transparent;padding:0}
+  .farve.on{border-color:var(--sun)}
+  .stil{background:var(--bg2);color:var(--text);border-radius:14px;padding:10px 14px;font-size:15px;
+    font-weight:700;min-height:44px;border:3px solid transparent}
+  .stil.on{border-color:var(--sun)}
+  .btn{width:100%;padding:15px;border-radius:var(--r);font-size:18px;font-weight:700;
+    background:var(--sun);margin-top:12px;min-height:44px}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  #toejFigur{width:96px;height:96px;display:block;margin:0 auto}
+
+  @media (max-height:620px){
+    .chip{min-height:74px;width:68px} .chip canvas{width:44px;height:44px}
+    .bakke{min-height:78px} .steder button{min-height:40px;font-size:13px}
+  }
+  @media (prefers-reduced-motion:reduce){ #besked{transition:none} }
+</style>
+</head>
+<body>
+
+<div class="ramme">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Legebyen</span>
+    <button class="rund" id="toejBtn" disabled aria-label="Klæd figuren på">👕</button>
+  </div>
+
+  <div class="rum" id="rum">
+    <canvas id="laerred"></canvas>
+    <div id="hint" hidden><span></span></div>
+    <div id="besked"></div>
+  </div>
+
+  <div class="steder" id="steder"></div>
+
+  <div class="bakketop">
+    <div class="faner" id="faner">
+      <button data-fane="ting" class="on">🧸 Ting</button>
+      <button data-fane="venner">🙂 Venner</button>
+      <button data-fane="taske">🎒 Taske</button>
+    </div>
+    <button class="rund" id="rydBtn" aria-label="Ryd op i rummet">🧹</button>
+    <button class="rund" id="hjaelpBtn" aria-label="Hvordan leger man?">❓</button>
+  </div>
+  <div class="bakke" id="bakke"></div>
+</div>
+
+<!-- ===== Klæd på ===== -->
+<div class="ark" id="toejArk">
+  <div class="kort">
+    <div class="arkTop">
+      <h2 id="toejNavn">Klæd på</h2>
+      <button class="luk" id="toejLuk" aria-label="Luk">✕</button>
+    </div>
+    <canvas id="toejFigur" width="192" height="192"></canvas>
+    <div id="toejValg"></div>
+    <button class="btn ghost" id="toejFaerdig">Færdig</button>
+  </div>
+</div>
+
+<!-- ===== Sådan leger man ===== -->
+<div class="ark" id="hjaelpArk">
+  <div class="kort">
+    <div class="arkTop">
+      <h2>Sådan leger man</h2>
+      <button class="luk" id="hjaelpLuk" aria-label="Luk">✕</button>
+    </div>
+    <p>Der er ingen point og ingen måde at tabe på. Du bestemmer selv, hvad der sker.</p>
+    <ul style="margin:0 0 10px;padding-left:20px;color:var(--muted);font-size:16px;line-height:1.5">
+      <li><b>Træk i en figur</b> for at flytte den. Slipper du den ved sofaen, gyngen eller badekarret, sætter den sig.</li>
+      <li><b>Tryk på en figur</b> – så siger den noget. Tryk igen, og du kan klæde den på.</li>
+      <li><b>Tryk på en ting i bakken</b> og så et sted i rummet: så ligger den der. Trykker du på en figur i stedet, spiser den maden eller tager tøjet på.</li>
+      <li><b>Tryk på noget der ligger på gulvet</b> for at putte det i tasken 🎒 – så kan det komme med ind i et andet rum.</li>
+      <li><b>Tryk på møblerne</b>: køleskabet, fjernsynet, bruseren, kassen i butikken, gyngen og rutsjebanen. Sidder der en i gyngen, giver et tryk på hende et skub.</li>
+      <li>Hent vennerne ind i rummet under <b>🙂 Venner</b>, og ryd op med <b>🧹</b>.</li>
+    </ul>
+    <button class="btn" id="hjaelpOk">Så leger vi!</button>
+  </div>
+</div>
+
+<script src="/spil/aktivitet.js" data-spil="legebyen"></script>
+<script type="module">
+import {
+  BREDDE, HOEJDE, GULV, LOFT, KANT, TASKE_MAKS, HUD, HAAR_FARVER, HAAR_STIL, TOEJ_FARVER, TOEJ_FELTER,
+  STEDER, FIGURER, stedet, tingen, figurerI, tingI,
+  nyBy, frem, flytTing, fjernTing, ryd, iTasken, afTasken, flytFigur, hentHertil,
+  saetToej, puf, tagAf, brugPaa, brugMoebel, serialiser, laes,
+} from './by.mjs';
+
+const $ = s => document.querySelector(s);
+const KEY = 'zydy.legebyen.v1';
+const HJAELP_KEY = 'zydy.legebyen.hjaelp';
+const FIG_H = 30;            // en figur er 30 enheder høj
+const DYR_H = 17;
+
+/* ---------- Seedbar tilfældighed, så ?seed=123 giver de samme indfald ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const params = new URLSearchParams(location.search);
+const seed = parseInt(params.get('seed'), 10) || ((Math.random() * 2 ** 31) | 0);
+const rnd = mulberry32(seed);
+
+/* ================= Tilstand ================= */
+const state = {
+  fane: 'ting',
+  valgtTing: null,        // { id, fra: 'hylde' | 'taske' } – ventet på at blive sat et sted
+  valgt: null,            // figuren der er trykket på
+  traek: null,            // { slags:'figur'|'ting', id/n, x, y, flyttet }
+  bobler: [],             // taleboble pr. figur: { id, tekst, til }
+  gnister: [],            // krummer, bobler og hjerter
+  anim: [],               // { slags:'gynge'|'rutsje', id, t, varighed, fraX, fraY }
+  vaksMaal: null,
+  t: 0,
+  besked: '', beskedTil: 0,
+};
+
+const GAME = window.GAME = { state, seed, by: null };
+let koerer = true, sidstTid = 0, gemTil = 0;
+
+/* ================= Gem og hent ================= */
+function mitNavn() {
+  try { return localStorage.getItem('zydy.navn') || ''; } catch (e) { return ''; }
+}
+function gemNu() {
+  if (!GAME.by) return;
+  try { localStorage.setItem(KEY, JSON.stringify(serialiser(GAME.by))); } catch (e) {}
+  gemTil = 0;
+}
+// Et træk gemmes lidt efter, man har sluppet – så skriver vi ikke for hvert billede.
+const gemSnart = () => { gemTil = gemTil || state.t + 0.8; };
+
+function hentGemt() {
+  try {
+    const raa = localStorage.getItem(KEY);
+    return raa ? laes(JSON.parse(raa), mitNavn()) : null;
+  } catch (e) { return null; }
+}
+
+GAME.by = hentGemt() || nyBy(mitNavn());
+// Har man skrevet sit navn på forsiden efter første besøg, skal figuren hedde det.
+if (GAME.by.figurer.mig.navn === 'Mig' && mitNavn()) GAME.by.figurer.mig.navn = mitNavn().slice(0, 12);
+const by = () => GAME.by;
+const her = () => stedet(by().sted);
+
+/* ================= Lærredet ================= */
+const laerred = $('#laerred');
+const ctx = laerred.getContext('2d');
+let W = 320, H = 220, dpr = 1, skala = 2, ox = 0, oy = 0;
+
+function maalOp() {
+  const r = $('#rum').getBoundingClientRect();
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  W = Math.max(160, Math.round(r.width)); H = Math.max(120, Math.round(r.height));
+  laerred.width = Math.round(W * dpr); laerred.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  skala = Math.min(W / BREDDE, H / HOEJDE);
+  ox = (W - BREDDE * skala) / 2;
+  // Rummet er bredt (160 × 100), og en telefon på højkant har højde til overs.
+  // Den plads lægges for det meste oven over møblerne som væg: midtstillede vi
+  // rummet, blev gulvet en tredjedel af skærmen, og bundstillede vi det, blev
+  // væggen en tom flade. 70/30 rammer, at stuen ser ud som en stue.
+  oy = (H - HOEJDE * skala) * 0.7;
+}
+const sx = x => ox + x * skala;
+const sy = y => oy + y * skala;
+const fraSx = px => (px - ox) / skala;
+const fraSy = py => (py - oy) / skala;
+addEventListener('resize', () => { maalOp(); tegn(); });
+
+/** Hvor på skærmen (i lærredets egne pixels) ligger punktet i rummet? Bruges af testen. */
+GAME.tilSkaerm = (x, y) => ({ x: sx(x), y: sy(y) });
+
+/* ---------- Små tegnehjælpere ---------- */
+function rrect(c, x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2));
+  c.beginPath();
+  c.moveTo(x + rr, y);
+  c.arcTo(x + w, y, x + w, y + h, rr);
+  c.arcTo(x + w, y + h, x, y + h, rr);
+  c.arcTo(x, y + h, x, y, rr);
+  c.arcTo(x, y, x + w, y, rr);
+  c.closePath();
+}
+/* Én farve, én figur, én fyldning – og altid en frisk sti, så to former ikke hænger sammen. */
+const fyld = (c, farve, fn) => { c.fillStyle = farve; c.beginPath(); fn(); c.fill(); };
+const cirkel = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+
+/* ================= Tingene ================= */
+/*
+  Alt er tegnet i hånden som de andre spil her – ingen billeder og ingen emoji
+  på lærredet, så det ser ens ud på alle telefoner. (cx, cy) er midten, og s er
+  den halve størrelse.
+*/
+function tegnTing(c, id, cx, cy, s) {
+  const t = tingen(id);
+  if (!t) return;
+  c.save();
+  switch (id) {
+    case 'aeble':
+      fyld(c, '#ff5c5c', () => c.arc(cx - s * .28, cy + s * .1, s * .55, 0, 7));
+      fyld(c, '#ff5c5c', () => c.arc(cx + s * .28, cy + s * .1, s * .55, 0, 7));
+      c.strokeStyle = '#7a4a2a'; c.lineWidth = s * .14; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(cx, cy - s * .35); c.lineTo(cx + s * .06, cy - s * .8); c.stroke();
+      fyld(c, '#5ee0a8', () => c.ellipse(cx + s * .4, cy - s * .72, s * .32, s * .16, -.5, 0, 7));
+      break;
+    case 'banan':
+      c.strokeStyle = '#ffd447'; c.lineWidth = s * .42; c.lineCap = 'round';
+      c.beginPath(); c.arc(cx, cy - s * .5, s * .8, .55, 2.6); c.stroke();
+      break;
+    case 'gulerod':
+      fyld(c, '#ff9a3c', () => { c.moveTo(cx - s * .35, cy - s * .5); c.lineTo(cx + s * .35, cy - s * .5); c.lineTo(cx, cy + s * .85); c.closePath(); });
+      fyld(c, '#5ee0a8', () => { c.ellipse(cx - s * .2, cy - s * .7, s * .28, s * .14, -.7, 0, 7); });
+      fyld(c, '#5ee0a8', () => { c.ellipse(cx + s * .2, cy - s * .7, s * .28, s * .14, .7, 0, 7); });
+      break;
+    case 'kage':
+      fyld(c, '#ff9fbd', () => rrect(c, cx - s * .7, cy - s * .3, s * 1.4, s * .95, s * .16));
+      fyld(c, '#fff7e6', () => rrect(c, cx - s * .7, cy - s * .45, s * 1.4, s * .3, s * .12));
+      fyld(c, '#ff5c5c', () => c.arc(cx, cy - s * .62, s * .2, 0, 7));
+      break;
+    case 'pizza':
+      fyld(c, '#e8b45c', () => { c.moveTo(cx, cy - s * .85); c.lineTo(cx + s * .75, cy + s * .75); c.lineTo(cx - s * .75, cy + s * .75); c.closePath(); });
+      fyld(c, '#ff7a4a', () => { c.moveTo(cx, cy - s * .55); c.lineTo(cx + s * .55, cy + s * .55); c.lineTo(cx - s * .55, cy + s * .55); c.closePath(); });
+      fyld(c, '#c3352a', () => c.arc(cx - s * .2, cy + s * .28, s * .14, 0, 7));
+      fyld(c, '#c3352a', () => c.arc(cx + s * .22, cy + s * .3, s * .13, 0, 7));
+      fyld(c, '#c3352a', () => c.arc(cx, cy - s * .1, s * .13, 0, 7));
+      break;
+    case 'is':
+      fyld(c, '#d59a5c', () => { c.moveTo(cx - s * .38, cy - s * .05); c.lineTo(cx + s * .38, cy - s * .05); c.lineTo(cx, cy + s * .9); c.closePath(); });
+      fyld(c, '#ffe3f0', () => c.arc(cx - s * .2, cy - s * .3, s * .38, 0, 7));
+      fyld(c, '#8fd9ff', () => c.arc(cx + s * .2, cy - s * .38, s * .36, 0, 7));
+      fyld(c, '#ff5c5c', () => c.arc(cx + s * .1, cy - s * .72, s * .16, 0, 7));
+      break;
+    case 'kasket':
+      fyld(c, t.farve, () => c.arc(cx, cy + s * .15, s * .62, Math.PI, 0));
+      fyld(c, '#3a63c8', () => rrect(c, cx - s * .1, cy + s * .05, s * .95, s * .24, s * .1));
+      break;
+    case 'krone':
+      fyld(c, '#ffd447', () => {
+        c.moveTo(cx - s * .7, cy + s * .5); c.lineTo(cx - s * .7, cy - s * .5); c.lineTo(cx - s * .35, cy - s * .1);
+        c.lineTo(cx, cy - s * .62); c.lineTo(cx + s * .35, cy - s * .1); c.lineTo(cx + s * .7, cy - s * .5);
+        c.lineTo(cx + s * .7, cy + s * .5); c.closePath();
+      });
+      fyld(c, '#ff5c7a', () => c.arc(cx, cy + s * .2, s * .16, 0, 7));
+      break;
+    case 'sloejfe':
+      fyld(c, '#ff5c7a', () => { c.moveTo(cx, cy); c.lineTo(cx - s * .75, cy - s * .45); c.lineTo(cx - s * .75, cy + s * .45); c.closePath(); });
+      fyld(c, '#ff5c7a', () => { c.moveTo(cx, cy); c.lineTo(cx + s * .75, cy - s * .45); c.lineTo(cx + s * .75, cy + s * .45); c.closePath(); });
+      fyld(c, '#ff8fb0', () => c.arc(cx, cy, s * .22, 0, 7));
+      break;
+    case 'solbriller':
+      fyld(c, '#2f2b4a', () => c.arc(cx - s * .38, cy, s * .35, 0, 7));
+      fyld(c, '#2f2b4a', () => c.arc(cx + s * .38, cy, s * .35, 0, 7));
+      c.strokeStyle = '#2f2b4a'; c.lineWidth = s * .12;
+      c.beginPath(); c.moveTo(cx - s * .08, cy - s * .06); c.lineTo(cx + s * .08, cy - s * .06); c.stroke();
+      break;
+    case 'bold':
+      fyld(c, '#5ee0a8', () => c.arc(cx, cy, s * .78, 0, 7));
+      c.strokeStyle = '#fff7e6'; c.lineWidth = s * .16;
+      c.beginPath(); c.arc(cx, cy, s * .78, -.9, .9); c.stroke();
+      c.beginPath(); c.arc(cx, cy, s * .78, Math.PI - .9, Math.PI + .9); c.stroke();
+      break;
+    case 'bamse':
+      fyld(c, '#c98a5c', () => c.arc(cx - s * .5, cy - s * .5, s * .28, 0, 7));
+      fyld(c, '#c98a5c', () => c.arc(cx + s * .5, cy - s * .5, s * .28, 0, 7));
+      fyld(c, '#c98a5c', () => c.arc(cx, cy, s * .7, 0, 7));
+      fyld(c, '#e6bb92', () => c.ellipse(cx, cy + s * .25, s * .3, s * .22, 0, 0, 7));
+      fyld(c, '#3a2a20', () => c.arc(cx - s * .25, cy - s * .12, s * .09, 0, 7));
+      fyld(c, '#3a2a20', () => c.arc(cx + s * .25, cy - s * .12, s * .09, 0, 7));
+      fyld(c, '#3a2a20', () => c.arc(cx, cy + s * .14, s * .1, 0, 7));
+      break;
+    case 'ballon':
+      c.strokeStyle = '#fff7e6'; c.lineWidth = s * .08;
+      c.beginPath(); c.moveTo(cx, cy + s * .35); c.quadraticCurveTo(cx + s * .2, cy + s * .7, cx, cy + s); c.stroke();
+      fyld(c, '#ff5c7a', () => c.ellipse(cx, cy - s * .15, s * .55, s * .68, 0, 0, 7));
+      fyld(c, '#ffb0c4', () => c.ellipse(cx - s * .2, cy - s * .35, s * .16, s * .22, -.4, 0, 7));
+      break;
+    case 'aelling':
+      fyld(c, '#ffd447', () => c.ellipse(cx, cy + s * .25, s * .68, s * .42, 0, 0, 7));
+      fyld(c, '#ffd447', () => c.arc(cx + s * .32, cy - s * .3, s * .34, 0, 7));
+      fyld(c, '#ff9a3c', () => { c.moveTo(cx + s * .6, cy - s * .3); c.lineTo(cx + s * 1, cy - s * .18); c.lineTo(cx + s * .6, cy - s * .06); c.closePath(); });
+      fyld(c, '#2f2b4a', () => c.arc(cx + s * .36, cy - s * .38, s * .08, 0, 7));
+      break;
+    case 'saebe':
+      fyld(c, '#8fd9ff', () => rrect(c, cx - s * .7, cy - s * .25, s * 1.4, s * .7, s * .22));
+      c.globalAlpha = .8;
+      fyld(c, '#fff7e6', () => c.arc(cx - s * .2, cy - s * .6, s * .22, 0, 7));
+      fyld(c, '#fff7e6', () => c.arc(cx + s * .3, cy - s * .78, s * .15, 0, 7));
+      c.globalAlpha = 1;
+      break;
+    case 'bog':
+      fyld(c, '#b45fc4', () => rrect(c, cx - s * .68, cy - s * .5, s * 1.36, s * 1, s * .12));
+      fyld(c, '#fff7e6', () => rrect(c, cx - s * .5, cy - s * .36, s * 1.05, s * .72, s * .06));
+      c.strokeStyle = '#b45fc4'; c.lineWidth = s * .08;
+      for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(cx - s * .35, cy - s * .2 + i * s * .2); c.lineTo(cx + s * .35, cy - s * .2 + i * s * .2); c.stroke(); }
+      break;
+    case 'tandboerste':
+      fyld(c, '#3ad0d6', () => rrect(c, cx - s * .55, cy + s * .1, s * 1.1, s * .26, s * .12));
+      fyld(c, '#fff7e6', () => rrect(c, cx - s * .55, cy - s * .2, s * .55, s * .32, s * .08));
+      break;
+    default:
+      fyld(c, t.farve, () => c.arc(cx, cy, s * .7, 0, 7));
+  }
+  c.restore();
+}
+
+/* ================= Figurerne ================= */
+/*
+  En figur er 30 enheder høj og tegnes fra fødderne og op, så den står rigtigt,
+  uanset om den er på gulvet, i sofaen eller øverst på rutsjebanen. Alt er mål i
+  brøkdele af højden, så den skalerer med skærmen.
+*/
+function tegnFigur(c, f, fx, fy, h, t = 0) {
+  if (f.dyr) return tegnHund(c, f, fx, fy, h * (DYR_H / FIG_H), t);
+  const hud = HUD[f.hud] || HUD[0];
+  const troeje = TOEJ_FARVER[f.troeje] || TOEJ_FARVER[0];
+  const buks = TOEJ_FARVER[f.buks] || TOEJ_FARVER[1];
+  const haarF = HAAR_FARVER[f.haarfarve] || HAAR_FARVER[0];
+  const sidder = !!f.saede;
+  const vip = Math.sin(t * 2 + fx) * h * .006;
+
+  c.save();
+  c.translate(fx, fy + vip);
+
+  // Skygge
+  c.globalAlpha = .18; fyld(c, '#000', () => c.ellipse(0, 0, h * .22, h * .045, 0, 0, 7)); c.globalAlpha = 1;
+
+  const benH = sidder ? h * .14 : h * .30;
+  // Ben og sko
+  fyld(c, buks, () => rrect(c, -h * .16, -benH, h * .13, benH, h * .05));
+  fyld(c, buks, () => rrect(c, h * .03, -benH, h * .13, benH, h * .05));
+  fyld(c, '#3a3550', () => rrect(c, -h * .18, -h * .04, h * .16, h * .05, h * .025));
+  fyld(c, '#3a3550', () => rrect(c, h * .02, -h * .04, h * .16, h * .05, h * .025));
+
+  // Krop
+  const kropTop = -benH - h * .34;
+  fyld(c, troeje, () => rrect(c, -h * .22, kropTop, h * .44, h * .35, h * .1));
+
+  // Arme (den højre løftes lidt, hvis figuren holder noget)
+  const holder = !!f.haand;
+  fyld(c, troeje, () => rrect(c, -h * .30, kropTop + h * .04, h * .10, h * .22, h * .05));
+  c.save();
+  c.translate(h * .25, kropTop + h * .06);
+  c.rotate(holder ? -.5 : 0);
+  fyld(c, troeje, () => rrect(c, -h * .05, 0, h * .10, h * .2, h * .05));
+  fyld(c, hud, () => c.arc(0, h * .21, h * .055, 0, 7));
+  c.restore();
+  fyld(c, hud, () => c.arc(-h * .25, kropTop + h * .27, h * .055, 0, 7));
+
+  // Hoved
+  const hy = kropTop - h * .17;
+  fyld(c, hud, () => c.arc(0, hy, h * .18, 0, 7));
+
+  // Hår
+  c.fillStyle = haarF;
+  if (f.haar === 'lang') {
+    c.beginPath(); c.ellipse(0, hy + h * .02, h * .22, h * .24, 0, Math.PI, 0); c.fill();
+    fyld(c, haarF, () => rrect(c, -h * .23, hy - h * .05, h * .09, h * .3, h * .04));
+    fyld(c, haarF, () => rrect(c, h * .14, hy - h * .05, h * .09, h * .3, h * .04));
+  } else if (f.haar === 'krølle') {
+    for (let i = -2; i <= 2; i++) fyld(c, haarF, () => c.arc(i * h * .09, hy - h * .13 - Math.abs(i) * h * .015, h * .075, 0, 7));
+    fyld(c, haarF, () => c.arc(-h * .19, hy - h * .02, h * .07, 0, 7));
+    fyld(c, haarF, () => c.arc(h * .19, hy - h * .02, h * .07, 0, 7));
+  } else if (f.haar === 'tot') {
+    c.beginPath(); c.ellipse(0, hy - h * .02, h * .185, h * .17, 0, Math.PI, 0); c.fill();
+    c.strokeStyle = haarF; c.lineWidth = h * .05; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(0, hy - h * .17); c.quadraticCurveTo(h * .1, hy - h * .34, h * .16, hy - h * .22); c.stroke();
+  } else {
+    c.beginPath(); c.ellipse(0, hy - h * .01, h * .185, h * .175, 0, Math.PI, 0); c.fill();
+  }
+
+  // Ansigt: øjnene blinker, og munden retter sig efter humøret
+  const blink = (Math.sin(t * 1.7 + fx * .1) > .985);
+  c.fillStyle = '#2f2b4a';
+  if (blink) {
+    c.lineWidth = h * .02; c.strokeStyle = '#2f2b4a';
+    for (const dx of [-h * .07, h * .07]) { c.beginPath(); c.moveTo(dx - h * .03, hy); c.lineTo(dx + h * .03, hy); c.stroke(); }
+  } else {
+    cirkel(c, -h * .07, hy, h * .026);
+    cirkel(c, h * .07, hy, h * .026);
+  }
+  c.strokeStyle = '#2f2b4a'; c.lineWidth = h * .022; c.lineCap = 'round';
+  c.beginPath();
+  if (f.humoer === 'glad') c.arc(0, hy + h * .04, h * .07, .35, Math.PI - .35);
+  else c.arc(0, hy + h * .07, h * .05, .5, Math.PI - .5);
+  c.stroke();
+  fyld(c, 'rgba(255,140,160,.45)', () => c.arc(-h * .13, hy + h * .04, h * .035, 0, 7));
+  fyld(c, 'rgba(255,140,160,.45)', () => c.arc(h * .13, hy + h * .04, h * .035, 0, 7));
+
+  if (f.briller) tegnTing(c, f.briller, 0, hy, h * .19);
+  if (f.hat) tegnTing(c, f.hat, 0, hy - h * .21, h * .21);
+  if (f.haand) tegnTing(c, f.haand, h * .34, kropTop - h * .02, h * .17);
+  c.restore();
+}
+
+/** Vaks. En hund er nemmere at kende på formen end på farven, så den er lav og lang. */
+function tegnHund(c, f, fx, fy, h, t) {
+  const pels = TOEJ_FARVER[f.troeje] || '#ffd447';
+  const moerk = 'rgba(0,0,0,.18)';
+  c.save();
+  c.translate(fx, fy);
+  c.globalAlpha = .18; fyld(c, '#000', () => c.ellipse(0, 0, h * .55, h * .1, 0, 0, 7)); c.globalAlpha = 1;
+  const bob = Math.sin(t * 3) * h * .02;
+  // Ben
+  for (const dx of [-h * .38, -h * .16, h * .18, h * .4]) fyld(c, pels, () => rrect(c, dx - h * .06, -h * .34, h * .12, h * .34, h * .05));
+  // Krop og hale
+  c.strokeStyle = pels; c.lineWidth = h * .12; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(-h * .5, -h * .55 + bob); c.quadraticCurveTo(-h * .8, -h * .8 + Math.sin(t * 9) * h * .16, -h * .78, -h * .95); c.stroke();
+  fyld(c, pels, () => c.ellipse(0, -h * .55 + bob, h * .55, h * .28, 0, 0, 7));
+  fyld(c, moerk, () => c.ellipse(-h * .1, -h * .44 + bob, h * .3, h * .14, 0, 0, 7));
+  // Hoved
+  const hx = h * .58, hy = -h * .82 + bob;
+  fyld(c, pels, () => c.ellipse(hx - h * .22, hy + h * .12, h * .12, h * .22, .4, 0, 7));   // øre
+  fyld(c, pels, () => c.arc(hx, hy, h * .3, 0, 7));
+  fyld(c, pels, () => c.ellipse(hx + h * .26, hy + h * .1, h * .1, h * .2, -.3, 0, 7));
+  fyld(c, '#f6e3c8', () => c.ellipse(hx + h * .18, hy + h * .14, h * .2, h * .14, 0, 0, 7));
+  fyld(c, '#2f2b4a', () => c.arc(hx + h * .3, hy + h * .1, h * .07, 0, 7));                 // snude
+  fyld(c, '#2f2b4a', () => c.arc(hx + h * .02, hy - h * .06, h * .05, 0, 7));               // øje
+  if (f.hat) tegnTing(c, f.hat, hx, hy - h * .3, h * .3);
+  if (f.briller) tegnTing(c, f.briller, hx + h * .06, hy - h * .04, h * .28);
+  if (f.haand) tegnTing(c, f.haand, hx + h * .45, hy + h * .2, h * .26);
+  c.restore();
+}
+
+/* ================= Rummene ================= */
+function tegnRum() {
+  const s = her();
+  const gy = sy(GULV);
+  // Væg eller himmel – hele lærredet, så der ikke står sorte bjælker på en iPad
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  if (s.ude) { g.addColorStop(0, '#6ec6f5'); g.addColorStop(1, '#b9e6ff'); }
+  else {
+    const vaeg = { stue: ['#6b4f9c', '#8a6ec0'], koekken: ['#2f7a6a', '#4aa892'], bad: ['#2f5f9c', '#5a97d6'], butik: ['#9c4f7a', '#c46e9c'] }[s.id];
+    g.addColorStop(0, vaeg[0]); g.addColorStop(1, vaeg[1]);
+  }
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // Gulv
+  const gulvF = { stue: '#8a5a3c', koekken: '#e6dcc6', bad: '#cfe4f2', butik: '#e0c9a8', legeplads: '#6ec06a' }[s.id];
+  ctx.fillStyle = gulvF; ctx.fillRect(0, gy, W, H - gy);
+  ctx.fillStyle = 'rgba(0,0,0,.08)';
+  if (s.id === 'stue') for (let x = 0; x < W; x += skala * 14) ctx.fillRect(x, gy, 2, H - gy);
+  if (s.id === 'koekken' || s.id === 'bad' || s.id === 'butik') {
+    for (let x = 0; x < W; x += skala * 12) ctx.fillRect(x, gy, 2, H - gy);
+    ctx.fillRect(0, gy + (H - gy) * .5, W, 2);
+  }
+  if (s.id === 'legeplads') {
+    ctx.fillStyle = '#5aa856';
+    for (let i = 0; i < 26; i++) {
+      const x = (i * 97) % W, y = gy + ((i * 53) % Math.max(6, H - gy));
+      ctx.fillRect(x, y, 2, 4);
+    }
+  }
+  ctx.fillStyle = 'rgba(0,0,0,.10)'; ctx.fillRect(0, gy, W, 2);
+
+  ({ stue: tegnStue, koekken: tegnKoekken, bad: tegnBad, butik: tegnButik, legeplads: tegnLegeplads })[s.id]();
+}
+
+function tegnStue() {
+  const gy = sy(GULV);
+  // Billede på væggen
+  fyld(ctx, '#e8c86a', () => rrect(ctx, sx(96), sy(20), skala * 26, skala * 18, skala * 2));
+  fyld(ctx, '#8fd9ff', () => rrect(ctx, sx(98), sy(22), skala * 22, skala * 14, skala * 1));
+  fyld(ctx, '#5ee0a8', () => { ctx.moveTo(sx(98), sy(36)); ctx.lineTo(sx(108), sy(26)); ctx.lineTo(sx(120), sy(36)); ctx.closePath(); });
+
+  // Hylde med en potteplante og et par bøger, så væggen ikke er en tom flade
+  fyld(ctx, '#a06f40', () => rrect(ctx, sx(40), sy(34), skala * 34, skala * 2.4, skala * 1));
+  fyld(ctx, '#c14a2a', () => rrect(ctx, sx(44), sy(26), skala * 5, skala * 8, skala * 1));
+  fyld(ctx, '#5b8cff', () => rrect(ctx, sx(50), sy(27), skala * 4, skala * 7, skala * 1));
+  fyld(ctx, '#ffd447', () => rrect(ctx, sx(55), sy(28), skala * 4, skala * 6, skala * 1));
+  fyld(ctx, '#b9834f', () => rrect(ctx, sx(64), sy(29), skala * 7, skala * 5, skala * 1));
+  fyld(ctx, '#3f9c4a', () => ctx.arc(sx(67.5), sy(26), skala * 4.5, 0, 7));
+
+  // Lampe i loftet
+  const lys = !!by().taendt.lampe;
+  ctx.strokeStyle = '#2f2b4a'; ctx.lineWidth = skala * .8;
+  ctx.beginPath(); ctx.moveTo(sx(16), sy(LOFT - 8)); ctx.lineTo(sx(16), sy(34)); ctx.stroke();
+  fyld(ctx, lys ? '#ffe89a' : '#8f93b8', () => { ctx.moveTo(sx(8), sy(44)); ctx.lineTo(sx(24), sy(44)); ctx.lineTo(sx(20), sy(34)); ctx.lineTo(sx(12), sy(34)); ctx.closePath(); });
+  if (lys) {
+    ctx.globalAlpha = .28;
+    fyld(ctx, '#ffe89a', () => { ctx.moveTo(sx(8), sy(44)); ctx.lineTo(sx(24), sy(44)); ctx.lineTo(sx(34), sy(GULV)); ctx.lineTo(sx(-2), sy(GULV)); ctx.closePath(); });
+    ctx.globalAlpha = 1;
+  }
+
+  // Tæppe
+  fyld(ctx, 'rgba(94,224,168,.35)', () => ctx.ellipse(sx(80), gy + skala * 7, skala * 40, skala * 7, 0, 0, 7));
+
+  // Sofa
+  fyld(ctx, '#c14a6a', () => rrect(ctx, sx(26), sy(60), skala * 52, skala * 22, skala * 4));
+  fyld(ctx, '#e2648a', () => rrect(ctx, sx(28), sy(70), skala * 48, skala * 12, skala * 3));
+  fyld(ctx, '#ff8fb0', () => rrect(ctx, sx(32), sy(66), skala * 18, skala * 8, skala * 2));
+  fyld(ctx, '#ff8fb0', () => rrect(ctx, sx(54), sy(66), skala * 18, skala * 8, skala * 2));
+
+  // Lænestol
+  fyld(ctx, '#5b8cff', () => rrect(ctx, sx(120), sy(62), skala * 26, skala * 20, skala * 4));
+  fyld(ctx, '#7ba4ff', () => rrect(ctx, sx(122), sy(71), skala * 22, skala * 11, skala * 3));
+
+  // Fjernsyn
+  fyld(ctx, '#2f2b4a', () => rrect(ctx, sx(92), sy(42), skala * 32, skala * 22, skala * 2));
+  const taendt = !!by().taendt.tv;
+  if (taendt) {
+    const f = ['#ff5c7a', '#5ee0a8', '#ffd447', '#5b8cff'][Math.floor(state.t * 4) % 4];
+    fyld(ctx, f, () => rrect(ctx, sx(94), sy(44), skala * 28, skala * 18, skala * 1));
+  } else {
+    fyld(ctx, '#4a4770', () => rrect(ctx, sx(94), sy(44), skala * 28, skala * 18, skala * 1));
+  }
+  fyld(ctx, '#2f2b4a', () => rrect(ctx, sx(104), sy(64), skala * 8, skala * 18, skala * 1));
+}
+
+function tegnKoekken() {
+  // Overskabe langs væggen
+  fyld(ctx, '#dfe6f2', () => rrect(ctx, sx(6), sy(14), skala * 64, skala * 18, skala * 2));
+  ctx.fillStyle = '#b9c3d6';
+  for (const x of [22, 38, 54]) ctx.fillRect(sx(x), sy(14), skala * 1.2, skala * 18);
+  for (const x of [14, 30, 46, 62]) fyld(ctx, '#9aa6bd', () => rrect(ctx, sx(x), sy(28), skala * 6, skala * 1.8, skala * .9));
+  // En gryde og en krukke oven på skabene
+  fyld(ctx, '#c14a2a', () => rrect(ctx, sx(96), sy(22), skala * 10, skala * 10, skala * 2));
+  fyld(ctx, '#5ee0a8', () => rrect(ctx, sx(110), sy(24), skala * 8, skala * 8, skala * 2));
+
+  // Køleskab
+  fyld(ctx, '#dfe6f2', () => rrect(ctx, sx(6), sy(36), skala * 28, skala * 46, skala * 3));
+  ctx.fillStyle = '#b9c3d6'; ctx.fillRect(sx(6), sy(54), skala * 28, skala * 1.4);
+  fyld(ctx, '#9aa6bd', () => rrect(ctx, sx(28), sy(44), skala * 2.6, skala * 8, skala * 1.2));
+  fyld(ctx, '#9aa6bd', () => rrect(ctx, sx(28), sy(58), skala * 2.6, skala * 8, skala * 1.2));
+  fyld(ctx, '#ff5c7a', () => ctx.arc(sx(14), sy(44), skala * 2.4, 0, 7));   // magnet
+
+  // Komfur med gryde
+  fyld(ctx, '#4a4770', () => rrect(ctx, sx(44), sy(56), skala * 28, skala * 26, skala * 3));
+  fyld(ctx, '#2f2b4a', () => rrect(ctx, sx(46), sy(64), skala * 24, skala * 16, skala * 2));
+  fyld(ctx, '#8f93b8', () => ctx.ellipse(sx(58), sy(57), skala * 9, skala * 2.6, 0, 0, 7));
+  fyld(ctx, '#c14a2a', () => rrect(ctx, sx(52), sy(50), skala * 12, skala * 6, skala * 1.5));
+  ctx.globalAlpha = .5;
+  fyld(ctx, '#fff7e6', () => ctx.ellipse(sx(58), sy(46 + Math.sin(state.t * 2) * 1.5), skala * 4, skala * 2, 0, 0, 7));
+  ctx.globalAlpha = 1;
+
+  // Bord og to stole
+  fyld(ctx, '#b9834f', () => rrect(ctx, sx(96), sy(64), skala * 48, skala * 4, skala * 1.5));
+  fyld(ctx, '#a06f40', () => rrect(ctx, sx(100), sy(68), skala * 4, skala * 14, skala * 1));
+  fyld(ctx, '#a06f40', () => rrect(ctx, sx(136), sy(68), skala * 4, skala * 14, skala * 1));
+  for (const x of [104, 134]) {
+    fyld(ctx, '#d59a5c', () => rrect(ctx, sx(x - 8), sy(76), skala * 16, skala * 3.4, skala * 1.2));
+    fyld(ctx, '#b9834f', () => rrect(ctx, sx(x - 7), sy(79), skala * 3, skala * 3, skala * .8));
+    fyld(ctx, '#b9834f', () => rrect(ctx, sx(x + 4), sy(79), skala * 3, skala * 3, skala * .8));
+  }
+}
+
+function tegnBad() {
+  const vand = !!by().taendt.bruser;
+  // Fliser på væggen
+  ctx.fillStyle = 'rgba(255,255,255,.12)';
+  for (let x = 0; x < W; x += skala * 10) for (let y = 0; y < sy(GULV); y += skala * 10) ctx.fillRect(x + 1, y + 1, skala * 9, skala * 9);
+
+  // Badekar
+  fyld(ctx, '#fff7e6', () => rrect(ctx, sx(22), sy(62), skala * 48, skala * 20, skala * 6));
+  if (vand) {
+    fyld(ctx, 'rgba(110,198,245,.85)', () => rrect(ctx, sx(25), sy(66), skala * 42, skala * 15, skala * 5));
+    ctx.globalAlpha = .8;
+    for (let i = 0; i < 5; i++) fyld(ctx, '#fff', () => ctx.arc(sx(30 + i * 9), sy(68 + Math.sin(state.t * 3 + i) * 2), skala * 1.6, 0, 7));
+    ctx.globalAlpha = 1;
+  }
+  fyld(ctx, '#cfe4f2', () => rrect(ctx, sx(24), sy(80), skala * 6, skala * 2.4, skala * 1));
+
+  // Bruser
+  ctx.strokeStyle = '#b9c3d6'; ctx.lineWidth = skala * 1.4;
+  ctx.beginPath(); ctx.moveTo(sx(46), sy(LOFT - 8)); ctx.lineTo(sx(46), sy(40)); ctx.stroke();
+  fyld(ctx, '#dfe6f2', () => rrect(ctx, sx(39), sy(40), skala * 14, skala * 4, skala * 1.5));
+  if (vand) {
+    ctx.strokeStyle = 'rgba(180,230,255,.85)'; ctx.lineWidth = skala * .8;
+    for (let i = 0; i < 6; i++) {
+      const x = sx(41 + i * 2.2);
+      ctx.beginPath(); ctx.moveTo(x, sy(44)); ctx.lineTo(x - skala, sy(60 + ((state.t * 30 + i * 5) % 8)));
+      ctx.stroke();
+    }
+  }
+
+  // Håndklæder på stangen
+  fyld(ctx, '#b9c3d6', () => rrect(ctx, sx(98), sy(18), skala * 42, skala * 1.6, skala * .8));
+  fyld(ctx, '#ff8fb0', () => rrect(ctx, sx(102), sy(19), skala * 12, skala * 16, skala * 1.5));
+  fyld(ctx, '#5ee0a8', () => rrect(ctx, sx(120), sy(19), skala * 12, skala * 13, skala * 1.5));
+
+  // Vask og spejl
+  fyld(ctx, '#dfe6f2', () => rrect(ctx, sx(110), sy(62), skala * 26, skala * 8, skala * 2));
+  fyld(ctx, '#b9c3d6', () => rrect(ctx, sx(120), sy(70), skala * 6, skala * 12, skala * 1));
+  fyld(ctx, '#fff7e6', () => ctx.arc(sx(123), sy(46), skala * 12, 0, 7));
+  fyld(ctx, '#9ed3f0', () => ctx.arc(sx(123), sy(46), skala * 10, 0, 7));
+  ctx.globalAlpha = .45;
+  fyld(ctx, '#fff', () => { ctx.moveTo(sx(116), sy(54)); ctx.lineTo(sx(126), sy(38)); ctx.lineTo(sx(130), sy(40)); ctx.lineTo(sx(120), sy(55)); ctx.closePath(); });
+  ctx.globalAlpha = 1;
+}
+
+function tegnButik() {
+  // Vimpler hen over butikken
+  ctx.strokeStyle = '#ffd447'; ctx.lineWidth = skala * .6;
+  ctx.beginPath(); ctx.moveTo(sx(0), sy(10)); ctx.quadraticCurveTo(sx(80), sy(16), sx(160), sy(10)); ctx.stroke();
+  const vimpel = ['#ff5c7a', '#5ee0a8', '#5b8cff', '#ffd447', '#b45fc4'];
+  for (let i = 0; i < 10; i++) {
+    const x = 8 + i * 16, y = 11 + Math.sin((x / 160) * Math.PI) * 4.6;
+    fyld(ctx, vimpel[i % vimpel.length], () => {
+      ctx.moveTo(sx(x - 4), sy(y)); ctx.lineTo(sx(x + 4), sy(y)); ctx.lineTo(sx(x), sy(y + 7)); ctx.closePath();
+    });
+  }
+
+  // Tøjhylde
+  fyld(ctx, '#8a5a3c', () => rrect(ctx, sx(26), sy(30), skala * 44, skala * 38, skala * 2));
+  fyld(ctx, '#a06f40', () => rrect(ctx, sx(28), sy(46), skala * 40, skala * 2.4, skala * 1));
+  fyld(ctx, '#a06f40', () => rrect(ctx, sx(28), sy(64), skala * 40, skala * 2.4, skala * 1));
+  const varer = ['kasket', 'krone', 'sloejfe', 'solbriller', 'bog', 'bold'];
+  varer.forEach((id, i) => tegnTing(ctx, id, sx(34 + (i % 3) * 14), sy(i < 3 ? 40 : 58), skala * 5));
+
+  // Skilt
+  fyld(ctx, '#ffd447', () => rrect(ctx, sx(30), sy(18), skala * 36, skala * 9, skala * 2));
+  ctx.fillStyle = '#1c1f4a'; ctx.font = `700 ${Math.round(skala * 6)}px -apple-system,sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('BUTIK', sx(48), sy(22.8));
+
+  // Disk med kasseapparat
+  fyld(ctx, '#b9834f', () => rrect(ctx, sx(102), sy(64), skala * 44, skala * 18, skala * 2));
+  fyld(ctx, '#dfe6f2', () => rrect(ctx, sx(116), sy(54), skala * 18, skala * 11, skala * 2));
+  fyld(ctx, '#5ee0a8', () => rrect(ctx, sx(119), sy(56), skala * 12, skala * 4, skala * 1));
+  fyld(ctx, '#ff5c7a', () => ctx.arc(sx(122), sy(63), skala * 1.6, 0, 7));
+  fyld(ctx, '#ffd447', () => ctx.arc(sx(128), sy(63), skala * 1.6, 0, 7));
+
+  // Bænk
+  fyld(ctx, '#5b8cff', () => rrect(ctx, sx(8), sy(76), skala * 26, skala * 3.4, skala * 1.4));
+  fyld(ctx, '#3a63c8', () => rrect(ctx, sx(10), sy(79), skala * 3, skala * 3, skala * .8));
+  fyld(ctx, '#3a63c8', () => rrect(ctx, sx(29), sy(79), skala * 3, skala * 3, skala * .8));
+}
+
+function tegnLegeplads() {
+  // Sol og skyer
+  fyld(ctx, '#ffd447', () => ctx.arc(sx(146), sy(16), skala * 9, 0, 7));
+  ctx.globalAlpha = .9;
+  for (const [x, y, r] of [[30, 16, 7], [38, 14, 9], [46, 17, 6], [86, 12, 6], [93, 10, 8]]) fyld(ctx, '#fff', () => ctx.arc(sx(x), sy(y), skala * r, 0, 7));
+  ctx.globalAlpha = 1;
+
+  // Gynge
+  ctx.strokeStyle = '#a06f40'; ctx.lineWidth = skala * 2.4; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(sx(14), sy(GULV)); ctx.lineTo(sx(32), sy(40)); ctx.lineTo(sx(50), sy(GULV));
+  ctx.moveTo(sx(32), sy(40)); ctx.lineTo(sx(32), sy(40));
+  ctx.stroke();
+  const sving = svingVinkel();
+  ctx.save();
+  ctx.translate(sx(32), sy(40));
+  ctx.rotate(sving);
+  ctx.strokeStyle = '#8f93b8'; ctx.lineWidth = skala * .7;
+  ctx.beginPath(); ctx.moveTo(-skala * 5, 0); ctx.lineTo(-skala * 5, skala * 24); ctx.moveTo(skala * 5, 0); ctx.lineTo(skala * 5, skala * 24); ctx.stroke();
+  fyld(ctx, '#c14a2a', () => rrect(ctx, -skala * 7, skala * 24, skala * 14, skala * 2.4, skala * 1));
+  ctx.restore();
+
+  // Rutsjebane
+  fyld(ctx, '#b45fc4', () => rrect(ctx, sx(96), sy(44), skala * 18, skala * 3, skala * 1));
+  ctx.strokeStyle = '#b45fc4'; ctx.lineWidth = skala * 1.6;
+  ctx.beginPath(); ctx.moveTo(sx(98), sy(46)); ctx.lineTo(sx(98), sy(GULV)); ctx.moveTo(sx(112), sy(46)); ctx.lineTo(sx(112), sy(GULV)); ctx.stroke();
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(sx(98), sy(52 + i * 6)); ctx.lineTo(sx(112), sy(52 + i * 6)); ctx.stroke(); }
+  ctx.strokeStyle = '#ffd447'; ctx.lineWidth = skala * 4;
+  ctx.beginPath(); ctx.moveTo(sx(112), sy(46)); ctx.quadraticCurveTo(sx(134), sy(58), sx(140), sy(GULV)); ctx.stroke();
+
+  // Bænk og et træ
+  fyld(ctx, '#a06f40', () => rrect(ctx, sx(58), sy(76), skala * 24, skala * 3.4, skala * 1.4));
+  fyld(ctx, '#8a5a3c', () => rrect(ctx, sx(60), sy(79), skala * 3, skala * 3, skala * .8));
+  fyld(ctx, '#8a5a3c', () => rrect(ctx, sx(77), sy(79), skala * 3, skala * 3, skala * .8));
+  fyld(ctx, '#8a5a3c', () => rrect(ctx, sx(150), sy(50), skala * 6, skala * 32, skala * 1));
+  fyld(ctx, '#3f9c4a', () => ctx.arc(sx(153), sy(42), skala * 16, 0, 7));
+  fyld(ctx, '#4fb85a', () => ctx.arc(sx(146), sy(48), skala * 10, 0, 7));
+}
+
+/** Gyngens vinkel lige nu – den svinger, mens animationen kører, og hænger ellers stille. */
+function svingVinkel() {
+  const a = state.anim.find(a => a.slags === 'gynge');
+  if (!a) return 0;
+  const d = 1 - a.t / a.varighed;
+  return Math.sin(a.t * 6) * .8 * d;
+}
+
+/* ================= Hele billedet ================= */
+function tegn() {
+  tegnRum();
+
+  // Løse ting bagerst, så figurerne står foran dem
+  for (const t of tingI(by(), by().sted)) {
+    if (state.traek?.slags === 'ting' && state.traek.n === t.n) continue;
+    tegnTing(ctx, t.id, sx(t.x), sy(t.y) - skala * 4, skala * 4.5);
+  }
+
+  // Figurerne: den der står længst nede, tegnes sidst (forrest)
+  const figurer = figurerI(by(), by().sted).slice().sort((a, b) => a.y - b.y);
+  for (const f of figurer) {
+    const p = figurTegnePlads(f);
+    if (state.valgt === f.id) {
+      ctx.globalAlpha = .9;
+      ctx.strokeStyle = '#ffd447'; ctx.lineWidth = skala * 1.2;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, skala * 8, skala * 2.4, 0, 0, 7); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    tegnFigur(ctx, f, p.x, p.y, FIG_H * skala, state.t);
+  }
+
+  // Det man trækker i, tegnes øverst
+  if (state.traek?.slags === 'ting') {
+    tegnTing(ctx, state.traek.id, sx(state.traek.x), sy(state.traek.y) - skala * 4, skala * 5.4);
+  }
+
+  tegnGnister();
+  tegnBobler(figurer);
+}
+
+/** Hvor en figur skal tegnes – med gyngens udsving og rutsjebanens tur lagt til. */
+function figurTegnePlads(f) {
+  if (state.traek?.slags === 'figur' && state.traek.id === f.id) return { x: sx(state.traek.x), y: sy(state.traek.y) };
+  const a = state.anim.find(a => a.id === f.id);
+  if (a && a.slags === 'rutsje') {
+    const d = Math.min(1, a.t / a.varighed);
+    return { x: sx(a.fraX + (f.x - a.fraX) * d), y: sy(a.fraY + (f.y - a.fraY) * d) };
+  }
+  if (a && a.slags === 'gynge' && f.saede === 'gynge') {
+    // Samme udsving som gyngens sæde: ctx.rotate drejer (0, d) hen til (−d·sin, d·cos).
+    const v = svingVinkel();
+    return { x: sx(32) - Math.sin(v) * skala * 24, y: sy(40) + Math.cos(v) * skala * 24 };
+  }
+  return { x: sx(f.x), y: sy(f.y) };
+}
+
+function tegnBobler(figurer) {
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const b of state.bobler) {
+    const f = figurer.find(a => a.id === b.id);
+    if (!f) continue;
+    const p = figurTegnePlads(f);
+    const h = FIG_H * skala * (f.dyr ? DYR_H / FIG_H : 1);
+    const fs = Math.max(9, Math.round(skala * 4.6));
+    ctx.font = `700 ${fs}px -apple-system,BlinkMacSystemFont,sans-serif`;
+    const bw = ctx.measureText(b.tekst).width + fs * 1.2;
+    const bh = fs * 1.9;
+    let bx = p.x, by2 = p.y - h - bh * .7;
+    bx = Math.max(bw / 2 + 4, Math.min(W - bw / 2 - 4, bx));
+    by2 = Math.max(bh / 2 + 4, by2);
+    fyld(ctx, 'rgba(255,247,230,.96)', () => rrect(ctx, bx - bw / 2, by2 - bh / 2, bw, bh, bh * .38));
+    fyld(ctx, 'rgba(255,247,230,.96)', () => { ctx.moveTo(p.x - fs * .3, by2 + bh * .4); ctx.lineTo(p.x + fs * .3, by2 + bh * .4); ctx.lineTo(p.x, by2 + bh * .95); ctx.closePath(); });
+    ctx.fillStyle = '#1c1f4a';
+    ctx.fillText(b.tekst, bx, by2 + 1);
+  }
+}
+
+function tegnGnister() {
+  for (const g of state.gnister) {
+    ctx.globalAlpha = Math.max(0, Math.min(1, g.liv));
+    if (g.slags === 'hjerte') {
+      ctx.fillStyle = g.farve;
+      const r = g.r * skala;
+      ctx.beginPath();
+      ctx.arc(g.x - r * .4, g.y, r * .5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(g.x + r * .4, g.y, r * .5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(g.x - r * .85, g.y + r * .2); ctx.lineTo(g.x, g.y + r * 1.2); ctx.lineTo(g.x + r * .85, g.y + r * .2); ctx.closePath(); ctx.fill();
+    } else if (g.slags === 'boble') {
+      ctx.strokeStyle = g.farve; ctx.lineWidth = Math.max(1, skala * .4);
+      ctx.beginPath(); ctx.arc(g.x, g.y, g.r * skala, 0, 7); ctx.stroke();
+    } else {
+      ctx.fillStyle = g.farve;
+      ctx.beginPath(); ctx.arc(g.x, g.y, g.r * skala, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ================= Livet i rummet ================= */
+function tik(dt) {
+  state.t += dt;
+  for (const g of state.gnister) { g.x += g.vx * dt; g.y += g.vy * dt; g.vy += g.tyngde * dt; g.liv -= dt / g.varighed; }
+  state.gnister = state.gnister.filter(g => g.liv > 0);
+  state.bobler = state.bobler.filter(b => b.til > state.t);
+  for (const a of state.anim) a.t += dt;
+  state.anim = state.anim.filter(a => a.t < a.varighed);
+  if (state.beskedTil && state.t > state.beskedTil) saetBesked('');
+
+  // Vaks lusker rundt, når han står på gulvet og ingen holder ham
+  const v = by().figurer.vaks;
+  if (v.sted === by().sted && !v.saede && !(state.traek?.id === 'vaks')) {
+    if (state.vaksMaal === null || Math.abs(v.x - state.vaksMaal) < 1.5) {
+      state.vaksMaal = rnd() < .35 ? KANT + rnd() * (BREDDE - 2 * KANT) : null;
+      if (state.vaksMaal === null) state.vaksMaal = v.x;   // står stille lidt
+    }
+    const d = state.vaksMaal - v.x;
+    if (Math.abs(d) > 1.5) v.x += Math.sign(d) * Math.min(Math.abs(d), 7 * dt);
+  }
+
+  if (gemTil && state.t > gemTil) { gemTil = 0; gemNu(); }
+}
+
+function loop(nu) {
+  if (!koerer) return;
+  const dt = Math.min(.1, (nu - sidstTid) / 1000 || 0);
+  sidstTid = nu;
+  tik(dt);
+  tegn();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- Små effekter ---------- */
+function gnist(slags, x, y, antal, farve) {
+  for (let i = 0; i < antal; i++) {
+    state.gnister.push({
+      slags, x, y, farve,
+      vx: (rnd() - .5) * 40 * skala / 3,
+      vy: -(20 + rnd() * 30) * skala / 3,
+      tyngde: slags === 'boble' ? -10 : 60,
+      r: (slags === 'hjerte' ? 1.6 : 1.1) + rnd(),
+      liv: 1, varighed: .9 + rnd() * .5,
+    });
+  }
+}
+
+function siger(figurId, tekst, sek = 2.6) {
+  if (!tekst) return;
+  state.bobler = state.bobler.filter(b => b.id !== figurId);
+  state.bobler.push({ id: figurId, tekst, til: state.t + sek });
+}
+
+function saetBesked(tekst, sek = 2.4) {
+  state.besked = tekst;
+  state.beskedTil = tekst ? state.t + sek : 0;
+  $('#besked').textContent = tekst;
+  $('#besked').style.opacity = tekst ? '1' : '0';
+}
+
+/* ================= Fingrene på lærredet ================= */
+/** Den figur, tingen eller møblet der ligger under punktet (x, y) i rummets enheder. */
+function hvadEr(x, y) {
+  const figurer = figurerI(by(), by().sted).slice().sort((a, b) => b.y - a.y);
+  for (const f of figurer) {
+    const h = f.dyr ? DYR_H : FIG_H;
+    const bredde = f.dyr ? 11 : 8;
+    if (x > f.x - bredde && x < f.x + bredde && y > f.y - h - 2 && y < f.y + 3) return { slags: 'figur', f };
+  }
+  // Tingene tegnes med midten 4,5 enheder over deres plads, så det er dér, man rammer.
+  const ting = tingI(by(), by().sted).slice().reverse();
+  for (const t of ting) if (Math.abs(t.x - x) < 6.5 && y > t.y - 12 && y < t.y + 3) return { slags: 'ting', t };
+  for (const m of her().moebler) if (Math.hypot(m.x - x, m.y - y) < m.r) return { slags: 'moebel', m };
+  return null;
+}
+
+function punkt(e) {
+  const r = laerred.getBoundingClientRect();
+  return { x: fraSx(e.clientX - r.left), y: fraSy(e.clientY - r.top) };
+}
+
+laerred.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  laerred.setPointerCapture?.(e.pointerId);
+  const p = punkt(e);
+  const maal = hvadEr(p.x, p.y);
+
+  // Har man en ting i hånden fra bakken, sætter trykket den fra sig
+  if (state.valgtTing) return brugValgtTing(p, maal);
+
+  if (maal?.slags === 'figur') {
+    state.traek = { slags: 'figur', id: maal.f.id, x: maal.f.x, y: maal.f.y, flyttet: false };
+  } else if (maal?.slags === 'ting') {
+    state.traek = { slags: 'ting', n: maal.t.n, id: maal.t.id, x: maal.t.x, y: maal.t.y, flyttet: false };
+  } else if (maal?.slags === 'moebel') {
+    state.traek = { slags: 'moebel', id: maal.m.id, flyttet: false };
+  } else {
+    state.traek = null;
+    vaelgFigur(null);
+  }
+});
+
+laerred.addEventListener('pointermove', e => {
+  if (!state.traek || state.traek.slags === 'moebel') return;
+  e.preventDefault();
+  const p = punkt(e);
+  if (Math.abs(p.x - state.traek.x) > 1.5 || Math.abs(p.y - state.traek.y) > 1.5) state.traek.flyttet = true;
+  state.traek.x = Math.max(KANT, Math.min(BREDDE - KANT, p.x));
+  state.traek.y = Math.max(LOFT, Math.min(GULV, p.y));
+});
+
+laerred.addEventListener('pointerup', e => {
+  const tr = state.traek;
+  state.traek = null;
+  if (!tr) return;
+  const p = punkt(e);
+
+  if (tr.slags === 'moebel') { rørMoebel(tr.id); return; }
+
+  if (!tr.flyttet) {                       // et tryk, ikke et træk
+    if (tr.slags === 'figur') rørFigur(tr.id);
+    else {
+      const r = iTasken(by(), tr.n);
+      if (r.besked) saetBesked(r.besked);
+      if (r.ok) tegnBakke();
+      gemSnart();
+    }
+    return;
+  }
+
+  if (tr.slags === 'figur') {
+    flytFigur(by(), tr.id, tr.x, tr.y);
+    const f = by().figurer[tr.id];
+    if (f.saede) siger(tr.id, f.dyr ? 'Vuf!' : 'Sådan!', 1.6);
+  } else {
+    // Slippes tingen oven på en figur, bruger figuren den
+    const maal = hvadEr(p.x, p.y);
+    if (maal?.slags === 'figur') {
+      const svar = brugPaa(by(), tr.id, maal.f.id);
+      fejr(maal.f, svar, tr.id);
+      fjernTing(by(), tr.n);
+    } else {
+      flytTing(by(), tr.n, tr.x, tr.y);
+    }
+  }
+  vaelgFigur(state.valgt);
+  gemSnart();
+});
+
+laerred.addEventListener('pointercancel', () => { state.traek = null; });
+
+/** Trykket på en figur: første gang siger den noget, anden gang åbner tøjet. */
+function rørFigur(id) {
+  const f = by().figurer[id];
+  // Sidder figuren i gyngen eller øverst på rutsjebanen, er et tryk et skub.
+  // Det er dét, man vil – og figuren dækker jo netop det møbel, man ville ramme.
+  const m = her().moebler.find(a => a.saede && a.saede === f.saede);
+  if (m) { vaelgFigur(id); return rørMoebel(m.id); }
+  if (state.valgt === id) return aabnToej(id);
+  vaelgFigur(id);
+  siger(id, puf(by(), id, rnd));
+  const p = figurTegnePlads(f);
+  gnist('hjerte', p.x, p.y - FIG_H * skala * .9, 3, '#ff8fb0');
+  gemSnart();
+}
+
+function rørMoebel(id) {
+  const svar = brugMoebel(by(), id, rnd);
+  saetBesked(svar.besked);
+  const m = her().moebler.find(a => a.id === id);
+  if (svar.ny) gnist('gnist', sx(svar.ny.x), sy(svar.ny.y) - skala * 8, 6, '#ffd447');
+  if (svar.ok && m.virkning === 'gynge') state.anim.push({ slags: 'gynge', id: svar.figur.id, t: 0, varighed: 3.2 });
+  if (svar.ok && m.virkning === 'rutsje') {
+    const s = (her().saeder || []).find(a => a.id === m.saede);
+    state.anim.push({ slags: 'rutsje', id: svar.figur.id, t: 0, varighed: .7, fraX: s.x, fraY: s.y });
+    siger(svar.figur.id, 'Wheee!', 2);
+  }
+  if (svar.ok && (m.virkning === 'gynge' || m.virkning === 'rutsje')) gnist('hjerte', sx(m.x), sy(m.y), 2, '#ffd447');
+  gemSnart();
+}
+
+/** Sætter den valgte ting fra bakken – enten på en figur eller på gulvet. */
+function brugValgtTing(p, maal) {
+  const { id, fra } = state.valgtTing;
+  if (maal?.slags === 'figur') {
+    const svar = brugPaa(by(), id, maal.f.id);
+    fejr(maal.f, svar, id);
+    if (fra === 'taske') { const i = by().taske.indexOf(id); if (i >= 0) by().taske.splice(i, 1); }
+  } else {
+    if (fra === 'taske') afTasken(by(), id, by().sted, p.x, p.y);
+    else frem(by(), id, by().sted, p.x, p.y);
+    saetBesked(`${tingen(id).navn} ligger klar.`);
+  }
+  vaelgTing(null);
+  gemSnart();
+}
+
+/** Lidt at se på, når en figur får noget. */
+function fejr(f, svar, tingId) {
+  if (!svar.ok) return;
+  saetBesked(svar.besked);
+  const p = figurTegnePlads(f);
+  const h = (f.dyr ? DYR_H : FIG_H) * skala;
+  if (svar.virkning === 'spis') { siger(f.id, 'Mums!', 2); gnist('gnist', p.x, p.y - h * .8, 7, tingen(tingId).farve); }
+  else if (svar.virkning === 'boble') { siger(f.id, 'Splask!', 2); gnist('boble', p.x, p.y - h * .7, 8, '#e6f7ff'); }
+  else gnist('hjerte', p.x, p.y - h * .9, 3, '#ff8fb0');
+}
+
+/* ================= Bakken, rummene og knapperne ================= */
+function vaelgFigur(id) {
+  state.valgt = id && by().figurer[id] && by().figurer[id].sted === by().sted ? id : null;
+  $('#toejBtn').disabled = !state.valgt;
+  if (state.fane === 'venner') tegnBakke();
+}
+
+function vaelgTing(valg) {
+  state.valgtTing = valg;
+  const h = $('#hint');
+  if (valg) {
+    h.hidden = false;
+    h.firstElementChild.textContent = `Tryk hvor ${tingen(valg.id).navn.toLowerCase()} skal hen`;
+  } else h.hidden = true;
+  tegnBakke();
+}
+
+function tegnSteder() {
+  const ul = $('#steder');
+  ul.innerHTML = '';
+  for (const s of STEDER) {
+    const b = document.createElement('button');
+    b.dataset.sted = s.id;
+    b.className = s.id === by().sted ? 'on' : '';
+    b.innerHTML = `<span aria-hidden="true">${s.emoji}</span> ${s.navn}`;
+    b.addEventListener('click', () => gaaTil(s.id));
+    ul.appendChild(b);
+  }
+}
+
+function gaaTil(sted) {
+  if (!stedet(sted) || sted === by().sted) return;
+  by().sted = sted;
+  state.valgt = null;
+  state.bobler = []; state.gnister = []; state.anim = [];
+  state.vaksMaal = null;
+  vaelgTing(null);
+  $('#toejBtn').disabled = true;
+  tegnSteder(); tegnBakke();
+  saetBesked(her().navn);
+  gemNu();
+}
+
+/** Ét felt i bakken: et lille lærred med tingen eller figuren på. */
+function chip(tegner, navn, hvor) {
+  const b = document.createElement('button');
+  b.className = 'chip';
+  const c = document.createElement('canvas');
+  const s = 52, d = Math.min(devicePixelRatio || 1, 2);
+  c.width = s * d; c.height = s * d;
+  c.style.width = c.style.height = s + 'px';
+  const cc = c.getContext('2d');
+  cc.setTransform(d, 0, 0, d, 0, 0);
+  tegner(cc, s);
+  b.appendChild(c);
+  const n = document.createElement('span');
+  n.textContent = navn;
+  b.appendChild(n);
+  if (hvor) {
+    const h = document.createElement('span');
+    h.className = 'hvor'; h.textContent = hvor;
+    b.appendChild(h);
+  }
+  return b;
+}
+
+function tegnBakke() {
+  const bakke = $('#bakke');
+  bakke.innerHTML = '';
+  if (state.fane === 'ting') {
+    for (const id of her().hylde) {
+      const t = tingen(id);
+      const b = chip((c, s) => tegnTing(c, id, s / 2, s / 2, s * .38), t.navn);
+      b.dataset.ting = id;
+      if (state.valgtTing?.id === id && state.valgtTing.fra === 'hylde') b.classList.add('on');
+      b.addEventListener('click', () => vaelgTing(state.valgtTing?.id === id && state.valgtTing.fra === 'hylde' ? null : { id, fra: 'hylde' }));
+      bakke.appendChild(b);
+    }
+  } else if (state.fane === 'venner') {
+    for (const skabelon of FIGURER) {
+      const f = by().figurer[skabelon.id];
+      const hjemme = f.sted === by().sted;
+      const b = chip((c, s) => tegnFigur(c, { ...f, saede: null, humoer: 'glad' }, s / 2, s * .96, s * .9, 0), f.navn, hjemme ? 'her' : stedet(f.sted).navn);
+      b.dataset.figur = f.id;
+      if (hjemme && state.valgt === f.id) b.classList.add('on');
+      b.addEventListener('click', () => {
+        if (f.sted === by().sted) { rørFigur(f.id); }
+        else {
+          hentHertil(by(), f.id, by().sted, BREDDE / 2 + (rnd() - .5) * 30);
+          vaelgFigur(f.id);
+          siger(f.id, f.dyr ? 'Vuf!' : 'Her er jeg!', 2);
+          saetBesked(`${f.navn} kom ind i ${her().navn.toLowerCase()}.`);
+          gemNu();
+        }
+        tegnBakke();
+      });
+      bakke.appendChild(b);
+    }
+  } else {
+    if (!by().taske.length) {
+      const p = document.createElement('span');
+      p.className = 'tom';
+      p.textContent = 'Tasken er tom. Tryk på noget, der ligger i et rum, så kommer det i tasken.';
+      bakke.appendChild(p);
+    }
+    by().taske.forEach((id, i) => {
+      const t = tingen(id);
+      const b = chip((c, s) => tegnTing(c, id, s / 2, s / 2, s * .38), t.navn);
+      b.dataset.taske = id;
+      if (state.valgtTing?.id === id && state.valgtTing.fra === 'taske') b.classList.add('on');
+      b.addEventListener('click', () => vaelgTing(state.valgtTing?.fra === 'taske' && state.valgtTing.id === id ? null : { id, fra: 'taske' }));
+      bakke.appendChild(b);
+    });
+  }
+  // Kort tekst, når der er noget i: «🎒 Taske (2/6)» bliver klippet af på en telefon.
+  $('#faner [data-fane="taske"]').textContent = by().taske.length ? `🎒 ${by().taske.length}/${TASKE_MAKS}` : '🎒 Taske';
+}
+
+for (const b of document.querySelectorAll('#faner button')) {
+  b.addEventListener('click', () => {
+    state.fane = b.dataset.fane;
+    for (const a of document.querySelectorAll('#faner button')) a.classList.toggle('on', a === b);
+    vaelgTing(null);
+  });
+}
+
+$('#rydBtn').addEventListener('click', () => {
+  const antal = ryd(by(), by().sted);
+  saetBesked(antal ? `Der blev ryddet ${antal} ting op.` : 'Her er allerede pænt ryddeligt.');
+  gemNu();
+});
+
+/* ================= Klæd på ================= */
+function aabnToej(id) {
+  vaelgFigur(id);
+  if (!state.valgt) return;
+  $('#toejArk').classList.add('on');
+  tegnToej();
+}
+
+function tegnToej() {
+  const f = by().figurer[state.valgt];
+  if (!f) return;
+  $('#toejNavn').textContent = f.navn;
+  const c = $('#toejFigur').getContext('2d');
+  c.clearRect(0, 0, 192, 192);
+  tegnFigur(c, { ...f, saede: null, humoer: 'glad' }, 96, 178, 170, state.t);
+
+  const valg = $('#toejValg');
+  valg.innerHTML = '';
+  for (const felt of TOEJ_FELTER) {
+    // Vaks har hverken frisure eller bukser – men pelsen kan skiftes
+    if (f.dyr && felt.felt !== 'troeje' && felt.felt !== 'buks') continue;
+    const navn = f.dyr ? (felt.felt === 'troeje' ? 'Pels' : 'Halsbånd') : felt.navn;
+    const h = document.createElement('div');
+    h.className = 'label'; h.textContent = navn;
+    valg.appendChild(h);
+    const raekke = document.createElement('div');
+    raekke.className = 'valg';
+    for (let i = 0; i < felt.antal; i++) {
+      const b = document.createElement('button');
+      const erValgt = felt.felt === 'haar' ? f.haar === HAAR_STIL[i] : f[felt.felt] === i;
+      if (felt.felt === 'haar') {
+        b.className = 'stil' + (erValgt ? ' on' : '');
+        b.textContent = HAAR_STIL[i];
+      } else {
+        b.className = 'farve' + (erValgt ? ' on' : '');
+        b.style.background = (felt.felt === 'hud' ? HUD : felt.felt === 'haarfarve' ? HAAR_FARVER : TOEJ_FARVER)[i];
+        b.setAttribute('aria-label', `${navn} ${i + 1}`);
+      }
+      b.dataset.felt = felt.felt; b.dataset.nr = String(i);
+      b.addEventListener('click', () => { saetToej(by(), f.id, felt.felt, i); tegnToej(); gemNu(); });
+      raekke.appendChild(b);
+    }
+    valg.appendChild(raekke);
+  }
+
+  // Tag det af, figuren har på
+  const paa = ['hat', 'briller', 'haand'].filter(p => f[p]);
+  if (paa.length) {
+    const h = document.createElement('div');
+    h.className = 'label'; h.textContent = 'Tag af';
+    valg.appendChild(h);
+    const raekke = document.createElement('div');
+    raekke.className = 'valg';
+    for (const plads of paa) {
+      const b = document.createElement('button');
+      b.className = 'stil';
+      b.dataset.af = plads;
+      b.textContent = tingen(f[plads]).navn;
+      b.addEventListener('click', () => { tagAf(by(), f.id, plads); tegnToej(); gemNu(); });
+      raekke.appendChild(b);
+    }
+    valg.appendChild(raekke);
+  }
+}
+
+const lukToej = () => { $('#toejArk').classList.remove('on'); };
+$('#toejBtn').addEventListener('click', () => state.valgt && aabnToej(state.valgt));
+$('#toejLuk').addEventListener('click', lukToej);
+$('#toejFaerdig').addEventListener('click', lukToej);
+
+/* ================= Hjælp ================= */
+const lukHjaelp = () => {
+  $('#hjaelpArk').classList.remove('on');
+  try { localStorage.setItem(HJAELP_KEY, '1'); } catch (e) {}
+};
+$('#hjaelpBtn').addEventListener('click', () => $('#hjaelpArk').classList.add('on'));
+$('#hjaelpLuk').addEventListener('click', lukHjaelp);
+$('#hjaelpOk').addEventListener('click', lukHjaelp);
+try { if (!localStorage.getItem(HJAELP_KEY)) $('#hjaelpArk').classList.add('on'); } catch (e) {}
+
+/* ================= I gang ================= */
+addEventListener('pagehide', gemNu);
+document.addEventListener('visibilitychange', () => { if (document.hidden) gemNu(); });
+
+// Bakken og rum-knapperne bygges først: de bestemmer, hvor høj plads rummet får.
+tegnSteder();
+tegnBakke();
+maalOp();
+if (window.ResizeObserver) new ResizeObserver(() => { maalOp(); tegn(); }).observe($('#rum'));
+saetBesked(her().navn, 2);
+requestAnimationFrame(t => { sidstTid = t; loop(t); });
+
+/* Til testen: sæt tiden i stå, og gør de vigtigste greb tilgængelige. */
+Object.assign(GAME, {
+  tik, tegn, gemNu, gaaTil, vaelgTing, vaelgFigur, tegnBakke, siger, saetBesked,
+  pause() { koerer = false; },
+  fortsaet() { if (!koerer) { koerer = true; requestAnimationFrame(t => { sidstTid = t; loop(t); }); } },
+  figur: id => by().figurer[id],
+  figurPlads: id => figurTegnePlads(by().figurer[id]),
+  nulstil() { GAME.by = nyBy(mitNavn()); gemNu(); tegnSteder(); tegnBakke(); },
+});
+</script>
+</body></html>

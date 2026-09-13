@@ -92,6 +92,8 @@ test('spillene kan findes på det, de også hedder', () => {
     'block blast': 'blokblast',
     'clash royale': 'slotskamp',
     'my cat': 'kat',
+    'toca boca': 'legebyen',       // Selma skrev «Toca boga», og det blev Legebyen
+    'dukkehus': 'legebyen',
     'killing': 'kat',
     'wordle': 'ordle',
     'tre på stribe': 'kryds',

@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 21,
+      "dato": "2026-09-13",
+      "spil": "legebyen",
+      "titel": "Legebyen – et dukkehus at lege i",
+      "hvad": "Der er kommet en hel lille by: stuen, køkkenet, badeværelset, butikken og legepladsen. Træk figurerne rundt, sæt dem i sofaen, i badekarret eller op i gyngen, giv dem mad fra køleskabet, tøj fra butikken og legetøj at holde i hånden — og klæd dem på med frisure og farver, du selv vælger. Tag ting med fra rum til rum i tasken. Der er ingen point og ingen måde at tabe på: du bestemmer selv, hvad der sker.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 20,
       "dato": "2026-09-13",
       "spil": "",

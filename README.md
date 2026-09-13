@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; sytten spil
+afhængigheder. De store apps bor i egne repoer og linkes til; atten spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet sytten spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet atten spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask, Blokblast, Slotskamp og Weeee!, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Miskmask, Blokblast, Slotskamp, Weeee! og Legebyen, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -42,6 +42,8 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Slotskamp | `public/spil/slotskamp/` | Selmas ønske om «Clash royale»: en kamp på to minutter mod en computermodstander. Banen er delt af en flod med to broer, og hver side har et kongetårn og to vagttårne. Man har otte kort i bunken, fire på hånden, og magi, der fylder op af sig selv (dobbelt de sidste 40 sekunder). Tropperne går selv frem, slår på det, de møder, og går efter tårnene; Kæmpen går udenom alt andet, Kanonen står stille, og Ildkugle og Lyn kan kastes hvor som helst. Et vagttårn giver én krone, kongetårnet vinder med det samme, og står det lige, spilles der forlænget, hvor det første tårn afgør det. Modstanderen bliver hårdere for hver anden sejr i træk (Nybegynder → Øvet → Skarp → Mester). Score = **sejre i træk**, online topliste. To filer: `kamp.mjs` (bane, kort, tropper, tårne og modstanderen, enhedstestet) og `index.html`. Se «Slotskamp – kampen og modstanderen» nedenfor. |
 | Weeee! | `public/spil/weee/` | Selmas ønske, der bare lød «Weeee» – lyden man laver, når det går stærkt ned ad bakke. Det er blevet til en kælketur ned ad en uendelig bjergside med ét eneste tryk: holder man fingeren nede, trykker man sig ned i sneen og får mere fart, men klæber også fast; slipper man på kanten af en bølge, letter man og flyver. I luften dykker man ved at holde igen, så man kan lande parallelt med bakken og beholde farten – en landing på tværs koster det meste. Bagved kommer en lavine, der bliver hurtigere for hvert sekund, så den eneste vej er fremad. Den gule streg på sneen viser, hvor man ville lette lige nu, og HUD'en siger hvad fingeren skal. Score = meter, online topliste. To filer: `bakke.mjs` (bakke, fysik og lavine, enhedstestet) og `index.html`. Se «Weeee! – det ene tryk og bjerget» nedenfor. |
+
+| Legebyen | `public/spil/legebyen/` | Selmas ønske om «Toca boca»: et dukkehus med fem rum – stuen, køkkenet, badeværelset, butikken og legepladsen – og seks figurer (fem børn og voksne plus hunden Vaks), man trækker rundt med fingeren. Slipper man en ved sofaen, badekarret, gyngen eller rutsjebanen, sætter den sig. Fra bakken nederst tager man ting frem: mad der bliver spist, hatte og solbriller der bliver taget på, og legetøj figuren holder i hånden. Møblerne kan man trykke på – køleskabet giver mad, komfuret en pizza, fjernsynet og bruseren tænder, kassen i butikken sælger, gyngen svinger. Ting man trykker på, ryger i **tasken** og kan komme med ind i et andet rum, og hver figur kan klædes på med hud, frisure, hårfarve, trøje og bukser. **Ingen point og ingen måde at tabe på** – det er fri leg, og byen står, som man forlod den. To filer: `by.mjs` (rum, figurer, ting og hvad der sker, når de mødes, enhedstestet) og `index.html`. Se «Legebyen – dukkehuset» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -91,7 +93,8 @@ startskærmen, og spillet sender selv rekorden ind (`unik` holder styr på, at
 hver spiller kun står én gang). Stenalder viser den tredje variant: dér kender
 spillet allerede spillerens rigtige navn fra startskærmen, så det bruger
 `Highscore.hent`/`send`/`tegnListe` direkte i stedet for `panel()` og spørger
-ikke om navn igen. Alle spil undtagen Kryds og bolle har topliste.
+ikke om navn igen. Alle spil undtagen Kryds og bolle og Legebyen har topliste
+– de to har ikke noget at måle.
 
 **Vis hvem der har rekorden.** Et spil, hvor listen kun dukker op, når man selv
 slår en rekord, kan man spille i ugevis uden at opdage, at der er andre med.
@@ -424,8 +427,9 @@ Fire ting er værd at huske:
 
 Ikke alle spil er med, og det er med vilje: Kryds og bolle og Dybet deler et
 rigtigt parti (bedre end et kapløb), Helteriget og Stenalder er hot-seat for to
-på én iPad, Ordstige har én opgave om dagen, og Min kat er en killing, der vokser
-over uger — ingen af dem har en «runde», man kan måle mod hinanden.
+på én iPad, Ordstige har én opgave om dagen, Min kat er en killing, der vokser
+over uger, og Legebyen er fri leg — ingen af dem har en «runde», man kan måle
+mod hinanden.
 
 Test: `test/kaploeb.test.mjs` (repoets tredje to-browser-test: Sofie udfordrer
 Selma i Tårn, begge spiller rigtige runder, føringen skifter, og den ene stopper)
@@ -721,6 +725,58 @@ ved høj fart ville man teknisk set lette på hele den stejle side, så `KANT` i
 index.html kræver, at krumningen også er der. Ellers lyser det halve bjerg, og
 stregen holder op med at betyde «slip her».
 
+### Legebyen – dukkehuset
+
+Ønsket lød «Lav Toca boga» – altså Toca Boca, hvor man ikke vinder noget, men
+bare leger med figurer i nogle rum. Det er hele pointen, og derfor er det
+eneste spil her (ud over Kryds og bolle) **uden score, uden topliste og uden
+slutskærm**. Reglerne bor i `by.mjs`, som ikke rører DOM'en; `index.html` tegner
+rummene og tager imod fingrene.
+
+**Rummet er altid 160 × 100 enheder**, og møblerne står på faste pladser i dem –
+som i Miskmask, så en sofa står det samme sted på en iPhone på højkant og en
+iPad på tværs. Den højde, der bliver til overs på en telefon, lægges 70 % over
+møblerne som væg og 30 % under som gulv: midtstillede vi rummet, blev gulvet en
+tredjedel af skærmen, og bundstillede vi det, blev væggen en tom flade. Derfor
+er der også noget at se på højt oppe i hvert rum (hylden i stuen, overskabene i
+køkkenet, håndklæderne på badet, vimplerne i butikken, himlen på legepladsen).
+
+**Fingeren gør kun tre ting**, og de er de samme overalt:
+
+| Man gør | Så sker der |
+|---|---|
+| trækker i en figur eller en ting | den flytter sig – og en figur, der slippes tæt på et sæde, sætter sig |
+| trykker på en figur | den siger noget; én gang til åbner «klæd på» |
+| trykker på en ting i bakken og så et sted | tingen lægges der – eller bruges, hvis man trykker på en figur |
+
+Fire valg er værd at huske:
+
+1. **Tryk-og-sæt frem for at trække fra bakken.** Bakken er almindelig HTML
+   under lærredet, og et træk fra en rullende liste ned på et canvas er svært
+   for en tommelfinger. I stedet vælger man tingen og trykker, hvor den skal
+   hen – og det virker ens for hylden og for tasken.
+2. **Figurer falder altid ned på gulvet** (`flytFigur`), medmindre de rammer et
+   sæde. En figur, der bliver hængende i luften midt i rummet, ser ud som en
+   fejl, og børnene prøvede at «rette» den.
+3. **Intet forsvinder bare.** Giver man en ny hat på, falder den gamle på gulvet
+   ved siden af, og den samme ting én gang til tager den af igen. Ellers er der
+   ingen vej tilbage, når først kronen sidder fast.
+4. **Sidder der en i gyngen, er et tryk på hende et skub.** Figuren dækker jo
+   netop det møbel, man ville ramme – det gælder også rutsjebanen.
+
+Tasken (`TASKE_MAKS` = 6) er den eneste måde at flytte ting mellem rum på: man
+trykker på noget, der ligger, og det ryger i tasken. Et rum holder højst
+`TING_MAKS_PR_STED` = 12 løse ting, så et rum ikke kan fyldes, til man ikke kan
+se, hvad der er hvad – og `🧹` rydder det hele væk igen.
+
+Hele byen ligger i `localStorage` under `zydy.legebyen.v1`, og `laes()` prøver
+alt af mod det, spillet kender i dag: en ting eller en frisure, vi har fjernet
+siden, falder bare ud, to figurer kan ikke arve det samme sæde, og en figur kan
+ikke have en bold på hovedet. `mig`-figuren hedder det, der står i `zydy.navn`.
+
+Test: `test/legebyen.test.mjs` (leger alle fem rum igennem gennem skærmen) +
+`test/unit/legebyen.test.mjs`.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -745,7 +801,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, kapløbets stilling, forsidens kort og søgning, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, kapløbets stilling, forsidens kort og søgning, nyhedslisten, højscore-, aktivitets-, idé-, venne- og rum-API'et (ingen browser, ~5 sek.)
 ```
 
 Playwright-testene kører uden Cloudflare, fordi `test/api-mock.mjs` sætter
@@ -795,8 +851,8 @@ flere sessioner kører på én gang). Er porten allerede optaget — af en anden
 session eller af en server, der er blevet hængende fra en worktree, som siden er
 fjernet — så fejler `python3 -m http.server` stille, og *alle* tests rammer den
 fremmede server. Derfor tjekker `run.mjs`, at det er vores egen forside, der
-svarer, og prøver ellers den næste port og siger det højt. 23 tests, der fejler
-på én gang, er næsten altid dét og ikke 22 spilfejl.
+svarer, og prøver ellers den næste port og siger det højt. 25 tests, der fejler
+på én gang, er næsten altid dét og ikke 25 spilfejl.
 
 ## Tilføj en app — et nyt kort på forsiden
 
