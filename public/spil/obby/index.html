@@ -32,6 +32,11 @@
     spillet». Derfor står «Lavet af» (#lavetAf) nu lige under titlen på
     startskærmen – hvem der fandt på spillet, og hvem der har skrevet koden.
 
+    Femte ønske (Sofie): «Det her spil skal gå meget hurtigere». Det er løst med
+    TEMPO – se kommentaren ved TEMPO0 nede i koden: hele verdenen spoles
+    hurtigere, mens banen ser ud præcis som før. Undervejs viser HUD'en ⚡ ×1,8,
+    og fartstriberne i baggrunden bliver længere, jo stærkere det går.
+
     Én fil, ingen afhængigheder (ud over toplistens fælles klient
     /spil/highscore.js).
 
@@ -79,6 +84,10 @@
   #hop.bump{transform:scale(1.2)}
   .hud .rek{margin-top:6px;font-size:16px;font-weight:700;color:var(--sun)}
   .hud .rek b{font-variant-numeric:tabular-nums}
+  /* Fartmåleren: ⚡ ×1,8 – så man kan se, hvor meget hurtigere det er blevet */
+  .hud .fart{margin-top:4px;font-size:16px;font-weight:700;color:var(--sky);font-variant-numeric:tabular-nums;
+    transition:transform .12s;transform-origin:left center}
+  .hud .fart.bump{transform:scale(1.25)}
   /* Coins i modsatte hjørne af hop-tælleren */
   .hud.hoejre{left:auto;right:14px;text-align:right}
   #coins{display:block;font-size:40px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:var(--sun);
@@ -167,7 +176,7 @@
     .top .name{display:none}          /* plads til Skins + Menu på en lille telefon */
   }
   @media (prefers-reduced-motion:reduce){
-    .btn,#hop,#coins,.skin-kort{transition:none}
+    .btn,#hop,#coins,.hud .fart,.skin-kort{transition:none}
     #tryAgain.on .big,#readyHint .sub,.skin-kort.ryst{animation:none}
   }
 </style>
@@ -188,6 +197,7 @@
       <span class="lbl">Hop</span>
       <b id="hop">0</b>
       <div class="rek">Rekord <b id="rekHud">0</b></div>
+      <div class="fart" id="fartHud">⚡ ×1,0</div>
     </div>
 
     <div class="hud hoejre" aria-live="polite">
@@ -212,7 +222,7 @@
         </div>
         <div class="hs" id="hsListe"></div>
         <div class="regler" aria-hidden="true">
-          <span>🟥 Laser = død</span><span>🌋 Lava = død</span><span>🟩 Hver 5. er checkpoint</span><span>🪙 Coins kun på checkpoints</span>
+          <span>🟥 Laser = død</span><span>🌋 Lava = død</span><span>🟩 Hver 5. er checkpoint</span><span>🪙 Coins kun på checkpoints</span><span>⚡ Det går hurtigere og hurtigere</span>
         </div>
         <div class="rekord-row"><span>Rekord</span><b id="rekordVal">0</b></div>
         <button class="btn ghost tom" id="nameBtn">Name</button>
@@ -267,6 +277,9 @@ const fx = Math.random;                // pynt (stumper, rystelse) må ikke rør
 const starRnd = mulberry32(11);
 const stars = Array.from({ length: 60 }, () => ({ x: starRnd(), y: starRnd() * 0.7, r: 0.6 + starRnd() * 1.4, a: 0.2 + starRnd() * 0.5 }));
 const clouds = Array.from({ length: 8 }, (_, i) => ({ x: i * 7 + starRnd() * 5, y: 9 + starRnd() * 5, w: 2.5 + starRnd() * 2.5 }));
+// Fartstriber i baggrunden: de bliver længere og tydeligere, jo hurtigere det går
+// (y starter under HUD'en, så striberne ikke skærer gennem «Rekord» og coins-tallet)
+const striber = Array.from({ length: 16 }, () => ({ x: starRnd(), y: 0.3 + starRnd() * 0.62, fart: 0.8 + starRnd() * 1.2, l: 0.7 + starRnd() * 1.6 }));
 
 /* ---------- Lagring ---------- */
 const KEY_BEST = 'zydy.obby.best';
@@ -279,7 +292,7 @@ const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
 // Ældre Safari mangler roundRect. Lappen sættes på prototypen, så butikkens
 // små forhåndsvisninger får den med (de har hver deres 2d-kontekst).
 if (!ctx.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
-const hopEl = $('hop'), rekHud = $('rekHud'), rekordVal = $('rekordVal');
+const hopEl = $('hop'), rekHud = $('rekHud'), rekordVal = $('rekordVal'), fartHud = $('fartHud');
 const startScreen = $('startScreen'), tryAgain = $('tryAgain'), readyHint = $('readyHint'), nyRekord = $('nyRekord');
 const readyTekst = $('readyTekst'), tryAgainTekst = $('tryAgainTekst'), shopHint = $('shopHint');
 const coinsEl = $('coins'), coinsStart = $('coinsStart'), coinsShop = $('coinsShop');
@@ -298,6 +311,30 @@ const P = 1;                 // spillerens bredde og højde
 */
 const VX0 = 6.0, VX_MAKS = 9.5, VX_TRIN = 0.006;   // fuld fart omkring platform 100
 const fartVed = i => Math.min(VX_MAKS, VX0 * (1 + VX_TRIN * i));
+/*
+  «Det her spil skal gå meget hurtigere» (Sofies ønske nr. 26).
+
+  Farten ovenfor kan man ikke bare skrue op: banen er genereret ud fra netop den
+  fart, så et større tal giver længere spring, større huller og bredere
+  laserplatforme – verdenen bliver grovere, og på en telefon kan man så ikke se
+  den næste firkant, før man skal hoppe. Derfor skruer vi på *tiden* i stedet.
+
+  TEMPO er, hvor mange spil-sekunder der går pr. virkeligt sekund. Hele verdenen
+  spoles hurtigere – figuren, hoppene, laserne, lavaen – mens banen ser ud
+  præcis som før: samme spring, samme huller, bare meget mindre tid til dem.
+  Fysikken går stadig i faste trin på DT; der tages bare flere af dem pr. billede.
+
+  Ligesom farten hænger tempoet på platformens nummer og ikke på hop-tælleren:
+  efter en død genopstår man på et checkpoint langt inde, hvor tælleren er
+  nulstillet, men banen stadig er bygget til høj fart – så skal det også stadig
+  gå stærkt. Regnestykket: 1,25 fra første firkant (25 % hurtigere end før) og
+  fuldt 1,8 omkring firkant 40. Sammen med fartVed() betyder det 7,5 enheder i
+  sekundet ved start mod 6,0 før, og 17,1 langt inde mod 9,5 før.
+*/
+const TEMPO0 = 1.25, TEMPO_MAKS = 1.8, TEMPO_TRIN = 0.011;
+const tempoVed = i => Math.min(TEMPO_MAKS, TEMPO0 * (1 + TEMPO_TRIN * i));
+/** Hvor meget hurtigere end grundfarten det går lige nu (fart × tempo), til ⚡-måleren. */
+const fartFaktor = () => player.vx * tempo / VX0;
 const T_UP = 0.33;           // sekunder op til toppen af et hop
 const H_JUMP = 2.0;          // hophøjde
 const G = 2 * H_JUMP / (T_UP * T_UP);
@@ -370,8 +407,10 @@ function gen(prev) {
   const selvHop = fartVed(i) * tLand(-2 * amp);
   // Et checkpoint er også startstedet efter en død: der skal være tid til at
   // reagere (REAKTION sekunders løb), og et hop derfra skal kunne lande på
-  // platformen igen. Begge dele vokser med farten.
-  let w = isCheckpoint ? Math.max(4.5 + rnd(), 1.5 + Math.max(selvHop, REAKTION * fartVed(i)))
+  // platformen igen. Begge dele vokser med farten – og med tempoet, for REAKTION
+  // skal være virkelige sekunder: ellers har man under et halvt sekund til at
+  // finde sig selv, når man genopstår langt inde, hvor tiden går 1,8 gange så hurtigt.
+  let w = isCheckpoint ? Math.max(4.5 + rnd(), 1.5 + Math.max(selvHop, REAKTION * fartVed(i) * tempoVed(i)))
     : laser ? Math.max(7.5, landing + selvHop + P + 1.2) + rnd() * 1.2
     : Math.max(2.4, 4.4 - 1.6 * diff + rnd() * 1.2);
   w = Math.max(w, landing + 0.6);                         // et hop fra kanten må ikke flyve forbi
@@ -384,7 +423,7 @@ function gen(prev) {
 }
 
 function nyBane() {
-  const w0 = Math.max(5, 1.5 + Math.max(fartVed(0) * tLand(0), REAKTION * fartVed(0)));
+  const w0 = Math.max(5, 1.5 + Math.max(fartVed(0) * tLand(0), REAKTION * fartVed(0) * tempoVed(0)));
   platforms = [{ i: 0, x: 0, w: w0, y: 4, amp: 0, freq: 1, phase: 0, laser: false, checkpoint: true, active: true, hue: 150 }];
   checkpoint = platforms[0];
 }
@@ -612,6 +651,8 @@ function simJump() {
 /* ---------- Tilstand ---------- */
 let phase = 'menu';          // menu | ready | run | dead
 let T = 0;                   // spiltid i sekunder
+let tempo = TEMPO0;          // spil-sekunder pr. virkeligt sekund (se TEMPO0)
+let tempoTrin = Math.round(TEMPO0 * 10);   // sidste viste ⚡-trin, så «Hurtigere!» kun popper op ved nye
 let streak = 0, best = loadBest();
 let camX = 0, shake = 0, deadAt = 0, squash = 0, flashT = 0;
 let particles = [], popups = [];
@@ -623,12 +664,20 @@ function updateHud() {
     hopEl.classList.add('bump'); setTimeout(() => hopEl.classList.remove('bump'), 120);
   }
   rekHud.textContent = best; rekordVal.textContent = best;
+  // Fartmåleren viser hele fartforøgelsen – både tempoet og den fart, der stiger
+  // med platformens nummer – i forhold til grundfarten. Den kravler fra ×1,3 til ×2,9.
+  const fartTekst = '⚡ ×' + (fartFaktor()).toFixed(1).replace('.', ',');
+  if (fartHud.textContent !== fartTekst) {
+    fartHud.textContent = fartTekst;
+    fartHud.classList.add('bump'); setTimeout(() => fartHud.classList.remove('bump'), 120);
+  }
 }
 
 function spawn() {
   const pl = checkpoint;
   player.x = pl.x + 0.5; player.y = platTop(pl, T); player.vy = 0; player.on = pl; player.vx = fartVed(pl.i);
   player.running = false; player.alive = true; player.coyote = 0; player.jumpBuf = 0; player.jumped = false;
+  tempo = tempoVed(pl.i); tempoTrin = Math.round(tempo * 10);   // samme tempo som da man kom hertil
   streak = 0; camX = player.x - Wu * 0.3; particles = []; popups = []; shake = 0;
   phase = 'ready';
   // Sig hvor man står, ellers kan man ikke se at checkpointet gjorde noget:
@@ -652,7 +701,10 @@ function jump() {
   // længere end den checkpoint-platform, man står på.
   if (phase === 'ready') { phase = 'run'; player.running = true; readyHint.classList.remove('on'); return; }
   if (phase === 'run') {
-    if (player.on || player.coyote > 0) doJump(); else player.jumpBuf = BUFFER;
+    // Trykker man lige før landingen, gemmes trykket. Vinduet ganges med tempoet,
+    // så det bliver ved med at vare de samme BUFFER *virkelige* sekunder – ellers
+    // ville et tryk, der sad fint før, blive «for tidligt», når tiden går stærkere.
+    if (player.on || player.coyote > 0) doJump(); else player.jumpBuf = BUFFER * tempo;
     return;
   }
   if (phase === 'dead') { if (T - deadAt > 0.6) spawn(); return; }
@@ -665,6 +717,12 @@ function onLand(pl) {
     navigator.vibrate && navigator.vibrate(8);
   }
   player.vx = fartVed(pl.i);                 // hurtigere og hurtigere, jo længere man er nået
+  tempo = tempoVed(pl.i);                    // … og tiden selv går hurtigere (se TEMPO0)
+  const trin = Math.round(tempo * 10);
+  if (trin > tempoTrin) {
+    tempoTrin = trin;
+    if (phase === 'run') popups.push({ text: '⚡ Hurtigere!', x: pl.x + pl.w / 2, y: platTop(pl, T) + 2.6, t: 0, color: '#5b8cff' });
+  }
   // Kun firkanter man ikke har været på før tæller – ellers kunne man samle
   // coins ved at dø og hoppe de samme felter igen.
   const nyFirkant = pl.i > maksNaaet;
@@ -758,6 +816,24 @@ function draw() {
     rr(x * u, sy(c.y), c.w * u, 0.9 * u, 0.45 * u); ctx.fill();
   }
   ctx.globalAlpha = 1;
+
+  /*
+    Fartstriber: de suser forbi i baggrunden og bliver længere og tydeligere, jo
+    højere tempoet er. Uden dem kan man ikke *se*, at det er blevet hurtigere –
+    figuren står jo det samme sted på skærmen hele tiden.
+  */
+  const fartUd = Math.max(0, Math.min(1, (tempo - TEMPO0) / (TEMPO_MAKS - TEMPO0)));
+  if (!reduceMotion && phase !== 'menu') {
+    const span = W + 300;
+    ctx.strokeStyle = '#cfe0ff'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, 0.045 * u);
+    for (const s of striber) {
+      const x = ((s.x * span - camX * u * s.fart) % span + span) % span - 150;
+      const len = s.l * (0.5 + 2.2 * fartUd) * u;
+      ctx.globalAlpha = (0.05 + 0.17 * fartUd) * (phase === 'run' ? 1 : 0.4);
+      ctx.beginPath(); ctx.moveTo(x, s.y * H); ctx.lineTo(x + len, s.y * H); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
 
   // Platforme
   for (const pl of platforms) {
@@ -879,14 +955,24 @@ function draw() {
 }
 
 /* ---------- Løkke med fast fysik-trin ---------- */
+/** Tempoet, der gælder lige nu: kun selve spillet spoles – død og menu i normal fart. */
+const naaTempo = () => (phase === 'run' || phase === 'ready') ? tempo : 1;
+
+/**
+ * Spol `sek` *virkelige* sekunder frem. Tempoet bestemmer, hvor mange
+ * spil-sekunder det bliver til; fysikken går stadig i faste trin på DT, så der
+ * tages bare flere af dem. Bruges af billedløkken – og af testene.
+ */
+function frem(sek) {
+  acc += sek * naaTempo();
+  while (acc >= DT) { tick(DT); acc -= DT; }
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
   if (!lastT) lastT = now;
   let dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
-  if (!paused && !butikAaben) {
-    acc += dt;
-    while (acc >= DT) { tick(DT); acc -= DT; }
-  }
+  if (!paused && !butikAaben) frem(dt);
   draw();
 }
 requestAnimationFrame(frame);
@@ -1063,7 +1149,7 @@ visNavn(); updateHud(); visCoins(); hentListe();
 
 /* ---------- Test-API ---------- */
 window.GAME = {
-  start, jump, tick, simJump, spawn, tilMenu, aabnButik, lukButik, seed,
+  start, jump, tick, frem, simJump, spawn, tilMenu, aabnButik, lukButik, seed,
   skins: SKINS.map(k => ({ id: k.id, navn: k.navn, pris: k.pris, hat: k.hat || null })),
   pause() { paused = true; }, resume() { paused = false; lastT = 0; acc = 0; },
   die() { if (phase === 'run' || phase === 'ready') { player.alive = false; die('lava'); } },
@@ -1072,13 +1158,16 @@ window.GAME = {
     const pl = platforms.find(q => q.i === i); if (!pl) return false;
     player.x = pl.x + 0.3; player.on = pl; player.y = platTop(pl, T); player.vy = 0; player.vx = fartVed(pl.i);
     player.alive = true; player.jumped = false;
-    camX = player.x - Wu * 0.3; fyldBane(); return true;
+    tempo = tempoVed(pl.i); tempoTrin = Math.round(tempo * 10);
+    camX = player.x - Wu * 0.3; fyldBane(); updateHud(); return true;
   },
   get state() {
     return {
       phase, running: phase === 'run', streak, best, T, camX,
       coins, coinsPrCheckpoint: COINS_PR_CHECKPOINT, skin: valgtSkin, ejet: [...ejet], maksNaaet, butikAaben,
       fart: player.vx, maksFart: VX_MAKS,
+      // tempo = spil-sekunder pr. virkeligt sekund; fart × tempo er den fart, man ser
+      tempo, maksTempo: TEMPO_MAKS, fartPrSekund: player.vx * tempo, fartFaktor: fartFaktor(),
       player: { x: player.x, y: player.y, vy: player.vy, on: player.on ? player.on.i : null, alive: player.alive },
       checkpoint: checkpoint ? checkpoint.i : null,
       platforms: platforms.map(pl => ({ i: pl.i, x: pl.x, w: pl.w, y: pl.y, amp: pl.amp, laser: pl.laser, checkpoint: pl.checkpoint, active: pl.active, top: platTop(pl, T) })),

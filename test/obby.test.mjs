@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 const { chromium, devices } = await import(process.env.PLAYWRIGHT ?? 'playwright');
 import { mockApi } from './api-mock.mjs';
 const BASE = process.env.BASE ?? 'http://localhost:4181';
+const SHOTS = new URL('./shots/', import.meta.url).pathname;   // i den worktree testen køres fra
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
 const page = await ctx.newPage();
@@ -95,7 +96,7 @@ await input.fill('Sofie');
 await input.press('Enter');
 assert.ok((await page.locator('#nameBtn').textContent()).startsWith('Sofie'), 'knappen viser navnet');
 assert.equal(await page.evaluate(() => localStorage.getItem('zydy.navn')), 'Sofie', 'navnet huskes (fælles med de andre spil)');
-await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/obby-start.png' });
+await page.screenshot({ path: SHOTS + 'obby-start.png' });
 
 /* ---------- Banen: laser på hver anden, checkpoint på hver femte ---------- */
 const st0 = await page.evaluate(() => window.GAME.state);
@@ -115,6 +116,28 @@ assert.equal(s.player.on, 0);
 assert.ok(await page.locator('#readyHint.on').isVisible());
 assert.ok(!(await page.locator('#menuBtn').isHidden()), 'Menu-knappen vises under spil');
 assert.ok(!(await lavetAf.isVisible()), 'rulleteksten ligger ikke i vejen, når man spiller');
+
+/* ---------- «Det her spil skal gå meget hurtigere» (Sofies ønske) ---------- */
+// Tempoet spoler hele verdenen hurtigere, mens banen ser ud præcis som før.
+// Det måles i *virkelige* sekunder med GAME.frem(sek), som er den samme kode,
+// billedløkken kører – GAME.tick() nedenfor går derimod i spil-sekunder, så
+// bot-turen stadig måler selve banen.
+const maalFart = (sek) => page.evaluate(({ sek }) => {
+  const G = window.GAME;
+  G.pause();                                   // billedløkken må ikke også rykke figuren
+  if (G.state.phase === 'ready') G.jump();     // første tryk sætter kun i gang
+  const s0 = G.state, x0 = s0.player.x;
+  G.frem(sek);
+  return { tempo: s0.tempo, fart: s0.fart, faktor: s0.fartFaktor, langt: G.state.player.x - x0 };
+}, { sek });
+
+const start0 = await maalFart(0.25);
+assert.ok(start0.tempo >= 1.2, `tempoet er over 1,2 fra første firkant (${start0.tempo})`);
+assert.ok(Math.abs(start0.langt - start0.fart * start0.tempo * 0.25) < 0.06,
+  'figuren flytter sig fart × tempo pr. virkeligt sekund');
+assert.ok(start0.langt / 0.25 > 7,
+  `det går over 7 enheder i sekundet fra start (${(start0.langt / 0.25).toFixed(1)}) – før var det 6,0`);
+assert.equal(await page.locator('#fartHud').textContent(), '⚡ ×1,3', 'fartmåleren står i HUD\'en fra start');
 
 const bot = (maal) => page.evaluate(({ maal }) => {
   const G = window.GAME, DT = 1 / 120;
@@ -148,13 +171,25 @@ assert.ok(r.lasere.length > 20, `botten kom forbi mange laserplatforme (${r.lase
 assert.ok(r.lasere.every(i => i % 2 === 1 && i % 5 !== 0), 'lasere sidder på hver anden, aldrig på et checkpoint');
 assert.ok(r.checkpoints.every(i => i % 5 === 0), 'checkpoints er hver femte');
 assert.equal(await page.locator('#hop').textContent(), String(r.streak), 'tælleren øverst til venstre følger med');
-await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/obby.png' });
+await page.screenshot({ path: SHOTS + 'obby.png' });
 
 /* ---------- Farten stiger, jo længere man kommer ---------- */
 let s2 = await page.evaluate(() => window.GAME.state);
 assert.ok(s2.fart > fart0 * 1.4, `farten stiger (fra ${fart0} til ${s2.fart})`);
 assert.equal(s2.fart, s2.maksFart, 'ved platform 120 er man på maksfart');
 assert.ok(s2.maksFart <= 12, 'maksfarten er stadig til at styre');
+
+// … og tempoet oven i: langt inde går det mere end dobbelt så hurtigt som ved start
+assert.equal(s2.tempo, s2.maksTempo, 'ved platform 120 er tempoet i top');
+const startFart = start0.fart * start0.tempo;
+assert.ok(s2.fartPrSekund > startFart * 2,
+  `det går mere end dobbelt så stærkt som ved start (${s2.fartPrSekund.toFixed(1)} mod ${startFart.toFixed(1)} enheder/sek.)`);
+assert.ok(s2.fartPrSekund > 9.5 * 1.5,
+  `og langt hurtigere end de 9,5 enheder/sek., der var det hurtigste før (${s2.fartPrSekund.toFixed(1)})`);
+assert.equal(await page.locator('#fartHud').textContent(), '⚡ ×2,9', 'fartmåleren er talt op');
+assert.ok(await page.locator('#fartHud').isVisible(), 'fartmåleren kan ses, mens man spiller');
+// Banen skal stadig kunne gennemføres ved det høje tempo – bot-turen ovenfor gik
+// hele vejen til 120 uden at dø, og den bruger de samme regler som en spiller.
 
 /* ---------- Coins: kun på checkpoints ---------- */
 // Sofie: "gør så det kun var der man fik point eller coins for, ellers får man
@@ -217,7 +252,7 @@ assert.ok(billeder.every(b => b.bredde > 20 && b.bredde < 120), 'tegningen har e
 // Og de må ikke ligge oven i hinanden
 const kasser = await page.evaluate(() => [...document.querySelectorAll('.skin-kort canvas')].map(c => { const b = c.getBoundingClientRect(); return [b.left, b.top]; }));
 assert.equal(new Set(kasser.map(k => k.join(','))).size, kasser.length, 'tegningerne står hver for sig');
-await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/obby-skins.png' });
+await page.screenshot({ path: SHOTS + 'obby-skins.png' });
 
 // Køb: den dyreste skin, et langt løb rækker til
 const dyr = skins.filter(k => k.pris > 0 && k.pris <= efterLoeb).sort((a, b) => b.pris - a.pris)[0];
@@ -263,6 +298,7 @@ assert.equal(st.skin, dyr.id, 'den valgte skin huskes');
 assert.ok(st.ejet.includes(dyr.id));
 assert.equal(await page.locator('#coinsStart').textContent(), String(rest), 'coins vises på startskærmen');
 assert.match(await page.locator('.regler').textContent(), /checkpoint/i, 'startskærmen fortæller om checkpoints og coins');
+assert.match(await page.locator('.regler').textContent(), /hurtigere/i, 'startskærmen fortæller, at det går hurtigere og hurtigere');
 await page.getByRole('button', { name: /Skins/ }).first().click();
 await page.waitForSelector('#shopScreen.on');
 assert.ok(await page.locator(`.skin-kort[data-skin="${dyr.id}"].ejet`).isVisible(), 'den købte skin er stadig ejet');
@@ -309,7 +345,7 @@ await page.waitForFunction(() => document.querySelector('#hsListe .hs-mig'));
 assert.deepEqual(sendte, [{ navn: 'Sofie', score: best }], 'rekorden sendes automatisk til toplisten med navnet');
 assert.equal(await page.locator('#hsListe .hs-mig .hs-navn').textContent(), 'Sofie', 'egen række er fremhævet');
 assert.equal(await page.locator('#hsListe .hs-raekke').first().locator('.hs-navn').textContent(), 'Sofie', 'Sofie er nr. 1 med 120+');
-await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/obby-tryagain.png' });
+await page.screenshot({ path: SHOTS + 'obby-tryagain.png' });
 
 /* ---------- Genopstå på checkpointet ---------- */
 r = await page.evaluate(() => { const G = window.GAME; G.jump(); return G.state; });
@@ -345,6 +381,9 @@ assert.equal(r.straks.player.on, 120, 'man står stadig på platformen efter fø
 assert.equal(r.straks.player.vy, 0, 'første tryk hopper ikke');
 assert.ok(r.straks.fart > 9, 'farten er høj på et checkpoint så langt inde');
 assert.ok(r.sekunder > 0.8, `der er tid til at nå at trykke igen (${r.sekunder.toFixed(2)} sek.)`);
+// … og den tid skal være virkelige sekunder: tiden går jo 1,8 gange så hurtigt her
+assert.ok(r.sekunder / r.straks.tempo > 0.8,
+  `også i virkelige sekunder (${(r.sekunder / r.straks.tempo).toFixed(2)} sek. ved tempo ${r.straks.tempo})`);
 assert.ok(r.slut.phase !== 'dead', 'man dør ikke af selve starten');
 
 assert.equal(r.slut.coins, coinsFoerGentag, 'man tjener ikke coins om igen på et checkpoint, man har taget før');

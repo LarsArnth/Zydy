@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 23,
+      "dato": "2026-09-13",
+      "spil": "obby",
+      "titel": "Obby går meget hurtigere nu",
+      "hvad": "Sofie syntes, at Obby gik for langsomt. Nu suser hele verdenen af sted: det starter en fjerdedel hurtigere end før, og jo længere du kommer, jo mere spoles der op — ved firkant 40 går tiden 1,8 gange så hurtigt, og langt inde er det næsten tre gange så hurtigt som før. Banen ser ud præcis som før, så alle spring kan stadig nås; du har bare meget mindre tid til dem. Øverst til venstre står ⚡ ×1,3, der tæller op til ×2,9, og striberne i baggrunden bliver længere, jo stærkere det går. Genopstår du på et checkpoint, har du stadig et helt sekund til at få fat i telefonen.",
+      "oensket": "Sofie"
+    },
+    {
       "nr": 22,
       "dato": "2026-09-13",
       "spil": "ordle",
