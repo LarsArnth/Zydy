@@ -901,10 +901,11 @@ To ting i UI'et er værd at huske:
    men ikke se det. Nu flytter `gulvY()` gulvlinjen op til 38 % af lærredet, så
    længe `#skole` er åben, og hele stuen følger med. Testen tjekker det ved at
    sammenligne gulvlinjen med arkets overkant.
-2. **Bolden bliver liggende, til man kaster igen.** Hunden løber kun efter en
-   bold, der ligger *væk* fra fødderne (`b.x > MIG_X + 0.08` i `boldFrem`);
-   ellers hentede og afleverede den i ét væk af sig selv, uden at man rørte en
-   finger, og så var der ingen leg i det.
+2. **Bolden bliver liggende, til man kaster igen.** Bolden ved fødderne får
+   mærket `hjemme`, og `boldFrem()` løber kun efter en bold uden det mærke. Det
+   var først en afstandsregel (`b.x > MIG_X + 0.08`), men den gik i stykker, da
+   afleveringspunktet flyttede sig: så hentede og afleverede hunden i ét væk af
+   sig selv, hvert eneste billede, uden at man rørte en finger.
 
 Som i Min kat gives mønter og erfaring kun for **forskellen** – `plej()`
 belønner det, der faktisk blev fyldt op. En mæt hund giver ingenting for mere

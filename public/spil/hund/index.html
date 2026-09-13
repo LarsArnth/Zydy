@@ -287,7 +287,7 @@ const state = {
   x: 0.5,                 // hundens plads på gulvet, 0 (venstre) – 1 (højre)
   maal: null,
   vend: 1,
-  bold: null,             // { x, fra, f, fase }: 'hjemme' (ved mine fødder) | 'flyver' | 'ligger' | 'munden'
+  bold: null,             // { x, fra, f, fase: 'flyver'|'ligger'|'munden', hjemme }
   hjerter: [],
   blinkTil: 0, naesteBlink: 2,
   spiserTil: 0, madISkaal: false,
@@ -1130,7 +1130,7 @@ function startBold() {
   if (!state.hund || state.tilstand === 'tur') return;
   stopAlt();
   state.tilstand = 'bold';
-  state.bold = { x: BOLD_X, fra: MIG_X, f: 1, fase: 'hjemme' };
+  state.bold = { x: BOLD_X, fra: MIG_X, f: 1, fase: 'ligger', hjemme: true };
   state.maal = null;
   sigNoget('Tryk på gulvet – så løber den efter bolden!');
   opdater();
@@ -1152,10 +1152,11 @@ function boldFrem(dt) {
     if (b.f >= 1) { b.f = 1; b.fase = 'ligger'; gaaMod(b.x); }
     return;
   }
-  // 'hjemme' er bolden, der ligger ved mine fødder og venter på et kast. Den
-  // har sin egen tilstand og ikke bare en plads på gulvet – ellers hentede og
-  // afleverede hunden den i ét væk, uden at man rørte en finger.
-  if (b.fase === 'hjemme') { state.maal = null; return; }
+  // `hjemme` er bolden, der ligger ved mine fødder og venter på et kast. Det er
+  // et mærke på bolden og ikke en plads på gulvet – en afstandsregel gik i
+  // stykker, hver gang afleveringspunktet flyttede sig, og så hentede og
+  // afleverede hunden i ét væk, uden at man rørte en finger.
+  if (b.hjemme) { state.maal = null; return; }
   if (b.fase === 'ligger') {
     if (state.maal == null) gaaMod(b.x);
     if (Math.abs(b.x - state.x) < 0.05) {           // fat i den – løb tilbage
@@ -1173,7 +1174,7 @@ function boldFrem(dt) {
 
 function afleverBold() {
   const r = plej(state.hund, 'leg', LEG_PR_KAST);
-  state.bold = { x: BOLD_X, fra: MIG_X, f: 1, fase: 'hjemme' };
+  state.bold = { x: BOLD_X, fra: MIG_X, f: 1, fase: 'ligger', hjemme: true };
   state.maal = null;
   hjerte(2);
   if (state.hund.behov.leg >= 100) { sigNoget(`${state.hund.navn} er godt legesyg nu!`); }
