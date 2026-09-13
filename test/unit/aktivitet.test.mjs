@@ -56,7 +56,10 @@ test('kendte spil: forsidens plus alle med topliste; topNoegle finder tilstanden
   for (const x of ['ordle', 'taltraef', 'imposter', 'klaver', 'taarn', 'saet', 'dybet', 'stenalder']) assert.ok(s.includes(x), x);
   assert.equal(topNoegle('taarn'), 'taarn');
   assert.equal(topNoegle('saet'), 'saet-klassisk', 'første tilstand bruges til rekordholderen');
-  assert.equal(topNoegle('ordle'), null, 'Ordle har ingen topliste her');
+  // Ordle bor et andet sted, men har alligevel en topliste: forsiden tæller selv
+  // dage i træk og sender dem ind (public/ordle.js). Taltræf har ingen.
+  assert.equal(topNoegle('ordle'), 'ordle');
+  assert.equal(topNoegle('taltraef'), null, 'Taltræf har ingen topliste her');
   assert.equal(rensKlient('abc123'), 'abc123');
   assert.equal(rensKlient('ABC'), null);
   assert.equal(rensKlient('a'.repeat(41)), null);

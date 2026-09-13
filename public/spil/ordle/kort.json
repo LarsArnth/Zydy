@@ -9,5 +9,8 @@
   ],
   "url": "https://larsarnth.github.io/ordle/",
   "orden": 10,
-  "ekstern": true
+  "ekstern": true,
+  "højscore": {
+    "maks": 3650
+  }
 }

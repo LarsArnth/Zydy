@@ -838,6 +838,7 @@
     'saet-blitz': enFlere('sæt', 'sæt'),
     'farvesortering': function (n) { return 'niveau ' + n; },
     'ordstige': enFlere('dag', 'dage'),
+    'ordle': enFlere('dag', 'dage'),        /* stimen, som forsiden selv tæller – se /ordle.js */
     'duel': function (n) { return n + ' ms'; },
     'helteriget': enFlere('tur', 'ture'),
     'stenalder': enFlere('point', 'point'),
@@ -953,6 +954,11 @@
      andre, "Find en ven" og "Spil sammen". Skal stå efter /ideer.js, som ejer
      navnet og stilen til dialogen. -->
 <script src="/venner.js" defer></script>
+
+<!-- Ordles topliste: kassen under Ordle-kortet, der spørger om du klarede dagens
+     ord, og tæller dine dage i træk. Ordle bor et andet sted og kan ikke selv
+     sende en score ind. Skal stå efter /ideer.js, som ejer navne-dialogen. -->
+<script type="module" src="/ordle.js"></script>
 
 <!-- "Nyt på Zydy": knappen i toppen og listen over hvad vi har lavet (/nyheder.json).
      Skal stå efter /ideer.js, som laver navneknappen, den lægger sig ved siden af. -->

@@ -31,6 +31,7 @@ export const KORT = [
  *  spillet har flere lister. retning 'asc' = laveste score vinder; min/maks er
  *  grænserne for en troværdig score; unik: false tillader samme navn flere gange. */
 export const SPIL = {
+  ordle: { maks: 3650 },
   taarn: { maks: 2000 },
   'saet-klassisk': { retning: 'asc', min: 20, maks: 10800 },
   'saet-blitz': { maks: 60 },

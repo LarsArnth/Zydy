@@ -94,7 +94,8 @@ hver spiller kun står én gang). Stenalder viser den tredje variant: dér kende
 spillet allerede spillerens rigtige navn fra startskærmen, så det bruger
 `Highscore.hent`/`send`/`tegnListe` direkte i stedet for `panel()` og spørger
 ikke om navn igen. Alle spil undtagen Kryds og bolle og Legebyen har topliste
-– de to har ikke noget at måle.
+– de to har ikke noget at måle. Ordle bor et andet sted og har alligevel en:
+se [Ordle](#ordle--en-topliste-for-et-spil-der-bor-et-andet-sted) nedenfor.
 
 **Vis hvem der har rekorden.** Et spil, hvor listen kun dukker op, når man selv
 slår en rekord, kan man spille i ugevis uden at opdage, at der er andre med.
@@ -124,6 +125,44 @@ tvivl:
 
 Har du en lokal D1 til `wrangler dev`, skal de køres dér med `--local` — eller
 bare drop den flygtige `aktive`-tabel og kør `schema.sql` igen.
+
+#### Ordle — en topliste for et spil, der bor et andet sted
+
+Lars' ønske til Ordle lød «Highscore virker ikke», og det gjorde den ikke:
+Ordle ligger på `larsarnth.github.io/ordle` i sit eget repo og kan ikke sende en
+score ind til zydy.dk. Kortet var derfor det eneste på forsiden helt uden
+topliste og uden 🏆-mærkat. At lade Ordle sende scoren selv ville kræve CORS her
+*og* ændringer i det andet repo — så i stedet **tæller forsiden selv**.
+
+Under Ordle-kortet står en lille kasse (`public/ordle.js`):
+
+> Klarede du dagens Ordle? Du har 3 dage i træk. **[Ja!]** [Ikke endnu]
+
+Et ja lægger en dag til stimen, og stimen er scoren på `/api/highscore/ordle`
+— «flest dage i træk», ligesom Ordstige. Bagefter står der bare
+«🔥 4 dage i træk», og rekordholderen dukker op som 🏆-mærkat på kortet af sig
+selv, fordi `ordle` nu har `"højscore"` i sit `kort.json`.
+
+Regnestykkerne ligger i `public/ordle-regler.mjs` (enhedstestet i
+`test/unit/ordle.test.mjs`). Fire valg er værd at kende:
+
+1. **Der spørges kun, når der er noget at spørge om:** man har trykket på
+   Ordle-kortet i dag, eller man har en stime i gang, der kan reddes. Ellers
+   ville hele familien blive spurgt hver dag om et spil, de ikke spiller.
+2. **Der er ingen nej-knap.** Den anden knap hedder «Ikke endnu» og gemmer bare
+   spørgsmålet resten af dagen. En stime brydes af *kalenderen* (en sprunget
+   dag), ikke af et tryk — ellers kunne et kikset tryk koste en stime på 20 dage.
+3. **Der tegnes igen ved `pageshow`.** Går man til Ordle og trykker tilbage,
+   kommer siden på iPhone fra bfcache uden at køre scriptet igen; uden det ville
+   spørgsmålet først dukke op ved næste besøg.
+4. **En stime, der ikke kom af sted, prøver igen.** Kvitteringen «navn|dage»
+   ligger i `localStorage` (`zydy.ordle`), så en tur uden forbindelse — eller et
+   nyt navn på iPad'en — bliver sendt næste gang forsiden tegnes.
+
+Det er tillid, ikke måling: man kan sagtens trykke «Ja!» uden at have spillet.
+Det er samme slags tillid som resten af sitet (alle kan skrive et hvilket som
+helst navn på en topliste), og alternativet var ingen topliste overhovedet.
+Mønstret kan genbruges, hvis Taltræf eller Imposter en dag skal have en.
 
 <a id="soeg"></a>
 

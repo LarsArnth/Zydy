@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 22,
+      "dato": "2026-09-13",
+      "spil": "ordle",
+      "titel": "Ordle har fået en topliste",
+      "hvad": "Ordle var det eneste spil uden highscore, fordi det bor et andet sted og ikke kan sende noget ind til zydy.dk. Nu tæller forsiden selv: når du kommer tilbage fra Ordle, spørger kortet «Klarede du dagens Ordle?», og et ja lægger en dag til din stime. Klarer du den mange dage i træk, kommer du på listen — og øverste navn står nu på kortet som «🏆 Selma · 6 dage». Springer du en dag over, begynder stimen forfra.",
+      "oensket": "Lars"
+    },
+    {
       "nr": 21,
       "dato": "2026-09-13",
       "spil": "legebyen",
