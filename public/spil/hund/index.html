@@ -1,0 +1,1679 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="Min hund: få din egen hvalp, fodr den, kast bolden, tag den med ud at gå – og lær den tricks.">
+<title>Min hund – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Cellipse cx='32' cy='34' rx='19' ry='17' fill='%23b9773f'/%3E%3Cellipse cx='15' cy='30' rx='7' ry='13' fill='%238c5628'/%3E%3Cellipse cx='49' cy='30' rx='7' ry='13' fill='%238c5628'/%3E%3Cellipse cx='32' cy='43' rx='11' ry='9' fill='%23e7c49a'/%3E%3Ccircle cx='25' cy='31' r='3.2' fill='%231c1f4a'/%3E%3Ccircle cx='39' cy='31' r='3.2' fill='%231c1f4a'/%3E%3Cellipse cx='32' cy='39' rx='4' ry='3' fill='%231c1f4a'/%3E%3C/svg%3E">
+<style>
+  /*
+    Min hund – et kæledyr man passer: mad, bold, bad, gåture og tricks.
+    Reglerne (behov, gåturen, tricks, erfaring og butikken) bor i hund.mjs;
+    her er stuen, parken, tegningen af hunden og fingrene på skærmen.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#5b8cff; --ink:#1c1f4a; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none;overflow:hidden}
+  body{display:flex;flex-direction:column;height:100vh;height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 12px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:40px;line-height:1;margin:0 0 8px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  [hidden]{display:none!important}
+  .btn{width:100%;padding:17px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;min-height:44px}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn:disabled{opacity:.45}
+  .pill{background:var(--bg2);border-radius:999px;padding:7px 13px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--text)}
+
+  .screen{display:none;flex-direction:column;flex:1;width:100%;max-width:620px;margin:0 auto;min-height:0}
+  .screen.on{display:flex}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;min-height:44px}
+  .back{color:var(--muted);text-decoration:none;font-size:17px;font-weight:700;display:inline-flex;
+    align-items:center;min-height:44px;min-width:44px;padding:0 6px 0 2px;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .brand{font-weight:800;font-size:18px;letter-spacing:-.3px}
+
+  /* ======== Startskærm ======== */
+  #start .indhold{flex:1;display:flex;flex-direction:column;justify-content:center;overflow-y:auto}
+  .hvalpe{display:flex;gap:10px;margin:6px 0 4px}
+  .hvalp{flex:1;background:var(--bg2);border-radius:var(--r);padding:10px 6px 8px;display:flex;
+    flex-direction:column;align-items:center;gap:4px;border:3px solid transparent;color:var(--muted);font-weight:700;font-size:14px}
+  .hvalp.on{border-color:var(--sun);color:var(--text)}
+  .hvalp canvas{width:100%;max-width:96px;aspect-ratio:1;display:block}
+  .navnefelt{font:inherit;font-size:20px;font-weight:700;text-align:center;padding:14px;border-radius:16px;
+    border:2px solid transparent;background:var(--bg2);color:var(--text);outline:none;width:100%;
+    -webkit-user-select:text;user-select:text;margin-top:4px}
+  .navnefelt:focus{border-color:var(--sun)}
+  .navnefelt::placeholder{color:var(--muted);font-weight:500}
+  .label{font-weight:700;font-size:16px;margin:12px 0 4px}
+
+  /* ======== Spilskærm ======== */
+  #spil{min-height:0}
+  .status{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .status .navn{font-weight:800;font-size:17px;flex:none}
+  .xpspor{flex:1;height:12px;border-radius:999px;background:var(--bg2);overflow:hidden}
+  .xpspor i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--mint),var(--sun));
+    border-radius:999px;transition:width .3s}
+  .stue{flex:1;min-height:0;position:relative;border-radius:var(--r);overflow:hidden;background:#2a2350}
+  .stue canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #besked{position:absolute;left:10px;right:10px;bottom:8px;text-align:center;font-size:15px;font-weight:700;
+    color:var(--text);text-shadow:0 2px 8px rgba(0,0,0,.55);pointer-events:none}
+  #stopBtn{position:absolute;top:8px;right:8px;background:rgba(17,20,42,.72);color:var(--text);
+    border-radius:999px;padding:8px 14px;font-size:15px;font-weight:700;min-height:40px}
+  #turMaal{position:absolute;top:8px;left:8px;background:rgba(17,20,42,.72);border-radius:999px;
+    padding:7px 13px;font-size:14px;font-weight:700;color:var(--text)}
+
+  .behov{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 2px}
+  .maaler{background:var(--bg2);border-radius:14px;padding:6px 8px 7px;text-align:center}
+  .maaler .hoved{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.2px}
+  .maaler .spor{display:block;height:9px;border-radius:999px;background:rgba(255,255,255,.10);margin-top:5px;overflow:hidden}
+  .maaler .spor i{display:block;height:100%;width:50%;border-radius:999px;background:var(--mint);transition:width .25s,background .25s}
+  .maaler.lav .spor i{background:var(--coral)}
+  .maaler.halv .spor i{background:var(--sun)}
+
+  .knapper{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+  .knapper button{background:var(--bg2);color:var(--text);border-radius:18px;padding:9px 2px 7px;
+    font-size:13px;font-weight:700;min-height:62px;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:3px;transition:transform .08s,background .15s}
+  .knapper button .em{font-size:23px;line-height:1}
+  .knapper button:active{transform:scale(.96)}
+  .knapper button.on{background:var(--sun);color:var(--ink)}
+  .knapper button:disabled{opacity:.4}
+  .smaa{display:flex;gap:8px;margin-top:8px}
+  .smaa button{flex:1;background:var(--bg2);color:var(--text);border-radius:16px;padding:11px;font-size:15px;font-weight:700;min-height:44px}
+  .smaa button.frem{background:var(--mint);color:var(--ink)}
+
+  /* ======== Ark der glider op (butik, hundeskole og topliste) ======== */
+  .ark{position:fixed;inset:0;background:rgba(9,11,26,.72);display:none;align-items:flex-end;z-index:40}
+  .ark.on{display:flex}
+  .ark .kort{background:var(--bg);width:100%;max-width:620px;margin:0 auto;border-radius:26px 26px 0 0;
+    padding:16px 16px calc(env(safe-area-inset-bottom) + 16px);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  /* Hundeskolen er lav med vilje: man skal kunne se hunden gøre tricket, mens arket er åbent */
+  .ark.lav{background:rgba(9,11,26,.35)}
+  .ark.lav .kort{max-height:54vh}
+  .ark h2{margin:0;font-size:24px;letter-spacing:-.5px}
+  .arkTop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .luk{background:var(--bg2);color:var(--text);border-radius:999px;width:44px;height:44px;font-size:20px;flex:none}
+  .hylde{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 4px}
+  .vare{background:var(--bg2);border-radius:18px;padding:8px 6px 9px;display:flex;flex-direction:column;
+    align-items:center;gap:4px;border:3px solid transparent;color:var(--text);font-size:13px;font-weight:700;text-align:center}
+  .vare canvas{width:100%;max-width:84px;aspect-ratio:1;display:block}
+  .vare .pris{color:var(--sun);font-size:13px;font-weight:800}
+  .vare .pris.ejet{color:var(--muted)}
+  .vare.paa{border-color:var(--sun)}
+  .vare.dyr{opacity:.5}
+  @media (min-width:520px){ .hylde{grid-template-columns:repeat(4,1fr)} }
+
+  /* ======== Hundeskolen ======== */
+  .tricks{display:flex;flex-direction:column;gap:8px;margin:8px 0 4px}
+  .trick{display:flex;align-items:center;gap:10px;background:var(--bg2);color:var(--text);
+    border-radius:18px;padding:10px 12px;min-height:56px;text-align:left;width:100%}
+  .trick .em{font-size:24px;flex:none}
+  .trick .midt{flex:1;min-width:0}
+  .trick .navn{font-size:16px;font-weight:800}
+  .trick .spor{display:block;height:8px;border-radius:999px;background:rgba(255,255,255,.10);margin-top:5px;overflow:hidden}
+  .trick .spor i{display:block;height:100%;width:0;border-radius:999px;background:var(--mint);transition:width .3s}
+  .trick .tal{font-size:13px;color:var(--muted);font-weight:700;flex:none}
+  .trick.kan .spor i{background:var(--sun)}
+  .trick.laast{opacity:.5}
+  #skoleSvar{min-height:24px;font-weight:700;font-size:16px;margin:6px 0 0;color:var(--text)}
+  #skoleSvar.fejl{color:var(--muted)}
+
+  @media (max-height:560px){
+    h1{font-size:32px} .knapper button{min-height:54px} .behov{margin-top:6px}
+    .ark.lav .kort{max-height:48vh}
+  }
+  @media (prefers-reduced-motion:reduce){ .btn,.knapper button,.xpspor i,.maaler .spor i,.trick .spor i{transition:none} }
+</style>
+</head>
+<body>
+
+<!-- ===== Startskærm: vælg en hvalp ===== -->
+<div class="screen on" id="start">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand">Min hund</span>
+    <span class="pill" id="startPill">Ny hvalp</span>
+  </div>
+  <div class="indhold">
+    <h1>Min hund</h1>
+    <p id="startTekst">Vælg en hvalp, giv den et navn – og husk, at en hund skal ud at gå.</p>
+
+    <div class="hvalpe" id="hvalpe"></div>
+    <div class="label">Hvad skal den hedde?</div>
+    <input class="navnefelt" id="hundNavn" type="text" maxlength="12" placeholder="Fx Vaks"
+           enterkeyhint="done" autocapitalize="words" spellcheck="false" autocomplete="off" aria-label="Hundens navn">
+    <button class="btn" id="adopterBtn">Hent hvalpen hjem</button>
+    <button class="btn ghost" id="fortsaetBtn" hidden>Tilbage til hunden</button>
+    <div id="hsStart"></div>
+  </div>
+</div>
+
+<!-- ===== Spilskærm ===== -->
+<div class="screen" id="spil">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="brand" id="hundBrand">Min hund</span>
+    <span class="pill" id="moentPill">🪙 <b>0</b></span>
+  </div>
+
+  <div class="status">
+    <span class="navn" id="niveauTekst">Niveau 1</span>
+    <span class="xpspor" aria-hidden="true"><i id="xpBar"></i></span>
+    <span class="pill" id="meterPill">🦮 0 m</span>
+  </div>
+
+  <div class="stue" id="stue">
+    <canvas id="laerred"></canvas>
+    <div id="turMaal" hidden></div>
+    <div id="besked"></div>
+    <button id="stopBtn" hidden>Færdig</button>
+  </div>
+
+  <div class="behov" id="behov"></div>
+
+  <div class="knapper">
+    <button id="madBtn"><span class="em">🍖</span>Mad</button>
+    <button id="boldBtn"><span class="em">🎾</span>Bold</button>
+    <button id="badBtn"><span class="em">🛁</span>Bad</button>
+    <button id="turBtn"><span class="em">🦮</span>Gåtur</button>
+  </div>
+  <div class="smaa">
+    <button id="skoleBtn">🎓 Tricks</button>
+    <button id="butikBtn">🎩 Butik</button>
+    <button id="toplisteBtn">🏆 Topliste</button>
+  </div>
+</div>
+
+<!-- ===== Hundeskolen ===== -->
+<div class="ark lav" id="skole">
+  <div class="kort">
+    <div class="arkTop">
+      <h2>Hundeskole</h2>
+      <span class="pill" id="skolePill">0 tricks</span>
+      <button class="luk" id="skoleLuk" aria-label="Luk hundeskolen">✕</button>
+    </div>
+    <p id="skoleTekst">Sig ordet, og se om den gør det. Jo mere I øver, jo bedre kan den det.</p>
+    <div class="tricks" id="trickListe"></div>
+    <p id="skoleSvar"></p>
+  </div>
+</div>
+
+<!-- ===== Butikken ===== -->
+<div class="ark" id="butik">
+  <div class="kort">
+    <div class="arkTop">
+      <h2>Butik</h2>
+      <span class="pill" id="butikMoent">🪙 <b>0</b></span>
+      <button class="luk" id="butikLuk" aria-label="Luk butikken">✕</button>
+    </div>
+    <p id="butikTekst">Tjen mønter ved at passe hunden. Tryk på noget, du ejer, for at tage det på eller af.</p>
+    <div class="label">Hvalp</div>
+    <div class="hylde" id="hyldePels"></div>
+    <div class="label">Hatte</div>
+    <div class="hylde" id="hyldeHat"></div>
+    <div class="label">Halsbånd</div>
+    <div class="hylde" id="hyldeBaand"></div>
+  </div>
+</div>
+
+<!-- ===== Toplisten ===== -->
+<div class="ark" id="toplisteArk">
+  <div class="kort">
+    <div class="arkTop">
+      <h2 id="hsTitel">Topliste</h2>
+      <button class="luk" id="hsLuk" aria-label="Luk toplisten">✕</button>
+    </div>
+    <p>Jo bedre du passer hunden – og jo flere tricks den lærer – jo højere niveau når den op på.</p>
+    <div id="hsPanel"></div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="hund"></script>
+<script type="module">
+import {
+  BEHOV, BEHOV_NAVN, TING, TRICKS, GRATIS_PELSE, TUR_FART, TUR_RAEKKEVIDDE,
+  MAD_PR_MAALTID, LEG_PR_KAST, BAD_PR_STROEG, MESTRET,
+  nyHund, laes, serialiser, forfald, plej, klap, koeb, tagPaa, ejer, tingen,
+  nyTur, gaa, turStop, traen, trick, laert, kanTraene, kanTricks,
+  niveauFor, niveauAndel, trivsel, humoer, mestTraengende, velkomst, meterTekst,
+  MAKS_NIVEAU,
+} from './hund.mjs';
+
+const $ = s => document.querySelector(s);
+const KEY = 'zydy.hund.v1';
+const SPIL = 'hund';
+
+/* ---------- Seedbar tilfældighed, så ?seed=123 giver den samme tur ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const params = new URLSearchParams(location.search);
+const seed = parseInt(params.get('seed'), 10) || ((Math.random() * 2 ** 31) | 0);
+const rnd = mulberry32(seed);
+
+/* ================= Pelse og farver ================= */
+const PELSE = {
+  'pels-brun':    { krop:'#b9773f', lys:'#e7c49a', moerk:'#8c5628', oerer:'flop' },
+  // Hængeører på de tre gratis hvalpe: med spidse ører og en tynd hale ligner
+  // en sort hund set fra siden en kat, og det er der jo allerede et spil om.
+  'pels-sort':    { krop:'#3f4160', lys:'#b07a42', moerk:'#26283f', oerer:'flop' },
+  'pels-hvid':    { krop:'#f1efe6', lys:'#ffffff', moerk:'#cfcabb', oerer:'flop' },
+  'pels-gylden':  { krop:'#e8b45c', lys:'#ffe6b5', moerk:'#b9832f', oerer:'flop' },
+  'pels-plettet': { krop:'#f4eee1', lys:'#ffffff', moerk:'#d5cab4', oerer:'flop', pletter:true },
+  'pels-graa':    { krop:'#9aa3bd', lys:'#e2e7f5', moerk:'#6b748e', oerer:'spids' },
+  'pels-choko':   { krop:'#7a4a2b', lys:'#c08c5c', moerk:'#563018', oerer:'flop' },
+};
+const pelsen = id => PELSE[id] || PELSE['pels-brun'];
+
+/* ================= Tilstand ================= */
+const state = {
+  skaerm: 'start',
+  hund: null,
+  tilstand: 'fri',        // fri | spiser | bold | bad | tur | trick
+  t: 0,                   // sekunder siden siden blev åbnet
+  x: 0.5,                 // hundens plads på gulvet, 0 (venstre) – 1 (højre)
+  maal: null,
+  vend: 1,
+  bold: null,             // { x, fra, f, fase } – fase: 'flyver' | 'ligger' | 'munden'
+  hjerter: [],
+  blinkTil: 0, naesteBlink: 2,
+  spiserTil: 0, madISkaal: false,
+  badSum: 0, rystTil: 0,
+  tur: null,              // { laengde, m, stop: [...] }
+  turPulje: 0,
+  trick: null,            // { id, ok, fase, tid }
+  besked: '',
+  valgtPels: GRATIS_PELSE[0],
+  seed,
+};
+const GAME = window.GAME = { state, seed };
+let sidsteGem = 0, koerer = true, sidstTid = 0;
+
+/* ================= Gem og hent ================= */
+function gemNu() {
+  if (!state.hund) return;
+  try { localStorage.setItem(KEY, JSON.stringify(serialiser(state.hund, Date.now()))); } catch (e) {}
+  sidsteGem = state.t;
+}
+function hentGemt() {
+  try {
+    const raa = localStorage.getItem(KEY);
+    if (!raa) return null;
+    return laes(JSON.parse(raa), Date.now());
+  } catch (e) { return null; }
+}
+
+/* ================= Tegning ================= */
+const laerred = $('#laerred');
+const ctx = laerred.getContext('2d');
+let W = 300, H = 200, dpr = 1;
+
+function maalOp() {
+  const r = $('#stue').getBoundingClientRect();
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  W = Math.max(120, Math.round(r.width)); H = Math.max(120, Math.round(r.height));
+  laerred.width = Math.round(W * dpr); laerred.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener('resize', () => { maalOp(); tegn(); });
+
+/*
+  Hundeskolens ark dækker den nederste halvdel af skærmen, og dér stod hunden –
+  så man kunne høre, at den satte sig, men ikke se det. Mens skolen er åben,
+  løftes hele stuen derfor op i den strimmel, der er tilbage.
+*/
+let skoleOppe = false;
+const gulvY = () => H * (skoleOppe ? 0.38 : 0.80);
+const hundH = () => Math.min(H * 0.44, W * 0.30);
+const xTil = f => W * (0.16 + 0.70 * f);            // hundens plads → pixels
+const fraX = px => Math.max(0, Math.min(1, (px / W - 0.16) / 0.70));
+const SKAAL_X = 0.06, KURV_X = 0.95, KAR_X = 0.5, MIG_X = 0.02, BOLD_X = 0.12;
+const TUR_X = () => W * 0.34;                        // hvor hunden går på turen
+const PX_PR_M = () => W * 0.05;
+
+/** Afrundet rektangel (findes ikke i ældre Safari som ctx.roundRect). */
+function rrect(c, x, y, w, h, r) {
+  const rr = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+  c.beginPath();
+  c.moveTo(x + rr, y);
+  c.arcTo(x + w, y, x + w, y + h, rr);
+  c.arcTo(x + w, y + h, x, y + h, rr);
+  c.arcTo(x, y + h, x, y, rr);
+  c.arcTo(x, y, x + w, y, rr);
+  c.closePath();
+}
+const ellipse = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, Math.abs(rx), Math.abs(ry), rot, 0, Math.PI * 2); c.fill(); };
+
+/* ---------- Stuen ---------- */
+function tegnStue() {
+  // Væggen er lysere end i «Min kat»: en sort eller grå hund forsvinder i en mørk stue
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#54499b');
+  g.addColorStop(1, '#6a5ab8');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // Vindue med sol
+  const vx = W * 0.66, vy = H * 0.09, vw = W * 0.24, vh = H * 0.32;
+  ctx.fillStyle = '#7fc8f2';
+  rrect(ctx, vx, vy, vw, vh, 12); ctx.fill();
+  ctx.fillStyle = '#ffd447';
+  ctx.beginPath(); ctx.arc(vx + vw * 0.68, vy + vh * 0.3, Math.min(vw, vh) * 0.18, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff7e6'; ctx.lineWidth = 5;
+  rrect(ctx, vx, vy, vw, vh, 12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(vx + vw / 2, vy); ctx.lineTo(vx + vw / 2, vy + vh);
+  ctx.moveTo(vx, vy + vh / 2); ctx.lineTo(vx + vw, vy + vh / 2); ctx.stroke();
+
+  // Gulv og tæppe
+  const gy = gulvY();
+  ctx.fillStyle = '#6b4b36'; ctx.fillRect(0, gy, W, H - gy);
+  ctx.fillStyle = '#7d5a41';
+  for (let i = 0; i < 7; i++) ctx.fillRect((i * W) / 7, gy, 3, H - gy);
+  ctx.fillStyle = 'rgba(94,224,168,.28)';
+  ellipse(ctx, W * 0.5, gy + (H - gy) * 0.55, W * 0.30, (H - gy) * 0.42);
+
+  tegnSkaal();
+  tegnKurv();
+  if (state.tilstand === 'bad') tegnKar();
+  tegnMig();
+}
+
+/** Madskålen. */
+function tegnSkaal() {
+  const x = xTil(SKAAL_X), gy = gulvY(), s = hundH() * 0.26;
+  ctx.fillStyle = '#4fa3d8';
+  rrect(ctx, x - s, gy - s * 0.55, s * 2, s * 0.55, s * 0.25); ctx.fill();
+  ctx.fillStyle = state.madISkaal ? '#a9763f' : '#2f79ab';
+  ellipse(ctx, x, gy - s * 0.5, s * 0.8, s * 0.22);
+  if (state.madISkaal) {
+    ctx.fillStyle = '#7a4a2b';
+    for (let i = 0; i < 5; i++) ellipse(ctx, x - s * 0.5 + i * s * 0.25, gy - s * 0.58, s * 0.10, s * 0.08);
+  }
+}
+
+/** Hundekurven i højre side. */
+function tegnKurv() {
+  const x = xTil(KURV_X), gy = gulvY(), s = hundH() * 0.5;
+  ctx.fillStyle = '#5b8cff';
+  ellipse(ctx, x, gy - s * 0.18, s * 0.95, s * 0.32);
+  ctx.fillStyle = '#3f6ad8';
+  ellipse(ctx, x, gy - s * 0.26, s * 0.72, s * 0.22);
+}
+
+/** Badekarret – kun mens hunden er i bad. */
+function tegnKar() {
+  const x = xTil(KAR_X), gy = gulvY(), s = hundH();
+  ctx.fillStyle = '#cfe6f7';
+  rrect(ctx, x - s * 0.56, gy - s * 0.44, s * 1.12, s * 0.44, s * 0.16); ctx.fill();
+  ctx.fillStyle = '#8ec9ea';
+  rrect(ctx, x - s * 0.50, gy - s * 0.38, s * 1.0, s * 0.20, s * 0.09); ctx.fill();
+  // Sæbebobler
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  for (let i = 0; i < 9; i++) {
+    const f = (state.t * 0.5 + i * 0.37) % 1;
+    ellipse(ctx, x - s * 0.45 + i * s * 0.115, gy - s * 0.44 - f * s * 0.5, s * 0.05 * (1 - f * 0.4), s * 0.05 * (1 - f * 0.4));
+  }
+}
+
+/**
+ * Mine egne sko i venstre kant – så man kan se, hvem bolden kommer tilbage
+ * til. Kun sko og en stump bukseben: tegner man hele personen, bliver det en
+ * søjle tværs over stuen.
+ */
+function tegnMig() {
+  const x = W * MIG_X, gy = gulvY(), s = hundH() * 0.78;
+  ctx.fillStyle = '#3f5bbf';
+  rrect(ctx, x - s * 0.08, gy - s * 0.44, s * 0.20, s * 0.34, s * 0.07); ctx.fill();
+  rrect(ctx, x + s * 0.16, gy - s * 0.44, s * 0.20, s * 0.34, s * 0.07); ctx.fill();
+  ctx.fillStyle = '#ff5c7a';
+  rrect(ctx, x - s * 0.10, gy - s * 0.13, s * 0.34, s * 0.13, s * 0.06); ctx.fill();
+  rrect(ctx, x + s * 0.14, gy - s * 0.13, s * 0.34, s * 0.13, s * 0.06); ctx.fill();
+}
+
+/* ---------- Parken (gåturen) ---------- */
+function tegnPark() {
+  const gy = gulvY(), m = state.tur ? state.tur.m : 0, px = PX_PR_M();
+  const g = ctx.createLinearGradient(0, 0, 0, gy);
+  g.addColorStop(0, '#6fc0f0');
+  g.addColorStop(1, '#bfe8ff');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, gy);
+
+  // Sol
+  ctx.fillStyle = '#ffd447';
+  ctx.beginPath(); ctx.arc(W * 0.82, H * 0.15, Math.min(W, H) * 0.08, 0, Math.PI * 2); ctx.fill();
+
+  // Huse langt væk (ruller langsomt)
+  const husFlyt = (m * px * 0.25) % (W * 0.5);
+  for (let i = -1; i < 4; i++) {
+    const hx = i * W * 0.5 - husFlyt, hh = H * (0.16 + 0.05 * ((i + 4) % 3));
+    ctx.fillStyle = ['#d98b6a', '#8fa6d8', '#e4c07a'][(i + 4) % 3];
+    ctx.fillRect(hx, gy - H * 0.22 - hh, W * 0.28, hh + H * 0.22);
+    ctx.fillStyle = '#5b4a7a';
+    ctx.beginPath();
+    ctx.moveTo(hx - W * 0.02, gy - H * 0.22 - hh);
+    ctx.lineTo(hx + W * 0.14, gy - H * 0.22 - hh - H * 0.07);
+    ctx.lineTo(hx + W * 0.30, gy - H * 0.22 - hh);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,247,230,.8)';
+    ctx.fillRect(hx + W * 0.05, gy - H * 0.18 - hh * 0.6, W * 0.06, H * 0.05);
+    ctx.fillRect(hx + W * 0.16, gy - H * 0.18 - hh * 0.6, W * 0.06, H * 0.05);
+  }
+
+  // Græs og sti
+  ctx.fillStyle = '#4faa5e'; ctx.fillRect(0, gy - H * 0.22, W, H * 0.22);
+  ctx.fillStyle = '#3d8c4c'; ctx.fillRect(0, gy - H * 0.05, W, H * 0.05);
+  ctx.fillStyle = '#6b4b36'; ctx.fillRect(0, gy, W, H - gy);
+  ctx.fillStyle = '#7d5a41';
+  const stenFlyt = (m * px) % (W * 0.12);
+  for (let i = -1; i < 12; i++) ellipse(ctx, i * W * 0.12 - stenFlyt, gy + (H - gy) * 0.5, W * 0.03, (H - gy) * 0.16);
+
+  // Træer langs stien
+  const traeFlyt = (m * px * 0.8) % (W * 0.65);
+  for (let i = -1; i < 4; i++) tegnTrae(i * W * 0.65 - traeFlyt, gy - H * 0.05);
+
+  // Tingene på turen
+  if (state.tur) for (const s of state.tur.stop) tegnTurTing(s, m, px);
+}
+
+function tegnTrae(x, y) {
+  const s = Math.min(W, H) * 0.22;
+  ctx.fillStyle = '#6b4b36';
+  rrect(ctx, x - s * 0.08, y - s * 0.7, s * 0.16, s * 0.7, s * 0.04); ctx.fill();
+  ctx.fillStyle = '#2f7a43';
+  ellipse(ctx, x, y - s * 0.85, s * 0.42, s * 0.36);
+  ctx.fillStyle = '#3d9a55';
+  ellipse(ctx, x - s * 0.14, y - s * 0.95, s * 0.26, s * 0.22);
+}
+
+/** Hvor på skærmen ligger et stop lige nu? */
+const turTingX = (s, m, px) => TUR_X() + (s.m - m) * px;
+
+function tegnTurTing(s, m, px) {
+  const x = turTingX(s, m, px), gy = gulvY();
+  if (x < -W * 0.3 || x > W * 1.3) return;
+  // Et klaret stop forsvinder – men lygtepælen og pytten bliver stående, for de er der jo stadig
+  if (s.klaret && s.slags !== 'lygte' && s.slags !== 'pyt') return;
+  const h = hundH();
+  const naer = Math.abs(s.m - m) < TUR_RAEKKEVIDDE && !s.klaret;
+
+  // Ring om det, man kan trykke på lige nu
+  if (naer) {
+    ctx.strokeStyle = s.slags === 'pyt' ? '#ff5c7a' : '#ffd447';
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = 0.55 + 0.35 * Math.sin(state.t * 7);
+    ctx.beginPath(); ctx.arc(x, gy - h * 0.45, h * 0.55, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  if (s.slags === 'lygte') {
+    ctx.fillStyle = '#4a4f78';
+    rrect(ctx, x - h * 0.05, gy - h * 1.5, h * 0.10, h * 1.5, h * 0.04); ctx.fill();
+    ctx.fillStyle = '#ffd447';
+    ellipse(ctx, x, gy - h * 1.55, h * 0.16, h * 0.20);
+  } else if (s.slags === 'pind') {
+    ctx.save(); ctx.translate(x, gy - h * 0.06); ctx.rotate(-0.35);
+    ctx.fillStyle = '#8c5628';
+    rrect(ctx, -h * 0.32, -h * 0.05, h * 0.64, h * 0.10, h * 0.05); ctx.fill();
+    ctx.restore();
+  } else if (s.slags === 'kat') {
+    ctx.fillStyle = '#f0994a';
+    ellipse(ctx, x, gy - h * 0.30, h * 0.28, h * 0.20);
+    ellipse(ctx, x + h * 0.22, gy - h * 0.52, h * 0.17, h * 0.16);
+    ctx.beginPath();
+    ctx.moveTo(x + h * 0.10, gy - h * 0.62); ctx.lineTo(x + h * 0.14, gy - h * 0.80); ctx.lineTo(x + h * 0.26, gy - h * 0.64);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + h * 0.28, gy - h * 0.64); ctx.lineTo(x + h * 0.38, gy - h * 0.80); ctx.lineTo(x + h * 0.38, gy - h * 0.60);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#f0994a'; ctx.lineWidth = h * 0.07; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x - h * 0.26, gy - h * 0.30);
+    ctx.quadraticCurveTo(x - h * 0.50, gy - h * 0.50, x - h * 0.34, gy - h * 0.70); ctx.stroke();
+    ctx.fillStyle = '#1c1f4a';
+    ellipse(ctx, x + h * 0.18, gy - h * 0.54, h * 0.025, h * 0.035);
+    ellipse(ctx, x + h * 0.28, gy - h * 0.54, h * 0.025, h * 0.035);
+  } else if (s.slags === 'ven') {
+    tegnHund(ctx, x, gy, h * 0.78, {
+      pels: 'pels-graa', pose: 'staa', t: state.t + 3, vend: -1, glad: true,
+    });
+  } else if (s.slags === 'pyt') {
+    ctx.fillStyle = '#5b4a3a';
+    ellipse(ctx, x, gy + (H - gy) * 0.35, h * 0.52, h * 0.16);
+    ctx.fillStyle = '#7a6a4a';
+    ellipse(ctx, x - h * 0.10, gy + (H - gy) * 0.30, h * 0.20, h * 0.06);
+  } else if (s.slags === 'pose') {
+    ctx.fillStyle = '#6b4b26';
+    ellipse(ctx, x, gy + (H - gy) * 0.32, h * 0.13, h * 0.08);
+    ellipse(ctx, x - h * 0.02, gy + (H - gy) * 0.20, h * 0.10, h * 0.06);
+    ctx.font = `700 ${h * 0.22}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center'; ctx.fillStyle = '#fff7e6';
+    if (naer) ctx.fillText('💩', x, gy - h * 0.25);
+  }
+}
+
+/** Snoren fra min hånd til hundens hals, mens vi går tur. */
+function tegnSnor() {
+  const h = hundH(), x = TUR_X(), gy = gulvY();
+  ctx.strokeStyle = '#ff5c7a'; ctx.lineWidth = Math.max(2, h * 0.035); ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(W * 0.04, H * 0.30);
+  ctx.quadraticCurveTo(W * 0.18, H * 0.52, x - h * 0.10, gy - h * 0.70);
+  ctx.stroke();
+  // Ærme og hånd i kanten – uden ærmet ligner hånden en ballon i en snor
+  ctx.fillStyle = '#3f5bbf';
+  rrect(ctx, -W * 0.06, H * 0.10, W * 0.13, H * 0.22, W * 0.05); ctx.fill();
+  ctx.fillStyle = '#f2c49a';                       // hånden
+  ellipse(ctx, W * 0.04, H * 0.29, h * 0.13, h * 0.15);
+}
+
+/* ---------- Hunden ---------- */
+/*
+  Hunden tegnes altid med næsen mod højre og spejles med ctx.scale(vend, 1).
+  Alle mål er brøkdele af `h`, hundens højde, så den skalerer med skærmen.
+  Stillingerne (sit, dæk, dødsmand …) er den samme tegning med andre tal –
+  undtagen dødsmand, som er sin egen lille tegning, fordi en hund på ryggen
+  ikke er den samme hund vendt om.
+*/
+function tegnHund(c, cx, gy, h, o) {
+  const p = pelsen(o.pels);
+  const pose = o.pose || 'staa';
+  const t = o.t || 0;
+  c.save();
+  c.translate(cx, gy);
+  c.scale(o.vend || 1, 1);
+
+  if (pose === 'doed') { tegnDoedHund(c, h, o, p); c.restore(); return; }
+
+  // Pirouette: hunden snurrer rundt om sig selv – vi klemmer den sammen på
+  // tværs i stedet for at rotere, for set fra siden er det dét, der sker.
+  if (pose === 'snurr') {
+    const sc = Math.cos((o.fase || 0) * Math.PI * 2);
+    c.scale(Math.sign(sc) || 1, 1);
+    c.scale(Math.max(0.18, Math.abs(sc)), 1);
+  }
+  if (pose === 'ryst') c.rotate(Math.sin(t * 34) * 0.09);
+
+  const gang = pose === 'gaa' ? 9 : pose === 'loeb' ? 15 : 0;
+  const bob = gang ? Math.abs(Math.sin(t * gang)) * h * 0.02 : Math.sin(t * 1.6) * h * 0.006;
+  const spring = pose === 'spring' ? Math.sin(Math.max(0, Math.min(1, o.fase || 0)) * Math.PI) * h * 0.55 : 0;
+  const sidder = pose === 'sid' || pose === 'pote';
+  const ligger = pose === 'daek';
+
+  let kropY = -h * 0.44 - bob - spring;
+  let vinkel = 0;
+  if (sidder) { kropY = -h * 0.40; vinkel = -0.34; }
+  if (ligger) { kropY = -h * 0.20; }
+
+  const hovedNed = pose === 'spis' ? h * 0.30 : pose === 'snus' ? h * 0.34 + Math.sin(t * 9) * h * 0.02 : 0;
+
+  /* --- Hale: logrer hurtigt, når hunden er glad --- */
+  const halefart = o.glad ? 13 : o.trist ? 1.2 : 5;
+  const halevip = Math.sin(t * halefart) * h * (o.trist ? 0.04 : 0.16);
+  c.strokeStyle = p.krop; c.lineWidth = h * 0.095; c.lineCap = 'round';
+  c.beginPath();
+  const hx0 = -h * 0.32, hy0 = kropY + (sidder ? h * 0.06 : 0);
+  if (o.trist) {
+    c.moveTo(hx0, hy0);
+    c.quadraticCurveTo(-h * 0.46, hy0 + h * 0.16, -h * 0.44 + halevip * 0.3, hy0 + h * 0.34);
+  } else {
+    c.moveTo(hx0, hy0);
+    c.quadraticCurveTo(-h * 0.54, hy0 - h * 0.10, -h * 0.46 + halevip, hy0 - h * 0.34 + Math.abs(halevip) * 0.2);
+  }
+  c.stroke();
+
+  /* --- Ben --- */
+  const ben = (bx, fase, bag, kort) => {
+    const top = kropY + h * 0.10;
+    const loeft = gang ? Math.max(0, Math.sin(t * gang + fase)) * h * 0.10 : 0;
+    const bund = ligger ? -h * 0.03 : -loeft - spring * 0.15;
+    c.fillStyle = bag ? p.moerk : p.krop;
+    if (ligger) {                                   // strakt frem under sig
+      rrect(c, bx - h * 0.05, -h * 0.10, (kort ? h * 0.18 : h * 0.26), h * 0.10, h * 0.045); c.fill();
+      c.fillStyle = p.lys;
+      ellipse(c, bx + (kort ? h * 0.14 : h * 0.22), -h * 0.05, h * 0.06, h * 0.035);
+      return;
+    }
+    if (sidder && bag) {                            // bagpart foldet sammen
+      c.fillStyle = p.moerk;
+      ellipse(c, bx - h * 0.02, -h * 0.16, h * 0.15, h * 0.17);
+      c.fillStyle = p.lys;
+      ellipse(c, bx + h * 0.06, -h * 0.02, h * 0.08, h * 0.035);
+      return;
+    }
+    const hoejde = Math.abs(bund - top);
+    rrect(c, bx - h * 0.052, top, h * 0.104, hoejde, h * 0.045); c.fill();
+    c.fillStyle = p.lys;
+    ellipse(c, bx, bund, h * 0.068, h * 0.037);
+  };
+
+  const poteOp = pose === 'pote' ? 1 : 0;
+  ben(-h * 0.22, Math.PI, true);
+  if (!sidder) ben(h * 0.14, Math.PI * 0.5, true, true);
+  ben(-h * 0.14, 0, false);
+  if (!poteOp) ben(h * 0.22, Math.PI * 1.5, false, true);
+
+  /* --- Krop --- */
+  c.save();
+  c.translate(0, kropY);
+  c.rotate(vinkel);
+  c.fillStyle = p.krop;
+  ellipse(c, 0, 0, h * 0.36, h * 0.20);
+  c.fillStyle = p.lys;
+  ellipse(c, h * 0.06, h * 0.07, h * 0.24, h * 0.11);
+  if (p.pletter) {
+    c.fillStyle = '#3d3f5e';
+    ellipse(c, -h * 0.16, -h * 0.04, h * 0.07, h * 0.05);
+    ellipse(c, h * 0.08, -h * 0.07, h * 0.05, h * 0.04);
+    ellipse(c, -h * 0.02, h * 0.02, h * 0.04, h * 0.03);
+  }
+  if (o.snavs > 0) {
+    c.fillStyle = 'rgba(86,62,32,.6)';
+    const pletter = [[-0.20,-0.02],[0.04,-0.08],[-0.06,0.06],[0.18,0.02],[-0.26,-0.08],[0.12,-0.10]];
+    for (let i = 0; i < Math.min(o.snavs, pletter.length); i++) {
+      ellipse(c, h * pletter[i][0], h * pletter[i][1], h * 0.04, h * 0.03);
+    }
+  }
+  c.restore();
+
+  /* --- Den løftede pote (giv pote) --- */
+  if (poteOp) {
+    c.save();
+    c.translate(h * 0.24, kropY + h * 0.06);
+    c.rotate(-0.9 + Math.sin(t * 6) * 0.12);
+    c.fillStyle = p.krop;
+    rrect(c, -h * 0.05, 0, h * 0.10, h * 0.24, h * 0.045); c.fill();
+    c.fillStyle = p.lys;
+    ellipse(c, 0, h * 0.24, h * 0.07, h * 0.04);
+    c.restore();
+  }
+
+  /* --- Hals og hoved --- */
+  const hxx = h * 0.31 + (sidder ? h * 0.05 : 0);
+  const hyy = kropY - h * (sidder ? 0.32 : 0.26) + hovedNed;
+  c.strokeStyle = p.krop; c.lineWidth = h * 0.20; c.lineCap = 'round';
+  c.beginPath();
+  c.moveTo(h * 0.14, kropY + h * 0.02);
+  c.lineTo(hxx - h * 0.08, hyy + h * 0.14);
+  c.stroke();
+  tegnHoved(c, hxx, hyy, h * 0.18, p, o);
+  if (o.halsbaand) tegnHalsbaand(c, hxx - h * 0.14, hyy + h * 0.18, h * 0.17, o.halsbaand);
+  if (o.hat) tegnHat(c, hxx - h * 0.02, hyy - h * 0.19, h * 0.22, o.hat);
+  c.restore();
+
+  if (pose === 'ryst') tegnDraaber(c, cx, gy, h);
+}
+
+/**
+ * Hovedet: ører, øjne, snude og tunge. Bruges både på hunden og i butikkens
+ * ikoner. Hovedet vender mod højre, og snuden stikker frem – det er den, der
+ * gør, at man kan se, det er en hund og ikke en kat.
+ */
+function tegnHoved(c, x, y, r, p, o) {
+  const oerer = p.oerer || 'flop';
+  const t = o.t || 0;
+
+  // Ørerne bagest og godt uden for hovedet, ellers forsvinder de i kraniet
+  c.fillStyle = p.moerk;
+  if (oerer === 'flop') {
+    // Set fra siden hænger det nære øre ned bag kinden, mens det fjerne kun
+    // kigger frem over issen. Lå det andet øre ovre ved snuden, forsvandt det
+    // bag den – og hunden så ud til kun at have ét.
+    ellipse(c, x - r * 0.94, y + r * 0.28, r * 0.34, r * 0.62, -0.22);
+    c.globalAlpha = 0.75;
+    ellipse(c, x - r * 0.34, y - r * 0.72, r * 0.30, r * 0.20, -0.35);
+    c.globalAlpha = 1;
+  } else {
+    const spids = (dx, vip) => {
+      c.beginPath();
+      c.moveTo(x + dx - r * 0.26, y - r * 0.46);
+      c.lineTo(x + dx + r * 0.04 + vip, y - r * 1.26);
+      c.lineTo(x + dx + r * 0.36, y - r * 0.40);
+      c.closePath(); c.fill();
+    };
+    spids(-r * 0.60, -r * 0.08);
+    spids(r * 0.26, r * 0.08);
+  }
+
+  // Snude og kranie
+  c.fillStyle = p.krop;
+  ellipse(c, x + r * 0.74, y + r * 0.30, r * 0.56, r * 0.33);
+  ellipse(c, x, y, r * 0.95, r * 0.84);
+  c.fillStyle = p.lys;
+  ellipse(c, x + r * 0.88, y + r * 0.40, r * 0.38, r * 0.21);
+
+  // Øjne – trukket lidt tilbage, fordi snuden fylder forrest
+  const lukket = o.lukkedeOejne || o.blink;
+  for (const ox of [x - r * 0.40, x + r * 0.16]) {
+    if (lukket) {
+      c.strokeStyle = '#2b2440'; c.lineWidth = r * 0.11; c.lineCap = 'round';
+      c.beginPath(); c.arc(ox, y - r * 0.14, r * 0.18, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
+    } else {
+      c.fillStyle = '#fffdf5'; ellipse(c, ox, y - r * 0.16, r * 0.20, r * 0.22);
+      c.fillStyle = '#2b2440';
+      const kig = o.kig || 0;
+      ellipse(c, ox + kig * r * 0.08, y - r * 0.15, r * 0.11, r * (o.glad ? 0.14 : 0.18));
+      c.fillStyle = '#fff'; ellipse(c, ox + r * 0.05, y - r * 0.23, r * 0.05, r * 0.05);
+    }
+  }
+  // Øjenbryn, når hunden er ked af det
+  if (o.trist) {
+    c.strokeStyle = p.moerk; c.lineWidth = r * 0.09; c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(x - r * 0.60, y - r * 0.52); c.lineTo(x - r * 0.24, y - r * 0.40);
+    c.moveTo(x + r * 0.36, y - r * 0.52); c.lineTo(x + r * 0.02, y - r * 0.40);
+    c.stroke();
+  }
+
+  // Tungen hænger ud af snuden, når hunden er glad
+  if (o.glad && !o.trist) {
+    c.fillStyle = '#ff8fb0';
+    const vip = Math.sin(t * 7) * r * 0.05;
+    ellipse(c, x + r * 0.92 + vip, y + r * 0.74, r * 0.16, r * 0.23);
+  }
+
+  // Næse yderst på snuden, og munden tilbage langs den
+  c.fillStyle = '#2b2440';
+  ellipse(c, x + r * 1.22, y + r * 0.20, r * 0.19, r * 0.15);
+  c.strokeStyle = '#2b2440'; c.lineWidth = r * 0.07; c.lineCap = 'round';
+  c.beginPath();
+  c.moveTo(x + r * 1.22, y + r * 0.35);
+  c.lineTo(x + r * 1.20, y + r * 0.50);
+  if (o.trist) c.quadraticCurveTo(x + r * 1.00, y + r * 0.42, x + r * 0.76, y + r * 0.52);
+  else c.quadraticCurveTo(x + r * 1.00, y + r * 0.66, x + r * 0.74, y + r * 0.54);
+  c.stroke();
+}
+
+/** Dødsmand: hunden ligger på ryggen med poterne i vejret. */
+function tegnDoedHund(c, h, o, p) {
+  c.fillStyle = p.krop;
+  ellipse(c, 0, -h * 0.14, h * 0.38, h * 0.14);
+  c.fillStyle = p.lys;
+  ellipse(c, 0, -h * 0.18, h * 0.28, h * 0.09);
+  // Fire ben lige op i luften
+  c.fillStyle = p.moerk;
+  for (const bx of [-0.22, -0.10, 0.10, 0.20]) {
+    rrect(c, h * bx - h * 0.045, -h * 0.44, h * 0.09, h * 0.26, h * 0.04); c.fill();
+    c.fillStyle = p.lys;
+    ellipse(c, h * bx, -h * 0.44, h * 0.06, h * 0.035);
+    c.fillStyle = p.moerk;
+  }
+  // Halen ligger fladt ud
+  c.strokeStyle = p.krop; c.lineWidth = h * 0.07; c.lineCap = 'round';
+  c.beginPath();
+  c.moveTo(-h * 0.34, -h * 0.12);
+  c.quadraticCurveTo(-h * 0.56, -h * 0.10, -h * 0.62, -h * 0.03);
+  c.stroke();
+  // Hovedet ligger ned med tungen ude
+  const r = h * 0.18;
+  c.fillStyle = p.krop;
+  ellipse(c, h * 0.34, -h * 0.12, r * 0.98, r * 0.82);
+  ellipse(c, h * 0.34 + r * 0.50, -h * 0.02, r * 0.42, r * 0.28);
+  c.fillStyle = p.moerk;
+  ellipse(c, h * 0.24, -h * 0.24, r * 0.30, r * 0.42, 0.5);
+  c.fillStyle = '#ff8fb0';
+  ellipse(c, h * 0.34 + r * 0.70, h * 0.02, r * 0.22, r * 0.14);
+  // Krydsede øjne
+  c.strokeStyle = '#2b2440'; c.lineWidth = r * 0.10; c.lineCap = 'round';
+  for (const dx of [-0.24, 0.16]) {
+    c.beginPath();
+    c.moveTo(h * 0.34 + r * dx - r * 0.10, -h * 0.16 - r * 0.10);
+    c.lineTo(h * 0.34 + r * dx + r * 0.10, -h * 0.16 + r * 0.10);
+    c.moveTo(h * 0.34 + r * dx + r * 0.10, -h * 0.16 - r * 0.10);
+    c.lineTo(h * 0.34 + r * dx - r * 0.10, -h * 0.16 + r * 0.10);
+    c.stroke();
+  }
+}
+
+/** Vanddråber, når hunden ryster sig efter badet. */
+function tegnDraaber(c, cx, gy, h) {
+  c.fillStyle = 'rgba(190,230,255,.9)';
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 + state.t * 3;
+    const d = h * (0.5 + 0.35 * ((i * 7919) % 10) / 10);
+    ellipse(c, cx + Math.cos(a) * d, gy - h * 0.5 + Math.sin(a) * d * 0.6, h * 0.035, h * 0.05);
+  }
+}
+
+function tegnHat(c, x, y, r, id) {
+  c.save(); c.translate(x, y);
+  if (id === 'hat-sloejfe') {
+    c.fillStyle = '#ff5c7a';
+    ellipse(c, -r * 0.26, 0, r * 0.26, r * 0.19, -0.3);
+    ellipse(c, r * 0.26, 0, r * 0.26, r * 0.19, 0.3);
+    c.fillStyle = '#ffd447'; ellipse(c, 0, 0, r * 0.11, r * 0.11);
+  } else if (id === 'hat-kasket') {
+    c.fillStyle = '#5b8cff';
+    c.beginPath(); c.arc(0, r * 0.12, r * 0.46, Math.PI, 0); c.fill();
+    c.fillStyle = '#3f6ad8';
+    rrect(c, r * 0.20, r * 0.04, r * 0.62, r * 0.14, r * 0.07); c.fill();
+    c.fillStyle = '#ffd447'; ellipse(c, 0, -r * 0.32, r * 0.09, r * 0.09);
+  } else if (id === 'hat-hue') {
+    c.fillStyle = '#ff5c7a';
+    c.beginPath(); c.moveTo(-r * 0.5, r * 0.18); c.quadraticCurveTo(r * 0.1, -r * 0.95, r * 0.62, -r * 0.30);
+    c.lineTo(r * 0.05, r * 0.20); c.closePath(); c.fill();
+    c.fillStyle = '#fff7e6';
+    rrect(c, -r * 0.56, r * 0.06, r * 1.12, r * 0.22, r * 0.11); c.fill();
+    ellipse(c, r * 0.66, -r * 0.32, r * 0.15, r * 0.15);
+  } else if (id === 'hat-blomst') {
+    c.fillStyle = '#ff8fb0';
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      ellipse(c, Math.cos(a) * r * 0.24, Math.sin(a) * r * 0.24 + r * 0.05, r * 0.16, r * 0.16);
+    }
+    c.fillStyle = '#ffd447'; ellipse(c, 0, r * 0.05, r * 0.13, r * 0.13);
+  } else if (id === 'hat-fest') {
+    c.fillStyle = '#5ee0a8';
+    c.beginPath(); c.moveTo(-r * 0.40, r * 0.20); c.lineTo(0, -r * 0.80); c.lineTo(r * 0.40, r * 0.20);
+    c.closePath(); c.fill();
+    c.fillStyle = '#ff5c7a';
+    ellipse(c, -r * 0.12, -r * 0.10, r * 0.08, r * 0.08);
+    ellipse(c, r * 0.14, r * 0.06, r * 0.08, r * 0.08);
+    c.fillStyle = '#ffd447'; ellipse(c, 0, -r * 0.84, r * 0.13, r * 0.13);
+  } else if (id === 'hat-krone') {
+    c.fillStyle = '#ffd447';
+    c.beginPath();
+    c.moveTo(-r * 0.46, r * 0.20); c.lineTo(-r * 0.46, -r * 0.34); c.lineTo(-r * 0.18, -r * 0.02);
+    c.lineTo(0, -r * 0.46); c.lineTo(r * 0.18, -r * 0.02); c.lineTo(r * 0.46, -r * 0.34);
+    c.lineTo(r * 0.46, r * 0.20); c.closePath(); c.fill();
+    c.fillStyle = '#ff5c7a'; ellipse(c, 0, r * 0.04, r * 0.09, r * 0.09);
+  }
+  c.restore();
+}
+
+function tegnHalsbaand(c, x, y, r, id) {
+  if (id === 'baand-toerklaede') {
+    c.fillStyle = '#ff5c7a';
+    c.beginPath();
+    c.moveTo(x - r * 0.55, y - r * 0.30);
+    c.lineTo(x + r * 0.55, y - r * 0.20);
+    c.lineTo(x + r * 0.05, y + r * 0.75);
+    c.closePath(); c.fill();
+    c.fillStyle = '#fff7e6';
+    ellipse(c, x - r * 0.10, y + r * 0.10, r * 0.10, r * 0.10);
+    return;
+  }
+  const farve = { 'baand-roed': '#ff5c7a', 'baand-blaa': '#5b8cff', 'baand-skilt': '#5ee0a8', 'baand-guld': '#ffd447' }[id] || '#ff5c7a';
+  c.strokeStyle = farve; c.lineWidth = r * 0.24; c.lineCap = 'round';
+  c.beginPath(); c.arc(x, y - r * 0.30, r * 0.80, 0.12 * Math.PI, 0.88 * Math.PI); c.stroke();
+  if (id === 'baand-skilt') {
+    c.fillStyle = '#ffd447';
+    ellipse(c, x, y + r * 0.46, r * 0.20, r * 0.16);
+  } else if (id === 'baand-guld') {
+    c.fillStyle = '#ffd447'; ellipse(c, x, y + r * 0.46, r * 0.18, r * 0.18);
+    c.fillStyle = '#c99a13'; ellipse(c, x, y + r * 0.52, r * 0.06, r * 0.06);
+  }
+}
+
+/* ---------- Bolden, sæben og hjerterne ---------- */
+function tegnBold(b) {
+  const r = hundH() * 0.11;
+  let x = xTil(b.x), y = gulvY() - r;
+  if (b.fase === 'flyver') {
+    const f = Math.max(0, Math.min(1, b.f));
+    x = xTil(b.fra + (b.x - b.fra) * f);
+    y = gulvY() - r - Math.sin(f * Math.PI) * H * 0.34;
+  } else if (b.fase === 'munden') {
+    x = xTil(state.x) + state.vend * hundH() * 0.42;
+    y = gulvY() - hundH() * 0.52;
+  }
+  ctx.fillStyle = '#d8f05a';
+  ellipse(ctx, x, y, r, r);
+  ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = r * 0.18;
+  ctx.beginPath(); ctx.arc(x, y, r * 0.72, -0.6, 0.9); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, r * 0.72, Math.PI - 0.6, Math.PI + 0.9); ctx.stroke();
+}
+
+let saebeP = null;   // hvor fingeren er lige nu (pixels), mens man vasker
+function tegnSaebe() {
+  if (!saebeP) return;
+  const s = hundH() * 0.20;
+  ctx.fillStyle = 'rgba(255,255,255,.9)';
+  ellipse(ctx, saebeP.x, saebeP.y, s * 0.5, s * 0.38);
+  ctx.fillStyle = 'rgba(190,230,255,.9)';
+  ellipse(ctx, saebeP.x + s * 0.3, saebeP.y - s * 0.35, s * 0.22, s * 0.22);
+  ellipse(ctx, saebeP.x - s * 0.35, saebeP.y - s * 0.25, s * 0.16, s * 0.16);
+}
+
+function tegnHjerter() {
+  for (const h of state.hjerter) {
+    const a = Math.max(0, 1 - h.t / 1.4);
+    ctx.globalAlpha = a; ctx.fillStyle = h.farve || '#ff5c7a';
+    const s = hundH() * 0.10 * (0.7 + 0.3 * a), x = h.x, y = h.y - h.t * H * 0.14;
+    ctx.beginPath();
+    ctx.moveTo(x, y + s * 0.6);
+    ctx.bezierCurveTo(x - s, y - s * 0.2, x - s * 0.4, y - s, x, y - s * 0.35);
+    ctx.bezierCurveTo(x + s * 0.4, y - s, x + s, y - s * 0.2, x, y + s * 0.6);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- Hele billedet ---------- */
+function hundensPose() {
+  if (state.tilstand === 'trick' && state.trick) {
+    const tr = state.trick;
+    if (!tr.ok) return 'staa';
+    return { sit: 'sid', pote: 'pote', daek: 'daek', snurr: 'snurr', spring: 'spring', doed: 'doed' }[tr.id] || 'staa';
+  }
+  if (state.t < state.rystTil) return 'ryst';
+  if (state.tilstand === 'tur') {
+    const naer = naermesteStop();
+    if (naer && naer.slags === 'lygte' && Math.abs(naer.m - state.tur.m) < 2) return 'snus';
+    return 'gaa';
+  }
+  if (state.tilstand === 'bad') return 'staa';
+  if (state.tilstand === 'spiser' && naaetMaal()) return 'spis';
+  if (state.maal != null && Math.abs(xTil(state.maal) - xTil(state.x)) > 3) {
+    return state.tilstand === 'bold' ? 'loeb' : 'gaa';
+  }
+  return 'staa';
+}
+
+function tegn() {
+  const hund = state.hund;
+  if (!hund) return;
+  skoleOppe = $('#skole').classList.contains('on');   // stuen løftes, når skolens ark dækker gulvet
+  const h = hundH();
+  const hum = humoer(hund);
+  const pose = hundensPose();
+
+  if (state.tilstand === 'tur') {
+    tegnPark();
+    tegnHund(ctx, TUR_X(), gulvY(), h, {
+      pels: hund.pels, hat: hund.hat, halsbaand: hund.halsbaand,
+      pose, fase: 0, t: state.t, vend: 1,
+      blink: state.t < state.blinkTil,
+      glad: hum !== 'ked', trist: hum === 'ked',
+      snavs: Math.max(0, Math.round((70 - hund.behov.renhed) / 12)),
+    });
+    tegnSnor();
+    tegnHjerter();
+    return;
+  }
+
+  tegnStue();
+  if (state.bold) tegnBold(state.bold);
+
+  const badY = state.tilstand === 'bad' ? -h * 0.10 : 0;
+  const hundX = state.tilstand === 'bad' ? xTil(KAR_X) : xTil(state.x);
+  tegnHund(ctx, hundX, gulvY() + badY, h, {
+    pels: hund.pels, hat: hund.hat, halsbaand: hund.halsbaand,
+    pose, fase: state.trick ? state.trick.fase : 0,
+    t: state.t, vend: state.vend,
+    blink: state.t < state.blinkTil,
+    glad: hum === 'glad' || state.tilstand === 'bold', trist: hum === 'ked',
+    snavs: Math.max(0, Math.round((70 - hund.behov.renhed) / 12)),
+    kig: state.bold ? Math.sign(state.bold.x - state.x) * state.vend : 0,
+  });
+
+  if (state.tilstand === 'trick' && state.trick && !state.trick.ok) {
+    ctx.fillStyle = '#fff7e6';
+    ctx.font = `800 ${h * 0.34}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('?', hundX + state.vend * h * 0.5, gulvY() - h * 1.05);
+  }
+
+  tegnHjerter();
+  tegnSaebe();
+}
+
+/* ================= Spillets gang ================= */
+function naaetMaal() { return state.maal == null || Math.abs(state.maal - state.x) < 0.012; }
+function gaaMod(maal) { state.maal = Math.max(0, Math.min(1, maal)); }
+
+/** Det stop på turen, der er tættest på – og endnu ikke klaret. */
+function naermesteStop() {
+  if (!state.tur) return null;
+  let bedst = null;
+  for (const s of state.tur.stop) {
+    if (s.klaret || s.forbi) continue;
+    if (!bedst || Math.abs(s.m - state.tur.m) < Math.abs(bedst.m - state.tur.m)) bedst = s;
+  }
+  return bedst;
+}
+
+function tik(dt) {
+  const hund = state.hund;
+  if (!hund) return;
+  state.t += dt;
+
+  // Behovene siver – «luftet» fyldes derimod op, mens man går tur
+  forfald(hund, dt);
+
+  if (state.tilstand === 'tur') turFrem(dt);
+
+  // Gang i stuen
+  if (state.maal != null && state.tilstand !== 'tur') {
+    const fart = (state.tilstand === 'bold' ? 0.75 : 0.30) * dt;
+    const d = state.maal - state.x;
+    if (Math.abs(d) <= fart) { state.x = state.maal; state.maal = null; }
+    else { state.x += Math.sign(d) * fart; state.vend = Math.sign(d); }
+  }
+
+  // Spisning: gå hen til skålen og spis
+  if (state.tilstand === 'spiser') {
+    if (naaetMaal()) {
+      if (!state.spiserTil) state.spiserTil = state.t + 2.4;
+      else if (state.t >= state.spiserTil) faerdigMedMaden();
+    }
+  }
+
+  // Bolden: hunden løber efter den og bærer den tilbage
+  if (state.tilstand === 'bold' && state.bold) boldFrem(dt);
+
+  // Tricket kører sin lille animation færdig
+  if (state.tilstand === 'trick' && state.trick) {
+    state.trick.fase = Math.min(1, state.trick.fase + dt / state.trick.tid);
+    if (state.trick.fase >= 1) { state.tilstand = 'fri'; state.trick = null; opdater(); }
+  }
+
+  // Småt liv: blink og små gåture
+  if (state.t > state.naesteBlink) { state.blinkTil = state.t + 0.16; state.naesteBlink = state.t + 2 + rnd() * 4; }
+  if (state.tilstand === 'fri' && state.maal == null && rnd() < dt * 0.25) gaaMod(0.05 + rnd() * 0.9);
+
+  for (const h of state.hjerter) h.t += dt;
+  state.hjerter = state.hjerter.filter(h => h.t < 1.4);
+
+  if (state.t - sidsteGem > 4) gemNu();
+}
+
+function hjerte(antal = 1, farve, px, py) {
+  const x0 = px ?? (state.tilstand === 'tur' ? TUR_X() : xTil(state.x));
+  for (let i = 0; i < antal; i++) {
+    state.hjerter.push({
+      x: x0 + (rnd() - 0.5) * hundH() * 0.5,
+      y: (py ?? gulvY()) - hundH() * (0.75 + rnd() * 0.2),
+      t: -i * 0.12, farve,
+    });
+  }
+}
+
+/* ---------- Mad ---------- */
+function giMad() {
+  const hund = state.hund;
+  if (!hund || state.tilstand === 'tur' || state.tilstand === 'spiser' || hund.behov.mad >= 99) return false;
+  stopAlt();
+  state.tilstand = 'spiser'; state.madISkaal = true; state.spiserTil = 0;
+  gaaMod(SKAAL_X + 0.05);
+  sigNoget(`${hund.navn} løber hen til skålen!`);
+  opdater();
+  return true;
+}
+
+function faerdigMedMaden() {
+  const r = plej(state.hund, 'mad', MAD_PR_MAALTID);
+  state.tilstand = 'fri'; state.madISkaal = false; state.spiserTil = 0;
+  hjerte(2, '#ffd447');
+  sigNoget(`Slurp! ${state.hund.navn} er blevet mæt. +${r.moenter} 🪙`);
+  efterPleje(r);
+}
+
+/* ---------- Bolden: kast, hent, aflever ---------- */
+function startBold() {
+  if (!state.hund || state.tilstand === 'tur') return;
+  stopAlt();
+  state.tilstand = 'bold';
+  state.bold = { x: BOLD_X, fra: MIG_X, f: 1, fase: 'ligger' };
+  state.maal = null;
+  sigNoget('Tryk på gulvet – så løber den efter bolden!');
+  opdater();
+}
+
+function kastBold(f) {
+  if (state.tilstand !== 'bold') return;
+  if (state.bold && state.bold.fase === 'flyver') return;
+  const fra = state.bold ? state.bold.x : MIG_X;
+  state.bold = { x: Math.max(0.05, Math.min(1, f)), fra, f: 0, fase: 'flyver' };
+  state.maal = null;
+  navigator.vibrate?.(10);
+}
+
+function boldFrem(dt) {
+  const b = state.bold;
+  if (b.fase === 'flyver') {
+    b.f += dt * 1.8;
+    if (b.f >= 1) { b.f = 1; b.fase = 'ligger'; gaaMod(b.x); }
+    return;
+  }
+  if (b.fase === 'ligger') {
+    // Ligger bolden ved mine fødder, venter hunden på et kast – ellers ville den
+    // hente og aflevere i ét væk, uden at man rørte en finger.
+    if (b.x <= MIG_X + 0.08) { state.maal = null; return; }
+    if (state.maal == null) gaaMod(b.x);
+    if (Math.abs(b.x - state.x) < 0.05) {           // fat i den – løb tilbage
+      b.fase = 'munden';
+      gaaMod(BOLD_X);
+      navigator.vibrate?.(12);
+    }
+    return;
+  }
+  if (b.fase === 'munden') {
+    b.x = state.x;
+    if (Math.abs(state.x - BOLD_X) < 0.03) afleverBold();
+  }
+}
+
+function afleverBold() {
+  const r = plej(state.hund, 'leg', LEG_PR_KAST);
+  state.bold = { x: BOLD_X, fra: MIG_X, f: 1, fase: 'ligger' };
+  state.maal = null;
+  hjerte(2);
+  if (state.hund.behov.leg >= 100) { sigNoget(`${state.hund.navn} er godt legesyg nu!`); }
+  else sigNoget('Aflevér! Kast den igen.');
+  efterPleje(r);
+}
+
+function stopBold() {
+  if (state.tilstand !== 'bold') return;
+  state.tilstand = 'fri'; state.bold = null; state.maal = null;
+  opdater();
+}
+
+/* ---------- Badet ---------- */
+function startBad() {
+  if (!state.hund || state.tilstand === 'tur') return;
+  stopAlt();
+  state.tilstand = 'bad'; state.badSum = 0; state.maal = null; state.x = KAR_X;
+  sigNoget('Stryg fingeren hen over hunden, så bliver den ren.');
+  opdater();
+}
+
+/** Ét strøg med sæben (kaldes både af fingeren og af testen). */
+function saeb(n = 1) {
+  if (state.tilstand !== 'bad') return null;
+  const r = plej(state.hund, 'renhed', BAD_PR_STROEG * n);
+  if (r.oeget > 0) hjerte(1, '#5ee0a8', xTil(KAR_X));
+  if (state.hund.behov.renhed >= 100) { sigNoget(`${state.hund.navn} skinner!`); stopBad(); }
+  efterPleje(r);
+  return r;
+}
+
+function stopBad() {
+  if (state.tilstand !== 'bad') return;
+  state.tilstand = 'fri'; saebeP = null;
+  state.rystTil = state.t + 1.2;                   // hunden ryster vandet af sig
+  sigNoget(`${state.hund.navn} ryster vandet af sig – pas på!`);
+  opdater();
+}
+
+/* ---------- Gåturen ---------- */
+function startTur() {
+  if (!state.hund) return;
+  stopAlt();
+  state.tilstand = 'tur';
+  state.tur = nyTur(rnd);
+  state.vend = 1;
+  sigNoget(`Af sted! Tryk på det, ${state.hund.navn} skal nå at se.`);
+  opdater();
+}
+
+function turFrem(dt) {
+  const tur = state.tur;
+  if (!tur) return;
+  tur.m = Math.min(tur.laengde, tur.m + TUR_FART * dt);
+  const r = gaa(state.hund, TUR_FART * dt);
+  if (r) { if (r.nytNiveau) fejrNiveau(r.niveau); opdater(); }
+
+  // Det man ikke nåede at trykke på, er passeret
+  for (const s of tur.stop) {
+    if (s.klaret || s.forbi) continue;
+    if (s.m < tur.m - 2) {
+      s.forbi = true;
+      const svar = turStop(state.hund, s.slags, false);
+      if (svar) { sigNoget(svar.tekst); efterPleje(svar); }
+    }
+  }
+  if (tur.m >= tur.laengde) slutTur();
+}
+
+/** Et tryk på turen: ramte vi noget? */
+function turTryk(px) {
+  const tur = state.tur;
+  if (!tur) return null;
+  const m = tur.m, pxm = PX_PR_M();
+  for (const s of tur.stop) {
+    if (s.klaret || s.forbi) continue;
+    if (Math.abs(s.m - m) > TUR_RAEKKEVIDDE) continue;
+    if (px != null && Math.abs(turTingX(s, m, pxm) - px) > W * 0.30) continue;
+    s.klaret = true;
+    const svar = turStop(state.hund, s.slags, true);
+    if (svar) {
+      sigNoget(svar.tekst);
+      if (svar.oeget > 0) hjerte(2, '#5ee0a8', TUR_X());
+      navigator.vibrate?.(12);
+      efterPleje(svar);
+    }
+    return svar;
+  }
+  return null;
+}
+
+function slutTur() {
+  const hund = state.hund;
+  state.tilstand = 'fri';
+  state.tur = null;
+  state.x = 0.5; state.maal = null;
+  hjerte(3, '#5ee0a8');
+  sigNoget(`Hjemme igen! ${hund.navn} er godt luftet.`);
+  gemNu();
+  opdater();
+}
+
+function stopTur() {
+  if (state.tilstand !== 'tur') return;
+  slutTur();
+}
+
+/* ---------- Hundeskolen ---------- */
+function sigTrick(id, held) {
+  const hund = state.hund;
+  if (!hund || state.tilstand === 'tur') return null;
+  const t = trick(id);
+  if (!t || !kanTraene(hund, id)) return null;
+  stopAlt();
+  const foer = laert(hund, id);
+  const r = traen(hund, id, held ?? rnd());
+  state.tilstand = 'trick';
+  state.trick = { id, ok: r.ok, fase: 0, tid: id === 'snurr' ? 1.1 : id === 'spring' ? 0.9 : 1.6 };
+  state.maal = null;
+
+  const svar = $('#skoleSvar');
+  if (r.ok) {
+    hjerte(r.mestret ? 5 : 2, r.mestret ? '#ffd447' : '#5ee0a8');
+    navigator.vibrate?.(15);
+    svar.classList.remove('fejl');
+    svar.textContent = r.mestret
+      ? `🎉 ${hund.navn} kan ${t.navn.toLowerCase()} nu! +${r.moenter} 🪙`
+      : `Dygtig! ${hund.navn} gjorde det. +${r.moenter} 🪙`;
+    sigNoget(r.mestret ? `🎉 ${hund.navn} kan ${t.navn.toLowerCase()}!` : `${hund.navn} gjorde det!`);
+  } else {
+    svar.classList.add('fejl');
+    svar.textContent = foer < 25
+      ? `${hund.navn} forstår det ikke helt endnu. Prøv igen.`
+      : `${hund.navn} kiggede bare på dig. Prøv igen.`;
+    sigNoget(`${hund.navn} forstod det ikke helt.`);
+  }
+  efterPleje(r);
+  // Nyt niveau står i skolen selv – toplisten popper ikke op oven i arket
+  if (r.nytNiveau) svar.textContent += ` 🎉 Niveau ${r.niveau}!`;
+  tegnTricks();
+  return r;
+}
+
+function tegnTricks() {
+  const hund = state.hund;
+  if (!hund) return;
+  const rod = $('#trickListe');
+  rod.innerHTML = '';
+  for (const t of TRICKS) {
+    const aaben = kanTraene(hund, t.id);
+    const l = laert(hund, t.id);
+    const knap = document.createElement('button');
+    knap.className = 'trick' + (aaben ? '' : ' laast') + (l >= MESTRET ? ' kan' : '');
+    knap.type = 'button';
+    knap.dataset.trick = t.id;
+    knap.disabled = !aaben;
+    knap.innerHTML =
+      `<span class="em">${t.em}</span>` +
+      `<span class="midt"><span class="navn">${aaben ? t.ord : t.navn}</span>` +
+      `<span class="spor"><i style="width:${l}%"></i></span></span>` +
+      `<span class="tal">${aaben ? (l >= MESTRET ? 'kan det ✓' : l + '%') : 'niveau ' + t.niveau}</span>`;
+    knap.addEventListener('click', () => sigTrick(t.id));
+    rod.appendChild(knap);
+  }
+  const kan = kanTricks(hund);
+  $('#skolePill').textContent = kan === 1 ? '1 trick' : `${kan} tricks`;
+  const naeste = TRICKS.find(t => !kanTraene(hund, t.id));
+  $('#skoleTekst').textContent = naeste
+    ? `Sig ordet, og se om den gør det. «${naeste.navn}» kommer på niveau ${naeste.niveau}.`
+    : 'Sig ordet, og se om den gør det. I har åbnet alle tricks!';
+}
+
+/* ---------- Fælles ---------- */
+/** Stopper det, hunden var i gang med, så to ting ikke kører oven i hinanden. */
+function stopAlt() {
+  if (state.tilstand === 'bold') { state.bold = null; }
+  if (state.tilstand === 'bad') { saebeP = null; }
+  if (state.tilstand === 'tur') { state.tur = null; }
+  if (state.tilstand !== 'fri') { state.tilstand = 'fri'; state.maal = null; }
+  state.trick = null;
+}
+
+function efterPleje(r) {
+  gemNu();
+  opdater();
+  if (r && r.nytNiveau) fejrNiveau(r.niveau);
+}
+
+function fejrNiveau(niveau) {
+  sigNoget(`🎉 ${state.hund.navn} er blevet niveau ${niveau}!`);
+  hjerte(6, '#ffd447');
+  navigator.vibrate?.([30, 60, 30]);
+  tegnTricks();
+  // Toplisten popper kun op, hvis der ikke allerede står et ark åbent: i
+  // hundeskolen stiger man et niveau hvert par kommandoer, og så ville man
+  // skulle lukke den igen hele tiden.
+  if (state.tilstand !== 'tur' && !document.querySelector('.ark.on')) aabnTopliste();
+}
+
+/* ================= Skærm og knapper ================= */
+let beskedTil = 0;
+function sigNoget(tekst) {
+  state.besked = tekst;
+  beskedTil = state.t + 4;
+  $('#besked').textContent = tekst;
+}
+
+function standardBesked() {
+  const hund = state.hund;
+  if (!hund) return '';
+  if (state.tilstand === 'tur') return `I går tur. ${meterTekst(state.tur ? state.tur.m : 0)} klaret.`;
+  const mangel = mestTraengende(hund);
+  if (hund.behov[mangel] > 65) return `${hund.navn} har det dejligt.`;
+  const tekst = {
+    mad: `${hund.navn} er sulten – giv den noget mad.`,
+    leg: `${hund.navn} keder sig – kast bolden for den.`,
+    renhed: `${hund.navn} er beskidt – den skal i bad.`,
+    tur: `${hund.navn} vil ud at gå!`,
+  };
+  return tekst[mangel];
+}
+
+const BEHOV_EM = { mad: '🍖', leg: '🎾', renhed: '🛁', tur: '🦮' };
+function byggMaalere() {
+  $('#behov').innerHTML = BEHOV.map(b =>
+    `<div class="maaler" data-b="${b}"><div class="hoved">${BEHOV_EM[b]} ${BEHOV_NAVN[b]}</div>` +
+    `<span class="spor"><i></i></span></div>`).join('');
+}
+
+function opdater() {
+  const hund = state.hund;
+  if (!hund) return;
+  const niveau = niveauFor(hund.xp);
+  $('#hundBrand').textContent = hund.navn;
+  $('#moentPill').innerHTML = `🪙 <b>${hund.moenter}</b>`;
+  $('#butikMoent').innerHTML = `🪙 <b>${hund.moenter}</b>`;
+  $('#niveauTekst').textContent = `Niveau ${niveau}`;
+  $('#xpBar').style.width = `${Math.round(niveauAndel(hund.xp) * 100)}%`;
+  $('#meterPill').textContent = `🦮 ${meterTekst(hund.meter)}`;
+
+  for (const b of BEHOV) {
+    const el = $(`.maaler[data-b="${b}"]`);
+    if (!el) continue;
+    const v = hund.behov[b];
+    el.querySelector('i').style.width = `${Math.max(2, Math.round(v))}%`;
+    el.classList.toggle('lav', v < 25);
+    el.classList.toggle('halv', v >= 25 && v < 55);
+  }
+
+  const paaTur = state.tilstand === 'tur';
+  $('#madBtn').disabled = paaTur || state.tilstand === 'spiser' || hund.behov.mad >= 99;
+  $('#boldBtn').disabled = paaTur;
+  $('#badBtn').disabled = paaTur || hund.behov.renhed >= 100;
+  $('#turBtn').disabled = false;
+  $('#skoleBtn').disabled = paaTur;
+  $('#boldBtn').classList.toggle('on', state.tilstand === 'bold');
+  $('#badBtn').classList.toggle('on', state.tilstand === 'bad');
+  $('#turBtn').classList.toggle('on', paaTur);
+  $('#skoleBtn').classList.toggle('frem', hund.behov.leg < 40 && !paaTur);
+
+  const stop = $('#stopBtn');
+  stop.hidden = state.tilstand !== 'bold' && state.tilstand !== 'bad' && !paaTur;
+  stop.textContent = paaTur ? 'Hjem' : 'Færdig';
+  const maal = $('#turMaal');
+  maal.hidden = !paaTur;
+  if (paaTur && state.tur) maal.textContent = `🦮 ${Math.round(state.tur.m)} / ${state.tur.laengde} m`;
+
+  if (state.t >= beskedTil) $('#besked').textContent = standardBesked();
+}
+
+/* ---------- Startskærmen ---------- */
+function tegnHvalpe() {
+  const rod = $('#hvalpe');
+  rod.innerHTML = '';
+  for (const id of GRATIS_PELSE) {
+    const t = tingen(id);
+    const knap = document.createElement('button');
+    knap.className = 'hvalp' + (id === state.valgtPels ? ' on' : '');
+    knap.type = 'button';
+    knap.dataset.pels = id;
+    const c = document.createElement('canvas');
+    knap.appendChild(c);
+    const navn = document.createElement('span');
+    navn.textContent = t.navn;
+    knap.appendChild(navn);
+    knap.addEventListener('click', () => { state.valgtPels = id; tegnHvalpe(); });
+    rod.appendChild(knap);
+  }
+  requestAnimationFrame(() => {
+    for (const knap of rod.querySelectorAll('.hvalp')) ikonHund(knap.querySelector('canvas'), { pels: knap.dataset.pels });
+  });
+}
+
+/** Lille hundehoved til startskærmen og butikken. */
+function ikonHund(c, o) {
+  const s = 96, d = Math.min(devicePixelRatio || 1, 2);
+  c.width = s * d; c.height = s * d;
+  const k = c.getContext('2d');
+  k.setTransform(d, 0, 0, d, 0, 0);
+  k.clearRect(0, 0, s, s);
+  const p = pelsen(o.pels || GRATIS_PELSE[0]);
+  // Hovedet vender mod højre og fylder mest til den side, så det skubbes lidt
+  // til venstre for at stå midt i feltet.
+  tegnHoved(k, s * 0.42, s * 0.50, s * 0.26, p, { glad: true, t: 0 });
+  if (o.halsbaand) tegnHalsbaand(k, s * 0.34, s * 0.80, s * 0.24, o.halsbaand);
+  if (o.hat) tegnHat(k, s * 0.40, s * 0.24, s * 0.30, o.hat);
+}
+
+function adopter(navn, pels) {
+  state.hund = nyHund(navn || $('#hundNavn').value || 'Vaks', pels || state.valgtPels, Date.now());
+  state.x = 0.5; state.tilstand = 'fri'; state.maal = null; state.hjerter = []; state.bold = null;
+  gemNu();
+  tilSpil();
+  sigNoget(`Hej ${state.hund.navn}! Tryk på hunden for at klappe den.`);
+}
+
+function tilSpil() {
+  state.skaerm = 'spil';
+  $('#start').classList.remove('on');
+  $('#spil').classList.add('on');
+  maalOp();
+  tegnTricks();
+  opdater();
+  tegn();
+}
+
+/* ---------- Butikken ---------- */
+function tegnButik() {
+  const hund = state.hund;
+  const hylder = { pels: $('#hyldePels'), hat: $('#hyldeHat'), halsbaand: $('#hyldeBaand') };
+  for (const h of Object.values(hylder)) h.innerHTML = '';
+  for (const t of TING) {
+    const har = ejer(hund, t.id);
+    const paa = hund.pels === t.id || hund.hat === t.id || hund.halsbaand === t.id;
+    const knap = document.createElement('button');
+    knap.className = 'vare' + (paa ? ' paa' : '') + (!har && hund.moenter < t.pris ? ' dyr' : '');
+    knap.type = 'button';
+    knap.dataset.ting = t.id;
+    const c = document.createElement('canvas');
+    knap.appendChild(c);
+    const navn = document.createElement('span');
+    navn.textContent = t.navn;
+    knap.appendChild(navn);
+    const pris = document.createElement('span');
+    pris.className = 'pris' + (har ? ' ejet' : '');
+    pris.textContent = har ? (paa ? 'på ✓' : 'ejer') : `🪙 ${t.pris}`;
+    knap.appendChild(pris);
+    knap.addEventListener('click', () => vaelgVare(t.id));
+    hylder[t.slags].appendChild(knap);
+    const o = { pels: t.slags === 'pels' ? t.id : hund.pels };
+    if (t.slags === 'hat') o.hat = t.id;
+    if (t.slags === 'halsbaand') o.halsbaand = t.id;
+    requestAnimationFrame(() => ikonHund(c, o));
+  }
+  $('#butikTekst').textContent = `Du har ${hund.moenter} mønter. Pas hunden, så tjener du flere.`;
+}
+
+function vaelgVare(id) {
+  const hund = state.hund;
+  const t = tingen(id);
+  if (!ejer(hund, id)) {
+    if (!koeb(hund, id)) { sigNoget(`${t.navn} koster ${t.pris} mønter – du mangler ${t.pris - hund.moenter}.`); tegnButik(); return; }
+    hjerte(3, '#ffd447');
+    sigNoget(`${hund.navn} fik ${t.navn}!`);
+  } else {
+    tagPaa(hund, id);
+  }
+  gemNu(); tegnButik(); opdater(); tegn();
+}
+
+/* ---------- Ark ---------- */
+const aabn = el => el.classList.add('on');
+const luk = el => el.classList.remove('on');
+
+function aabnTopliste() {
+  const niveau = niveauFor(state.hund.xp);
+  $('#hsTitel').textContent = `Niveau ${niveau}`;
+  aabn($('#toplisteArk'));
+  Highscore.panel($('#hsPanel'), { spil: SPIL, score: niveau, titel: 'Klogeste hunde' });
+}
+
+/* ================= Input ================= */
+/** Er punktet (i pixels) oven på hunden? */
+function paaHunden(px, py) {
+  const h = hundH();
+  const cx = state.tilstand === 'tur' ? TUR_X() : state.tilstand === 'bad' ? xTil(KAR_X) : xTil(state.x);
+  return Math.abs(px - cx) < h * 0.55 && py > gulvY() - h * 1.15 && py < gulvY() + h * 0.10;
+}
+
+function punkt(e) {
+  const r = laerred.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+laerred.addEventListener('pointerdown', e => {
+  if (!state.hund) return;
+  laerred.setPointerCapture?.(e.pointerId);
+  const p = punkt(e);
+  if (state.tilstand === 'tur') { turTryk(p.x); return; }
+  if (state.tilstand === 'bad') { saebeP = p; state.badSum = 0; return; }
+  if (paaHunden(p.x, p.y)) {
+    if (klap(state.hund)) hjerte(1);
+    navigator.vibrate?.(12);
+    sigNoget(`${state.hund.navn} logrer med halen …`);
+    opdater();
+    return;
+  }
+  if (state.tilstand === 'bold') kastBold(fraX(p.x));
+  else if (state.tilstand === 'fri') gaaMod(fraX(p.x));
+});
+
+laerred.addEventListener('pointermove', e => {
+  if (state.tilstand !== 'bad' || !saebeP) return;
+  const p = punkt(e);
+  const d = Math.hypot(p.x - saebeP.x, p.y - saebeP.y);
+  saebeP = p;
+  if (!paaHunden(p.x, p.y)) return;
+  state.badSum += d;
+  const stroeg = hundH() * 0.55;
+  while (state.badSum >= stroeg && state.tilstand === 'bad') { state.badSum -= stroeg; saeb(1); }
+});
+laerred.addEventListener('pointerup', () => { if (state.tilstand === 'bad') saebeP = null; });
+laerred.addEventListener('pointercancel', () => { saebeP = null; });
+
+$('#madBtn').addEventListener('click', giMad);
+$('#boldBtn').addEventListener('click', () => (state.tilstand === 'bold' ? stopBold() : startBold()));
+$('#badBtn').addEventListener('click', () => (state.tilstand === 'bad' ? stopBad() : startBad()));
+$('#turBtn').addEventListener('click', () => (state.tilstand === 'tur' ? stopTur() : startTur()));
+$('#stopBtn').addEventListener('click', () => { stopBold(); stopBad(); stopTur(); });
+function visSkole(paa) {
+  skoleOppe = paa;
+  if (paa) { tegnTricks(); $('#skoleSvar').textContent = ''; aabn($('#skole')); } else luk($('#skole'));
+  tegn();
+}
+$('#skoleBtn').addEventListener('click', () => visSkole(true));
+$('#skoleLuk').addEventListener('click', () => visSkole(false));
+$('#butikBtn').addEventListener('click', () => { tegnButik(); aabn($('#butik')); });
+$('#butikLuk').addEventListener('click', () => luk($('#butik')));
+$('#toplisteBtn').addEventListener('click', aabnTopliste);
+$('#hsLuk').addEventListener('click', () => luk($('#toplisteArk')));
+for (const ark of document.querySelectorAll('.ark')) {
+  ark.addEventListener('click', e => { if (e.target === ark) { if (ark.id === 'skole') visSkole(false); else luk(ark); } });
+}
+$('#adopterBtn').addEventListener('click', () => adopter());
+$('#hundNavn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adopter(); } });
+$('#fortsaetBtn').addEventListener('click', tilSpil);
+
+document.addEventListener('visibilitychange', () => { if (document.hidden) gemNu(); });
+addEventListener('pagehide', gemNu);
+
+/* ================= Loop ================= */
+let sidsteOpdater = 0;
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!koerer || state.skaerm !== 'spil') { sidstTid = nu; return; }
+  const dt = Math.min(0.1, (nu - sidstTid) / 1000 || 0);
+  sidstTid = nu;
+  tik(dt);
+  // Målerne og teksterne rører DOM'en, så de opdateres nogle få gange i sekundet
+  // i stedet for i hvert billede – hunden tegnes derimod på canvas hver gang.
+  if (state.t - sidsteOpdater > 0.25) { sidsteOpdater = state.t; opdater(); }
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ================= Start ================= */
+{
+  // Navnet fra forsiden bruges ikke til hunden – hunden har sit eget navn –
+  // men toplisten kender det allerede via localStorage ('zydy.navn').
+  const gemt = hentGemt();
+  byggMaalere();
+  tegnHvalpe();
+  if (gemt) {
+    state.hund = gemt.hund;
+    state.x = 0.5;
+    state.tilstand = 'fri';
+    $('#startPill').textContent = `Niveau ${niveauFor(gemt.hund.xp)}`;
+    $('#startTekst').textContent = velkomst(gemt.hund, gemt.vaekSek) || `${gemt.hund.navn} venter på dig.`;
+    $('#fortsaetBtn').hidden = false;
+    $('#fortsaetBtn').textContent = `Tilbage til ${gemt.hund.navn}`;
+    $('#adopterBtn').textContent = 'Start forfra med en ny hvalp';
+    $('#adopterBtn').classList.add('ghost');
+    $('#hundNavn').value = '';
+  }
+  Highscore.panel($('#hsStart'), { spil: SPIL, titel: 'Klogeste hunde' });
+  maalOp();
+}
+
+/* ================= Til test ================= */
+Object.assign(GAME, {
+  tik, tegn, opdater, adopter, tilSpil,
+  giMad, startBold, kastBold, stopBold, startBad, saeb, stopBad,
+  startTur, stopTur, turTryk, tur: () => state.tur,
+  sigTrick, visSkole, gulvY: () => gulvY(),
+  klap: () => { const ok = klap(state.hund); if (ok) hjerte(1); opdater(); return ok; },
+  koeb: id => { vaelgVare(id); return ejer(state.hund, id); },
+  tagPaa: id => { vaelgVare(id); return true; },
+  gemNu, hentGemt,
+  pause: () => { koerer = false; },
+  resume: () => { koerer = true; },
+  niveau: () => niveauFor(state.hund.xp),
+  trivsel: () => trivsel(state.hund),
+  kanTricks: () => kanTricks(state.hund),
+  MAKS_NIVEAU,
+});
+// Hunden skiftes ud, når man henter en ny hvalp, så den skal hentes hver gang.
+Object.defineProperty(GAME, 'hund', { get: () => state.hund });
+</script>
+</body></html>

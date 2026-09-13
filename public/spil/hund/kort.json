@@ -1,0 +1,19 @@
+{
+  "navn": "Min hund",
+  "beskrivelse": "Få din egen hvalp: giv den mad, kast bolden, tag den med ud at gå – og lær den at sitte, give pote og spille dødsmand.",
+  "nøgleord": [
+    "my dog",
+    "hvalp",
+    "kæledyr",
+    "dyr",
+    "vovse",
+    "gåtur",
+    "tricks",
+    "pas på den"
+  ],
+  "url": "/spil/hund/",
+  "orden": 152,
+  "højscore": {
+    "maks": 50
+  }
+}
