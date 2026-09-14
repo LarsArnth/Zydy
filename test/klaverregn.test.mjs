@@ -65,6 +65,16 @@ assert.equal(await page.locator('#startScreen.on').count(), 0, 'startskærmen er
 assert.equal((await state()).sang, 'Mester Jakob', 'den første sang er Mester Jakob');
 assert.match(await page.locator('#sangEl').textContent(), /Mester Jakob/, 'sangens navn står på skærmen');
 
+// Sangnavnet må ikke ligge hen over hjerterne (det gjorde det engang)
+{
+  const [sang, liv] = await page.evaluate(() => [
+    document.getElementById('sangEl').getBoundingClientRect().toJSON(),
+    document.getElementById('hjerter').getBoundingClientRect().toJSON(),
+  ]);
+  const overlapper = sang.left < liv.right && liv.left < sang.right && sang.top < liv.bottom && liv.top < sang.bottom;
+  assert.equal(overlapper, false, 'sangens navn ligger hen over hjerterne');
+}
+
 // Tryk på de tre første fliser med en rigtig finger: klik i flisens bane.
 // Banen følger tonehøjden, så Mester Jakobs do-re-mi skal vandre mod højre.
 const boks = await page.locator('#c').boundingBox();

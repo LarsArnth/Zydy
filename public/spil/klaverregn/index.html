@@ -71,8 +71,9 @@
   #hjerter{display:block;font-size:28px;line-height:1.2;letter-spacing:2px}
   #hjerter .tabt{opacity:.22;filter:grayscale(1)}
 
-  /* Sangen der er i gang – midt i toppen, så man ved hvad man spiller */
-  .sang{position:absolute;left:50%;transform:translateX(-50%);top:12px;pointer-events:none;
+  /* Sangen der er i gang – midt i toppen, men UNDER noderne og hjerterne,
+     ellers ligger den hen over hjerterne på en iPhone i højkant */
+  .sang{position:absolute;left:50%;transform:translateX(-50%);top:64px;pointer-events:none;
     background:rgba(13,21,48,.62);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
     border-radius:999px;padding:8px 16px;font-size:15px;font-weight:700;color:var(--sun);
     opacity:0;transition:opacity .25s;white-space:nowrap;max-width:60%;overflow:hidden;text-overflow:ellipsis}
