@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 37,
+      "dato": "2026-09-15",
+      "spil": "kaempetal",
+      "titel": "Kæmpetal – nå det største tal med en ven",
+      "hvad": "Selma ønskede sig et spil, hvor man kan møde sine venner og nå 9999999999999. Værsgo: tryk på det kæmpe gyldne tal, så vokser det, og køb hjælpere – klikkemus, tællekat, talraket og til sidst et sort hul – der tæller videre af sig selv, også mens du er i skole. Guldfingeren fordobler hvert tryk, og målet er det største tal: 9.999.999.999.999. Og du kan møde en ven derinde: invitér fra forsiden, så ser I hinandens tal live, og jeres to tal lagt sammen kan nå loftet – så er der fest hos jer begge to. Der er selvfølgelig topliste.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 36,
       "dato": "2026-09-14",
       "spil": "slanger",

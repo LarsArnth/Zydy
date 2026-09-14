@@ -34,6 +34,7 @@ export const KORT = [
   { id: 'sejl', navn: 'Til søs!', url: '/spil/sejl/' },
   { id: 'flaske', navn: 'Flaskehavet', url: '/spil/flaske/' },
   { id: 'slanger', navn: 'Slanger', url: '/spil/slanger/' },
+  { id: 'kaempetal', navn: 'Kæmpetal', url: '/spil/kaempetal/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -67,11 +68,12 @@ export const SPIL = {
   sejl: { maks: 20000 },
   flaske: { maks: 2000 },
   slanger: { maks: 1024, unik: true },
+  kaempetal: { maks: 9999999999999, unik: true },
 };
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).
  *  src/rum.mjs bruger listen, og forsiden kender dem på data-sammen på kortet. */
-export const SAMMEN = ['dybet', 'kryds', 'papir', 'slanger'];
+export const SAMMEN = ['dybet', 'kryds', 'papir', 'slanger', 'kaempetal'];
 
 /** Spil to venner kan tage et kapløb i: samme spil, hver sin telefon, bedste
  *  runde vinder ("kapløb": true i kort.json). Forsiden kender dem på

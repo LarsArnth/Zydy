@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet syvogtyve spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet otteogtyve spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet og Slanger, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger og Kæmpetal, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -53,6 +53,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Flaskehavet | `public/spil/flaske/` | Milas' ønske, der lød «Handler om en flaske vand havdyr»: en vandflaske driver med strømmen gennem havet, set fra siden. Hold på skærmen, og flasken dykker – slip, og den flyder op, for flasker flyder. Havdyrene – fisk, søheste, skildpadder, blæksprutter, søstjerner og krabber – svømmer ind i flasken, når man rammer dem, og svømmer med derinde, mens vandet i flasken stiger. Brandmænd og søpindsvin skal man uden om: tre stød, og flasken går i stykker. Strømmen bliver hurtigere hele turen, og der kommer flere farer, jo længere man driver ud – men to farer står aldrig tættere end fire meter, så der altid er en vej. Score = havdyr i flasken, online topliste. To filer: `flaske.mjs` (havet, fysikken, fangsten og en bot, enhedstestet) og `index.html` (canvas, HUD og skærmene). |
 | Copyright | `public/spil/copyright/` | Selmas ønske om et spil, hvor man «copyrighter en tegning og gætter, hvem der har copyrighten». Et tegne- og gættespil for 3-6 på én iPad, der går rundt: alle tegner det **samme** motiv hver for sig, og når man er færdig, slås ens copyright-stempel på tegningen – men dækket til, så de andre kun ser «©?». Derefter går enheden rundt igen, og hver spiller gætter, hvem der har copyright på hver af de andres tegninger. Afsløringen tager én tegning ad gangen: stemplet vendes, og man kan se, hvem der ramte rigtigt. 10 point for et rigtigt gæt, 5 til tegneren pr. narret – men narrer man **alle**, giver tegningen ingenting. Tre runder med hvert sit motiv. Score = vinderens point, online topliste. To filer: `regler.mjs` (motiver, gæt, point og runder, enhedstestet) og `index.html`. Se «Copyright – stemplet, gættet og pointene» nedenfor. |
 | Slanger | `public/spil/slanger/` | Lars' ønske om en Snake.io-klon i firkanter som Papirøen: en slange på en plade af 32 × 32 felter, der kun kan køre i fire retninger – og hele styringen er **to kæmpe drejeknapper** i bunden af skærmen, som 3- og 7-tasten på en gammel Nokia (venstre = mod uret, højre = med uret; trykkene lægges i kø, så to hurtige tryk giver to sving). Spis perlerne og bliv den længste; Otto, Mille og Aksel jager de samme perler, og en død slange bliver selv til perler. Score = længste længde, online topliste. **Kan også spilles sammen med en ven**, én på hver telefon — se [Spil sammen](#spil-sammen). To filer: `slange.mjs` (motor, enhedstestet) + `sammen.mjs` (den fælles plade, enhedstestet) og `index.html`. Se «Slanger – de to knapper og den fælles plade» nedenfor. |
+| Kæmpetal | `public/spil/kaempetal/` | Selmas ønske, der lød «man kan møde sine venner man kan mindst Max 9999999999999»: et clicker-spil om at nå det største tal, **9.999.999.999.999**. Tallet selv er knappen – tryk, og det vokser – og i butikken køber man hjælpere (klikkemus, tællekat, talraket, sort hul …), der tæller videre af sig selv, også mens man er væk (dog højst 8 timer, en skoledag). Guldfingeren fordobler hvert tryk, og butikken viser kun de hjælpere, man har mødt, plus én hemmelig «???». Score = alt man har tjent – køb rører den ikke – og den ryger selv på toplisten, hver gang en tierpotens rundes. **Kan spilles sammen med en ven**, én på hver telefon: I ser hinandens tal live, og summen af jeres to tal kan nå loftet – så fejrer I det sammen. Se [Spil sammen](#spil-sammen) og «Kæmpetal – tallet, hjælperne og loftet» nedenfor. To filer: `tal.mjs` (tallet, hjælperne, priserne og loftet, enhedstestet) og `index.html`. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -478,7 +479,8 @@ hinanden i næsten alle spil uden at skulle skrive netværkskode i hvert enkelt.
 
 Trykker man på en ven, står der en knap pr. spil, to kan spille sammen — i dag
 **«🎮 Spil Kryds og bolle sammen»**, **«🎮 Spil Dybet sammen»**,
-**«🎮 Spil Papirøen sammen»** og **«🎮 Spil Slanger sammen»**. Så laves
+**«🎮 Spil Papirøen sammen»**, **«🎮 Spil Slanger sammen»** og
+**«🎮 Spil Kæmpetal sammen»**. Så laves
 der et *rum*, man selv sendes ind i (`/spil/kryds/?rum=K7QFD`), og vennen får
 invitationen øverst på forsiden: «Sofie vil spille Kryds og bolle med dig» med
 knappen **«Hop med!»**. Begge lander i det samme spil på hver sin telefon: den
@@ -1425,6 +1427,38 @@ rigtig finger, Nokia-dobbelttrykket, en hel runde til slutskærmen — og to
 browsere, hvor Sofie inviterer Selma ind på den samme plade) +
 `test/unit/slanger.test.mjs`.
 
+### Kæmpetal – tallet, hjælperne og loftet
+
+Selmas ønske #42 lød «Lav et spil hvor man kan mode Sine venner man kan mindst
+Max 9999999999999» – læst som: et spil, hvor man kan **møde sine venner**, og
+hvor man kan nå **9.999.999.999.999**. Det er blevet et clicker-spil, hvor
+tallet selv er knappen. Motoren bor i `tal.mjs` (enhedstestet); fire ting er
+værd at huske:
+
+1. **Alt har et loft: MAKS = 9999999999999.** Det er præcis Selmas tal, det er
+   under `Number.MAX_SAFE_INTEGER`, og både banken (`point`) og det samlede tal
+   (`ialt`) klipper dér. Brøkdele fra produktionen samles i `rest`, til der er
+   en hel, så der aldrig står kommatal på skærmen.
+2. **Scoren er `ialt` – alt man nogensinde har tjent.** Køb koster af banken,
+   men rører aldrig `ialt`, så toplisten kan kun gå fremad – og scoren sendes
+   kun, når en ny tierpotens er rundet (`milepael`), ellers blev hvert klik til
+   et API-kald.
+3. **Mødet med vennen er kapløbs-mønstret, ikke tur-mønstret:** hver skriver
+   kun sin egen halvdel af rummet (`{vaert, gaest}` med `ialt` og `sek`), hvert
+   3. sekund og kun når tallet har flyttet sig. Vennens tal tikker levende på
+   skærmen, fordi hens produktion (`sek`) følger med og regnes videre mellem
+   opdateringerne. Summen af de to tal kan nå loftet – så fejres det SAMMEN,
+   hos begge, også selv om ingen af dem er der alene.
+4. **Balancen vogtes af en test:** en grådig spiller, der klikker tre gange i
+   sekundet og altid køber den bedste hjælper, skal nå loftet på mellem en time
+   og et døgns uafbrudt spil – i praksis nogle dages rigtigt spil, for
+   hjælperne arbejder højst 8 timer alene (`FRAVAER_MAKS`, en skoledag, samme
+   greb som Min kats fraværsloft).
+
+Test: `test/kaempetal.test.mjs` (klik, butik, milepæl, loftet med fest – og to
+browsere, hvor Sofie og Selma mødes og når loftet sammen) +
+`test/unit/kaempetal.test.mjs`.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -1449,7 +1483,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om
@@ -1491,9 +1525,10 @@ gennem `api.venner`),
 `test/nyheder.test.mjs` («Nyt på Zydy», hvor en ekstra nyhed serveres gennem
 `page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til),
 `test/beskeder.test.mjs` («skriv med en ven») og
-`test/rum.test.mjs` («spil sammen»). De to sidste er blandt repoets fem tests
+`test/rum.test.mjs` («spil sammen»). De to sidste er blandt repoets syv tests
 med **to browsere** (de andre er `test/dybet-sammen.test.mjs`,
-`test/papir-sammen.test.mjs` og `test/kaploeb.test.mjs`): Sofie og Selma har
+`test/papir-sammen.test.mjs`, `test/kaploeb.test.mjs`, `test/slanger.test.mjs`
+og `test/kaempetal.test.mjs`): Sofie og Selma har
 hver sit vindue med sit eget `localStorage`, men deler API'et
 (`mockApi(side, { delMed: api })`), så et helt parti Kryds og bolle — eller en
 tur ned i Dybet — kan spilles på tværs af to telefoner, præcis som i drift.
