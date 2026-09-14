@@ -957,11 +957,13 @@ window.GAME = {
   /**
    * Spoler `sek` sekunder frem med de samme faste skridt som spillet selv.
    * `styring` kan være en funktion, der får slangen og svarer med en retning.
+   * Der spørges kun, når drejekøen er tom – ellers ville køen fyldes med
+   * beslutninger, der er flere felter gamle, når de bliver brugt.
    */
   frem(sek, styring) {
     const n = Math.round(sek / DT);
     for (let i = 0; i < n && fase === 'spil'; i++) {
-      if (typeof styring === 'function') saetRetning(styring(mig, bane));
+      if (typeof styring === 'function' && !mig.koe.length) saetRetning(styring(mig, bane));
       spilSkridt(DT);
     }
     return this.state;

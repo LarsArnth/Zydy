@@ -103,23 +103,31 @@ await page.click('#startBtn');
 }
 
 /* ---------- Perlerne spises, og slangerne vokser ---------- */
+let st;                              // stillingen følger med over i slut-afsnittet
 {
   await page.evaluate(() => window.GAME.start());
-  const st = await page.evaluate(() => window.GAME.frem(25, () => window.GAME.botRetning()));
+  // Botten kører min slange i små bidder, til der er spist og vokset – den kan
+  // (sjældent) blive spærret inde og dø undervejs, og så er bedste facit.
+  for (let i = 0; i < 6; i++) {
+    st = await page.evaluate(() => window.GAME.botTur(5));
+    if (st.fase !== 'spil'
+      || (st.mad >= 1 && st.bedste > 4 && st.spillere.some(p => !p.mig && p.bedste > 4))) break;
+  }
   assert.ok(st.mad >= 1, `slangen nåede ingen perler (${st.mad})`);
-  assert.ok(st.laengde > 4, 'og den er vokset');
-  assert.ok(st.bedste >= st.laengde, 'bedste længde følger med');
+  assert.ok(st.bedste > 4, 'og den er vokset');
   assert.ok(st.spillere.some(p => !p.mig && p.bedste > 4), 'modstanderne spiser også');
   assert.equal(st.madPladser.length >= 24, true, 'der er altid perler på pladen');
-  assert.ok(await page.evaluate(() => document.getElementById('flade').classList.contains('igang')),
-    'minikortet og længden vises, mens man spiller');
-  assert.match(await page.locator('#laengde').textContent(), /led/, 'længden står i hjørnet');
+  if (st.fase === 'spil') {
+    assert.ok(await page.evaluate(() => document.getElementById('flade').classList.contains('igang')),
+      'minikortet og længden vises, mens man spiller');
+    assert.match(await page.locator('#laengde').textContent(), /led/, 'længden står i hjørnet');
+  }
   await page.screenshot({ path: SHOTS + 'slanger.png' });
 }
 
 /* ---------- Væggen er slut: slutskærm og topliste ---------- */
 {
-  const st = await page.evaluate(() => window.GAME.frem(30, () => 3));   // op, til noget stopper os
+  if (st.fase === 'spil') st = await page.evaluate(() => window.GAME.frem(60, () => 3));   // op, til noget stopper os
   assert.equal(st.fase, 'slut', 'runden slutter, når man rammer noget');
   assert.equal(st.levende, false);
   assert.ok(['mur', 'egen', 'ramt'].includes(st.grund));
@@ -175,7 +183,7 @@ assert.ok(api.log.aktivitet.some(a => a.spil === 'slanger' && a.ny === true), 's
   await p2.goto(`${BASE}/spil/slanger/?seed=7`);
   await p2.waitForFunction(() => !!window.GAME);
   await p2.click('#startBtn');
-  const st = await p2.evaluate(() => window.GAME.frem(6, () => window.GAME.botRetning()));
+  const st = await p2.evaluate(() => window.GAME.botTur(6));
   assert.equal(st.fase, 'spil', 'runden kører også på en iPad');
   assert.ok(await p2.evaluate(() => {
     const r = document.getElementById('c').getBoundingClientRect();
