@@ -1,0 +1,832 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a2247">
+<meta name="description" content="Flaskehavet: dyk vandflasken ned i havet og fang havdyr i den – uden om brandmænd og søpindsvin. Hvor mange får du i flasken?">
+<title>Flaskehavet – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d5da8'/%3E%3Cpath d='M0 40h64v24H0z' fill='%230e3168'/%3E%3Crect x='14' y='24' width='30' height='16' rx='7' fill='%23bfe3ff'/%3E%3Crect x='44' y='28' width='8' height='8' rx='3' fill='%23bfe3ff'/%3E%3Ccircle cx='26' cy='32' r='4' fill='%23ff9d3b'/%3E%3Cpath d='M30 32l5-3v6z' fill='%23ff9d3b'/%3E%3C/svg%3E">
+<style>
+  /*
+    «Flaskehavet» – Milas' ønske, der lød «Handler om en flaske vand havdyr».
+
+    Havet ses fra siden: en vandflaske driver med strømmen, og man holder på
+    skærmen for at dykke den – slipper man, flyder den op, for flasker flyder.
+    Havdyrene svømmer ind i flasken og bliver derinde; det er dem, der er
+    scoren. Brandmænd og søpindsvin skal man uden om: tre stød, og flasken går
+    i stykker. Strømmen bliver hurtigere og hurtigere.
+
+    Verdenen regnes i meter: havet er 30 m dybt. Fysikken og havet bor i
+    flaske.mjs, så det kan enhedstestes uden browser.
+  */
+  :root{
+    --bg:#0a2247; --bg2:#143a6e; --bg3:#1d5da8; --text:#f2f8ff; --muted:#9dbde0;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sand:#e3c887; --ink:#122542; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 10px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  button.pill{color:var(--text);font-weight:700;min-height:36px}
+
+  .wrap{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.4px}
+  #menuBtn[hidden]{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#123a6e}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Fangsten i venstre hjørne, rekorden i højre – på en mørk pude, for himlen bagved er lys */
+  .hud{position:absolute;left:14px;top:12px;pointer-events:none;text-shadow:0 3px 14px rgba(0,0,0,.6);
+    background:rgba(10,34,71,.5);border-radius:16px;padding:7px 12px;
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+    opacity:0;transition:opacity .25s}
+  .stage.igang .hud{opacity:1}
+  .hud .lbl{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  #fangstEl{display:block;font-size:48px;font-weight:800;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums;
+    transition:transform .12s}
+  #fangstEl.bump{transform:scale(1.12)}
+  #fangstEl small{font-size:20px;font-weight:700;color:var(--muted);letter-spacing:0}
+  #livEl{display:block;font-size:19px;margin-top:4px;letter-spacing:2px}
+  .hud.hoejre{left:auto;right:14px;text-align:right}
+  #rekHud{display:block;font-size:24px;font-weight:800;line-height:1.1;color:var(--sun);font-variant-numeric:tabular-nums}
+
+  /* Rødt blink, når flasken bliver stødt */
+  .fare{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .5s;
+    box-shadow:inset 0 0 90px 20px rgba(255,60,90,.75)}
+
+  /* Beskeder midt på fladen */
+  .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .3s}
+  .msg.on{opacity:1}
+  #raab .big{font-size:clamp(30px,10vw,58px);font-weight:900;letter-spacing:-1.5px;line-height:1.05;color:#fff;
+    text-shadow:0 0 26px #2f6fd0,0 6px 0 #0d2f60,0 10px 30px rgba(0,0,0,.6);transform:rotate(-3deg)}
+  #raab.on .big{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+  #raab .sub{margin-top:16px;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(10,34,71,.65);border-radius:999px;padding:8px 16px}
+  @keyframes pop{from{transform:scale(.3) rotate(-3deg);opacity:0}to{transform:scale(1) rotate(-3deg);opacity:1}}
+
+  /* Start- og slutskærm */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:18px 20px 24px;background:rgba(10,34,71,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .regler{display:flex;flex-direction:column;gap:7px;margin:0 0 4px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:9px 13px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .hs{margin-top:12px}
+  .hs .hs-liste{max-height:30vh}
+  .stor{font-size:64px;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--sun);
+    font-variant-numeric:tabular-nums;margin:2px 0 2px}
+  .stor small{font-size:26px;color:var(--muted);letter-spacing:0}
+  .under{font-size:15px;color:var(--muted);margin:0 0 8px}
+  .hint{font-size:15px;margin:10px 0 0}
+
+  @media (max-height:660px){
+    h1{font-size:30px} #fangstEl{font-size:38px} .stor{font-size:48px} .hs .hs-liste{max-height:24vh}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+  }
+  @media (max-width:380px){ .top .name{display:none} }
+  @media (prefers-reduced-motion:reduce){
+    .btn,#fangstEl{transition:none} #raab.on .big{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Flaskehavet</div>
+    <button class="pill" id="menuBtn" hidden>Menu</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Havet set fra siden"></canvas>
+
+    <div class="hud" aria-live="polite">
+      <span class="lbl">Havdyr</span>
+      <b id="fangstEl">0</b>
+      <span id="livEl">❤️❤️❤️</span>
+    </div>
+    <div class="hud hoejre">
+      <span class="lbl">Rekord</span>
+      <b id="rekHud">0</b>
+    </div>
+
+    <div class="fare" id="fare"></div>
+
+    <div class="msg" id="raab">
+      <div class="big" id="raabTekst">FLASKEHAVET!</div>
+      <div class="sub" id="raabUnder">Fang havdyr i flasken</div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Flaskehavet</h1>
+        <div class="regler" aria-hidden="true">
+          <span>🫙 <b>Hold på skærmen</b> – flasken dykker. Slip – den flyder op</span>
+          <span>🐠 <b>Fang havdyrene</b> – de svømmer med inde i flasken</span>
+          <span>⚠️ Uden om <b>brandmænd og søpindsvin</b> – tre liv</span>
+          <span>🌊 Strømmen bliver <b>hurtigere og hurtigere</b></span>
+        </div>
+        <button class="btn" id="startBtn">Dyk!</button>
+        <p class="hint">Hold hvor som helst på havet. På computer: mellemrum.</p>
+        <div class="hs" id="hsStart"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Flasken gik i stykker!</h1>
+        <div class="stor" id="slutFangst">0<small> havdyr</small></div>
+        <p class="under" id="slutUnder">Din rekord er 0 havdyr</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Fang flere</button>
+        <button class="btn ghost" id="tilbageBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="flaske"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+<script type="module">
+import {
+  DYBDE, FLASKE_R, LIV, FART0, FART_MAKS, HAV_FRA, STYKKE, ARTER, FARER,
+  mulberry32, dyrY, stykke as havStykke, naerStykker, nyTur, tik as motorTik, bot,
+} from './flaske.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const harFastSeed = Number.isFinite(fastSeed);
+let seed = harFastSeed ? fastSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
+if (!ctx.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const fangstEl = $('fangstEl'), rekHud = $('rekHud'), livEl = $('livEl'), fareEl = $('fare');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen');
+const raab = $('raab'), raabTekst = $('raabTekst'), raabUnder = $('raabUnder'), menuBtn = $('menuBtn');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY_BEST = 'zydy.flaske.best';
+const hentBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const gemBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+
+const DT = 1 / 120;                 // fast fysik-trin
+const HIMMEL = 3;                   // meter himmel over vandspejlet
+const SYNLIG_MIN = 22;              // så mange meter hav vil vi mindst kunne se i bredden
+const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1, dpr = 1, u = 8, topPx = 0;
+function maal() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // På en telefon på højkant fylder dybden hele højden. En bred skærm skal
+  // stadig kunne se langt frem, så dér begrænser bredden i stedet – det, der
+  // bliver tilovers i højden, bliver til himmel og dyb sandbund.
+  u = Math.max(5, Math.min(H / (DYBDE + HIMMEL), W / SYNLIG_MIN));
+  topPx = HIMMEL * u + Math.max(0, H - (DYBDE + HIMMEL) * u) * 0.35;
+}
+maal();
+addEventListener('resize', maal);
+addEventListener('orientationchange', () => setTimeout(maal, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';                  // menu | spil | doed
+let s = nyTur(seed);
+let T = 0, best = hentBest();
+let ryst = 0, bobler = [], pops = [], skaar = [], iFlasken = [];
+let paused = false, acc = 0, sidst = 0, raabTil = 0, fareTil = 0;
+
+const ind = { hold: false };
+
+function nulstil() {
+  if (!harFastSeed) seed = (Math.random() * 4294967296) >>> 0;
+  s = nyTur(seed);
+  T = 0; ryst = 0; bobler = []; pops = []; skaar = []; iFlasken = [];
+  raabTil = 0; fareTil = 0; fareEl.style.opacity = '0';
+  visHud();
+}
+
+/* ---------- Pynt ---------- */
+function sigTil(stor, lille, sek) {
+  raabTekst.textContent = stor; raabUnder.textContent = lille;
+  raab.classList.add('on'); raabTil = T + sek;
+}
+function rumler(styrke) { if (!roligt) ryst = Math.max(ryst, styrke / 30); }
+function boblerVed(x, y, n) {
+  if (roligt) return;
+  for (let i = 0; i < n; i++) {
+    bobler.push({
+      x: x + (Math.random() - 0.5) * 1.4, y: y + (Math.random() - 0.5) * 1.4,
+      vy: 1.5 + Math.random() * 2.5, r: 0.08 + Math.random() * 0.14,
+      t: 0, liv: 0.8 + Math.random() * 1.2,
+    });
+  }
+}
+
+/* ---------- Skærmene ---------- */
+function visHud() {
+  fangstEl.textContent = s.fangst;
+  fangstEl.classList.add('bump'); setTimeout(() => fangstEl.classList.remove('bump'), 120);
+  rekHud.textContent = best;
+  livEl.textContent = '❤️'.repeat(Math.max(0, s.liv)) + '🤍'.repeat(Math.max(0, LIV - s.liv));
+}
+
+function start() {
+  nulstil();
+  fase = 'spil';
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  menuBtn.hidden = false; stage.classList.add('igang');
+  sigTil('FLASKEHAVET!', 'Hold for at dykke – fang havdyrene', 1.8);
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+function doed() {
+  if (fase !== 'spil') return;
+  fase = 'doed';
+  ind.hold = false;
+  rumler(18);
+  navigator.vibrate && navigator.vibrate([60, 40, 60]);
+  boblerVed(s.x, s.y, 20);
+  // Flasken går i stykker: glasskår i alle retninger
+  if (!roligt) {
+    for (let i = 0; i < 14; i++) {
+      const a = Math.random() * Math.PI * 2;
+      skaar.push({ x: s.x, y: s.y, vx: Math.cos(a) * (3 + Math.random() * 5), vy: Math.sin(a) * (3 + Math.random() * 5),
+        rot: Math.random() * Math.PI * 2, t: 0, liv: 0.9 + Math.random() * 0.5 });
+    }
+  }
+  const ny = s.fangst > best;
+  if (ny) { best = s.fangst; gemBest(best); }
+  stage.classList.remove('igang');
+  raab.classList.remove('on');
+  $('slutTitel').textContent = 'Flasken gik i stykker!';
+  $('slutFangst').innerHTML = s.fangst + '<small> havdyr</small>';
+  $('slutUnder').textContent = ny && s.fangst > 0 ? 'Så mange har du aldrig fanget før.' : 'Din rekord er ' + best + ' havdyr';
+  slutScreen.classList.add('on');
+  visHud();
+  Highscore.panel($('hsSlut'), { spil: 'flaske', score: s.fangst, format: v => v + ' havdyr' });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(s.fangst, s.fangst + ' havdyr');
+}
+
+function tilMenu() {
+  fase = 'menu';
+  nulstil();
+  slutScreen.classList.remove('on'); startScreen.classList.add('on');
+  menuBtn.hidden = true; raab.classList.remove('on'); stage.classList.remove('igang');
+  Highscore.panel($('hsStart'), { spil: 'flaske', format: v => v + ' havdyr' });
+}
+
+/* ---------- Løkken ---------- */
+function uiTik(dt, holdTving = null) {
+  T += dt;
+  if (fase === 'spil') {
+    const e = motorTik(s, dt, holdTving === null ? ind.hold : holdTving);
+
+    if (e.fanget) {
+      iFlasken.push({ art: e.fanget, froe: Math.random() });
+      pops.push({ x: s.x, y: s.y - 1.6, tekst: '+1 ' + ARTER[e.fanget].navn, t: 0, liv: 1.1 });
+      boblerVed(s.x, s.y, 6);
+      navigator.vibrate && navigator.vibrate(15);
+      visHud();
+      if (s.fangst % 25 === 0) sigTil(s.fangst + ' HAVDYR!', 'Sikke en flaske', 1.4);
+    }
+    if (e.ramt) {
+      rumler(12);
+      navigator.vibrate && navigator.vibrate(40);
+      boblerVed(s.x, s.y, 12);
+      fareTil = T + 0.5; fareEl.style.opacity = '1';
+      if (!s.doed) {
+        sigTil(e.ramt === 'brandmand' ? 'AV! EN BRANDMAND!' : 'AV! ET SØPINDSVIN!',
+          s.liv === 1 ? 'Pas på – kun ét liv tilbage' : s.liv + ' liv tilbage', 1.4);
+      }
+      visHud();
+    }
+    if (e.knust) doed();
+
+    // Små bobler fra flasken, når det går stærkt
+    if (!roligt && Math.random() < dt * 6) boblerVed(s.x - 1.4, s.y, 1);
+  }
+
+  if (raabTil && T > raabTil) { raab.classList.remove('on'); raabTil = 0; }
+  if (fareTil && T > fareTil) { fareEl.style.opacity = '0'; fareTil = 0; }
+
+  ryst = Math.max(0, ryst - dt * 1.5);
+  for (const b of bobler) { b.t += dt; b.y -= b.vy * dt; }
+  bobler = bobler.filter(b => b.t < b.liv && b.y > 0.3);
+  for (const q of pops) q.t += dt;
+  pops = pops.filter(q => q.t < q.liv);
+  for (const k of skaar) { k.t += dt; k.x += k.vx * dt; k.y += k.vy * dt; k.vy += 6 * dt; k.rot += dt * 5; }
+  skaar = skaar.filter(k => k.t < k.liv);
+}
+
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!sidst) sidst = nu;
+  let dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  if (!paused) { acc += dt; while (acc >= DT) { uiTik(DT); acc -= DT; } }
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ---------- Tegning ---------- */
+let camX = 0;
+const sx = wx => (wx - camX) * u;
+const sy = wy => topPx + wy * u;
+const hash = (a, b) => { const t = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return t - Math.floor(t); };
+
+function tegn() {
+  camX = s.x - (W / u) * 0.3;
+  ctx.save();
+  if (ryst > 0) ctx.translate((Math.random() - 0.5) * ryst * 22, (Math.random() - 0.5) * ryst * 22);
+
+  tegnHimmel();
+  tegnHav();
+  tegnSand();
+  tegnBobler();
+
+  // Havdyrene og farerne
+  for (const st of naerStykker(s.seed, camX + (W / u) / 2, (W / u) / 2 + 6)) {
+    for (const d of st.dyr) {
+      if (s.fanget[d.id]) continue;
+      const px = sx(d.x), py = sy(dyrY(d, s.t));
+      if (px < -60 || px > W + 60) continue;
+      ctx.save(); ctx.translate(px, py);
+      tegnArt(d.art, d.froe, d.r * u, T + d.fase);
+      ctx.restore();
+    }
+    for (const f of st.farer) {
+      const px = sx(f.x), py = sy(dyrY(f, s.t));
+      if (px < -60 || px > W + 60) continue;
+      ctx.save(); ctx.translate(px, py);
+      if (f.slags === 'brandmand') tegnBrandmand(f.r * u, T + f.fase);
+      else tegnSoepindsvin(f.r * u, f.froe);
+      ctx.restore();
+    }
+  }
+
+  if (fase !== 'menu' && !s.doed) tegnFlaske();
+  tegnSkaar();
+  tegnPops();
+  ctx.restore();
+}
+
+function tegnHimmel() {
+  const vand = sy(0);
+  const g = ctx.createLinearGradient(0, 0, 0, vand);
+  g.addColorStop(0, '#8fc3ef'); g.addColorStop(1, '#d8ecfb');
+  ctx.fillStyle = g; ctx.fillRect(-30, -30, W + 60, vand + 30);
+  // Solen
+  ctx.fillStyle = '#ffd447';
+  ctx.beginPath(); ctx.arc(W - 60, Math.max(24, vand - HIMMEL * u + 6), 20, 0, 6.283); ctx.fill();
+  // Et par skyer, der driver stille forbi
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  for (let i = 0; i < 3; i++) {
+    const cx2 = ((i * 340 + 80 - T * 6) % (W + 240) + W + 240) % (W + 240) - 120;
+    const cy = Math.max(14, vand - HIMMEL * u + 10 + i * 9);
+    ctx.beginPath();
+    ctx.arc(cx2, cy, 13, 0, 6.283); ctx.arc(cx2 + 14, cy + 3, 10, 0, 6.283); ctx.arc(cx2 - 14, cy + 4, 9, 0, 6.283);
+    ctx.fill();
+  }
+}
+
+function tegnHav() {
+  const vand = sy(0), bund = sy(DYBDE);
+  const g = ctx.createLinearGradient(0, vand, 0, bund);
+  g.addColorStop(0, '#2a63b0'); g.addColorStop(0.5, '#1b4a8f'); g.addColorStop(1, '#0d2b5c');
+  ctx.fillStyle = g;
+  // Vandspejlet vugger
+  ctx.beginPath();
+  ctx.moveTo(-30, vand);
+  for (let px = -30; px <= W + 30; px += 10) {
+    ctx.lineTo(px, vand + Math.sin((camX + px / u) * 0.5 + T * 1.6) * 0.18 * u);
+  }
+  ctx.lineTo(W + 30, H + 30); ctx.lineTo(-30, H + 30); ctx.closePath(); ctx.fill();
+  // Skum på vandspejlet
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = Math.max(1.5, u * 0.1);
+  ctx.beginPath();
+  for (let px = -30; px <= W + 30; px += 10) {
+    const py = vand + Math.sin((camX + px / u) * 0.5 + T * 1.6) * 0.18 * u;
+    px === -30 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  // Lysstriber ned gennem vandet
+  ctx.fillStyle = 'rgba(255,255,255,.05)';
+  for (let i = 0; i < 4; i++) {
+    const lx = ((i * 260 + 60 - T * 3) % (W + 300) + W + 300) % (W + 300) - 150;
+    ctx.beginPath();
+    ctx.moveTo(lx, vand); ctx.lineTo(lx + 46, vand);
+    ctx.lineTo(lx + 46 + u * 6, bund); ctx.lineTo(lx + u * 6 - 20, bund);
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+/** Sandbunden med tang og sten, fast pr. 3 meter i verden. */
+function tegnSand() {
+  const bund = sy(DYBDE);
+  ctx.fillStyle = '#e3c887';
+  ctx.beginPath();
+  ctx.moveTo(-30, bund + u);
+  for (let px = -30; px <= W + 30; px += 12) {
+    ctx.lineTo(px, bund + Math.sin((camX + px / u) * 0.7) * 0.18 * u);
+  }
+  ctx.lineTo(W + 30, H + 30); ctx.lineTo(-30, H + 30); ctx.closePath(); ctx.fill();
+  const fra = Math.floor(camX / 3) - 1, til = Math.ceil((camX + W / u) / 3) + 1;
+  for (let b = fra; b <= til; b++) {
+    const h1 = hash(b * 5 + 2, 19);
+    if (h1 < 0.35) continue;
+    const wx = b * 3 + h1 * 2, px = sx(wx), py = bund;
+    if (h1 > 0.7) {                                   // tang, der svajer
+      ctx.strokeStyle = '#2fae5e'; ctx.lineWidth = Math.max(2, u * 0.12); ctx.lineCap = 'round';
+      for (let strå = 0; strå < 3; strå++) {
+        const sv = Math.sin(T * 1.2 + b + strå) * u * 0.35;
+        ctx.beginPath(); ctx.moveTo(px + (strå - 1) * u * 0.22, py + u * 0.2);
+        ctx.quadraticCurveTo(px + (strå - 1) * u * 0.25 + sv * 0.5, py - u * (0.7 + strå * 0.2),
+          px + (strå - 1) * u * 0.3 + sv, py - u * (1.3 + strå * 0.3));
+        ctx.stroke();
+      }
+    } else {                                          // en sten
+      ctx.fillStyle = h1 > 0.5 ? '#b09a67' : '#8e9aab';
+      ctx.beginPath(); ctx.ellipse(px, py + u * 0.15, u * (0.25 + h1 * 0.3), u * (0.18 + h1 * 0.18), 0, 0, 6.283); ctx.fill();
+    }
+  }
+}
+
+function tegnBobler() {
+  for (const b of bobler) {
+    ctx.globalAlpha = Math.max(0, 1 - b.t / b.liv) * 0.7;
+    ctx.strokeStyle = '#dff0ff'; ctx.lineWidth = Math.max(1, u * 0.05);
+    ctx.beginPath(); ctx.arc(sx(b.x), sy(b.y), b.r * u, 0, 6.283); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function tegnPops() {
+  ctx.textAlign = 'center'; ctx.font = `800 ${Math.max(13, u * 0.85)}px -apple-system,sans-serif`;
+  for (const q of pops) {
+    ctx.globalAlpha = Math.max(0, 1 - q.t / q.liv);
+    ctx.fillStyle = '#ffd447';
+    ctx.fillText(q.tekst, sx(q.x), sy(q.y - q.t * 1.4));
+  }
+  ctx.globalAlpha = 1;
+}
+
+function tegnSkaar() {
+  ctx.fillStyle = 'rgba(214,238,255,.9)';
+  for (const k of skaar) {
+    ctx.globalAlpha = Math.max(0, 1 - k.t / k.liv);
+    ctx.save(); ctx.translate(sx(k.x), sy(k.y)); ctx.rotate(k.rot);
+    ctx.beginPath(); ctx.moveTo(0, -u * 0.22); ctx.lineTo(u * 0.16, u * 0.14); ctx.lineTo(-u * 0.16, u * 0.1);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- Havdyrene (tegnet i hånden, midtpunkt i origo, ser mod venstre) ---------- */
+const FISKEFARVER = ['#ff9d3b', '#ffd447', '#5ee0a8', '#7db9ff', '#ff7ba9'];
+
+function tegnArt(art, froe, r, t) {
+  if (art === 'fisk') tegnFisk(froe, r, t);
+  else if (art === 'soehest') tegnSoehest(froe, r, t);
+  else if (art === 'skildpadde') tegnSkildpadde(froe, r, t);
+  else if (art === 'blaeksprutte') tegnBlaeksprutte(froe, r, t);
+  else if (art === 'soestjerne') tegnSoestjerne(froe, r);
+  else tegnKrabbe(froe, r, t);
+}
+
+function tegnFisk(froe, r, t) {
+  const farve = FISKEFARVER[Math.floor(froe * FISKEFARVER.length)];
+  // Halen vifter
+  ctx.fillStyle = farve;
+  const vift = Math.sin(t * 8) * 0.25;
+  ctx.beginPath();
+  ctx.moveTo(r * 0.6, 0);
+  ctx.lineTo(r * 1.25, -r * 0.5 + vift * r); ctx.lineTo(r * 1.25, r * 0.5 + vift * r);
+  ctx.closePath(); ctx.fill();
+  // Kroppen
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.85, r * 0.55, 0, 0, 6.283); ctx.fill();
+  // Finne
+  ctx.fillStyle = 'rgba(255,255,255,.45)';
+  ctx.beginPath(); ctx.ellipse(r * 0.1, r * 0.1, r * 0.3, r * 0.18, 0.6, 0, 6.283); ctx.fill();
+  // Øjet
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-r * 0.45, -r * 0.12, r * 0.18, 0, 6.283); ctx.fill();
+  ctx.fillStyle = '#122542'; ctx.beginPath(); ctx.arc(-r * 0.5, -r * 0.12, r * 0.09, 0, 6.283); ctx.fill();
+}
+
+function tegnSoehest(froe, r, t) {
+  const farve = froe > 0.5 ? '#ffb35c' : '#ff7ba9';
+  ctx.strokeStyle = farve; ctx.lineCap = 'round';
+  ctx.lineWidth = r * 0.5;
+  // Kroppen: et s-sving fra hoved til krøllet hale
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.25, -r * 0.6);
+  ctx.quadraticCurveTo(r * 0.55, -r * 0.25, r * 0.15, r * 0.3);
+  ctx.quadraticCurveTo(-r * 0.15, r * 0.75, r * 0.35, r * 0.8);
+  ctx.stroke();
+  // Snuden og hovedet
+  ctx.lineWidth = r * 0.28;
+  ctx.beginPath(); ctx.moveTo(-r * 0.3, -r * 0.62); ctx.lineTo(-r * 0.85, -r * 0.5); ctx.stroke();
+  ctx.fillStyle = farve;
+  ctx.beginPath(); ctx.arc(-r * 0.2, -r * 0.58, r * 0.34, 0, 6.283); ctx.fill();
+  // Rygfinnen blafrer
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.beginPath(); ctx.ellipse(r * 0.45, -r * 0.05, r * 0.2 + Math.sin(t * 9) * r * 0.05, r * 0.38, 0.3, 0, 6.283); ctx.fill();
+  // Øjet
+  ctx.fillStyle = '#122542'; ctx.beginPath(); ctx.arc(-r * 0.3, -r * 0.64, r * 0.08, 0, 6.283); ctx.fill();
+}
+
+function tegnSkildpadde(froe, r, t) {
+  const svoem = Math.sin(t * 4) * 0.3;
+  // Luffer
+  ctx.fillStyle = '#69c78a';
+  for (const [lx, ly] of [[-r * 0.35, -r * 0.5], [r * 0.45, -r * 0.5], [-r * 0.35, r * 0.5], [r * 0.45, r * 0.5]]) {
+    ctx.beginPath(); ctx.ellipse(lx, ly + svoem * r * 0.2, r * 0.32, r * 0.16, ly < 0 ? -0.5 : 0.5, 0, 6.283); ctx.fill();
+  }
+  // Hovedet
+  ctx.beginPath(); ctx.arc(-r * 0.85, 0, r * 0.28, 0, 6.283); ctx.fill();
+  ctx.fillStyle = '#122542'; ctx.beginPath(); ctx.arc(-r * 0.95, -r * 0.08, r * 0.07, 0, 6.283); ctx.fill();
+  // Skjoldet
+  ctx.fillStyle = '#2fae5e';
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.75, r * 0.55, 0, 0, 6.283); ctx.fill();
+  ctx.strokeStyle = 'rgba(18,37,66,.35)'; ctx.lineWidth = Math.max(1, r * 0.06);
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.5, r * 0.34, 0, 0, 6.283); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-r * 0.5, 0); ctx.lineTo(r * 0.5, 0); ctx.stroke();
+}
+
+function tegnBlaeksprutte(froe, r, t) {
+  const farve = froe > 0.5 ? '#b18cff' : '#ff8cc6';
+  // Arme, der bølger
+  ctx.strokeStyle = farve; ctx.lineWidth = r * 0.16; ctx.lineCap = 'round';
+  for (let i = 0; i < 4; i++) {
+    const ax = (i - 1.5) * r * 0.34;
+    const sving = Math.sin(t * 5 + i) * r * 0.22;
+    ctx.beginPath(); ctx.moveTo(ax, r * 0.25);
+    ctx.quadraticCurveTo(ax + sving, r * 0.7, ax + sving * 1.6, r * 1.0);
+    ctx.stroke();
+  }
+  // Hovedet
+  ctx.fillStyle = farve;
+  ctx.beginPath(); ctx.arc(0, -r * 0.15, r * 0.62, Math.PI, 0);
+  ctx.quadraticCurveTo(r * 0.62, r * 0.35, 0, r * 0.38);
+  ctx.quadraticCurveTo(-r * 0.62, r * 0.35, -r * 0.62, -r * 0.15);
+  ctx.fill();
+  // Øjne
+  for (const side of [-1, 1]) {
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(side * r * 0.24, -r * 0.1, r * 0.16, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#122542'; ctx.beginPath(); ctx.arc(side * r * 0.24 - r * 0.04, -r * 0.1, r * 0.08, 0, 6.283); ctx.fill();
+  }
+}
+
+function tegnSoestjerne(froe, r) {
+  ctx.fillStyle = froe > 0.5 ? '#ff9d3b' : '#ff5c7a';
+  const drej = froe * Math.PI;
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = drej + (i / 10) * Math.PI * 2;
+    const rr = i % 2 ? r * 0.4 : r;
+    const X = Math.cos(a) * rr, Y = Math.sin(a) * rr;
+    i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.22, 0, 6.283); ctx.fill();
+}
+
+function tegnKrabbe(froe, r, t) {
+  ctx.strokeStyle = '#e03b4e'; ctx.lineWidth = r * 0.14; ctx.lineCap = 'round';
+  // Ben
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+      const trip = Math.sin(t * 6 + i + side) * r * 0.08;
+      ctx.beginPath(); ctx.moveTo(side * r * 0.4, r * 0.1 + i * r * 0.12);
+      ctx.lineTo(side * r * 0.95, r * 0.35 + i * r * 0.18 + trip);
+      ctx.stroke();
+    }
+  }
+  // Klosakse
+  ctx.fillStyle = '#e03b4e';
+  for (const side of [-1, 1]) {
+    ctx.beginPath(); ctx.arc(side * r * 0.75, -r * 0.45, r * 0.26, 0, 6.283); ctx.fill();
+  }
+  // Kroppen
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.65, r * 0.48, 0, 0, 6.283); ctx.fill();
+  // Øjne på stilke
+  for (const side of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(side * r * 0.2, -r * 0.4); ctx.lineTo(side * r * 0.25, -r * 0.7); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(side * r * 0.25, -r * 0.75, r * 0.12, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#122542'; ctx.beginPath(); ctx.arc(side * r * 0.25, -r * 0.75, r * 0.06, 0, 6.283); ctx.fill();
+  }
+}
+
+function tegnBrandmand(r, t) {
+  const puls = 1 + Math.sin(t * 3) * 0.12;
+  // Fangarme
+  ctx.strokeStyle = 'rgba(255,124,166,.75)'; ctx.lineWidth = Math.max(1.5, r * 0.1); ctx.lineCap = 'round';
+  for (let i = 0; i < 5; i++) {
+    const ax = (i - 2) * r * 0.3;
+    const sving = Math.sin(t * 4 + i * 1.3) * r * 0.3;
+    ctx.beginPath(); ctx.moveTo(ax, r * 0.15);
+    ctx.quadraticCurveTo(ax + sving, r * 0.8, ax + sving * 1.5, r * 1.5);
+    ctx.stroke();
+  }
+  // Klokken
+  ctx.fillStyle = 'rgba(255,110,160,.8)';
+  ctx.beginPath();
+  ctx.arc(0, 0, r * puls, Math.PI, 0);
+  ctx.quadraticCurveTo(r * puls * 0.6, r * 0.45, 0, r * 0.4);
+  ctx.quadraticCurveTo(-r * puls * 0.6, r * 0.45, -r * puls, 0);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.beginPath(); ctx.arc(-r * 0.25, -r * 0.3, r * 0.3, 0, 6.283); ctx.fill();
+}
+
+function tegnSoepindsvin(r, froe) {
+  // Pigge
+  ctx.strokeStyle = '#3c2a55'; ctx.lineWidth = Math.max(1.5, r * 0.08); ctx.lineCap = 'round';
+  for (let i = 0; i < 14; i++) {
+    const a = froe * 6 + (i / 14) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.45, Math.sin(a) * r * 0.45);
+    ctx.lineTo(Math.cos(a) * r * 1.05, Math.sin(a) * r * 1.05);
+    ctx.stroke();
+  }
+  // Kroppen
+  ctx.fillStyle = '#55407a';
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, 6.283); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.2)';
+  ctx.beginPath(); ctx.arc(-r * 0.18, -r * 0.18, r * 0.2, 0, 6.283); ctx.fill();
+}
+
+/** Flasken: en vandflaske på siden med halsen fremad – og fangsten svømmende indeni. */
+function tegnFlaske() {
+  const px = sx(s.x), py = sy(s.y);
+  const L = 2.7 * u, B = 1.5 * u;                     // krop-længde og -højde i pixels
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(klem(s.vy * 0.05, -0.5, 0.5) + Math.sin(T * 1.8) * 0.03);
+  if (s.usaarlig > 0 && Math.floor(T * 8) % 2) ctx.globalAlpha = 0.45;   // blinker efter et stød
+
+  // Vandet i flasken: mere, jo flere havdyr
+  const fyld = Math.min(1, 0.3 + s.fangst * 0.02);
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(-L * 0.55, -B * 0.5, L, B, B * 0.32); ctx.clip();
+  ctx.fillStyle = 'rgba(90,170,235,.55)';
+  const vandTop = B * 0.5 - fyld * B;
+  ctx.fillRect(-L * 0.55, vandTop + Math.sin(T * 2.4) * B * 0.03, L, B);
+  // Fangsten svømmer rundt derinde (højst 12 tegnet – tallet står i HUD'en)
+  for (let i = 0; i < Math.min(iFlasken.length, 12); i++) {
+    const o = iFlasken[i];
+    const ox = Math.sin(T * (0.7 + o.froe) + i * 2.1) * L * 0.32;
+    const oy = Math.max(vandTop + B * 0.18, -B * 0.05) + Math.cos(T * (0.9 + o.froe * 0.5) + i) * B * 0.16 + B * 0.14;
+    ctx.save(); ctx.translate(ox, oy); ctx.scale(0.32, 0.32);
+    tegnArt(o.art, o.froe, u * (ARTER[o.art] ? ARTER[o.art].r : 0.9), T + i);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // Glasset
+  ctx.strokeStyle = 'rgba(214,238,255,.95)'; ctx.lineWidth = Math.max(2, u * 0.12);
+  ctx.beginPath(); ctx.roundRect(-L * 0.55, -B * 0.5, L, B, B * 0.32); ctx.stroke();
+  ctx.fillStyle = 'rgba(214,238,255,.14)';
+  ctx.beginPath(); ctx.roundRect(-L * 0.55, -B * 0.5, L, B, B * 0.32); ctx.fill();
+  // Halsen og den åbne munding – det er dén, dyrene svømmer ind ad
+  ctx.fillStyle = 'rgba(214,238,255,.2)';
+  ctx.beginPath(); ctx.roundRect(L * 0.45, -B * 0.22, L * 0.26, B * 0.44, u * 0.1); ctx.fill();
+  ctx.strokeStyle = 'rgba(214,238,255,.95)';
+  ctx.beginPath(); ctx.roundRect(L * 0.45, -B * 0.22, L * 0.26, B * 0.44, u * 0.1); ctx.stroke();
+  ctx.fillStyle = 'rgba(13,43,92,.8)';
+  ctx.beginPath(); ctx.ellipse(L * 0.71, 0, u * 0.09, B * 0.19, 0, 0, 6.283); ctx.fill();
+  // Etiket med bølge, så man kan se det er en vandflaske
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.beginPath(); ctx.roundRect(-L * 0.28, -B * 0.5, L * 0.34, B, 2); ctx.fill();
+  ctx.strokeStyle = '#2a63b0'; ctx.lineWidth = Math.max(1.5, u * 0.08);
+  ctx.beginPath();
+  for (let i = 0; i <= 8; i++) {
+    const wx = -L * 0.24 + (i / 8) * L * 0.26;
+    const wy = Math.sin(i * 1.2) * B * 0.08;
+    i ? ctx.lineTo(wx, wy) : ctx.moveTo(wx, wy);
+  }
+  ctx.stroke();
+  // Genskin
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = Math.max(1.5, u * 0.08);
+  ctx.beginPath(); ctx.moveTo(-L * 0.42, -B * 0.32); ctx.lineTo(L * 0.2, -B * 0.32); ctx.stroke();
+  ctx.restore();
+}
+
+/* ---------- Styring ---------- */
+/*
+  Ét greb: hold hvor som helst på havet, og flasken dykker; slip, og den flyder
+  op. Ingen knapper – hele fladen er knappen, så små fingre ikke skal sigte.
+*/
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+  ind.hold = true;
+});
+for (const t of ['pointerup', 'pointercancel']) {
+  canvas.addEventListener(t, () => { ind.hold = false; });
+}
+
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'KeyS') {
+    e.preventDefault();
+    if (!e.repeat && fase === 'menu') { start(); return; }
+    ind.hold = true;
+  }
+});
+addEventListener('keyup', e => {
+  if (e.code === 'Space' || e.code === 'ArrowDown' || e.code === 'KeyS') ind.hold = false;
+});
+addEventListener('blur', () => { ind.hold = false; });
+
+$('startBtn').addEventListener('click', start);
+$('igenBtn').addEventListener('click', start);
+$('tilbageBtn').addEventListener('click', tilMenu);
+menuBtn.addEventListener('click', tilMenu);
+
+/* ---------- Start ---------- */
+nulstil();
+visHud();
+Highscore.panel($('hsStart'), { spil: 'flaske', format: v => v + ' havdyr' });
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  seed, start, tilMenu,
+  tik: dt => uiTik(dt),
+  hold(b) { ind.hold = !!b; },
+  pause() { paused = true; }, resume() { paused = false; sidst = 0; acc = 0; },
+  doedNu() { s.doed = true; s.aarsag = s.aarsag || 'brandmand'; doed(); },
+  /** Spoler sek sekunder frem. hold låser fingeren; null bruger skærmen. */
+  frem(sek, hold = null) {
+    const n = Math.round(sek / DT);
+    for (let i = 0; i < n && fase === 'spil'; i++) uiTik(DT, hold);
+    return this.state;
+  },
+  /** Lader botten spille turen færdig – som i enhedstestene. */
+  botTur(maksSek = 500) {
+    let hold = false, siden = 1;
+    for (let i = 0; i < 120 * maksSek && fase === 'spil'; i++) {
+      siden += DT;
+      if (siden >= 0.1) { hold = bot(s); siden = 0; }
+      uiTik(DT, hold);
+    }
+    return this.state;
+  },
+  /** Stykke nr. n af havet (til tests). */
+  stykke(n) {
+    const st = havStykke(s.seed, n);
+    return { n: st.n, x0: st.x0, dyr: st.dyr.map(d => ({ ...d })), farer: st.farer.map(f => ({ ...f })) };
+  },
+  /** Hvor et dyr/en fare i stykke n er lige nu (til tests). */
+  dyrPos(n, i) { const d = havStykke(s.seed, n).dyr[i]; return { x: d.x, y: dyrY(d, s.t) }; },
+  farePos(n, i) { const f = havStykke(s.seed, n).farer[i]; return { x: f.x, y: dyrY(f, s.t) }; },
+  /** Stiller flasken et bestemt sted (tests). */
+  placer(x, y) { s.x = x; s.y = y; s.vy = 0; },
+  saetUsaarlig(v) { s.usaarlig = v; },
+  get state() {
+    return {
+      fase, seed: s.seed, fangst: s.fangst, best, liv: s.liv,
+      x: s.x, y: s.y, vy: s.vy, fart: s.fart, t: s.t,
+      usaarlig: s.usaarlig, ramt: s.ramt,
+      doed: s.doed, aarsag: s.aarsag,
+      iFlasken: iFlasken.length,
+      ind: { ...ind },
+      konst: { DYBDE, FLASKE_R, LIV, FART0, FART_MAKS, HAV_FRA, STYKKE },
+    };
+  },
+};
+</script>
+</body></html>

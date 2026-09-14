@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 35,
+      "dato": "2026-09-14",
+      "spil": "flaske",
+      "titel": "Flaskehavet – fang havdyr i din vandflaske",
+      "hvad": "Milas ønskede sig et spil om en flaske vand og havdyr – og her er det. En vandflaske driver med strømmen gennem havet: hold på skærmen, og den dykker – slip, og den flyder op igen, for flasker flyder. Havdyrene svømmer ind i flasken, når du rammer dem – fisk, søheste, skildpadder, blæksprutter, søstjerner og krabber – og du kan se dem svømme rundt derinde. Men pas på brandmændene og søpindsvinene: tre stød, og flasken går i stykker. Strømmen bliver hurtigere og hurtigere, og jo længere du driver ud, jo flere farer. Score = havdyr i flasken, og der er topliste – og du kan tage et kapløb mod en ven.",
+      "oensket": "Milas"
+    },
+    {
       "nr": 34,
       "dato": "2026-09-14",
       "spil": "sejl",

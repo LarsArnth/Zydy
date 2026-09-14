@@ -1,0 +1,22 @@
+{
+  "navn": "Flaskehavet",
+  "beskrivelse": "Dyk vandflasken ned i havet og fang havdyr i den – men uden om brandmænd og søpindsvin. Hvor mange får du i flasken?",
+  "nøgleord": [
+    "flaske",
+    "vand",
+    "havdyr",
+    "fisk",
+    "hav",
+    "vandflaske",
+    "skildpadde",
+    "akvarium",
+    "bottle",
+    "ocean"
+  ],
+  "url": "/spil/flaske/",
+  "orden": 162,
+  "kapløb": true,
+  "højscore": {
+    "maks": 2000
+  }
+}

@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet femogtyve spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet seksogtyve spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn og Til søs!, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs! og Flaskehavet, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -50,13 +50,14 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Mit liv | `public/spil/mitliv/` | Selmas ønske om «The Sims»: et helt liv i ét hus, set oppefra. Man laver sin egen figur (hud, frisure, hårfarve, trøje, bukser), flytter ind med 600 kr. og fire møbler, og passer seks behov – mæt, energi, toilet, ren, sjov og selskab – der siver nedad, mens spiluret går (ét rigtigt sekund = fem spilminutter). Man trykker på et møbel, og figuren går selv derhen og bruger det, til behovet er fyldt. Om morgenen kører bussen på arbejde: man er væk i seks spiltimer og kommer hjem med løn, der følger humøret, og stjerner mod en forfremmelse – fra avisbud til astronaut i otte trin. Pengene bruges i **byg-tilstand**, hvor 20 møbler kan købes, flyttes og sælges for det halve. Når toilettet ikke kan vente, kommer der en pyt på gulvet, man skal tørre op, og telefonen henter en ven på besøg. Score = **formuen** (penge + alt i huset), online topliste. To filer: `liv.mjs` (behov, veje, møbler og arbejde, enhedstestet) og `index.html`. Se «Mit liv – huset, behovene og arbejdet» nedenfor. |
 | Klaverregn | `public/spil/klaverregn/` | Livas ønske, der lød «Et klaver spil»: noderne i en rigtig børnesang falder ned gennem fire baner som fliser (Piano Tiles-agtigt), og man trykker på dem, nederste først. Hvert rigtigt tryk spiller sangens næste node med et lille WebAudio-klaver, så melodien kommer ud af ens egne fingre – Mester Jakob, Blinke blinke stjernelil, Lille Peter Edderkop, Jens Hansens bondegård, Ode til glæden og fødselsdagssangen, i ring og hurtigere og hurtigere. Banen følger tonehøjden (dybe toner til venstre), så man kan se melodien komme. Tre hjerter: en forkert bane eller en flise forbi bunden koster ét – men melodien hopper aldrig et hak ved en fejl. Score = ramte noder, online topliste og kapløb. To filer: `noder.mjs` (sange, fliser og regler, enhedstestet) og `index.html` (canvas, lyd og skærmene). Se «Klaverregn – fliserne, sangene og lyden» nedenfor. |
 | Til søs! | `public/spil/sejl/` | Milas' ønske, der bare lød «Betyder man skal sejle»: en sejlbåd set oppefra, som man drejer med ◀ ▶ – men farten bestemmer vinden. Lige op mod vinden blafrer sejlet, og båden ligger stille; halvvind er hurtigst, som på en rigtig sejlbåd. Pilen øverst viser, hvor vinden blæser hen, og den drejer undervejs, så kursen hele tiden skal findes forfra. Skærene skal man uden om (tre liv), men sejlrenden mellem det røde og det grønne sømærke er altid fri – og bagfra kommer et uvejr, der bliver hurtigere hele turen. Score = meter mod nord, online topliste og kapløb. To filer: `baad.mjs` (vind, fartkurve, skær, uvejr og en bot, enhedstestet) og `index.html` (canvas, HUD og skærmene). Se «Til søs! – vinden, skærene og uvejret» nedenfor. |
+| Flaskehavet | `public/spil/flaske/` | Milas' ønske, der lød «Handler om en flaske vand havdyr»: en vandflaske driver med strømmen gennem havet, set fra siden. Hold på skærmen, og flasken dykker – slip, og den flyder op, for flasker flyder. Havdyrene – fisk, søheste, skildpadder, blæksprutter, søstjerner og krabber – svømmer ind i flasken, når man rammer dem, og svømmer med derinde, mens vandet i flasken stiger. Brandmænd og søpindsvin skal man uden om: tre stød, og flasken går i stykker. Strømmen bliver hurtigere hele turen, og der kommer flere farer, jo længere man driver ud – men to farer står aldrig tættere end fire meter, så der altid er en vej. Score = havdyr i flasken, online topliste. To filer: `flaske.mjs` (havet, fysikken, fangsten og en bot, enhedstestet) og `index.html` (canvas, HUD og skærmene). |
 | Copyright | `public/spil/copyright/` | Selmas ønske om et spil, hvor man «copyrighter en tegning og gætter, hvem der har copyrighten». Et tegne- og gættespil for 3-6 på én iPad, der går rundt: alle tegner det **samme** motiv hver for sig, og når man er færdig, slås ens copyright-stempel på tegningen – men dækket til, så de andre kun ser «©?». Derefter går enheden rundt igen, og hver spiller gætter, hvem der har copyright på hver af de andres tegninger. Afsløringen tager én tegning ad gangen: stemplet vendes, og man kan se, hvem der ramte rigtigt. 10 point for et rigtigt gæt, 5 til tegneren pr. narret – men narrer man **alle**, giver tegningen ingenting. Tre runder med hvert sit motiv. Score = vinderens point, online topliste. To filer: `regler.mjs` (motiver, gæt, point og runder, enhedstestet) og `index.html`. Se «Copyright – stemplet, gættet og pointene» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn og Til søs! — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs! og Flaskehavet — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -532,8 +533,9 @@ pille øverst på skærmen hele tiden:
 
 Den **bedste runde** tæller, man må spille så mange runder man vil, og trykker
 man på pillen, folder hele stillingen sig ud med «Stop kapløbet» og en vej hjem.
-Elleve spil er med: Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er lava,
-Klodser, Miskmask, Blokblast, Slotskamp og Weeee!
+Fjorten spil er med: Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er lava,
+Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs! og
+Flaskehavet.
 
 | Del | Fil | Hvad |
 |---|---|---|
