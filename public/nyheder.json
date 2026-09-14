@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 33,
+      "dato": "2026-09-14",
+      "spil": "klaverregn",
+      "titel": "Klaverregn – spil rigtige sange på klaveret",
+      "hvad": "Liva ønskede sig et klaverspil, og her er det: noderne regner ned gennem fire baner, og du trykker på dem, én ad gangen, den nederste først. Hvert rigtigt tryk spiller den næste node i en rigtig sang – Mester Jakob, Blinke blinke stjernelil, Lille Peter Edderkop, Jens Hansens bondegård, Ode til glæden og fødselsdagssangen – så melodien kommer ud af dine egne fingre. Dybe toner falder til venstre og lyse til højre, så du kan se melodien komme. Du har tre hjerter: en forkert bane eller en node, der når forbi bunden, koster ét. Jo flere noder du rammer, jo hurtigere regner det. Score = antal noder, og der er topliste – og du kan tage et kapløb mod en ven.",
+      "oensket": "Liva"
+    },
+    {
       "nr": 32,
       "dato": "2026-09-13",
       "spil": "",

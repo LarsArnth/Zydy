@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; treogtyve spil
+afhængigheder. De store apps bor i egne repoer og linkes til; fireogtyve spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet treogtyve spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet fireogtyve spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet og Copyright, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright og Klaverregn, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -48,6 +48,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Papirøen | `public/spil/papir/` | Selmas ønske om «Papir io 2»: et stort stykke ternet papir, hvor fire klatter farver hver sit område. Kører man ud fra sit eget, trækker man en streg efter sig – og kommer man hjem igen, bliver hele sløjfen ens, også det, en anden havde farvet inde i den. Men mens man er ude, er man i fare: kører Bo, Ida eller Mikkel over stregen, ryger man ud, og hele området forsvinder fra papiret. Det gælder begge veje, så man kan tage dem på deres streg – og tager man hele deres område, er de også ude. Kanten af papiret er lige så farlig. Man styrer med et lille joystick (træk fingeren dén vej, man vil køre), og minikortet i hjørnet viser hele papiret. Score = den største del af papiret, man nåede at have, i hele procent. `papir.mjs` (papiret, sløjfen og modstanderne) er enhedstestet. `?bots=0` giver papiret for sig selv. **Kan også spilles sammen med en ven**, én på hver telefon, på det samme stykke papir – se [Spil sammen](#spil-sammen) og [Papirøen sammen](#papir-sammen). Tre filer: `papir.mjs`, `sammen.mjs` (de to venner, enhedstestet) og `index.html`. Se «Papirøen – sløjfen og de tre modstandere» nedenfor. |
 | Fiskedybet | `public/spil/fisk/` | Timos ønske om «Fish It: Abyss»: en lille båd, fem farvande og en fiskebog, der skal fyldes. Man kaster snøren, og når der hugger, løber en viser frem og tilbage over en bar – et tryk tæller kun i det grønne felt, og store fisk kræver flere rammere og tåler færre forbiere. Fangsten sejles hjem til havnen og sælges, og pengene går til snøren (åbner et farvand mere), stangen (bredere felt), skroget (flere hjerter) og kølerummet (større last). Solskinshavet er trygt; i Hajvandet, Dybhavet, Afgrunden og Tomrummet hugger der ét uhyre hvert sted, og så skal man vælge: klippe snøren, eller tage kampen – taber man, eller når man ikke at bestemme sig, tager det en bid af båden. Går skroget i nul, bliver man slæbt i havn og mister lasten, men aldrig fiskebogen. Score = antal arter i bogen, online topliste. To filer: `hav.mjs` (farvande, dyr, kamp, økonomi og det gemte spil, enhedstestet) og `index.html`. Se «Fiskedybet – baren, farvandene og uhyrerne» nedenfor. |
 | Mit liv | `public/spil/mitliv/` | Selmas ønske om «The Sims»: et helt liv i ét hus, set oppefra. Man laver sin egen figur (hud, frisure, hårfarve, trøje, bukser), flytter ind med 600 kr. og fire møbler, og passer seks behov – mæt, energi, toilet, ren, sjov og selskab – der siver nedad, mens spiluret går (ét rigtigt sekund = fem spilminutter). Man trykker på et møbel, og figuren går selv derhen og bruger det, til behovet er fyldt. Om morgenen kører bussen på arbejde: man er væk i seks spiltimer og kommer hjem med løn, der følger humøret, og stjerner mod en forfremmelse – fra avisbud til astronaut i otte trin. Pengene bruges i **byg-tilstand**, hvor 20 møbler kan købes, flyttes og sælges for det halve. Når toilettet ikke kan vente, kommer der en pyt på gulvet, man skal tørre op, og telefonen henter en ven på besøg. Score = **formuen** (penge + alt i huset), online topliste. To filer: `liv.mjs` (behov, veje, møbler og arbejde, enhedstestet) og `index.html`. Se «Mit liv – huset, behovene og arbejdet» nedenfor. |
+| Klaverregn | `public/spil/klaverregn/` | Livas ønske, der lød «Et klaver spil»: noderne i en rigtig børnesang falder ned gennem fire baner som fliser (Piano Tiles-agtigt), og man trykker på dem, nederste først. Hvert rigtigt tryk spiller sangens næste node med et lille WebAudio-klaver, så melodien kommer ud af ens egne fingre – Mester Jakob, Blinke blinke stjernelil, Lille Peter Edderkop, Jens Hansens bondegård, Ode til glæden og fødselsdagssangen, i ring og hurtigere og hurtigere. Banen følger tonehøjden (dybe toner til venstre), så man kan se melodien komme. Tre hjerter: en forkert bane eller en flise forbi bunden koster ét – men melodien hopper aldrig et hak ved en fejl. Score = ramte noder, online topliste og kapløb. To filer: `noder.mjs` (sange, fliser og regler, enhedstestet) og `index.html` (canvas, lyd og skærmene). Se «Klaverregn – fliserne, sangene og lyden» nedenfor. |
 | Copyright | `public/spil/copyright/` | Selmas ønske om et spil, hvor man «copyrighter en tegning og gætter, hvem der har copyrighten». Et tegne- og gættespil for 3-6 på én iPad, der går rundt: alle tegner det **samme** motiv hver for sig, og når man er færdig, slås ens copyright-stempel på tegningen – men dækket til, så de andre kun ser «©?». Derefter går enheden rundt igen, og hver spiller gætter, hvem der har copyright på hver af de andres tegninger. Afsløringen tager én tegning ad gangen: stemplet vendes, og man kan se, hvem der ramte rigtigt. 10 point for et rigtigt gæt, 5 til tegneren pr. narret – men narrer man **alle**, giver tegningen ingenting. Tre runder med hvert sit motiv. Score = vinderens point, online topliste. To filer: `regler.mjs` (motiver, gæt, point og runder, enhedstestet) og `index.html`. Se «Copyright – stemplet, gættet og pointene» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
@@ -1297,6 +1298,51 @@ Test: `test/copyright.test.mjs` (tegner et hus med en rigtig finger, lader uret
 stemple den tredje tegning, gætter både med et tryk på en chip og gennem
 `GAME.gaet`, og tjekker point, afsløring og topliste) +
 `test/unit/copyright.test.mjs`.
+
+### Klaverregn – fliserne, sangene og lyden
+
+Livas ønske lød bare «Et klaver spil». KlaverLær (klaver.zydy.dk) er en
+*lære*-app bag Cloudflare Access, der kun virker hjemme – det her er et *spil*,
+der virker alle vegne: Piano Tiles med rigtige børnesange. Reglerne bor i
+`noder.mjs` uden DOM; `index.html` tegner, tager imod fingrene og laver lyden.
+
+Fire ting er værd at huske:
+
+1. **Banen følger tonehøjden.** Sangens toneomfang deles i fire lige store
+   bånd: dybeste fjerdedel = venstre bane, lyseste = højre (`baneFor`). Så kan
+   man *se* melodien komme – Mester Jakobs do-re-mi vandrer mod højre – og det
+   er dét, der gør det til et klaverspil og ikke et reaktionsspil. Samme tone
+   giver altid samme bane, og der er ingen tilfældighed overhovedet: sangene
+   kommer i fast rækkefølge, og farten afhænger kun af antal ramte noder, så
+   spillet er ens for alle.
+2. **En fejl flytter ikke melodien.** Rammer man en forkert bane, koster det et
+   hjerte, men flisen bliver stående – ellers lyder sangen pludselig forkert,
+   og det er værre end at miste et hjerte. Kun en flise, der når forbi bunden,
+   springes over (også et hjerte), for dér er alternativet, at gamle fliser
+   hober sig op. Tre hjerter i alt; forbilledet dør ved første fejl, men det
+   er for hårdt for en, der er seks.
+3. **Rytmen ligger i afstanden.** Fliserne står med `varighed × AFSTAND_PR_SLAG`
+   enheder imellem sig, så en halvnode giver dobbelt så meget luft som en
+   fjerdedel – og spiller man i flisernes takt, kommer sangen ud med sin egen
+   rytme. Mellem to sange er der en ekstra pause (`PAUSE_SLAG`), så «FLOT! Du
+   spillede hele Mester Jakob» kan nå at stå der, før den næste begynder.
+4. **Lyden laves ved første tryk og er kun pynt.** iPhone åbner ikke for
+   WebAudio, før en finger har rørt skærmen, så `AudioContext` laves først i
+   `lyd()` (Spil-knappen er det første tryk), og alle lydkald ligger i
+   try/catch – uden lyd er det stadig et spil. Klaveret er to oscillatorer
+   (grundtone som trekant + en svag oktav som sinus) gennem et lavpasfilter
+   med hurtigt anslag og lang hale; `frekvens(midi)` er den rene
+   ligesvævende stemning ud fra kammertonen.
+
+Melodierne i `SANGE` er folkemelodier (og Beethoven), som ingen ejer længere.
+Motoren kan spille sig selv: `bot()` trykker fejlfrit på den nederste flise, og
+`koer()` spiller minutter igennem uden browser – det er dén, både enhedstesten
+og browser-testens `GAME.frem()` bruger.
+
+Test: `test/klaverregn.test.mjs` (rammer de tre første fliser med en rigtig
+finger og tjekker, at do-re-mi vandrer mod højre, at en forkert bane koster et
+hjerte uden at flytte melodien, lader botten spille en hel sang og lader så
+fliserne falde forbi, til slutskærmen kommer) + `test/unit/klaverregn.test.mjs`.
 
 ### Stenalder – regelvalg
 
