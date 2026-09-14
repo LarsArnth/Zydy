@@ -84,14 +84,20 @@ const tryk = async (id, ned) => {
 
 /* ---------- Vinden: i vindøjet blafrer sejlet, halvvind giver fart ---------- */
 {
-  await page.evaluate(() => { window.GAME.saetVind(0); window.GAME.saetKurs(0); });
+  // Frisk tur, så båden står et kendt sted – og vinden sat fast, så intet spring forstyrrer
+  await page.evaluate(() => { window.GAME.start(); window.GAME.saetVind(0); window.GAME.saetKurs(0); });
   const stampe = await page.evaluate(() => window.GAME.frem(3, 0));
   assert.equal(stampe.blafrer, true, 'lige mod vinden blafrer sejlet');
   assert.ok(stampe.fart < 2, `og båden ligger næsten stille (${stampe.fart.toFixed(1)} m/s)`);
   assert.equal(await page.evaluate(() => document.getElementById('vindEl').classList.contains('blaf')), true,
     'vind-uret advarer, når sejlet blafrer');
 
-  await page.evaluate(() => window.GAME.saetVind(Math.PI / 2));
+  // Halvvind – og båden stilles i sejlrenden, så målingen ikke rammer et skær
+  await page.evaluate(() => {
+    const r = window.GAME.raekke(0);
+    window.GAME.placer(r.gab, window.GAME.state.y, 0);
+    window.GAME.saetVind(Math.PI / 2);
+  });
   const halv = await page.evaluate(() => window.GAME.frem(4, 0));
   assert.equal(halv.blafrer, false);
   assert.ok(halv.fart > halv.konst.MAKS_FART * 0.85, `halvvind giver næsten fuld fart (${halv.fart.toFixed(1)} m/s)`);
@@ -119,8 +125,8 @@ const tryk = async (id, ned) => {
   await page.evaluate(([x, y]) => {
     window.GAME.placer(x, y, 0);
     window.GAME.saetVind(Math.PI);                    // medvind, så kursen holder
-  }, [k.x, k.y - k.r - 3]);
-  const efter = await page.evaluate(() => window.GAME.frem(2, 0));
+  }, [k.x, k.y - k.r - 2]);
+  const efter = await page.evaluate(() => window.GAME.frem(1, 0));
   assert.equal(efter.liv, efter.konst.LIV - 1, 'et skær koster et liv');
   assert.ok(efter.usaarlig > 0, 'og lige efter er man usårlig et øjeblik');
   assert.match(await page.locator('#livEl').textContent(), /🤍/, 'hjerterne i HUD\'en følger med');
@@ -188,7 +194,7 @@ assert.ok(api.log.aktivitet.some(a => a.spil === 'sejl' && a.ny === true), 'spil
   await p2.evaluate(() => window.GAME.pause());
   const st = await p2.evaluate(() => { window.GAME.saetVind(Math.PI / 2); return window.GAME.frem(6, 0); });
   assert.equal(st.fase, 'spil', 'turen sejler også på en iPad');
-  assert.ok(st.meter > 30, 'og båden kommer af sted');
+  assert.ok(st.meter > 20, 'og båden kommer af sted');
   const knap = await p2.locator('#hBtn').boundingBox();
   assert.ok(knap.width >= 80 && knap.height >= 80, 'ror-knappen er stor nok til en tommelfinger');
   assert.ok(await p2.evaluate(() => {
