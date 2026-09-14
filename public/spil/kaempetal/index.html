@@ -1,0 +1,634 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#141031">
+<meta name="description" content="Kæmpetal: tryk på tallet, køb hjælpere og nå det største tal – 9.999.999.999.999. Mød en ven og tæl sammen!">
+<title>Kæmpetal – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23141031'/%3E%3Ccircle cx='32' cy='32' r='22' fill='%23ffd447'/%3E%3Ctext x='32' y='42' font-size='30' font-weight='800' text-anchor='middle' fill='%23141031' font-family='-apple-system,sans-serif'%3E9%3C/text%3E%3C/svg%3E">
+<style>
+  /*
+    Kæmpetal – Selmas ønske #42: «Lav et spil hvor man kan mode Sine venner
+    man kan mindst Max 9999999999999».
+
+    Så det er et clicker-spil om at nå det største tal, 9.999.999.999.999:
+    tryk på tallet, køb hjælpere der tæller videre af sig selv – og mød en
+    ven i det samme spil (inviter fra zydy.dk), så I kan nå loftet sammen.
+    Reglerne bor i tal.mjs (enhedstestet); denne fil tegner dem. Tre ting:
+
+      1) Tallet ER spillet, så det står kæmpestort midt på skærmen og er
+         selve knappen. Skriften gøres mindre, efterhånden som tallet vokser
+         (passTal()), så 9.999.999.999.999 også kan være der på en iPhone.
+      2) Butikken viser kun de hjælpere, man har mødt (ejet, eller tjent
+         halvdelen af prisen) plus én hemmelig «???» – så en ny spiller ikke
+         drukner i tolv rækker, og der altid er noget at glæde sig til.
+      3) Sammen-pillen øverst er hele mødet med vennen: hens tal tikker med
+         (vi kender hens produktion og regner videre mellem opdateringerne),
+         og summen af jeres to tal kan nå loftet – så fejrer I det sammen.
+  */
+  :root{
+    --bg:#141031; --bg2:#241d4f; --bg3:#352a6e; --text:#f4f1ff; --muted:#a89fd6;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#6cc5ff; --ink:#141031; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}          /* .btn m.fl. sætter display, så hidden skal have hjælp */
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    user-select:none;-webkit-user-select:none;touch-action:manipulation}
+
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 14px);
+    overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .screen.on{display:flex}
+
+  /* ---------- Startskærmen ---------- */
+  #startScreen{text-align:center;justify-content:flex-start}
+  #startScreen h1{font-size:44px;margin:16px 0 2px;letter-spacing:1px}
+  #startScreen h1 .gnist{color:var(--sun)}
+  .lavet{color:var(--muted);font-size:13px;margin:0 0 10px}
+  .under{font-size:16px;margin:2px 0 14px;color:var(--text)}
+  .under b{color:var(--sun);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .navnBoks{width:100%;max-width:340px;margin:0 auto 10px}
+  #navnFelt{font:inherit;font-size:20px;font-weight:700;text-align:center;padding:12px;border-radius:16px;
+    border:2px solid transparent;background:var(--bg2);color:var(--text);outline:none;width:100%;
+    -webkit-user-select:text;user-select:text}
+  #navnFelt:focus{border-color:var(--sun)}
+  #navnFelt::placeholder{color:var(--muted);font-weight:500}
+  .btn{display:block;width:100%;max-width:340px;margin:6px auto 0;padding:16px;border:0;border-radius:var(--r);
+    background:var(--sun);color:var(--ink);font:inherit;font-size:22px;font-weight:800;cursor:pointer}
+  .btn:active{transform:scale(.97)}
+  .btn.blaa{background:var(--bg3);color:var(--text);font-size:17px;padding:12px}
+  #nulstilBtn{background:none;border:0;color:var(--muted);font:inherit;font-size:14px;text-decoration:underline;
+    padding:10px;margin-top:4px;cursor:pointer}
+  .regler{color:var(--muted);font-size:15px;line-height:1.5;max-width:340px;margin:14px auto 8px}
+  .regler b{color:var(--text)}
+  .rekord{display:block;margin:6px auto 0;background:var(--bg2);border:0;border-radius:14px;color:var(--text);
+    font:inherit;font-size:15px;font-weight:600;padding:10px 16px;cursor:pointer;max-width:340px}
+  .rekord:empty{display:none}
+
+  /* ---------- Spilskærmen ---------- */
+  #spilSkaerm{padding:0;overflow:hidden}
+  #topBar{width:100%;display:flex;align-items:center;gap:8px;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px 6px}
+  #hjemBtn{background:var(--bg2);border:0;border-radius:12px;color:var(--muted);font:inherit;font-size:15px;
+    font-weight:700;padding:8px 12px;cursor:pointer;flex:none}
+  #maal{flex:1;min-width:0;text-align:right;color:var(--muted);font-size:13px;font-weight:600}
+  #maal .bar{display:block;height:5px;border-radius:3px;background:var(--bg2);margin-top:4px;overflow:hidden}
+  #maal .bar i{display:block;height:100%;background:var(--mint);border-radius:3px;width:0}
+  #sammenPille{width:auto;max-width:calc(100% - 28px);margin:4px 14px 0;background:var(--bg2);border-radius:16px;
+    padding:8px 14px;font-size:14px;font-weight:700;text-align:center;color:var(--text)}
+  #sammenPille b{color:var(--sun);font-variant-numeric:tabular-nums}
+  #sammenPille .gik{color:var(--coral)}
+
+  #talOmraade{flex:1;width:100%;display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
+  #talKnap{position:relative;width:min(86vw,420px);aspect-ratio:1;border-radius:50%;border:0;cursor:pointer;
+    background:radial-gradient(circle at 34% 30%, #ffe98a 0%, var(--sun) 45%, #e2a212 100%);
+    box-shadow:0 10px 40px rgba(255,212,71,.25), inset 0 -10px 30px rgba(0,0,0,.18);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    color:var(--ink);font-family:inherit;transition:transform .06s}
+  #talKnap.hop{transform:scale(.965)}
+  #talVis{font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1;
+    max-width:92%;text-align:center;word-break:keep-all}
+  #sekLinje{font-size:15px;font-weight:700;color:rgba(20,16,49,.65)}
+  .flyder{position:absolute;pointer-events:none;font-weight:900;color:var(--sun);
+    text-shadow:0 2px 8px rgba(0,0,0,.5);font-size:22px;animation:flyv 0.9s ease-out forwards;z-index:4}
+  @keyframes flyv{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-70px)}}
+
+  /* ---------- Butikken ---------- */
+  #butik{width:100%;max-height:38%;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:var(--bg2);border-radius:22px 22px 0 0;padding:10px 12px calc(env(safe-area-inset-bottom) + 12px)}
+  #butik h2{margin:2px 6px 8px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .vare{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:16px;
+    background:var(--bg3);color:var(--text);font:inherit;text-align:left;cursor:pointer;margin-bottom:8px}
+  .vare:disabled{opacity:.45;cursor:default}
+  .vare .ikon{font-size:28px;flex:none;width:38px;text-align:center}
+  .vare .midt{flex:1;min-width:0}
+  .vare .navn{font-weight:800;font-size:16px}
+  .vare .navn .ejer{color:var(--sun);font-weight:800;margin-left:6px;font-size:14px}
+  .vare .om{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vare .pris{flex:none;text-align:right;font-weight:800;font-variant-numeric:tabular-nums;font-size:15px}
+  .vare .pris small{display:block;color:var(--muted);font-weight:600;font-size:11.5px}
+  .vare.laast{opacity:.55}
+
+  /* ---------- Toast, fest og topliste ---------- */
+  #vaek{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);
+    background:var(--bg3);border-radius:16px;padding:12px 18px;font-size:15px;font-weight:700;z-index:8;
+    box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:88vw;text-align:center}
+  #vaek b{color:var(--sun)}
+  #fest{position:fixed;inset:0;background:rgba(12,9,32,.86);z-index:9;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:24px}
+  #fest h2{font-size:34px;margin:8px 0;color:var(--sun)}
+  #fest .stort{font-size:clamp(20px,6vw,30px);font-weight:900;font-variant-numeric:tabular-nums;color:var(--text)}
+  #fest p{color:var(--muted);font-size:16px;max-width:340px}
+  .konfetti{position:fixed;top:-14px;width:10px;height:14px;border-radius:3px;z-index:9;pointer-events:none;
+    animation:dryss linear forwards}
+  @keyframes dryss{to{transform:translateY(105vh) rotate(720deg)}}
+  @media (prefers-reduced-motion: reduce){.konfetti{display:none}.flyder{animation-duration:.01s}}
+
+  #listeSkaerm h2{margin:14px 0 4px}
+  #hsListe{width:100%;max-width:360px}
+</style>
+</head><body>
+
+<!-- Startskærmen: navnet, knappen og det store mål -->
+<div class="screen on" id="startScreen">
+  <h1><span class="gnist">✦</span> Kæmpetal <span class="gnist">✦</span></h1>
+  <p class="lavet">Selma fandt på spillet · Far og Claude byggede det</p>
+  <p class="under">Nå det største tal:<br><b>9.999.999.999.999</b></p>
+  <div class="navnBoks"><input id="navnFelt" type="text" maxlength="12" placeholder="Dit navn"
+    autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" aria-label="Dit navn"></div>
+  <button class="btn" id="startBtn">Tæl!</button>
+  <button id="nulstilBtn" hidden>Start forfra</button>
+  <p class="regler">Tryk på tallet, så vokser det. Køb <b>hjælpere</b>, der tæller videre af sig selv – også
+    mens du er væk. Og <b>mød en ven</b>: inviter fra zydy.dk, så tæller I sammen mod det største tal!</p>
+  <button id="rekordLinje" class="rekord" hidden></button>
+</div>
+
+<!-- Toplisten, foldet ud fra startskærmen -->
+<div class="screen" id="listeSkaerm">
+  <h2>Topliste</h2>
+  <div id="hsListe"></div>
+  <button class="btn blaa" id="tilbageBtn">Tilbage</button>
+</div>
+
+<!-- Selve spillet -->
+<div class="screen" id="spilSkaerm">
+  <div id="topBar">
+    <button id="hjemBtn">‹ Menu</button>
+    <div id="maal"><span id="maalTekst"></span><span class="bar"><i id="maalBar"></i></span></div>
+  </div>
+  <div id="sammenPille" hidden></div>
+  <div id="talOmraade">
+    <button id="talKnap" aria-label="Tryk for at tælle">
+      <span id="talVis">0</span>
+      <span id="sekLinje"></span>
+    </button>
+  </div>
+  <section id="butik" aria-label="Butikken">
+    <h2>Hjælpere</h2>
+    <div id="varer"></div>
+  </section>
+</div>
+
+<!-- Festen, når det største tal er nået -->
+<div id="fest" hidden>
+  <h2>🎉 DU NÅEDE DET STØRSTE TAL! 🎉</h2>
+  <div class="stort">9.999.999.999.999</div>
+  <p id="festTekst"></p>
+  <button class="btn" id="festLuk">Bliv ved med at tælle</button>
+</div>
+
+<div id="vaek" hidden></div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="kaempetal"></script>
+<!-- Spil sammen med en ven: forsiden sender begge herhen med ?rum=<kode>. -->
+<script src="/spil/rum.js"></script>
+<script type="module">
+import {
+  MAKS, HJAELPERE, FRAVAER_MAKS, nytSpil, klik, tik, koeb, pris, produktion,
+  klikVaerdi, fravaer, formater, kortTal, milepael, gem, hent, sammenSum,
+} from './tal.mjs';
+
+const $ = sel => document.querySelector(sel);
+const K_SPIL = 'zydy.kaempetal.spil';
+const K_TID = 'zydy.kaempetal.tid';
+const K_SENDT = 'zydy.kaempetal.sendt';
+const K_NAVN = 'zydy.navn';                 // fælles med hele zydy.dk
+const SPIL_ID = 'kaempetal';
+
+const lsHent = (k, ellers) => { try { return localStorage.getItem(k) ?? ellers; } catch (e) { return ellers; } };
+const lsGem = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const lsVaek = k => { try { localStorage.removeItem(k); } catch (e) {} };
+
+/* ---------- Spillet ---------- */
+let s = hent(lsHent(K_SPIL, ''));
+let sendtMilepael = Number(lsHent(K_SENDT, '0')) || 0;
+
+/** Hjælperne har tjent, mens fanen var lukket – med loft (8 timer, en skoledag). */
+function tjenteMensVaek() {
+  const foer = Number(lsHent(K_TID, '0')) || 0;
+  if (!foer) return 0;
+  return fravaer(s, (Date.now() - foer) / 1000);
+}
+const vundetVaek = tjenteMensVaek();
+
+function gemNu() {
+  lsGem(K_SPIL, gem(s));
+  lsGem(K_TID, String(Date.now()));
+}
+
+/* ---------- Skærme ---------- */
+function visSkaerm(id) {
+  ['startScreen', 'listeSkaerm', 'spilSkaerm'].forEach(x => $('#' + x).classList.toggle('on', x === id));
+}
+
+const navnNu = () => (lsHent(K_NAVN, '') || '').trim();
+
+/* ---------- Tallet på skærmen ---------- */
+const talVis = $('#talVis'), talKnap = $('#talKnap'), sekLinje = $('#sekLinje');
+let sidstVist = -1;
+
+/** Skriften skrumper, når tallet vokser, så 17 tegn også kan stå på en iPhone. */
+function passTal(tekst) {
+  const plads = talKnap.clientWidth * 0.9;
+  talVis.style.fontSize = Math.max(22, Math.min(72, Math.floor(plads / tekst.length * 1.55))) + 'px';
+}
+
+function tegnTal() {
+  if (s.point === sidstVist) return;
+  sidstVist = s.point;
+  const tekst = formater(s.point);
+  talVis.textContent = tekst;
+  passTal(tekst);
+  const sek = produktion(s);
+  sekLinje.textContent = sek ? '+' + kortTal(sek) + ' i sekundet' : 'tryk på tallet!';
+}
+
+/** Næste hele tierpotens, man er på vej mod – lidt at sigte efter. */
+function tegnMaal() {
+  if (s.ialt >= MAKS) {
+    $('#maalTekst').textContent = 'DET STØRSTE TAL! 🏆';
+    $('#maalBar').style.width = '100%';
+    return;
+  }
+  let forrige = 0, maal = 1000;
+  while (maal <= 1e12 && s.ialt >= maal) { forrige = maal; maal *= 10; }
+  if (maal > 1e12) maal = MAKS;            // sidste stræk: fra en billion til loftet
+  $('#maalTekst').textContent = 'Næste mål: ' + formater(maal);
+  const del = Math.max(0, Math.min(1, (s.ialt - forrige) / (maal - forrige)));
+  $('#maalBar').style.width = (del * 100).toFixed(1) + '%';
+}
+
+/* ---------- Butikken ---------- */
+const varerEl = $('#varer');
+const raekker = new Map();     // id → { knap, ejer, prisEl, synlig }
+
+for (const h of HJAELPERE) {
+  const knap = document.createElement('button');
+  knap.className = 'vare';
+  knap.dataset.id = h.id;
+  knap.innerHTML = '<span class="ikon"></span><span class="midt"><span class="navn"></span>'
+    + '<span class="om"></span></span><span class="pris"></span>';
+  knap.addEventListener('click', () => koebVare(h.id));
+  varerEl.appendChild(knap);
+  raekker.set(h.id, knap);
+}
+
+/** Har man mødt hjælperen? Ejet én, eller tjent halvdelen af prisen. */
+const kendt = h => (s.antal[h.id] || 0) > 0 || s.ialt >= h.pris / 2;
+
+function tegnButik() {
+  let hemmeligVist = false;
+  for (const h of HJAELPERE) {
+    const knap = raekker.get(h.id);
+    const p = pris(h.id, s.antal[h.id]);
+    if (kendt(h)) {
+      knap.hidden = false;
+      knap.classList.remove('laast');
+      knap.querySelector('.ikon').textContent = h.emoji;
+      knap.querySelector('.navn').innerHTML = '';
+      knap.querySelector('.navn').append(h.navn);
+      if (s.antal[h.id]) {
+        const b = document.createElement('span');
+        b.className = 'ejer'; b.textContent = '×' + s.antal[h.id];
+        knap.querySelector('.navn').appendChild(b);
+      }
+      knap.querySelector('.om').textContent = h.id === 'finger'
+        ? h.om + ' – nu ' + kortTal(klikVaerdi(s)) + ' pr. tryk'
+        : h.om + ' · +' + kortTal(h.sek) + '/s';
+      knap.querySelector('.pris').innerHTML = '';
+      knap.querySelector('.pris').append(kortTal(p));
+      knap.disabled = s.point < p;
+    } else if (!hemmeligVist) {
+      // Én hemmelig række, så der altid er noget at glæde sig til.
+      hemmeligVist = true;
+      knap.hidden = false;
+      knap.classList.add('laast');
+      knap.disabled = true;
+      knap.querySelector('.ikon').textContent = '❓';
+      knap.querySelector('.navn').textContent = '???';
+      knap.querySelector('.om').textContent = 'Tæl videre, så dukker den op …';
+      knap.querySelector('.pris').textContent = kortTal(h.pris);
+    } else {
+      knap.hidden = true;
+    }
+  }
+}
+
+function koebVare(id) {
+  if (!koeb(s, id)) return;
+  gemNu();
+  sidstVist = -1;               // prisen åd af banken: tegn tallet igen
+  tegnTal(); tegnButik();
+}
+
+/* ---------- Klik på tallet ---------- */
+function flyder(x, y, tekst) {
+  const e = document.createElement('span');
+  e.className = 'flyder';
+  e.textContent = '+' + tekst;
+  e.style.left = x + 'px'; e.style.top = y + 'px';
+  $('#talOmraade').appendChild(e);
+  setTimeout(() => e.remove(), 950);
+}
+
+function tryk(x, y) {
+  const fik = klik(s);
+  talKnap.classList.add('hop');
+  setTimeout(() => talKnap.classList.remove('hop'), 70);
+  const boks = $('#talOmraade').getBoundingClientRect();
+  flyder((x ?? boks.left + boks.width / 2) - boks.left, (y ?? boks.top + boks.height * 0.3) - boks.top,
+    kortTal(fik || klikVaerdi(s)));
+  tegnTal(); tegnMaal();
+  tjekMaks();
+}
+
+talKnap.addEventListener('pointerdown', e => { e.preventDefault(); tryk(e.clientX, e.clientY); });
+// Tastatur (mellemrum/enter) giver click uden pointerdown – detail er 0.
+talKnap.addEventListener('click', e => { if (e.detail === 0) tryk(); });
+
+/* ---------- Festen ved det største tal ---------- */
+let sammenFejret = false;
+
+function konfetti() {
+  const farver = ['#ffd447', '#5ee0a8', '#6cc5ff', '#ff5c7a', '#f4f1ff'];
+  for (let i = 0; i < 70; i++) {
+    const k = document.createElement('i');
+    k.className = 'konfetti';
+    k.style.left = (i * 137 % 100) + 'vw';
+    k.style.background = farver[i % farver.length];
+    k.style.animationDuration = (1.8 + (i * 53 % 100) / 60) + 's';
+    k.style.animationDelay = (i * 29 % 100) / 120 + 's';
+    document.body.appendChild(k);
+    setTimeout(() => k.remove(), 4200);
+  }
+}
+
+function fest(tekst) {
+  $('#festTekst').textContent = tekst;
+  $('#fest').hidden = false;
+  konfetti();
+}
+$('#festLuk').addEventListener('click', () => { $('#fest').hidden = true; });
+
+/** Er loftet nået – alene eller sammen? Festen holdes kun én gang. */
+function tjekMaks() {
+  if (s.ialt >= MAKS && !s.fejret) {
+    s.fejret = true;
+    gemNu();
+    fest('Du talte helt op til loftet. Højere tal findes ikke her – men du må gerne blive ved.');
+  } else if (!sammenFejret && online.status === 'igang'
+      && s.ialt < MAKS && sammenSum(s.ialt, andenIalt()) >= MAKS) {
+    sammenFejret = true;
+    fest('I nåede det største tal SAMMEN, dig og ' + online.modspiller + '!');
+  }
+}
+
+/* ---------- Toplisten ---------- */
+/** Sender kun, når en ny milepæl er rundet (1.000, 10.000, …), ellers blev hvert klik et kald. */
+function sendScore() {
+  const m = milepael(s.ialt);
+  const navn = navnNu();
+  if (!navn || m <= sendtMilepael || !window.Highscore) return;
+  sendtMilepael = m;                       // ikke to sendinger om den samme milepæl
+  lsGem(K_SENDT, String(m));
+  Highscore.send(SPIL_ID, navn, s.ialt).catch(() => {});
+}
+
+/** «🏆 Sofie har rekorden · 1.234.567» på startskærmen – tryk folder listen ud. */
+async function tegnRekordLinje() {
+  if (!window.Highscore) return;
+  try {
+    const top = await Highscore.hent(SPIL_ID);
+    const liste = top.liste || [];
+    if (!liste.length) return;
+    const bedst = liste[0];
+    const mig = navnNu();
+    const hvem = mig && bedst.navn.toLowerCase() === mig.toLowerCase() ? 'Du har rekorden' : bedst.navn + ' har rekorden';
+    const linje = $('#rekordLinje');
+    linje.textContent = '🏆 ' + hvem + ' · ' + formater(bedst.score);
+    linje.hidden = false;
+    linje.onclick = () => {
+      Highscore.tegnListe($('#hsListe'), liste, mig || null, 'Topliste', formater);
+      visSkaerm('listeSkaerm');
+    };
+  } catch (e) { /* ingen forbindelse: linjen udelades bare */ }
+}
+$('#tilbageBtn').addEventListener('click', () => visSkaerm('startScreen'));
+
+/* ---------- Sammen: mød en ven i det samme spil ---------- */
+const rumKode = window.Rum ? Rum.kode() : null;
+const online = {
+  kode: rumKode, status: null, version: -1, rolle: null, modspiller: '',
+  anden: { ialt: 0, sek: 0, set: 0 },      // vennens tal, og hvornår vi så det
+  tilstand: null, stop: null, sendtIalt: -1,
+};
+const pille = $('#sammenPille');
+
+/** Vennens tal lige nu: det vi så sidst, plus hens produktion siden da. */
+function andenIalt() {
+  if (online.status !== 'igang') return 0;
+  const siden = (performance.now() - online.anden.set) / 1000;
+  return Math.min(MAKS, Math.floor(online.anden.ialt + online.anden.sek * Math.max(0, Math.min(siden, 60))));
+}
+
+function tegnPille() {
+  if (!online.kode) return;
+  pille.hidden = false;
+  if (online.status === 'slut') {
+    pille.innerHTML = '';
+    const b = document.createElement('span');
+    b.className = 'gik'; b.textContent = online.modspiller + ' gik – men tallet er stadig dit.';
+    pille.appendChild(b);
+    return;
+  }
+  if (online.status !== 'igang') {
+    pille.textContent = '💛 Venter på ' + (online.modspiller || 'din ven') + ' … I tæller sammen, når hen kommer.';
+    return;
+  }
+  const ven = andenIalt();
+  pille.innerHTML = '';
+  pille.append('💛 ' + online.modspiller + ': ');
+  const b1 = document.createElement('b'); b1.textContent = formater(ven);
+  pille.appendChild(b1);
+  pille.append(' · I har ');
+  const b2 = document.createElement('b'); b2.textContent = formater(sammenSum(s.ialt, ven));
+  pille.appendChild(b2);
+  pille.append(' sammen');
+}
+
+/** Min halvdel af rummet – vennen skal kun bruge mit tal og min fart. */
+const minHalvdel = () => ({ ialt: s.ialt, sek: produktion(s) });
+
+/** Et rum er landet fra serveren: læs vennens halvdel. */
+function modtag(r) {
+  if (!r) return;
+  online.status = r.status;
+  online.rolle = r.rolle;
+  online.modspiller = r.modspiller || online.modspiller;
+  if (r.version > online.version) {
+    online.version = r.version;
+    online.tilstand = r.tilstand || online.tilstand;
+    const deres = r.tilstand && r.tilstand[r.rolle === 'vaert' ? 'gaest' : 'vaert'];
+    if (deres && Number.isFinite(deres.ialt)) {
+      online.anden = { ialt: Math.min(MAKS, deres.ialt), sek: Math.max(0, deres.sek || 0), set: performance.now() };
+    }
+  }
+  if (r.status === 'slut' && online.stop) { online.stop(); online.stop = null; }
+  tegnPille();
+  tjekMaks();
+}
+
+/** Skriver min halvdel op – kun når mit tal har flyttet sig. */
+async function gemMin() {
+  if (online.status !== 'igang' || s.ialt === online.sendtIalt) return;
+  const t = Object.assign({}, online.tilstand);
+  t[online.rolle] = minHalvdel();
+  online.sendtIalt = s.ialt;
+  try {
+    const d = await Rum.gem(online.kode, t, online.version);
+    online.version = d.rum.version;
+    online.tilstand = d.rum.tilstand || t;
+    if (d.uaendret) modtag(d.rum);         // vennen kom først: læs hens – min ryger med næste gang
+    if (d.uaendret) online.sendtIalt = -1;
+  } catch (e) { online.sendtIalt = -1; /* prøver igen ved næste tik */ }
+}
+
+async function startOnline() {
+  try {
+    let r = await Rum.hent(online.kode);
+    // Gæsten siger ja ved at være her: det var dét, «Hop med!» betød på forsiden.
+    if (r.rolle === 'gaest' && r.status === 'inviteret') r = await Rum.kom(online.kode);
+    modtag(r);
+  } catch (e) {
+    online.kode = null;
+    pille.hidden = false;
+    pille.textContent = 'Spillet med din ven er væk – men du kan tælle videre selv.';
+    return;
+  }
+  online.stop = Rum.foelg(online.kode, modtag);
+  setInterval(gemMin, 3000);
+  gemMin();
+}
+
+/* ---------- Start, menu og nulstil ---------- */
+const navnFelt = $('#navnFelt');
+navnFelt.value = navnNu();
+
+function opdaterStartKnap() {
+  $('#startBtn').textContent = s.ialt > 0 ? 'Videre · ' + formater(s.point) : 'Tæl!';
+  $('#nulstilBtn').hidden = s.ialt <= 0;
+}
+
+$('#startBtn').addEventListener('click', () => {
+  const n = navnFelt.value.trim().slice(0, 12);
+  if (n && n !== navnNu()) { lsGem(K_NAVN, n); }   // som Stenalder: siden lærer navnet
+  startSpillet();
+});
+
+$('#nulstilBtn').addEventListener('click', () => {
+  if (!confirm('Start helt forfra? Tallet og alle hjælperne nulstilles.')) return;
+  s = nytSpil();
+  sendtMilepael = 0;
+  lsVaek(K_SPIL); lsVaek(K_SENDT);
+  gemNu();
+  sidstVist = -1;
+  opdaterStartKnap();
+});
+
+$('#hjemBtn').addEventListener('click', () => {
+  gemNu();
+  if (online.kode) {                       // jeg går: vennen får det at vide
+    if (online.stop) { online.stop(); online.stop = null; }
+    const hjem = () => { location.href = '/'; };
+    Rum.forlad(online.kode).then(hjem, hjem);
+    return;
+  }
+  opdaterStartKnap();
+  visSkaerm('startScreen');
+  tegnRekordLinje();
+});
+
+function startSpillet() {
+  visSkaerm('spilSkaerm');
+  sidstVist = -1;
+  tegnTal(); tegnMaal(); tegnButik(); tegnPille();
+  if (online.kode && !online.stop && online.status === null) startOnline();
+  if (vundetVaek > 0 && !vaekVist) visVaek();
+}
+
+/* ---------- «Mens du var væk»-toasten ---------- */
+let vaekVist = false;
+function visVaek() {
+  vaekVist = true;
+  const e = $('#vaek');
+  e.innerHTML = '';
+  e.append('Mens du var væk, tjente dine hjælpere ');
+  const b = document.createElement('b'); b.textContent = '+' + formater(vundetVaek);
+  e.appendChild(b); e.append('!');
+  e.hidden = false;
+  setTimeout(() => { e.hidden = true; }, 4500);
+}
+
+/* ---------- Spillets ur ---------- */
+let sidstNu = performance.now();
+let butikTaeller = 0;
+let pauseret = false;                      // kun til tests: stands den passive produktion
+
+function loekke(nu) {
+  const dt = Math.max(0, (nu - sidstNu) / 1000);
+  sidstNu = nu;
+  // Var fanen gemt væk længe, gælder samme regel som lukket: højst 8 timer.
+  if (!pauseret && tik(s, Math.min(dt, FRAVAER_MAKS)) > 0) { tegnTal(); tegnMaal(); tjekMaks(); }
+  butikTaeller += dt;
+  if (butikTaeller > 0.4) {                // butikkens priser og pillen behøver ikke 60 fps
+    butikTaeller = 0;
+    tegnButik(); tegnPille(); sendScore();
+  }
+  requestAnimationFrame(loekke);
+}
+requestAnimationFrame(loekke);
+
+setInterval(gemNu, 5000);
+addEventListener('pagehide', () => { gemNu(); sendScore(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') gemNu(); });
+
+/* ---------- Ud af starthullerne ---------- */
+opdaterStartKnap();
+tegnRekordLinje();
+if (vundetVaek > 0) gemNu();               // det tjente skal ikke kunne tjenes igen ved reload
+
+// Kom man fra en invitation («Hop med!» / værten selv), skal man direkte ind at møde vennen.
+if (rumKode && navnNu()) startSpillet();
+
+/* ---------- Testkroge ---------- */
+window.GAME = {
+  get state() { return s; },
+  klik: () => { tryk(); },
+  koeb: koebVare,
+  /** Spoler tiden frem uden at vente – til tests. */
+  frem(sek) {
+    tik(s, sek);
+    sidstVist = -1;
+    tegnTal(); tegnMaal(); tegnButik(); tegnPille(); tjekMaks(); sendScore();
+  },
+  /** Sætter dele af spillet direkte (point, ialt, antal …), så en test slipper for at klikke sig derhen. */
+  saetOp(del) {
+    Object.assign(s, del);
+    sidstVist = -1;
+    tegnTal(); tegnMaal(); tegnButik(); tjekMaks(); sendScore();
+  },
+  /** Stands og genoptag den passive produktion – så en test kan regne med præcise tal. */
+  pause() { pauseret = true; },
+  videre() { pauseret = false; sidstNu = performance.now(); },
+  start: startSpillet,
+  online, formater, MAKS, HJAELPERE,
+};
+</script>
+</body></html>

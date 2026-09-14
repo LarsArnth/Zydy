@@ -1,0 +1,20 @@
+{
+  "navn": "Kæmpetal",
+  "beskrivelse": "Tryk på tallet, køb hjælpere og nå det største tal: 9.999.999.999.999 – og mød en ven, så I tæller sammen!",
+  "nøgleord": [
+    "clicker",
+    "cookie clicker",
+    "idle",
+    "tælle",
+    "milliard",
+    "billion",
+    "største tal"
+  ],
+  "url": "/spil/kaempetal/",
+  "orden": 166,
+  "sammen": true,
+  "højscore": {
+    "maks": 9999999999999,
+    "unik": true
+  }
+}
