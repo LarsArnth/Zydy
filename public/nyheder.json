@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 34,
+      "dato": "2026-09-14",
+      "spil": "sejl",
+      "titel": "Til søs! – sejl mellem skærene og brug vinden",
+      "hvad": "Milas ønskede sig et spil, hvor man skal sejle – og her er det. Du ser din sejlbåd oppefra og drejer den med ◀ og ▶, men farten bestemmer vinden: sejler du lige op mod den, blafrer sejlet og båden ligger stille – med vinden ind fra siden går det stærkest. Pilen øverst viser, hvor vinden blæser hen, og den drejer undervejs, så du hele tiden skal finde en ny kurs. Undervejs ligger der skær i vandet: sejl uden om, eller tag renden mellem den røde og den grønne bøje – den er altid fri. Du har tre liv, og bagfra kommer et uvejr, der bliver hurtigere og hurtigere. Score = hvor mange meter du når, og der er topliste – og du kan tage et kapløb mod en ven.",
+      "oensket": "Milas"
+    },
+    {
       "nr": 33,
       "dato": "2026-09-14",
       "spil": "klaverregn",

@@ -1,0 +1,20 @@
+{
+  "navn": "Til søs!",
+  "beskrivelse": "Sejl mellem skærene og brug vinden rigtigt – lige imod den blafrer sejlet. Hvor langt når du, før uvejret tager dig?",
+  "nøgleord": [
+    "sejle",
+    "sejlbåd",
+    "båd",
+    "skib",
+    "hav",
+    "vind",
+    "boat",
+    "sailing"
+  ],
+  "url": "/spil/sejl/",
+  "orden": 160,
+  "kapløb": true,
+  "højscore": {
+    "maks": 20000
+  }
+}

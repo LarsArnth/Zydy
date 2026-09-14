@@ -31,6 +31,7 @@ export const KORT = [
   { id: 'fisk', navn: 'Fiskedybet', url: '/spil/fisk/' },
   { id: 'copyright', navn: 'Copyright', url: '/spil/copyright/' },
   { id: 'klaverregn', navn: 'Klaverregn', url: '/spil/klaverregn/' },
+  { id: 'sejl', navn: 'Til søs!', url: '/spil/sejl/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -61,6 +62,7 @@ export const SPIL = {
   fisk: { maks: 60, unik: true },
   copyright: { maks: 1000 },
   klaverregn: { maks: 5000, unik: true },
+  sejl: { maks: 20000 },
 };
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).
@@ -70,4 +72,4 @@ export const SAMMEN = ['dybet', 'kryds', 'papir'];
 /** Spil to venner kan tage et kapløb i: samme spil, hver sin telefon, bedste
  *  runde vinder ("kapløb": true i kort.json). Forsiden kender dem på
  *  data-kaploeb, og de må inviteres til gennem /api/rum ligesom SAMMEN. */
-export const KAPLOEB = ['taarn', 'saet', 'farvesortering', 'duel', 'obby', 'lava', 'klodser', 'miskmask', 'blokblast', 'slotskamp', 'weee', 'klaverregn'];
+export const KAPLOEB = ['taarn', 'saet', 'farvesortering', 'duel', 'obby', 'lava', 'klodser', 'miskmask', 'blokblast', 'slotskamp', 'weee', 'klaverregn', 'sejl'];

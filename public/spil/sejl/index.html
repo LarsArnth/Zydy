@@ -1,0 +1,757 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0c1c38">
+<meta name="description" content="Til søs: sejl mellem skærene, brug vinden rigtigt og hold dig foran uvejret. Hvor langt når du?">
+<title>Til søs! – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23144a8f'/%3E%3Cpath d='M0 46h64v18H0z' fill='%230d2f60'/%3E%3Cpath d='M30 10 L30 40 L12 40 Z' fill='%23fff'/%3E%3Cpath d='M34 16 L34 40 L50 40 Z' fill='%23ffd447'/%3E%3Cpath d='M10 44h44l-6 8H16Z' fill='%23e03b4e'/%3E%3C/svg%3E">
+<style>
+  /*
+    «Til søs!» – Milas' ønske, der bare lød «Betyder man skal sejle».
+
+    Havet ses oppefra: båden sejler mod nord, roret (◀ ▶) drejer den, og vinden
+    bestemmer farten – lige op mod vinden blafrer sejlet, halvvind er hurtigst.
+    Skærene skal man uden om (sejlrenden mellem rød og grøn bøje er altid fri),
+    og bagfra kommer uvejret. Scoren er, hvor langt man nåede, i meter.
+
+    Verdenen regnes i meter: havet er 44 m bredt med strand i begge sider.
+    Fysikken og banen bor i baad.mjs, så den kan enhedstestes uden browser.
+  */
+  :root{
+    --bg:#0c1c38; --bg2:#16305a; --bg3:#1e4478; --text:#f2f7ff; --muted:#9db4d8;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sand:#e3c887; --ink:#122542; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 10px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  button.pill{color:var(--text);font-weight:700;min-height:36px}
+
+  .wrap{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.4px}
+  #menuBtn[hidden]{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#123561}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Meterne i venstre hjørne, rekorden i højre, vinden i midten */
+  .hud{position:absolute;left:14px;top:12px;pointer-events:none;text-shadow:0 3px 14px rgba(0,0,0,.6);
+    opacity:0;transition:opacity .25s}
+  .stage.igang .hud{opacity:1}
+  .hud .lbl{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  #meterEl{display:block;font-size:48px;font-weight:800;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums;
+    transition:transform .12s}
+  #meterEl.bump{transform:scale(1.12)}
+  #meterEl small{font-size:20px;font-weight:700;color:var(--muted);letter-spacing:0}
+  #livEl{display:block;font-size:19px;margin-top:4px;letter-spacing:2px}
+  .hud.hoejre{left:auto;right:14px;text-align:right}
+  #rekHud{display:block;font-size:24px;font-weight:800;line-height:1.1;color:var(--sun);font-variant-numeric:tabular-nums}
+
+  /* Vind-uret: pilen viser hvor vinden blæser hen */
+  .vind{position:absolute;top:12px;left:50%;transform:translateX(-50%);pointer-events:none;text-align:center;
+    opacity:0;transition:opacity .25s}
+  .stage.igang .vind{opacity:1}
+  .vind .skive{width:58px;height:58px;border-radius:50%;background:rgba(18,37,66,.62);margin:0 auto;
+    border:2px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+  .vind .pil{font-size:30px;line-height:1;transition:transform .2s;will-change:transform}
+  .vind .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;
+    text-shadow:0 2px 8px rgba(0,0,0,.6);margin-top:3px;display:block}
+  .vind.blaf .skive{border-color:var(--coral);animation:blaf .5s infinite}
+  @keyframes blaf{0%,100%{background:rgba(18,37,66,.62)}50%{background:rgba(255,92,122,.45)}}
+
+  /* Mørk kant når uvejret er lige i hælene */
+  .fare{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;
+    box-shadow:inset 0 -70px 80px -30px rgba(40,40,80,.95),inset 0 0 60px rgba(60,60,120,.4)}
+
+  /* Styringen: ét ror-knap i hvert hjørne, så tommelfingrene kan hvile */
+  .styring{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between;
+    padding:12px 14px 14px;gap:12px;pointer-events:none}
+  .styring[hidden]{display:none}
+  .knap{pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;
+    background:rgba(242,247,255,.14);border:2px solid rgba(242,247,255,.25);color:var(--text);
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);font-weight:800;transition:transform .06s,background .1s;
+    width:96px;height:96px;border-radius:50%;font-size:34px}
+  .knap.tryk{background:rgba(255,212,71,.5);transform:scale(.94)}
+  @media (max-width:360px){ .knap{width:82px;height:82px} }
+
+  /* Beskeder midt på fladen */
+  .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .3s}
+  .msg.on{opacity:1}
+  #raab .big{font-size:clamp(30px,10vw,58px);font-weight:900;letter-spacing:-1.5px;line-height:1.05;color:#fff;
+    text-shadow:0 0 26px #2f6fd0,0 6px 0 #0d2f60,0 10px 30px rgba(0,0,0,.6);transform:rotate(-3deg)}
+  #raab.on .big{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+  #raab .sub{margin-top:16px;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(12,28,56,.65);border-radius:999px;padding:8px 16px}
+  @keyframes pop{from{transform:scale(.3) rotate(-3deg);opacity:0}to{transform:scale(1) rotate(-3deg);opacity:1}}
+
+  /* Start- og slutskærm */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:18px 20px 24px;background:rgba(12,28,56,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .regler{display:flex;flex-direction:column;gap:7px;margin:0 0 4px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:9px 13px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .hs{margin-top:12px}
+  .hs .hs-liste{max-height:30vh}
+  .stor{font-size:64px;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--sun);
+    font-variant-numeric:tabular-nums;margin:2px 0 2px}
+  .stor small{font-size:26px;color:var(--muted);letter-spacing:0}
+  .under{font-size:15px;color:var(--muted);margin:0 0 8px}
+  .hint{font-size:15px;margin:10px 0 0}
+
+  @media (max-height:660px){
+    h1{font-size:30px} #meterEl{font-size:38px} .stor{font-size:48px} .hs .hs-liste{max-height:24vh}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+  }
+  @media (max-width:380px){ .top .name{display:none} }
+  @media (prefers-reduced-motion:reduce){
+    .btn,#meterEl,.knap,.vind .pil{transition:none} #raab.on .big{animation:none} .vind.blaf .skive{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Til søs!</div>
+    <button class="pill" id="menuBtn" hidden>Menu</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Havet set oppefra"></canvas>
+
+    <div class="hud" aria-live="polite">
+      <span class="lbl">Sejlet</span>
+      <b id="meterEl">0<small> m</small></b>
+      <span id="livEl">❤️❤️❤️</span>
+    </div>
+    <div class="hud hoejre">
+      <span class="lbl">Rekord</span>
+      <b id="rekHud">0 m</b>
+    </div>
+    <div class="vind" id="vindEl">
+      <span class="skive"><span class="pil" id="vindPil">⬇︎</span></span>
+      <span class="lbl">Vinden</span>
+    </div>
+
+    <div class="fare" id="fare"></div>
+
+    <div class="styring" id="styring" hidden>
+      <button class="knap" id="vBtn" aria-label="Drej til venstre">◀</button>
+      <button class="knap" id="hBtn" aria-label="Drej til højre">▶</button>
+    </div>
+
+    <div class="msg" id="raab">
+      <div class="big" id="raabTekst">TIL SØS!</div>
+      <div class="sub" id="raabUnder">Brug vinden – og uden om skærene</div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Til søs!</h1>
+        <div class="regler" aria-hidden="true">
+          <span>🧭 <b>Vinden bestemmer farten</b> – pilen viser, hvor den blæser hen</span>
+          <span>⛵ Sejl aldrig <b>lige op mod vinden</b> – så blafrer sejlet</span>
+          <span>🪨 Uden om skærene – <b>renden mellem rød og grøn bøje</b> er altid fri</span>
+          <span>⛈️ <b>Uvejret kommer bagfra</b> – hold farten oppe</span>
+        </div>
+        <button class="btn" id="startBtn">Sejl</button>
+        <p class="hint">◀ ▶ drejer båden. På computer: piletaster.</p>
+        <div class="hs" id="hsStart"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Uvejret tog dig!</h1>
+        <div class="stor" id="slutMeter">0<small> m</small></div>
+        <p class="under" id="slutUnder">Din rekord er 0 m</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Sejl igen</button>
+        <button class="btn ghost" id="tilbageBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="sejl"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+<script type="module">
+import {
+  BREDDE, KYST, BAAD_R, MAKS_FART, LIV, GAB, VINDOEJE, SKAER_FRA, RAEKKE,
+  mulberry32, wrap, opMod, fartFor, raekkeSkaer, naerRaekker, nySejlads, tik as motorTik, bot,
+} from './baad.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const harFastSeed = Number.isFinite(fastSeed);
+let seed = harFastSeed ? fastSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
+if (!ctx.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const meterEl = $('meterEl'), rekHud = $('rekHud'), livEl = $('livEl'), fareEl = $('fare');
+const vindEl = $('vindEl'), vindPil = $('vindPil');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen'), styring = $('styring');
+const raab = $('raab'), raabTekst = $('raabTekst'), raabUnder = $('raabUnder'), menuBtn = $('menuBtn');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY_BEST = 'zydy.sejl.best';
+const hentBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const gemBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+
+const DT = 1 / 120;                 // fast fysik-trin
+const HU_MIN = 55;                  // så mange meter hav vil vi mindst kunne se i højden
+const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1, dpr = 1, u = 8, Hu = HU_MIN, x0 = 0;
+function maal() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // På en telefon på højkant fylder havet hele bredden. En iPad på tværs er for
+  // bred – dér begrænser højden i stedet, så man stadig kan se langt frem, og
+  // resten af bredden bliver til strand.
+  u = Math.max(5, Math.min(W / BREDDE, H / HU_MIN));
+  Hu = H / u;
+  x0 = (W - BREDDE * u) / 2;
+}
+maal();
+addEventListener('resize', maal);
+addEventListener('orientationchange', () => setTimeout(maal, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';                  // menu | spil | doed
+let s = nySejlads(seed);
+let T = 0, camY = 0, best = hentBest();
+let ryst = 0, plask = [], koelvand = [], striber = [];
+let paused = false, acc = 0, sidst = 0, raabTil = 0, sidsteAdvarsel = -9;
+
+const ind = { v: false, h: false };
+const rorAf = () => (ind.h ? 1 : 0) - (ind.v ? 1 : 0);
+
+function nulstil() {
+  if (!harFastSeed) seed = (Math.random() * 4294967296) >>> 0;
+  s = nySejlads(seed);
+  T = 0; ryst = 0; plask = []; koelvand = []; striber = [];
+  camY = s.y - Hu * 0.3;
+  sidsteAdvarsel = -9;
+  visHud();
+}
+
+/* ---------- Pynt ---------- */
+function sigTil(stor, lille, sek) {
+  raabTekst.textContent = stor; raabUnder.textContent = lille;
+  raab.classList.add('on'); raabTil = T + sek;
+}
+function rumler(styrke) { if (!roligt) ryst = Math.max(ryst, styrke / 30); }
+function plaskVed(x, y, n, farve) {
+  if (roligt) return;
+  for (let i = 0; i < n; i++) {
+    plask.push({
+      x: x + (Math.random() - 0.5) * 1.6, y: y + (Math.random() - 0.5) * 1.6,
+      vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
+      t: 0, liv: 0.4 + Math.random() * 0.5, farve: farve || 'rgba(255,255,255,.9)',
+    });
+  }
+}
+
+/* ---------- Skærmene ---------- */
+function visHud() {
+  meterEl.innerHTML = s.meter + '<small> m</small>';
+  meterEl.classList.add('bump'); setTimeout(() => meterEl.classList.remove('bump'), 120);
+  rekHud.textContent = best + ' m';
+  livEl.textContent = '❤️'.repeat(Math.max(0, s.liv)) + '🤍'.repeat(Math.max(0, LIV - s.liv));
+}
+
+function start() {
+  nulstil();
+  fase = 'spil';
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  styring.hidden = false; menuBtn.hidden = false; stage.classList.add('igang');
+  sigTil('TIL SØS!', 'Brug vinden – og uden om skærene', 1.8);
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+function doed() {
+  if (fase !== 'spil') return;
+  fase = 'doed';
+  ind.v = ind.h = false;
+  for (const el of [$('vBtn'), $('hBtn')]) el.classList.remove('tryk');
+  rumler(18);
+  navigator.vibrate && navigator.vibrate([60, 40, 60]);
+  plaskVed(s.x, s.y, 26);
+  const ny = s.meter > best;
+  if (ny) { best = s.meter; gemBest(best); }
+  styring.hidden = true; stage.classList.remove('igang');
+  raab.classList.remove('on');
+  $('slutTitel').textContent = s.aarsag === 'skaer' ? 'Båden sank!' : 'Uvejret tog dig!';
+  $('slutMeter').innerHTML = s.meter + '<small> m</small>';
+  $('slutUnder').textContent = ny && s.meter > 0 ? 'Så langt har du aldrig sejlet før.' : 'Din rekord er ' + best + ' m';
+  slutScreen.classList.add('on');
+  visHud();
+  Highscore.panel($('hsSlut'), { spil: 'sejl', score: s.meter, format: v => v + ' m' });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(s.meter, s.meter + ' m');
+}
+
+function tilMenu() {
+  fase = 'menu';
+  nulstil();
+  slutScreen.classList.remove('on'); startScreen.classList.add('on');
+  styring.hidden = true; menuBtn.hidden = true; raab.classList.remove('on'); stage.classList.remove('igang');
+  Highscore.panel($('hsStart'), { spil: 'sejl', format: v => v + ' m' });
+}
+
+/* ---------- Løkken ---------- */
+function uiTik(dt, rorTving = null) {
+  T += dt;
+  if (fase === 'spil') {
+    const meterFoer = s.meter, livFoer = s.liv;
+    const e = motorTik(s, dt, rorTving === null ? rorAf() : rorTving);
+
+    if (e.ramt) {
+      rumler(12);
+      navigator.vibrate && navigator.vibrate(40);
+      plaskVed(s.x, s.y, 14);
+      if (!s.doed) {
+        sigTil(e.ramt === 'grund' ? 'PÅ GRUND!' : 'ET SKÆR!',
+          s.liv === 1 ? 'Pas på – kun ét liv tilbage' : s.liv + ' liv tilbage', 1.4);
+      }
+    }
+    if (e.vindskifte) sigTil('VINDEN DREJER!', 'Hold øje med pilen – find en ny kurs', 1.5);
+    // Ligger man og stamper i vindøjet, får man et praj – én gang ad gangen.
+    if (s.blafT > 1.2 && T - sidsteAdvarsel > 5) {
+      sidsteAdvarsel = T;
+      sigTil('SEJLET BLAFRER!', 'Du sejler lige mod vinden – drej væk fra pilen', 1.6);
+    }
+    if (s.meter !== meterFoer || s.liv !== livFoer) visHud();
+    if (e.sunket || e.taget) doed();
+
+    // Kølvand, når der er fart på
+    if (!roligt && s.fart > 3 && Math.random() < dt * 22) {
+      koelvand.push({ x: s.x - Math.sin(s.kurs) * 1.6, y: s.y - Math.cos(s.kurs) * 1.6, t: 0, liv: 1.4 });
+    }
+  }
+
+  if (raabTil && T > raabTil) { raab.classList.remove('on'); raabTil = 0; }
+
+  const maalY = s.y - Hu * 0.3;
+  camY += (maalY - camY) * Math.min(1, dt * 6);
+
+  ryst = Math.max(0, ryst - dt * 1.5);
+  for (const q of plask) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.95; q.vy *= 0.95; }
+  plask = plask.filter(q => q.t < q.liv);
+  for (const k of koelvand) k.t += dt;
+  koelvand = koelvand.filter(k => k.t < k.liv);
+
+  // Mørk kant, når uvejret er tæt på
+  const naer = fase === 'spil' && s.y - s.storm < 25;
+  fareEl.style.opacity = naer ? String(klem(1 - (s.y - s.storm) / 25, 0.15, 0.95)) : '0';
+
+  // Vind-uret: pilen peger derhen, hvor vinden blæser
+  vindPil.style.transform = `rotate(${s.vindFra + Math.PI}rad)`;
+  vindEl.classList.toggle('blaf', fase === 'spil' && s.blafrer);
+}
+
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!sidst) sidst = nu;
+  let dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  if (!paused) { acc += dt; while (acc >= DT) { uiTik(DT); acc -= DT; } }
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ---------- Tegning ---------- */
+const sx = wx => x0 + wx * u;
+const sy = wy => H - (wy - camY) * u;
+const hash = (a, b) => { const t = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return t - Math.floor(t); };
+
+function tegn() {
+  ctx.save();
+  if (ryst > 0) ctx.translate((Math.random() - 0.5) * ryst * 22, (Math.random() - 0.5) * ryst * 22);
+
+  // Strand hele vejen rundt – havet ligger som et bånd i midten
+  ctx.fillStyle = '#e3c887'; ctx.fillRect(-30, -30, W + 60, H + 60);
+  tegnStrandpynt();
+
+  // Havet med en blød, bølgende kant mod stranden
+  const hav = ctx.createLinearGradient(0, 0, 0, H);
+  hav.addColorStop(0, '#1e4f8f'); hav.addColorStop(1, '#123561');
+  ctx.fillStyle = hav;
+  ctx.beginPath();
+  const vKant = px => sx(KYST) + Math.sin((camY + (H - px) / u) * 0.35 + T * 1.1) * 0.25 * u;
+  const hKant = px => sx(BREDDE - KYST) + Math.sin((camY + (H - px) / u) * 0.3 - T * 0.9) * 0.25 * u;
+  ctx.moveTo(vKant(H + 20), H + 20);
+  for (let py = H + 20; py >= -20; py -= 8) ctx.lineTo(vKant(py), py);
+  for (let py = -20; py <= H + 20; py += 8) ctx.lineTo(hKant(py), py);
+  ctx.closePath(); ctx.fill();
+
+  // Skum langs strandkanten
+  ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = Math.max(1.5, u * 0.12);
+  ctx.beginPath();
+  for (let py = -20; py <= H + 20; py += 8) py === -20 ? ctx.moveTo(vKant(py), py) : ctx.lineTo(vKant(py), py);
+  ctx.stroke();
+  ctx.beginPath();
+  for (let py = -20; py <= H + 20; py += 8) py === -20 ? ctx.moveTo(hKant(py), py) : ctx.lineTo(hKant(py), py);
+  ctx.stroke();
+
+  tegnBoelger();
+  tegnVindstriber();
+
+  // Kølvand
+  for (const k of koelvand) {
+    ctx.globalAlpha = Math.max(0, 1 - k.t / k.liv) * 0.5;
+    ctx.fillStyle = '#dff0ff';
+    ctx.beginPath(); ctx.arc(sx(k.x), sy(k.y), (0.25 + k.t * 0.7) * u, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Skær og sømærker
+  for (const raekke of naerRaekker(s.seed, camY + Hu / 2, Hu)) {
+    for (const k of raekke.skaer) tegnSkaer(k);
+    for (const b of raekke.boejer) tegnBoeje(b);
+  }
+
+  if (fase !== 'menu') tegnBaad();
+
+  // Plask
+  for (const q of plask) {
+    ctx.globalAlpha = Math.max(0, 1 - q.t / q.liv);
+    ctx.fillStyle = q.farve;
+    ctx.beginPath(); ctx.arc(sx(q.x), sy(q.y), 0.14 * u, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  tegnUvejr();
+  ctx.restore();
+}
+
+/** Små lyse bølgekamme, fast i verden, så man kan se at man sejler. */
+function tegnBoelger() {
+  ctx.fillStyle = 'rgba(255,255,255,.14)';
+  const fra = Math.floor(camY / 4) - 1, til = Math.ceil((camY + Hu) / 4) + 1;
+  for (let gy = fra; gy <= til; gy++) {
+    for (let gx = 0; gx < Math.ceil(BREDDE / 4); gx++) {
+      const h1 = hash(gx * 7 + 1, gy * 13 + 5);
+      if (h1 < 0.55) continue;
+      const wx = KYST + 1 + (gx * 4 + h1 * 3) % (BREDDE - 2 * KYST - 2);
+      const wy = gy * 4 + hash(gx, gy) * 4;
+      const px = sx(wx), py = sy(wy + Math.sin(T * 1.5 + gx + gy) * 0.15);
+      if (py < -20 || py > H + 20) continue;
+      ctx.beginPath();
+      ctx.arc(px, py, 0.55 * u, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.lineWidth = Math.max(1, u * 0.09); ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.stroke();
+    }
+  }
+}
+
+/** Striber der driver med vinden, så man kan se hvor den blæser hen. */
+function tegnVindstriber() {
+  const til = s.vindFra + Math.PI;
+  while (striber.length < 12) {
+    striber.push({ x: Math.random() * BREDDE, y: camY + Math.random() * Hu, l: 1.5 + Math.random() * 2 });
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = Math.max(1, u * 0.07); ctx.lineCap = 'round';
+  for (const st of striber) {
+    st.x += Math.sin(til) * 7 * (1 / 60); st.y += Math.cos(til) * 7 * (1 / 60);
+    if (st.y < camY - 4 || st.y > camY + Hu + 4 || st.x < -2 || st.x > BREDDE + 2) {
+      st.x = KYST + Math.random() * (BREDDE - 2 * KYST);
+      st.y = camY + Math.random() * Hu;
+    }
+    const px = sx(st.x), py = sy(st.y);
+    if (px < x0 - 10 || px > x0 + BREDDE * u + 10) continue;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px + Math.sin(til) * st.l * u, py - Math.cos(til) * st.l * u);
+    ctx.stroke();
+  }
+}
+
+/** Palmer og græstotter på stranden, faste pr. 6 meter. */
+function tegnStrandpynt() {
+  const fra = Math.floor(camY / 6) - 1, til = Math.ceil((camY + Hu) / 6) + 1;
+  for (let b = fra; b <= til; b++) {
+    for (const side of [0, 1]) {
+      const h1 = hash(b * 3 + side, 17);
+      if (h1 < 0.45) continue;
+      const wy = b * 6 + h1 * 5;
+      const kystBredde = side ? (W - (x0 + (BREDDE - KYST) * u)) : (x0 + KYST * u);
+      if (kystBredde < 18) continue;
+      const px = side ? x0 + (BREDDE - KYST) * u + kystBredde * (0.3 + h1 * 0.5)
+                      : x0 + KYST * u - kystBredde * (0.3 + h1 * 0.5);
+      const py = sy(wy);
+      if (py < -30 || py > H + 30) continue;
+      if (h1 > 0.75) {                                 // palme
+        ctx.strokeStyle = '#9a6b35'; ctx.lineWidth = Math.max(2, u * 0.16); ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(px, py + u * 0.9); ctx.quadraticCurveTo(px + u * 0.3, py, px + u * 0.15, py - u * 0.7); ctx.stroke();
+        ctx.strokeStyle = '#3f9c5c'; ctx.lineWidth = Math.max(2, u * 0.12);
+        for (let f = 0; f < 5; f++) {
+          const a = -Math.PI / 2 + (f - 2) * 0.55;
+          ctx.beginPath(); ctx.moveTo(px + u * 0.15, py - u * 0.7);
+          ctx.quadraticCurveTo(px + u * 0.15 + Math.cos(a) * u * 0.8, py - u * 0.7 + Math.sin(a) * u * 0.8 - u * 0.2,
+            px + u * 0.15 + Math.cos(a) * u * 1.2, py - u * 0.7 + Math.sin(a) * u * 1.2 + u * 0.25);
+          ctx.stroke();
+        }
+      } else {                                         // græstot / sten
+        ctx.fillStyle = h1 > 0.6 ? '#c9b06e' : '#3f9c5c';
+        ctx.beginPath(); ctx.arc(px, py, u * (0.2 + h1 * 0.25), 0, 6.283); ctx.fill();
+      }
+    }
+  }
+}
+
+/** Et skær: en grå klippeknold med skum omkring. Formen er fast (frø). */
+function tegnSkaer(k) {
+  const px = sx(k.x), py = sy(k.y);
+  if (py < -80 || py > H + 80) return;
+  if (!k._form) {
+    const r = mulberry32(Math.floor(k.froe * 4294967295));
+    k._form = [...Array(9)].map((_, i) => 0.7 + r() * 0.4);
+  }
+  // Skum
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = Math.max(1.5, u * 0.12);
+  ctx.setLineDash([u * 0.5, u * 0.35]); ctx.lineDashOffset = -T * u * 0.8;
+  ctx.beginPath(); ctx.arc(px, py, (k.r + 0.45) * u, 0, 6.283); ctx.stroke();
+  ctx.setLineDash([]);
+  // Klippen
+  for (const [skala, farve] of [[1, '#5b6a7d'], [0.62, '#79899c']]) {
+    ctx.fillStyle = farve;
+    ctx.beginPath();
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2;
+      const rr = k.r * k._form[i] * skala * u;
+      const X = px + Math.cos(a) * rr, Y = py + Math.sin(a) * rr * 0.9 - (skala < 1 ? u * 0.25 : 0);
+      i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+/** Et sømærke: rød til venstre for renden, grøn til højre. */
+function tegnBoeje(b) {
+  const py = sy(b.y + Math.sin(T * 2 + b.x) * 0.15);
+  if (py < -40 || py > H + 40) return;
+  const px = sx(b.x);
+  const farve = b.farve === 'roed' ? '#e03b4e' : '#2fae5e';
+  ctx.strokeStyle = '#f2f7ff'; ctx.lineWidth = Math.max(1.5, u * 0.1);
+  ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - u * 1.1); ctx.stroke();
+  ctx.fillStyle = farve;
+  ctx.beginPath(); ctx.arc(px, py, u * 0.5, 0, 6.283); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.beginPath(); ctx.arc(px, py, u * 0.5, Math.PI * 1.1, Math.PI * 1.9); ctx.arc(px, py, u * 0.28, Math.PI * 1.9, Math.PI * 1.1, true); ctx.fill();
+  ctx.fillStyle = farve;
+  ctx.beginPath(); ctx.moveTo(px, py - u * 1.1); ctx.lineTo(px + u * 0.55, py - u * 0.9); ctx.lineTo(px, py - u * 0.7); ctx.closePath(); ctx.fill();
+}
+
+/** Båden med sit sejl. Sejlet lægger sig på læsiden, og i vindøjet blafrer det. */
+function tegnBaad() {
+  const px = sx(s.x), py = sy(s.y);
+  const L = 3.4 * u, B = 1.8 * u;
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(s.kurs);
+  if (s.usaarlig > 0 && Math.floor(T * 8) % 2) ctx.globalAlpha = 0.45;   // blinker efter et skær
+
+  // Skrog: spids stævn, rund agter
+  ctx.fillStyle = '#e03b4e';
+  ctx.beginPath();
+  ctx.moveTo(0, -L * 0.55);
+  ctx.quadraticCurveTo(B * 0.62, -L * 0.1, B * 0.5, L * 0.32);
+  ctx.quadraticCurveTo(0, L * 0.52, -B * 0.5, L * 0.32);
+  ctx.quadraticCurveTo(-B * 0.62, -L * 0.1, 0, -L * 0.55);
+  ctx.fill();
+  // Dæk
+  ctx.fillStyle = '#f6e3c2';
+  ctx.beginPath();
+  ctx.moveTo(0, -L * 0.44);
+  ctx.quadraticCurveTo(B * 0.44, -L * 0.08, B * 0.36, L * 0.26);
+  ctx.quadraticCurveTo(0, L * 0.42, -B * 0.36, L * 0.26);
+  ctx.quadraticCurveTo(-B * 0.44, -L * 0.08, 0, -L * 0.44);
+  ctx.fill();
+
+  // Sejlet: bommen svinger ud på læsiden, mere jo mere agten vinden kommer ind.
+  const op = opMod(s.kurs, s.vindFra);
+  const relVind = wrap(s.vindFra - s.kurs);
+  const lae = relVind > 0 ? -1 : 1;
+  const mastY = -L * 0.18;
+  const bomLen = L * 0.62;
+  let bomA = lae * (0.18 + 0.95 * (op / Math.PI));
+  if (s.blafrer && !roligt) bomA = Math.sin(T * 22) * 0.35;              // sejlet slår frem og tilbage
+  const ex = Math.sin(bomA) * bomLen, ey = mastY + Math.cos(bomA) * bomLen;
+  // Sejlets bug bulner ud mod læ – i vindøjet slår det bare tomt frem og tilbage
+  const bulge = s.blafrer ? Math.sin(T * 30) * 0.1 : 0.24;
+  const cx = ex / 2 + lae * Math.cos(bomA) * bomLen * bulge;
+  const cy = (mastY + ey) / 2 - lae * Math.sin(bomA) * bomLen * bulge;
+  ctx.fillStyle = s.blafrer ? 'rgba(255,255,255,.7)' : '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(0, mastY);
+  ctx.quadraticCurveTo(cx, cy, ex, ey);
+  ctx.closePath(); ctx.fill();
+  // Bommen
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = Math.max(1.5, u * 0.1);
+  ctx.beginPath(); ctx.moveTo(0, mastY); ctx.lineTo(ex, ey); ctx.stroke();
+  // Masten
+  ctx.fillStyle = '#122542';
+  ctx.beginPath(); ctx.arc(0, mastY, Math.max(2, u * 0.14), 0, 6.283); ctx.fill();
+  // Vimpel i mastetoppen: peger derhen, hvor vinden blæser
+  ctx.strokeStyle = '#ffd447'; ctx.lineWidth = Math.max(1.5, u * 0.09);
+  const va = wrap(s.vindFra + Math.PI - s.kurs);
+  ctx.beginPath(); ctx.moveTo(0, mastY);
+  ctx.lineTo(Math.sin(va) * u * 0.9, mastY - Math.cos(va) * u * 0.9);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Uvejret: en mørk væg af skyer og regn, der æder sig op nedefra. */
+function tegnUvejr() {
+  const fy = sy(s.storm);
+  if (fy < -60) return;                                // uvejret er slet ikke i billedet
+  const g = ctx.createLinearGradient(0, fy - u * 2, 0, Math.max(fy + u * 10, H + 30));
+  g.addColorStop(0, 'rgba(30,34,66,0)');
+  g.addColorStop(0.25, 'rgba(30,34,66,.9)');
+  g.addColorStop(1, '#181b36');
+  ctx.fillStyle = g;
+  ctx.fillRect(-30, fy - u * 2, W + 60, H + 90 - fy + u * 2);
+  // Skyfronten som mørke bobler
+  ctx.fillStyle = '#232748';
+  for (let px = -20; px <= W + 20; px += u * 2.2) {
+    const b = Math.sin(px * 0.05 + T * 1.6) * 0.5 + 0.5;
+    ctx.beginPath(); ctx.arc(px, fy + u * (0.4 + b * 0.5), u * (1.1 + b * 0.7), 0, 6.283); ctx.fill();
+  }
+  // Regn
+  ctx.strokeStyle = 'rgba(190,200,255,.35)'; ctx.lineWidth = Math.max(1, u * 0.06);
+  ctx.beginPath();
+  for (let i = 0; i < 26; i++) {
+    const rx = ((i * 97 + Math.floor(T * 3) * 31) % (W + 40)) - 20;
+    const ry = fy + u * 1.5 + ((i * 53) % Math.max(1, H - fy));
+    if (ry > H + 20) continue;
+    ctx.moveTo(rx, ry); ctx.lineTo(rx - u * 0.25, ry + u * 0.9);
+  }
+  ctx.stroke();
+  // Et lyn i ny og næ
+  if (!roligt && Math.floor(T * 2) % 7 === 0 && (T * 2) % 1 < 0.12) {
+    ctx.fillStyle = 'rgba(255,255,210,.25)';
+    ctx.fillRect(-30, fy, W + 60, H - fy + 60);
+  }
+}
+
+/* ---------- Styring ---------- */
+/*
+  Én ror-knap i hvert hjørne, så tommelfingrene kan hvile i bunden – på en iPad
+  kan man ikke nå toppen af skærmen, mens man holder den. Knapperne er
+  gennemsigtige, så havet kan ses.
+*/
+function knap(el, ned, op) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    el.setPointerCapture && el.setPointerCapture(e.pointerId);
+    el.classList.add('tryk'); ned();
+  });
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) {
+    el.addEventListener(t, () => { el.classList.remove('tryk'); op && op(); });
+  }
+}
+knap($('vBtn'), () => { ind.v = true; }, () => { ind.v = false; });
+knap($('hBtn'), () => { ind.h = true; }, () => { ind.h = false; });
+
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') { ind.v = true; e.preventDefault(); }
+  else if (e.code === 'ArrowRight' || e.code === 'KeyD') { ind.h = true; e.preventDefault(); }
+  else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+    e.preventDefault();
+    if (!e.repeat && fase === 'menu') start();
+  }
+});
+addEventListener('keyup', e => {
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') ind.v = false;
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') ind.h = false;
+});
+addEventListener('blur', () => { ind.v = ind.h = false; });
+
+$('startBtn').addEventListener('click', start);
+$('igenBtn').addEventListener('click', start);
+$('tilbageBtn').addEventListener('click', tilMenu);
+menuBtn.addEventListener('click', tilMenu);
+
+/* ---------- Start ---------- */
+nulstil();
+visHud();
+Highscore.panel($('hsStart'), { spil: 'sejl', format: v => v + ' m' });
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  seed, start, tilMenu,
+  tik: dt => uiTik(dt),
+  styr(r) { ind.v = r < 0; ind.h = r > 0; },
+  pause() { paused = true; }, resume() { paused = false; sidst = 0; acc = 0; },
+  doedNu() { s.doed = true; s.aarsag = s.aarsag || 'uvejr'; doed(); },
+  /** Spoler sek sekunder frem. ror låser roret; null bruger knapperne. */
+  frem(sek, ror = null) {
+    const n = Math.round(sek / DT);
+    for (let i = 0; i < n && fase === 'spil'; i++) uiTik(DT, ror);
+    return this.state;
+  },
+  /** Lader botten sejle turen færdig – som i enhedstestene. */
+  botTur() {
+    let ror = 0, siden = 1;
+    for (let i = 0; i < 120 * 400 && fase === 'spil'; i++) {
+      siden += DT;
+      if (siden >= 0.1) { ror = bot(s); siden = 0; }
+      uiTik(DT, ror);
+    }
+    return this.state;
+  },
+  /** Række nr. n af skær (til tests). */
+  raekke(n) { const r = raekkeSkaer(s.seed, n); return { n: r.n, y: r.y, gab: r.gab, skaer: r.skaer.map(k => ({ ...k })), boejer: r.boejer.map(b => ({ ...b })) }; },
+  /** Stiller båden et bestemt sted (tests). */
+  placer(x, y, kurs = 0) { s.x = x; s.y = y; s.kurs = kurs; camY = y - Hu * 0.3; },
+  saetVind(v) { s.vindFra = v; s.vindMaal = v; s.plan = []; },
+  saetKurs(v) { s.kurs = v; },
+  get state() {
+    return {
+      fase, seed: s.seed, meter: s.meter, best, liv: s.liv,
+      x: s.x, y: s.y, kurs: s.kurs, fart: s.fart,
+      vindFra: s.vindFra, vindMaal: s.vindMaal, blafrer: s.blafrer, blafT: s.blafT,
+      storm: s.storm, afstand: s.y - s.storm, usaarlig: s.usaarlig,
+      doed: s.doed, aarsag: s.aarsag, ramt: s.ramt,
+      ind: { ...ind },
+      konst: { BREDDE, KYST, BAAD_R, GAB, LIV, MAKS_FART, VINDOEJE, SKAER_FRA, RAEKKE },
+    };
+  },
+};
+</script>
+</body></html>

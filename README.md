@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; fireogtyve spil
+afhængigheder. De store apps bor i egne repoer og linkes til; femogtyve spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet fireogtyve spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet femogtyve spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright og Klaverregn, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn og Til søs!, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -49,13 +49,14 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Fiskedybet | `public/spil/fisk/` | Timos ønske om «Fish It: Abyss»: en lille båd, fem farvande og en fiskebog, der skal fyldes. Man kaster snøren, og når der hugger, løber en viser frem og tilbage over en bar – et tryk tæller kun i det grønne felt, og store fisk kræver flere rammere og tåler færre forbiere. Fangsten sejles hjem til havnen og sælges, og pengene går til snøren (åbner et farvand mere), stangen (bredere felt), skroget (flere hjerter) og kølerummet (større last). Solskinshavet er trygt; i Hajvandet, Dybhavet, Afgrunden og Tomrummet hugger der ét uhyre hvert sted, og så skal man vælge: klippe snøren, eller tage kampen – taber man, eller når man ikke at bestemme sig, tager det en bid af båden. Går skroget i nul, bliver man slæbt i havn og mister lasten, men aldrig fiskebogen. Score = antal arter i bogen, online topliste. To filer: `hav.mjs` (farvande, dyr, kamp, økonomi og det gemte spil, enhedstestet) og `index.html`. Se «Fiskedybet – baren, farvandene og uhyrerne» nedenfor. |
 | Mit liv | `public/spil/mitliv/` | Selmas ønske om «The Sims»: et helt liv i ét hus, set oppefra. Man laver sin egen figur (hud, frisure, hårfarve, trøje, bukser), flytter ind med 600 kr. og fire møbler, og passer seks behov – mæt, energi, toilet, ren, sjov og selskab – der siver nedad, mens spiluret går (ét rigtigt sekund = fem spilminutter). Man trykker på et møbel, og figuren går selv derhen og bruger det, til behovet er fyldt. Om morgenen kører bussen på arbejde: man er væk i seks spiltimer og kommer hjem med løn, der følger humøret, og stjerner mod en forfremmelse – fra avisbud til astronaut i otte trin. Pengene bruges i **byg-tilstand**, hvor 20 møbler kan købes, flyttes og sælges for det halve. Når toilettet ikke kan vente, kommer der en pyt på gulvet, man skal tørre op, og telefonen henter en ven på besøg. Score = **formuen** (penge + alt i huset), online topliste. To filer: `liv.mjs` (behov, veje, møbler og arbejde, enhedstestet) og `index.html`. Se «Mit liv – huset, behovene og arbejdet» nedenfor. |
 | Klaverregn | `public/spil/klaverregn/` | Livas ønske, der lød «Et klaver spil»: noderne i en rigtig børnesang falder ned gennem fire baner som fliser (Piano Tiles-agtigt), og man trykker på dem, nederste først. Hvert rigtigt tryk spiller sangens næste node med et lille WebAudio-klaver, så melodien kommer ud af ens egne fingre – Mester Jakob, Blinke blinke stjernelil, Lille Peter Edderkop, Jens Hansens bondegård, Ode til glæden og fødselsdagssangen, i ring og hurtigere og hurtigere. Banen følger tonehøjden (dybe toner til venstre), så man kan se melodien komme. Tre hjerter: en forkert bane eller en flise forbi bunden koster ét – men melodien hopper aldrig et hak ved en fejl. Score = ramte noder, online topliste og kapløb. To filer: `noder.mjs` (sange, fliser og regler, enhedstestet) og `index.html` (canvas, lyd og skærmene). Se «Klaverregn – fliserne, sangene og lyden» nedenfor. |
+| Til søs! | `public/spil/sejl/` | Milas' ønske, der bare lød «Betyder man skal sejle»: en sejlbåd set oppefra, som man drejer med ◀ ▶ – men farten bestemmer vinden. Lige op mod vinden blafrer sejlet, og båden ligger stille; halvvind er hurtigst, som på en rigtig sejlbåd. Pilen øverst viser, hvor vinden blæser hen, og den drejer undervejs, så kursen hele tiden skal findes forfra. Skærene skal man uden om (tre liv), men sejlrenden mellem det røde og det grønne sømærke er altid fri – og bagfra kommer et uvejr, der bliver hurtigere hele turen. Score = meter mod nord, online topliste og kapløb. To filer: `baad.mjs` (vind, fartkurve, skær, uvejr og en bot, enhedstestet) og `index.html` (canvas, HUD og skærmene). Se «Til søs! – vinden, skærene og uvejret» nedenfor. |
 | Copyright | `public/spil/copyright/` | Selmas ønske om et spil, hvor man «copyrighter en tegning og gætter, hvem der har copyrighten». Et tegne- og gættespil for 3-6 på én iPad, der går rundt: alle tegner det **samme** motiv hver for sig, og når man er færdig, slås ens copyright-stempel på tegningen – men dækket til, så de andre kun ser «©?». Derefter går enheden rundt igen, og hver spiller gætter, hvem der har copyright på hver af de andres tegninger. Afsløringen tager én tegning ad gangen: stemplet vendes, og man kan se, hvem der ramte rigtigt. 10 point for et rigtigt gæt, 5 til tegneren pr. narret – men narrer man **alle**, giver tegningen ingenting. Tre runder med hvert sit motiv. Score = vinderens point, online topliste. To filer: `regler.mjs` (motiver, gæt, point og runder, enhedstestet) og `index.html`. Se «Copyright – stemplet, gættet og pointene» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp og Weeee! — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn og Til søs! — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -1343,6 +1344,48 @@ Test: `test/klaverregn.test.mjs` (rammer de tre første fliser med en rigtig
 finger og tjekker, at do-re-mi vandrer mod højre, at en forkert bane koster et
 hjerte uden at flytte melodien, lader botten spille en hel sang og lader så
 fliserne falde forbi, til slutskærmen kommer) + `test/unit/klaverregn.test.mjs`.
+
+### Til søs! – vinden, skærene og uvejret
+
+Milas' ønske lød bare «Betyder man skal sejle», og det er læst helt bogstaveligt:
+et spil om at *sejle*, hvor vinden er hele spillet. Havet ses oppefra, roret er
+to knapper, og fysikken bor i `baad.mjs` uden DOM, så den kan enhedstestes.
+
+Fire ting er værd at huske:
+
+1. **Farten kommer fra fartkurven (`POLAR`), ikke fra en gaspedal.** Kursens
+   vinkel til vindøjet slås op i en rigtig sejlbåds polar: under 38°
+   (`VINDOEJE`) blafrer sejlet og båden ligger næsten stille, halvvind er
+   hurtigst, og læns er lidt langsommere. Det er dét, der gør, at man skal
+   *krydse* op mod vinden – og pilen i toppen viser derfor hvor vinden blæser
+   *hen*, for det er den, man skal holde sig fri af.
+2. **Vindens spring ligger fast i en plan fra frøet** (`nySejlads` genererer
+   den med det samme). Så er turen den samme hver gang med samme `?seed`, og –
+   vigtigere – tilstanden kan kopieres med `{...s}`: bottens kig-frem og
+   testene sejler kopier af spillet uden at en tilfældighedskilde følger med.
+   Selve drejningen er blød (`VIND_DREJ`), så pilen kan ses dreje og ingen
+   pludselig står i vindøjet uden varsel.
+3. **Sejlrenden er en garanti, ikke et held**: `raekkeSkaer` lægger slet ikke
+   et skær, hvis det ville nå ind i renden omkring `gab`, og renden er markeret
+   med et rødt og et grønt sømærke. Enhedstesten tjekker 120 rækker over syv
+   frø. Uden garantien kunne en række spærre hele havet, og så er det ikke ens
+   egen skyld, at man rammer.
+4. **Botten drejer et kort stykke og holder så kursen.** Den prøver tre ror
+   (venstre/ligeud/højre) et par sekunder frem og vælger flest meter mod nord –
+   men drejet varer kun `drejTid` (0,6 s) af horisonten. Holdt den roret i bund
+   hele vejen, endte hvert drej i en spiral, og så så «lig stille» altid bedst
+   ud – også i vindøjet, hvor man netop skal falde af. Med det på plads finder
+   den selv ud af at krydse, og det er dén, der viser, at havet kan besejles
+   (over 250 m på alle frø i enhedstesten).
+
+Uvejret bagfra er Weeee!s lavine til søs: `STORM_MAKS` er med vilje mindre end
+`MAKS_FART`, så man på en god kurs altid kan trække fra – presset kommer, når
+vinden tvinger en op i øjet. Tre liv, fordi et skær ellers er en hård straf på
+en iPad, hvor man ikke kan se hele havet frem.
+
+Test: `test/sejl.test.mjs` (drejer med rigtige tryk på ror-knapperne, stamper i
+vindøjet og flyver på halvvind, sejler ind i et skær og mister et hjerte, og
+lader botten sejle hele turen, til uvejret tager den) + `test/unit/sejl.test.mjs`.
 
 ### Stenalder – regelvalg
 
