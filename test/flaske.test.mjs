@@ -131,7 +131,10 @@ const tik = (n = 30) => page.evaluate(n => { for (let i = 0; i < n; i++) window.
   await page.screenshot({ path: SHOTS + 'flaske.png' });
   await page.evaluate(() => window.GAME.pause());
 
-  const slut = await page.evaluate(() => window.GAME.botTur());
+  // 2000 og ikke standard-500: de 250 ms realtid ovenfor giver et løst antal
+  // rigtige frames, og med nogle af dem overlever botten forbi 500 spilsekunder
+  // (målt: seneste død t ≈ 765). Med 2000 dør den altid, uanset maskinlast.
+  const slut = await page.evaluate(() => window.GAME.botTur(2000));
   assert.equal(slut.doed, true, 'til sidst går flasken i stykker');
   assert.equal(slut.fase, 'doed');
   assert.ok(slut.fangst > 25, `botten fangede kun ${slut.fangst} havdyr`);
