@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 36,
+      "dato": "2026-09-14",
+      "spil": "slanger",
+      "titel": "Slanger – snake med to store knapper",
+      "hvad": "Far ønskede sig en Snake.io-klon i firkanter som Papirøen – og med en styring, man ikke skal kigge på: to kæmpe knapper i bunden af skærmen, som på en gammel Nokia. Venstre knap drejer mod uret, højre med uret, og to hurtige tryk giver to sving lige efter hinanden. Spis perlerne og bliv den længste slange på pladen – Otto, Mille og Aksel glider også rundt, og kører en slange ind i en anden, bliver den selv til perler. Score = din længste længde, og der er topliste. Og man kan spille sammen: invitér en ven fra forsiden, så glider I rundt på den samme plade i to minutter om at blive længst.",
+      "oensket": "Lars"
+    },
+    {
       "nr": 35,
       "dato": "2026-09-14",
       "spil": "flaske",

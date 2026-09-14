@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet seksogtyve spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet syvogtyve spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs! og Flaskehavet, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet og Slanger, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -52,6 +52,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Til søs! | `public/spil/sejl/` | Milas' ønske, der bare lød «Betyder man skal sejle»: en sejlbåd set oppefra, som man drejer med ◀ ▶ – men farten bestemmer vinden. Lige op mod vinden blafrer sejlet, og båden ligger stille; halvvind er hurtigst, som på en rigtig sejlbåd. Pilen øverst viser, hvor vinden blæser hen, og den drejer undervejs, så kursen hele tiden skal findes forfra. Skærene skal man uden om (tre liv), men sejlrenden mellem det røde og det grønne sømærke er altid fri – og bagfra kommer et uvejr, der bliver hurtigere hele turen. Score = meter mod nord, online topliste og kapløb. To filer: `baad.mjs` (vind, fartkurve, skær, uvejr og en bot, enhedstestet) og `index.html` (canvas, HUD og skærmene). Se «Til søs! – vinden, skærene og uvejret» nedenfor. |
 | Flaskehavet | `public/spil/flaske/` | Milas' ønske, der lød «Handler om en flaske vand havdyr»: en vandflaske driver med strømmen gennem havet, set fra siden. Hold på skærmen, og flasken dykker – slip, og den flyder op, for flasker flyder. Havdyrene – fisk, søheste, skildpadder, blæksprutter, søstjerner og krabber – svømmer ind i flasken, når man rammer dem, og svømmer med derinde, mens vandet i flasken stiger. Brandmænd og søpindsvin skal man uden om: tre stød, og flasken går i stykker. Strømmen bliver hurtigere hele turen, og der kommer flere farer, jo længere man driver ud – men to farer står aldrig tættere end fire meter, så der altid er en vej. Score = havdyr i flasken, online topliste. To filer: `flaske.mjs` (havet, fysikken, fangsten og en bot, enhedstestet) og `index.html` (canvas, HUD og skærmene). |
 | Copyright | `public/spil/copyright/` | Selmas ønske om et spil, hvor man «copyrighter en tegning og gætter, hvem der har copyrighten». Et tegne- og gættespil for 3-6 på én iPad, der går rundt: alle tegner det **samme** motiv hver for sig, og når man er færdig, slås ens copyright-stempel på tegningen – men dækket til, så de andre kun ser «©?». Derefter går enheden rundt igen, og hver spiller gætter, hvem der har copyright på hver af de andres tegninger. Afsløringen tager én tegning ad gangen: stemplet vendes, og man kan se, hvem der ramte rigtigt. 10 point for et rigtigt gæt, 5 til tegneren pr. narret – men narrer man **alle**, giver tegningen ingenting. Tre runder med hvert sit motiv. Score = vinderens point, online topliste. To filer: `regler.mjs` (motiver, gæt, point og runder, enhedstestet) og `index.html`. Se «Copyright – stemplet, gættet og pointene» nedenfor. |
+| Slanger | `public/spil/slanger/` | Lars' ønske om en Snake.io-klon i firkanter som Papirøen: en slange på en plade af 32 × 32 felter, der kun kan køre i fire retninger – og hele styringen er **to kæmpe drejeknapper** i bunden af skærmen, som 3- og 7-tasten på en gammel Nokia (venstre = mod uret, højre = med uret; trykkene lægges i kø, så to hurtige tryk giver to sving). Spis perlerne og bliv den længste; Otto, Mille og Aksel jager de samme perler, og en død slange bliver selv til perler. Score = længste længde, online topliste. **Kan også spilles sammen med en ven**, én på hver telefon — se [Spil sammen](#spil-sammen). To filer: `slange.mjs` (motor, enhedstestet) + `sammen.mjs` (den fælles plade, enhedstestet) og `index.html`. Se «Slanger – de to knapper og den fælles plade» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -476,8 +477,8 @@ alle de andre ([se nedenfor](#kaploeb)) — det er den, der gør, at man kan joi
 hinanden i næsten alle spil uden at skulle skrive netværkskode i hvert enkelt.
 
 Trykker man på en ven, står der en knap pr. spil, to kan spille sammen — i dag
-**«🎮 Spil Kryds og bolle sammen»**, **«🎮 Spil Dybet sammen»** og
-**«🎮 Spil Papirøen sammen»**. Så laves
+**«🎮 Spil Kryds og bolle sammen»**, **«🎮 Spil Dybet sammen»**,
+**«🎮 Spil Papirøen sammen»** og **«🎮 Spil Slanger sammen»**. Så laves
 der et *rum*, man selv sendes ind i (`/spil/kryds/?rum=K7QFD`), og vennen får
 invitationen øverst på forsiden: «Sofie vil spille Kryds og bolle med dig» med
 knappen **«Hop med!»**. Begge lander i det samme spil på hver sin telefon: den
@@ -1388,6 +1389,41 @@ en iPad, hvor man ikke kan se hele havet frem.
 Test: `test/sejl.test.mjs` (drejer med rigtige tryk på ror-knapperne, stamper i
 vindøjet og flyver på halvvind, sejler ind i et skær og mister et hjerte, og
 lader botten sejle hele turen, til uvejret tager den) + `test/unit/sejl.test.mjs`.
+
+### Slanger – de to knapper og den fælles plade
+
+Lars' ønske var en Snake.io-klon «i firkanter som paper io» — og med en pointe
+om styringen: det værste ved snake på en telefon er touch, så man skal kunne
+spille *uden at kigge*, som med 3- og 7-tasten på en gammel Nokia. Motoren bor
+i `slange.mjs` uden DOM, sammen-reglerne i `sammen.mjs`; begge enhedstestes.
+
+1. **Styringen er to drejninger, ikke fire retninger.** De to knapper fylder
+   godt 40 % af skærmen (det *var* ønsket: «halvdelen af skærmen skal være
+   knap») og drejer relativt: venstre mod uret, højre med uret. Trykkene lægges
+   i en kø, der tømmes ét felt ad gangen (`sving()` i motoren), så to hurtige
+   tryk giver to sving lige efter hinanden — uden køen kunne man ikke vende
+   180° om et hjørne, og så føles styringen i stykker. Piletasterne virker
+   stadig som faste retninger til dem, der spiller med tastatur.
+2. **Maden bor i faste pladser, ikke i en liste.** Plads nr. j's position efter
+   n spisninger er `madPos(seed, j, n)` — ren regning ud af frøet. Solo betyder
+   det bare, at en spist perle «flytter sig»; sammen betyder det, at to
+   telefoner kun skal blive enige om *tællerne*: hver sender sin egen
+   spist-tæller pr. plads, og pladsens sande stilling er summen. Spiser begge
+   den samme perle i samme nu, vokser begge, og tælleren hopper 2 — helt fint.
+   Der sendes aldrig en madliste over nettet.
+3. **Hver telefon dømmer kun sin egen død.** Vennens slange er et sekund bagud
+   (som i Papirøen), men i snake er det den, der kører *ind* i noget, der dør —
+   så kører jeg ind i vennens krop, som jeg ser den, er det min død, dømt på
+   min telefon med mine data. Æren følger med i dødstallet (`doede` + `af`),
+   så vennens skærm kan sige «Du tog Sofie!». Ingen krav-forhandling som på
+   papiret. Døde slanger bliver til perler solo, men ikke sammen — de skulle
+   holdes ens på to telefoner, og det er ikke det værd.
+
+Runden sammen varer to minutter, man kommer igen når man dør, og den længste
+(bedste længde) vinder. Test: `test/slanger.test.mjs` (drejeknapperne med en
+rigtig finger, Nokia-dobbelttrykket, en hel runde til slutskærmen — og to
+browsere, hvor Sofie inviterer Selma ind på den samme plade) +
+`test/unit/slanger.test.mjs`.
 
 ### Stenalder – regelvalg
 

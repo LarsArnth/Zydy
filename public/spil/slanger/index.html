@@ -1,0 +1,1007 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1a3a">
+<meta name="description" content="Slanger: spis perlerne og bliv den længste slange på pladen. To store knapper drejer dig – som på en gammel Nokia.">
+<title>Slanger – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23101838'/%3E%3Cpath d='M14 44h20v-10h-14v-10h24' stroke='%2318c98a' stroke-width='9' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='50' cy='44' r='5' fill='%23ffd447'/%3E%3C/svg%3E">
+<style>
+  /*
+    Slanger – Lars' ønske «Snake.io-klon i firkanter som Papirøen».
+
+    Reglerne bor i slange.mjs (enhedstestet); denne fil tegner dem og tager
+    imod tommelfingrene. Tre ting er værd at kende:
+
+      1) Hele styringen er de to store knapper i bunden – tilsammen fylder de
+         knap halvdelen af skærmen, for det var netop ønsket: man skal kunne
+         spille uden at kigge, som med 3- og 7-tasten på en gammel Nokia.
+         Venstre knap drejer mod uret, højre med uret, og trykkene lægges i kø
+         i motoren, så to hurtige tryk giver to sving.
+      2) Pladen er et gitter på N × N felter, og alt tegnes gennem sx()/sy().
+         Skærmen viser ~SYN felter med hovedet i midten – hele pladen står i
+         minikortet, så man kan se, hvor perlerne og de andre er.
+      3) Spillet kører i faste skridt på 1/60 sek. (DT), uanset hvor hurtigt
+         skærmen tegner – det er også dét, GAME.frem() bruger, så en test kan
+         spole en hel runde igennem uden at vente på rigtige sekunder.
+  */
+  :root{
+    --bg:#0f1a3a; --bg2:#1b2a56; --bg3:#2b3d72; --text:#f2f7ff; --muted:#9fb3dd;
+    --sun:#ffd447; --coral:#ff4d5e; --mint:#5ee0a8; --sky:#6cc5ff; --ink:#0d1530; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}          /* .btn sætter display:block, og så gemmer hidden ikke af sig selv */
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 12px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:40px;line-height:1;margin:0 0 8px;letter-spacing:-1.6px;font-weight:800}
+  p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:17px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;text-align:center;text-decoration:none;color:var(--ink);transition:transform .08s}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--text);font-variant-numeric:tabular-nums}
+  .pill.tid b{color:var(--sun)}
+  .pill.tid.slut b{color:var(--coral)}
+
+  .wrap{width:100%;max-width:820px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .brand{flex:1;text-align:center;font-weight:800;font-size:20px;letter-spacing:-.4px}
+
+  /* Fladen er pladen + de to knapper; start- og slutskærmen ligger hen over det hele. */
+  .flade{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;margin-top:6px}
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#101838}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Ønsket var, at «halvdelen af skærmen skal være knap» – så de to drejeknapper
+     får godt 40 % af fladen, og man kan ramme dem uden at kigge. */
+  .knapper{flex:0 0 40%;min-height:110px;display:flex;gap:10px;padding-top:10px}
+  .knap{flex:1;border-radius:var(--r);background:var(--bg2);color:var(--text);touch-action:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    font-size:clamp(44px,11vh,84px);line-height:1;font-weight:800;transition:background .06s,transform .06s}
+  .knap small{font-size:15px;font-weight:700;color:var(--muted);letter-spacing:.4px}
+  .knap.tryk{background:var(--bg3);transform:scale(.98)}
+
+  /* Længden og de andre slanger */
+  .hud{position:absolute;left:12px;top:10px;pointer-events:none;opacity:0;transition:opacity .25s}
+  .flade.igang .hud{opacity:1}
+  .hud .lbl{font-size:11px;font-weight:800;color:#5d76b4;text-transform:uppercase;letter-spacing:1.2px}
+  #laengde{display:block;font-size:40px;font-weight:900;line-height:1.08;letter-spacing:-2px;color:var(--mint);
+    font-variant-numeric:tabular-nums;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+  #laengde small{font-size:18px;font-weight:700;color:var(--muted);letter-spacing:0}
+  .rang{margin-top:10px;display:flex;flex-direction:column;gap:3px}
+  .rang .r{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--text);
+    background:rgba(13,21,48,.72);border-radius:999px;padding:2px 9px 2px 4px;width:max-content}
+  .rang .r.ude{opacity:.42}
+  .rang i{width:12px;height:12px;border-radius:4px;display:block}
+  .rang b{font-variant-numeric:tabular-nums;min-width:26px;text-align:right}
+
+  /* Minikortet: hele pladen, så man kan se hvor perlerne og de andre er */
+  .mini{position:absolute;right:12px;top:10px;width:84px;height:84px;border-radius:10px;
+    background:rgba(13,21,48,.82);box-shadow:0 3px 12px rgba(0,0,0,.3);opacity:0;transition:opacity .25s}
+  .flade.igang .mini{opacity:1}
+
+  /* Sig hvad knapperne gør, de første sekunder af en runde */
+  .styr{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;pointer-events:none;
+    background:rgba(13,21,48,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);color:var(--text);
+    border-radius:999px;padding:9px 18px;font-size:16px;font-weight:700;opacity:0;transition:opacity .3s;white-space:nowrap}
+  .styr.on{opacity:1}
+
+  /* Råbet midt på fladen: «UDE!», «Du tog Otto!» */
+  .raab{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .25s}
+  .raab.on{opacity:1}
+  .raab .big{font-size:clamp(30px,11vw,62px);font-weight:900;letter-spacing:-2px;line-height:1;color:#fff;
+    text-shadow:0 0 26px rgba(24,201,138,.9),0 5px 0 #0b7a53,0 12px 30px rgba(0,0,0,.45);transform:rotate(-3deg)}
+  .raab.on .big{animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+  .raab .sub{margin-top:10px;font-size:16px;font-weight:700;color:var(--text);
+    background:rgba(13,21,48,.66);border-radius:999px;padding:7px 15px}
+  @keyframes pop{from{transform:scale(.4) rotate(-3deg);opacity:0}to{transform:scale(1) rotate(-3deg);opacity:1}}
+
+  /* Start- og slutskærm oven på fladen (og knapperne) */
+  .screen{display:none;position:absolute;inset:0;z-index:5;flex-direction:column;align-items:center;overflow-y:auto;
+    border-radius:var(--r);padding:16px 18px 22px;background:rgba(15,26,58,.92);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .lavet{margin:0 0 12px;font-size:14px;color:var(--muted);line-height:1.4}
+  .lavet b{color:var(--text)}
+  .regler{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:8px 12px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .rekord-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0 4px}
+  .rekord-row span{color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:14px}
+  .rekord-row b{font-size:30px;font-weight:800;color:var(--sun);letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  .slutscore{font-size:68px;font-weight:900;line-height:1;letter-spacing:-3px;margin:2px 0 2px;
+    color:var(--mint);font-variant-numeric:tabular-nums}
+  .slutscore small{font-size:28px;color:var(--muted);letter-spacing:0}
+  .slutsub{font-size:16px;color:var(--muted);margin:0 0 10px}
+  .ny{color:var(--mint);font-weight:800;font-size:19px;margin:0 0 8px}
+  #nameBtn{position:relative}
+  #nameBtn small{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-top:2px}
+  #nameBtn.tom{color:var(--muted)}
+  #nameForm{margin-top:10px}
+  #nameForm input{width:100%;padding:15px;border-radius:var(--r);border:2px solid var(--bg3);background:var(--bg2);
+    color:var(--text);font:inherit;font-size:18px;text-align:center}
+  .hint{font-size:15px;margin:12px 0 0}
+
+  /* Toplisten (fælles klient) */
+  .hs{margin-bottom:10px}
+  .hs .hs-liste{max-height:26vh}
+
+  @media (max-height:660px){
+    h1{font-size:31px} #laengde{font-size:32px} .slutscore{font-size:50px}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+    .mini{width:68px;height:68px}
+  }
+  @media (max-width:380px){ .top .brand{display:none} }
+  @media (prefers-reduced-motion:reduce){ .btn,.knap,.raab.on .big{transition:none;animation:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="brand">Slanger</div>
+    <div class="pill" id="rekordPill">Rekord <b id="rekPill">0</b></div>
+    <!-- Spiller man sammen med en ven, tæller uret ned i stedet for rekorden. -->
+    <div class="pill tid" id="tidPill" hidden>⏱ <b id="tidVal">2:00</b></div>
+  </div>
+
+  <div class="flade" id="flade">
+    <div class="stage" id="stage">
+      <canvas id="c" aria-label="Pladen, hvor slangerne glider rundt efter perlerne"></canvas>
+      <canvas id="mini" class="mini" aria-hidden="true"></canvas>
+
+      <div class="hud" aria-live="off">
+        <span class="lbl">Din længde</span>
+        <b id="laengde">4<small> led</small></b>
+        <div class="rang" id="rang"></div>
+      </div>
+
+      <div class="styr" id="styrHint">Knapperne drejer: ⟲ venstre · ⟳ højre</div>
+
+      <div class="raab" id="raab">
+        <div class="big" id="raabTekst"></div>
+        <div class="sub" id="raabUnder"></div>
+      </div>
+    </div>
+
+    <!-- De to drejeknapper: hele styringen, stor nok til tommelfingre i blinde -->
+    <div class="knapper" id="knapper">
+      <button class="knap" id="vKnap" aria-label="Drej mod uret">⟲<small>venstre rundt</small></button>
+      <button class="knap" id="hKnap" aria-label="Drej med uret">⟳<small>højre rundt</small></button>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Slanger</h1>
+        <div class="lavet"><b>Far</b> ønskede sig spillet · <b>Claude</b> byggede det</div>
+        <div class="hs" id="hsListe"></div>
+        <div class="rekord-row"><span>Rekord</span><b id="rekordVal">0</b></div>
+        <button class="btn ghost tom" id="nameBtn">Skriv dit navn</button>
+        <form id="nameForm" hidden autocomplete="off">
+          <input id="nameInput" type="text" maxlength="12" placeholder="Skriv dit navn" aria-label="Dit navn"
+            enterkeyhint="done" autocapitalize="words" spellcheck="false">
+          <button class="btn" type="submit">OK</button>
+        </form>
+        <button class="btn" id="startBtn">Spil</button>
+        <!-- Reglerne står UNDER Spil-knappen med vilje: startskærmen skal kunne
+             bruges uden at rulle på en iPhone, og knappen er det vigtigste. -->
+        <div class="regler" aria-hidden="true">
+          <span>🔄 <b>To knapper</b> drejer slangen – som på en gammel Nokia</span>
+          <span>🟡 <b>Spis perlerne</b> og bliv den længste på pladen</span>
+          <span>⚠️ <b>Undgå kroppene</b> – også din egen – og væggen</span>
+        </div>
+        <p class="hint">Venstre knap drejer mod uret, højre med uret – man behøver ikke kigge på dem.
+          Otto, Mille og Aksel glider også rundt efter perlerne, og kører en slange ind i en anden,
+          bliver den selv til perler, man kan spise.</p>
+      </div>
+    </div>
+
+    <!-- Spil sammen: her venter man på vennen, og her står det, hvis hen går. -->
+    <div class="screen" id="ventScreen">
+      <div class="card">
+        <h1 id="ventTitel">Vent lidt…</h1>
+        <p id="ventTekst">Vi henter spillet.</p>
+        <a class="btn ghost" href="/">Til forsiden</a>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Du er ude!</h1>
+        <div class="slutscore" id="slutScore">4<small> led</small></div>
+        <p class="slutsub" id="slutSub"></p>
+        <p class="ny" id="nyRekord" hidden>Ny rekord!</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Spil igen</button>
+        <button class="btn ghost" id="menuBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="slanger"></script>
+<!-- Spil sammen: to venner på den samme plade, én på hver telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module">
+import {
+  N, DX, DY,
+  nyBane, tik, sving, styr, botRetning, alleMad, score,
+} from './slange.mjs';
+import {
+  TID, anden, pak, anvend, froe, nySammen, nulstilSammen,
+  resultat, slutTitel, tidTekst as urTekst, tidTilbage,
+} from './sammen.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const harFastSeed = Number.isFinite(fastSeed);
+let seed = harFastSeed ? fastSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
+// ?bots=0 giver pladen for sig selv – godt til at øve sig, og det er dét,
+// testen bruger, når den skal være sikker på, hvem der spiste hvad.
+const ønsketBotter = parseInt(params.get('bots'), 10);
+const antalBotter = Number.isFinite(ønsketBotter)
+  ? Math.max(0, Math.min(3, ønsketBotter)) : 3;
+// ?frys=1 lader pladen stå stille, til nogen kalder GAME.frem(). Det er til
+// testene – to browsere kan ikke spille et rigtigt sekund i takt.
+const frys = params.get('frys') === '1';
+
+const $ = id => document.getElementById(id);
+const flade = $('flade'), canvas = $('c'), g = canvas.getContext('2d');
+const stage = $('stage');
+const mini = $('mini'), mg = mini.getContext('2d');
+if (!g.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const laengdeEl = $('laengde'), rangEl = $('rang'), rekPill = $('rekPill'), rekordVal = $('rekordVal');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen'), styrHint = $('styrHint');
+const ventScreen = $('ventScreen'), tidPill = $('tidPill'), tidVal = $('tidVal');
+const raab = $('raab'), raabTekst = $('raabTekst'), raabUnder = $('raabUnder');
+const nameBtn = $('nameBtn'), nameForm = $('nameForm'), nameInput = $('nameInput');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY_BEST = 'zydy.slanger.best';
+const hentBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const gemBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+
+const DT = 1 / 60;                  // fast skridt, så en runde forløber ens overalt
+const SYN = 17;                     // så mange felter vil vi helst se ad gangen
+
+/** Mørkere udgave af en farve – til hovedets øjne og navnet. */
+function mørkere(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.round(((n >> 16) & 255) * f), gr = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
+  return `rgb(${r},${gr},${b})`;
+}
+const MADFARVER = ['#ffd447', '#ff8f3a', '#6cc5ff', '#ff6ad5', '#5ee0a8'];
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1, dpr = 1, u = 10, Bu = SYN, Hu = SYN;
+let miniS = 84, miniNu = 0;
+function maal() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  u = Math.max(6, Math.min(W, H) / SYN);
+  Bu = W / u; Hu = H / u;                      // hvor mange felter der er plads til
+
+  const m = mini.getBoundingClientRect();
+  miniS = Math.max(1, m.width);
+  mini.width = Math.round(m.width * dpr); mini.height = Math.round(m.height * dpr);
+  mg.setTransform(dpr, 0, 0, dpr, 0, 0);
+  miniNu = 0;
+}
+maal();
+addEventListener('resize', maal);
+addEventListener('orientationchange', () => setTimeout(maal, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
+
+/* ---------- Spil sammen med en ven (?rum=<kode>) ----------
+   Hele klumpen længere nede under «Rummet»; her står bare, om vi er i gang. */
+const rumKode = window.Rum ? Rum.kode() : null;
+const sam = rumKode ? nySammen(rumKode, 'vaert') : null;
+if (sam) { sam.status = null; sam.modspiller = ''; sam.version = -1; sam.tilstand = null; sam.gemmer = false; sam.res = null; }
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';                  // menu | spil | slut (i et rum: vent | spil | slut)
+let bane = nyBane({ seed, bots: antalBotter, navn: 'Dig' });
+let mig = bane.spillere[0];
+let camX = 0, camY = 0, T = 0;
+let best = hentBest();
+let sidst = 0, acc = 0;
+let visLaengde = -1;
+let råbTil = 0;
+let hintTil = 0;
+let gnist = [];                     // små prikker der springer, når man spiser
+let slutAf = null;                  // hvem der tog mig
+
+const farve = id => (bane.spillere[id - 1] || mig).farve;
+const hoved = p => ({ x: p.krop[0] % N, y: (p.krop[0] / N) | 0 });
+
+function nulstil() {
+  if (sam) {
+    // Den samme plade på begge telefoner: frøet kommer ud af rumkoden og runden.
+    seed = froe(sam.kode, sam.runde);
+    bane = nyBane({
+      seed, navn: Highscore.navn.hent() || 'Dig',
+      ven: sam.modspiller || 'Vennen', vaert: sam.rolle === 'vaert',
+    });
+    nulstilSammen(sam, sam.runde);
+    sam.res = null;
+  } else {
+    if (!harFastSeed) seed = (Math.random() * 4294967296) >>> 0;
+    bane = nyBane({ seed, bots: antalBotter, navn: Highscore.navn.hent() || 'Dig' });
+  }
+  mig = bane.spillere[0];
+  const h = hoved(mig);
+  camX = h.x; camY = h.y;
+  T = 0; visLaengde = -1; gnist = []; slutAf = null;
+  miniNu = 0;
+  visHud(); byggRang();
+}
+
+/* ---------- Spillets gang ---------- */
+function spilSkridt(dt) {
+  T += dt;
+  if (fase === 'spil') {
+    for (const e of tik(bane, dt)) hændelse(e);
+    if (sam) { visUr(); if (bane.t >= TID) sammenSlut(); }
+    else if (bane.slut) slut();
+  }
+  if (mig.krop.length) {
+    const h = hoved(mig);
+    const px = h.x + DX[mig.dir] * mig.t + 0.5, py = h.y + DY[mig.dir] * mig.t + 0.5;
+    const f = Math.min(1, dt * 9);
+    camX += (px - camX) * f; camY += (py - camY) * f;
+  }
+
+  for (const q of gnist) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 20 * dt; }
+  gnist = gnist.filter(q => q.t < q.liv);
+
+  if (råbTil && T > råbTil) { raab.classList.remove('on'); råbTil = 0; }
+  if (hintTil && T > hintTil) { styrHint.classList.remove('on'); hintTil = 0; }
+
+  if (mig.krop.length !== visLaengde) { visLaengde = mig.krop.length; visHud(); }
+}
+
+function hændelse(e) {
+  if (e.slags === 'mad') {
+    miniNu = 0;
+    if (e.id === mig.id) {
+      gnister(e.slot < 0 ? '#ffd447' : MADFARVER[e.slot % MADFARVER.length]);
+      if (sam) { if (e.slot >= 0) sam.mineSpist[e.slot]++; gemSnart(); }
+    }
+  } else if (e.slags === 'doed') {
+    miniNu = 0;
+    if (e.id === mig.id) {
+      slutAf = e.af ? bane.spillere[e.af - 1] : null;
+      if (sam) {
+        sigTil('UDE!', titelFor(e.grund), 1.4);
+        navigator.vibrate && navigator.vibrate([40, 30, 40]);
+        gemSnart();
+      }
+    } else if (e.af === mig.id) sigTil('SPIST!', 'Du tog ' + bane.spillere[e.id - 1].navn, 1.1);
+  } else if (e.slags === 'venUde') {
+    miniNu = 0;
+    if (e.af === mig.id) {
+      sigTil('UDE!', 'Du tog ' + bane.spillere[1].navn, 1.2);
+      navigator.vibrate && navigator.vibrate(18);
+    }
+  } else if (e.slags === 'genfoedt') { miniNu = 0; if (sam) gemSnart(); }
+}
+
+/** Små prikker der springer fra hovedet, når man spiser en perle. */
+function gnister(farve) {
+  if (roligt || !mig.krop.length) return;
+  const h = hoved(mig);
+  for (let i = 0; i < 7; i++) {
+    gnist.push({
+      x: h.x + 0.5, y: h.y + 0.5, farve,
+      vx: (Math.random() - 0.5) * 7, vy: -3 - Math.random() * 6,
+      s: 0.14 + Math.random() * 0.2, t: 0, liv: 0.4 + Math.random() * 0.3,
+    });
+  }
+}
+
+function sigTil(stor, lille, sek) {
+  raabTekst.textContent = stor; raabUnder.textContent = lille || '';
+  raab.classList.remove('on'); void raab.offsetWidth; raab.classList.add('on');
+  råbTil = T + sek;
+}
+
+/* ---------- Skærmene ---------- */
+function visHud() {
+  laengdeEl.innerHTML = Math.max(0, mig.krop.length) + '<small> led</small>';
+  rekPill.textContent = String(best);
+  rekordVal.textContent = String(best);
+  tegnRang();
+}
+
+/** Én linje pr. slange: farve, navn og hvor lang den er. */
+function byggRang() {
+  rangEl.innerHTML = '';
+  for (const p of bane.spillere) {
+    const r = document.createElement('div');
+    r.className = 'r'; r.dataset.id = String(p.id);
+    const i = document.createElement('i'); i.style.background = p.farve;
+    const n = document.createElement('span'); n.textContent = p.mig ? 'Dig' : p.navn;
+    const b = document.createElement('b');
+    r.append(i, n, b);
+    rangEl.appendChild(r);
+  }
+  tegnRang();
+}
+
+function tegnRang() {
+  for (const r of rangEl.children) {
+    const p = bane.spillere[Number(r.dataset.id) - 1];
+    r.classList.toggle('ude', !p.levende);
+    r.lastChild.textContent = String(p.fjern ? (sam ? sam.venLaengde : 0) : p.krop.length);
+  }
+}
+
+function start() {
+  nulstil();
+  fase = 'spil';
+  visTid = -1;
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on'); ventScreen.classList.remove('on');
+  flade.classList.add('igang');
+  styrHint.classList.add('on'); hintTil = T + 3.5;
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+function slut() {
+  if (fase !== 'spil') return;
+  fase = 'slut';
+  flade.classList.remove('igang');
+  raab.classList.remove('on'); råbTil = 0;
+  styrHint.classList.remove('on'); hintTil = 0;
+  navigator.vibrate && navigator.vibrate([50, 40, 50]);
+
+  const s = score(mig), ny = s > best;
+  if (ny) { best = s; gemBest(best); }
+  $('slutTitel').textContent = titelFor(bane.grund);
+  $('slutScore').innerHTML = s + '<small> led</small>';
+  $('slutSub').textContent = `${mig.mad} ${mig.mad === 1 ? 'perle' : 'perler'}`
+    + (mig.drab ? ` · du tog ${mig.drab}` : '')
+    + ` · ${tidTekst(bane.t)}`;
+  $('nyRekord').hidden = !ny;
+  slutScreen.classList.add('on');
+  visHud(); tegnListe(); sendRekord(s);
+}
+
+function titelFor(grund) {
+  if (grund === 'mur') return 'Du kørte ind i væggen!';
+  if (grund === 'egen') return 'Du bed dig selv i halen!';
+  return 'Du kørte ind i ' + (slutAf ? slutAf.navn : 'en slange') + '!';
+}
+
+const tidTekst = urTekst;
+
+function tilMenu() {
+  fase = 'menu';
+  nulstil();
+  slutScreen.classList.remove('on'); startScreen.classList.add('on');
+  flade.classList.remove('igang');
+  raab.classList.remove('on'); råbTil = 0;
+  visHud(); hentListe();
+}
+
+/* ---------- Rummet: to venner på den samme plade ----------
+   Reglerne (vennens slange, de fælles mad-tællere og æren for et drab) ligger
+   i sammen.mjs. Her er kun skærmen og trafikken: hent, skriv min egen halvdel,
+   og gør det igen. */
+const GEM_MS = 900;                 // så tit skriver vi vores egen halvdel op
+const VENT_SLUT_MS = 8000;          // så længe venter vi på vennens sidste tal
+
+/** Uret i toppen, mens man spiller sammen. Kun når sekundet skifter. */
+let visTid = -1;
+function visUr() {
+  if (!sam) return;
+  const tilbage = Math.ceil(tidTilbage(bane));
+  if (tilbage === visTid) return;
+  visTid = tilbage;
+  tidVal.textContent = tidTekst(tilbage);
+  tidPill.classList.toggle('slut', tilbage <= 15);
+}
+
+/** Skærmen, hvor man venter på vennen – eller får at vide, at hen gik. */
+function ventSkaerm(titel, tekst) {
+  fase = 'vent';
+  $('ventTitel').textContent = titel;
+  $('ventTekst').textContent = tekst;
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  ventScreen.classList.add('on');
+  flade.classList.remove('igang');
+}
+
+/** Sådan ser jeg ud for vennen. */
+const minHalv = () => pak(bane, mig, sam, {
+  runde: sam.runde,
+  tid: Math.round(bane.t * 10) / 10,
+  faerdig: sam.minSlut ? 1 : 0,
+});
+
+/** Et rum er landet fra serveren: vent, spil eller slut. */
+function modtag(r) {
+  if (!r || !sam) return;
+  // To svar kan komme i den forkerte rækkefølge, når vi både henter og skriver.
+  // Et gammelt svar må ikke lægge sig oven på noget nyere – versionen tæller kun opad.
+  if (r.version < sam.version && r.status === sam.status) return;
+  sam.rolle = r.rolle;
+  sam.status = r.status;
+  sam.modspiller = r.modspiller || sam.modspiller;
+  sam.version = r.version;
+  sam.tilstand = r.tilstand || {};
+
+  if (r.status === 'inviteret') {
+    const hvem = sam.modspiller || 'vennen';
+    ventSkaerm(r.rolle === 'vaert' ? 'Venter på ' + hvem : 'Klar!',
+      r.rolle === 'vaert'
+        ? hvem + ' kan se invitationen på zydy.dk. Så snart ' + hvem + ' hopper med, glider slangerne ud.'
+        : 'Vi siger til ' + hvem + ', at du er klar.');
+    return;
+  }
+  if (r.status === 'slut') {
+    ventSkaerm((sam.modspiller || 'Vennen') + ' gik',
+      'Runden er slut. Vil I spille igen, kan I invitere hinanden på zydy.dk.');
+    if (sam.stop) { sam.stop(); sam.stop = null; }
+    return;
+  }
+
+  // Begge er inde: rul pladen ud. Værten har ventet, gæsten kommer direkte ind.
+  if (fase === 'vent' || fase === 'menu') { nyRunde(sam.runde); return; }
+
+  const hans = sam.tilstand[anden(sam.rolle)];
+  if (!hans || (fase !== 'spil' && fase !== 'slut')) return;
+  const runde = Number(hans.runde) || 1;
+  if (runde > sam.runde) { nyRunde(runde); return; }    // vennen trykkede «Spil igen»
+  if (runde < sam.runde) return;                        // … eller er ikke nået med endnu
+  for (const e of anvend(bane, sam, hans)) hændelse(e);
+  tegnRang();
+  // Er vennens ur løbet ud, er mit det også lige om lidt. At stoppe med hen er
+  // bedre end at spille videre alene, fordi den ene telefon lå i lommen.
+  if (fase === 'spil' && sam.venSlut) sammenSlut();
+  else if (fase === 'slut' && sam.venSlut) visSammenResultat();
+}
+
+/** En ny runde på en frisk plade – den samme hos os begge. */
+function nyRunde(runde) {
+  sam.runde = runde;
+  ventScreen.classList.remove('on');
+  start();
+  visUr();
+  gemSnart();
+}
+
+/** Min halvdel op i rummet. Kom vennen os i forkøbet, skriver vi igen. */
+async function gemSammen() {
+  if (!sam || sam.gemmer || sam.status !== 'igang') return;
+  if (fase !== 'spil' && fase !== 'slut') return;
+  sam.gemmer = true;
+  try {
+    for (let i = 0; i < 3; i++) {
+      const tilstand = Object.assign({}, sam.tilstand, { [sam.rolle]: minHalv() });
+      const d = await Rum.gem(sam.kode, tilstand, sam.version);
+      modtag(d.rum);
+      if (!d.uaendret) break;
+    }
+  } catch (e) { /* prøver igen ved næste tik */ }
+  sam.gemmer = false;
+}
+const gemSnart = () => { if (sam) gemSammen(); };
+
+/** Tiden er gået. Vi venter lige på vennens sidste tal, så vi begge to viser
+ *  det samme resultat – og gætter ellers ud fra det, vi så sidst. */
+function sammenSlut() {
+  if (fase !== 'spil') return;
+  fase = 'slut';
+  sam.minSlut = true;
+  sam.ventFra = Date.now();
+  flade.classList.remove('igang');
+  raab.classList.remove('on'); råbTil = 0;
+  styrHint.classList.remove('on'); hintTil = 0;
+  visUr();
+  navigator.vibrate && navigator.vibrate([50, 40, 50]);
+
+  const s = score(mig);
+  sam.nyRekord = s > best;
+  if (sam.nyRekord) { best = s; gemBest(best); }
+  slutScreen.classList.add('on');
+  visSammenResultat();
+  visHud(); tegnListe(); sendRekord(s);
+  gemSnart();
+  setTimeout(() => { if (fase === 'slut') visSammenResultat(); }, VENT_SLUT_MS + 100);
+}
+
+function visSammenResultat() {
+  if (!sam || fase !== 'slut') return;
+  const hvem = sam.modspiller || 'Vennen';
+  const venter = !sam.venSlut && Date.now() - (sam.ventFra || 0) < VENT_SLUT_MS;
+  if (venter) {
+    $('slutTitel').textContent = 'Tiden er gået!';
+    $('slutSub').textContent = 'Venter på ' + hvem + '…';
+  } else {
+    sam.res = resultat(mig.bedste, sam.venBedste);
+    $('slutTitel').textContent = slutTitel(sam.res, hvem);
+    $('slutSub').textContent = hvem + ': ' + sam.venBedste + ' led'
+      + (mig.drab ? ' · du tog ' + hvem + ' ' + (mig.drab === 1 ? 'én gang' : mig.drab + ' gange') : '');
+  }
+  $('slutScore').innerHTML = mig.bedste + '<small> led</small>';
+  $('nyRekord').hidden = !sam.nyRekord;
+}
+
+/** Jeg går: vennen får det at vide med det samme. */
+function forladRum() {
+  if (sam.stop) { sam.stop(); sam.stop = null; }
+  const hjem = () => { location.href = '/'; };
+  Rum.forlad(sam.kode).then(hjem, hjem);
+}
+
+// «‹ zydy.dk» midt i en fælles runde: sig det til vennen i stedet for bare at gå.
+document.querySelector('.back').addEventListener('click', e => {
+  if (!sam) return;
+  e.preventDefault();
+  forladRum();
+});
+
+async function startSammen() {
+  $('menuBtn').textContent = 'Slut spillet';
+  $('rekordPill').hidden = true; tidPill.hidden = false;
+  ventSkaerm('Vent lidt…', 'Vi henter pladen.');
+  try {
+    let r = await Rum.hent(sam.kode);
+    // Gæsten siger ja ved at være her: det var dét, «Hop med!» betød på forsiden.
+    if (r.rolle === 'gaest' && r.status === 'inviteret') r = await Rum.kom(sam.kode);
+    modtag(r);
+  } catch (e) {
+    ventSkaerm('Spillet er væk', (e && e.message) || 'Prøv at få din ven til at invitere igen.');
+    return;
+  }
+  sam.stop = Rum.foelg(sam.kode, modtag, GEM_MS);
+  setInterval(() => { if (document.visibilityState === 'visible') gemSammen(); }, GEM_MS);
+}
+
+/* ---------- Løkken ---------- */
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!sidst) sidst = nu;
+  const dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  acc += dt;
+  let n = 0;
+  while (acc >= DT && n++ < 20) { if (!frys) spilSkridt(DT); acc -= DT; }
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ---------- Tegning ---------- */
+const sx = wx => (wx - camX) * u + W / 2;
+const sy = wy => (wy - camY) * u + H / 2;
+
+/** Pladen med det fine gitter – og det mørke uden om, som er farligt. */
+function tegnPlade() {
+  g.fillStyle = '#0b122c'; g.fillRect(0, 0, W, H);
+  const x0 = sx(0), y0 = sy(0), s = N * u;
+  g.fillStyle = '#152048';
+  g.fillRect(x0, y0, s, s);
+
+  const fra = Math.max(0, Math.floor(camX - Bu / 2)), til = Math.min(N, Math.ceil(camX + Bu / 2) + 1);
+  const fraY = Math.max(0, Math.floor(camY - Hu / 2)), tilY = Math.min(N, Math.ceil(camY + Hu / 2) + 1);
+  g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1;
+  g.beginPath();
+  for (let x = fra; x <= til; x++) { g.moveTo(Math.round(sx(x)) + 0.5, Math.max(y0, 0)); g.lineTo(Math.round(sx(x)) + 0.5, Math.min(y0 + s, H)); }
+  for (let y = fraY; y <= tilY; y++) { g.moveTo(Math.max(x0, 0), Math.round(sy(y)) + 0.5); g.lineTo(Math.min(x0 + s, W), Math.round(sy(y)) + 0.5); }
+  g.stroke();
+
+  // Rød advarsel langs væggen
+  g.strokeStyle = 'rgba(255,77,94,.55)';
+  g.lineWidth = Math.max(3, u * 0.28);
+  g.strokeRect(x0 - g.lineWidth / 2, y0 - g.lineWidth / 2, s + g.lineWidth, s + g.lineWidth);
+}
+
+/** Perlerne: de faste pladser i hver sin farve, de døde slangers i guld. */
+function tegnMad() {
+  for (const m of alleMad(bane)) {
+    const x = sx(m.x + 0.5), y = sy(m.y + 0.5);
+    if (x < -u || y < -u || x > W + u || y > H + u) continue;
+    const puls = 1 + 0.12 * Math.sin(T * 5 + m.felt);
+    const r = u * 0.26 * puls;
+    const f = m.slot < 0 ? '#ffd447' : MADFARVER[m.slot % MADFARVER.length];
+    g.fillStyle = f;
+    g.globalAlpha = 0.25;
+    g.beginPath(); g.arc(x, y, r * 2, 0, 7); g.fill();
+    g.globalAlpha = 1;
+    g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+}
+
+/** Hvor en slanges hoved er på vej hen – min egen glider mellem felterne. */
+const hovedPos = p => {
+  const h = hoved(p);
+  const t = p.fjern ? 0 : p.t;
+  return { x: h.x + DX[p.dir] * t + 0.5, y: h.y + DY[p.dir] * t + 0.5 };
+};
+
+/** Slangerne: en tyk, blød streg gennem felterne, med hoved og øjne forrest. */
+function tegnSlanger() {
+  for (const p of bane.spillere) {
+    if (!p.levende || !p.krop.length) continue;
+    const pos = hovedPos(p);
+    g.strokeStyle = p.farve;
+    g.lineWidth = u * 0.74;
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath();
+    g.moveTo(sx(pos.x), sy(pos.y));
+    for (const i of p.krop) g.lineTo(sx(i % N + 0.5), sy(((i / N) | 0) + 0.5));
+    g.stroke();
+    // Lysere striber hen ad ryggen, så man kan se leddene
+    g.strokeStyle = 'rgba(255,255,255,.22)';
+    g.lineWidth = u * 0.2;
+    g.beginPath();
+    for (let k = 1; k < p.krop.length; k += 2) {
+      const i = p.krop[k];
+      g.moveTo(sx(i % N + 0.35), sy(((i / N) | 0) + 0.5));
+      g.lineTo(sx(i % N + 0.65), sy(((i / N) | 0) + 0.5));
+    }
+    g.stroke();
+
+    // Hovedet med øjne i køreretningen
+    const x = sx(pos.x), y = sy(pos.y);
+    if (x < -u * 3 || y < -u * 3 || x > W + u * 3 || y > H + u * 3) continue;
+    const r = u * 0.92;
+    g.fillStyle = p.farve;
+    g.strokeStyle = '#fff'; g.lineWidth = Math.max(1.5, u * 0.1);
+    g.beginPath(); g.roundRect(x - r / 2, y - r / 2, r, r, r * 0.34); g.fill(); g.stroke();
+    const øx = DX[p.dir] * r * 0.14, øy = DY[p.dir] * r * 0.14;
+    const på = DX[p.dir] ? 0 : 1;                    // øjnene står på tværs af farten
+    g.fillStyle = '#fff';
+    for (const side of [-1, 1]) {
+      g.beginPath();
+      g.arc(x + øx + (på ? side * r * 0.2 : 0), y + øy + (på ? 0 : side * r * 0.2), r * 0.16, 0, 7);
+      g.fill();
+    }
+    g.fillStyle = mørkere(p.farve, 0.3);
+    for (const side of [-1, 1]) {
+      g.beginPath();
+      g.arc(x + øx * 1.8 + (på ? side * r * 0.2 : 0), y + øy * 1.8 + (på ? 0 : side * r * 0.2), r * 0.08, 0, 7);
+      g.fill();
+    }
+
+    if (!p.mig) {
+      g.font = `700 ${Math.max(9, u * 0.62)}px -apple-system,system-ui,sans-serif`;
+      g.textAlign = 'center';
+      g.lineWidth = 3; g.strokeStyle = 'rgba(13,21,48,.85)';
+      g.strokeText(p.navn, x, y - r * 0.95);
+      g.fillStyle = '#fff';
+      g.fillText(p.navn, x, y - r * 0.95);
+      g.textAlign = 'start';
+    }
+  }
+}
+
+function tegnGnister() {
+  for (const q of gnist) {
+    g.globalAlpha = Math.max(0, 1 - q.t / q.liv);
+    g.fillStyle = q.farve;
+    g.fillRect(sx(q.x), sy(q.y), q.s * u, q.s * u);
+  }
+  g.globalAlpha = 1;
+}
+
+/** Minikortet: hele pladen i småt, med et vindue om det, man ser. */
+function tegnMini() {
+  if (T < miniNu) return;
+  miniNu = T + 0.12;
+  const s = miniS, c = s / N;
+  mg.fillStyle = '#0d1530'; mg.fillRect(0, 0, s, s);
+  for (const m of alleMad(bane)) {
+    mg.fillStyle = m.slot < 0 ? '#ffd447' : '#8a97c4';
+    mg.fillRect(m.x * c, m.y * c, Math.max(1, c), Math.max(1, c));
+  }
+  for (const p of bane.spillere) {
+    if (!p.levende) continue;
+    mg.fillStyle = p.farve;
+    for (const i of p.krop) mg.fillRect((i % N) * c, ((i / N) | 0) * c, Math.max(1, c + 0.5), Math.max(1, c + 0.5));
+  }
+  mg.strokeStyle = 'rgba(242,247,255,.4)'; mg.lineWidth = 1;
+  mg.strokeRect((camX - Bu / 2) * c, (camY - Hu / 2) * c, Bu * c, Hu * c);
+}
+
+function tegn() {
+  tegnPlade();
+  tegnMad();
+  tegnSlanger();
+  tegnGnister();
+  tegnMini();
+}
+
+/* ---------- De to drejeknapper: hele styringen ---------- */
+function saetSving(v) {
+  if (fase !== 'spil' || !mig.levende) return false;
+  return sving(mig, v);
+}
+function saetRetning(d) {
+  if (fase !== 'spil' || !mig.levende) return false;
+  return styr(mig, d);
+}
+
+/** pointerdown, så svinget tæller i samme nu, fingeren lander – ikke ved slip. */
+function knap(el, v) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    el.classList.add('tryk');
+    saetSving(v);
+  });
+  const op = () => el.classList.remove('tryk');
+  el.addEventListener('pointerup', op);
+  el.addEventListener('pointercancel', op);
+  el.addEventListener('pointerleave', op);
+  // click sluges: pointerdown har allerede gjort arbejdet
+  el.addEventListener('click', e => e.preventDefault());
+}
+knap($('vKnap'), -1);
+knap($('hKnap'), 1);
+
+addEventListener('keydown', e => {
+  const taster = { ArrowRight: 0, KeyD: 0, ArrowDown: 1, KeyS: 1, ArrowLeft: 2, KeyA: 2, ArrowUp: 3, KeyW: 3 };
+  if (e.code in taster) { e.preventDefault(); saetRetning(taster[e.code]); }
+  else if (e.code === 'Enter' && fase !== 'spil' && !sam) start();
+});
+
+/* ---------- Topliste (navnet skrives på startskærmen som i Obby) ---------- */
+const SPIL = 'slanger';
+const navn = () => Highscore.navn.hent();
+const KEY_MIN = 'zydy.slanger.min';
+let top = null;
+const minRække = {
+  hent() { try { return JSON.parse(localStorage.getItem(KEY_MIN)) || null; } catch (e) { return null; } },
+  gem(v) { try { localStorage.setItem(KEY_MIN, JSON.stringify(v)); } catch (e) {} },
+};
+const somLed = v => v + ' led';
+
+function visNavn() {
+  const n = navn();
+  nameBtn.classList.toggle('tom', !n);
+  nameBtn.innerHTML = '';
+  if (n) {
+    nameBtn.appendChild(document.createTextNode(n));
+    const s = document.createElement('small');
+    s.textContent = 'Tryk for at ændre navn';
+    nameBtn.appendChild(s);
+  } else nameBtn.textContent = 'Skriv dit navn';
+}
+
+function tegnListe() {
+  if (!top) return;
+  const liste = top.liste || [], jeg = navn() || null;
+  Highscore.tegnListe($('hsListe'), liste, jeg, 'Topliste', somLed);
+  Highscore.tegnListe($('hsSlut'), liste, jeg, 'Topliste', somLed);
+}
+
+async function hentListe() {
+  const rod = $('hsListe');
+  if (!top) rod.innerHTML = '<p class="hs-venter">Henter toplisten…</p>';
+  try { top = await Highscore.hent(SPIL); tegnListe(); }
+  catch (e) { if (!top) Highscore.tegnFejl(rod); }
+}
+
+async function sendRekord(p) {
+  const n = navn();
+  if (!n || !top || !Highscore.kvalificerer(top, p)) return;
+  try {
+    const svar = await Highscore.send(SPIL, n, p);
+    if (svar.token) minRække.gem({ id: svar.id, token: svar.token });
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { /* toplisten er pynt – spillet kører videre */ }
+}
+
+async function omdøbMigSelv(nyt) {
+  const m = minRække.hent();
+  if (!m || !m.id || !m.token) return;
+  try {
+    const svar = await Highscore.omdoeb(SPIL, m.id, m.token, nyt);
+    if (svar.id !== m.id) minRække.gem(null);
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { minRække.gem(null); }
+}
+
+/* ---------- Knapper ---------- */
+$('startBtn').addEventListener('click', start);
+// I et rum betyder «Spil igen» en ny runde for os begge, og «Menu» bliver til
+// «Slut spillet» – ellers sad vennen og ventede på en plade, ingen rullede ud.
+$('igenBtn').addEventListener('click', () => { if (sam) nyRunde(sam.runde + 1); else start(); });
+$('menuBtn').addEventListener('click', () => { if (sam) forladRum(); else tilMenu(); });
+nameBtn.addEventListener('click', () => {
+  nameBtn.hidden = true; nameForm.hidden = false;
+  nameInput.value = navn();
+  setTimeout(() => nameInput.focus({ preventScroll: true }), 30);
+});
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const n = nameInput.value.replace(/\s+/g, ' ').trim().slice(0, 12);
+  const før = navn();
+  if (n) Highscore.navn.gem(n);
+  nameForm.hidden = true; nameBtn.hidden = false;
+  visNavn(); tegnListe();
+  if (n && før && n !== før) omdøbMigSelv(n);
+});
+
+/* ---------- Start ---------- */
+nulstil(); visNavn(); visHud(); hentListe();
+if (sam && window.Rum) startSammen();
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  seed, start, tilMenu,
+  /** Et tryk på en drejeknap: -1 = venstre (mod uret), 1 = højre (med uret). */
+  sving: saetSving,
+  /** Piletasterne: en fast retning. 0=højre, 1=ned, 2=venstre, 3=op. */
+  saetRetning,
+  /**
+   * Spoler `sek` sekunder frem med de samme faste skridt som spillet selv.
+   * `styring` kan være en funktion, der får slangen og svarer med en retning.
+   */
+  frem(sek, styring) {
+    const n = Math.round(sek / DT);
+    for (let i = 0; i < n && fase === 'spil'; i++) {
+      if (typeof styring === 'function') saetRetning(styring(mig, bane));
+      spilSkridt(DT);
+    }
+    return this.state;
+  },
+  /** Lader bot-hjernen køre min egen slange – så en test kan spille en hel runde. */
+  botTur(maksSek = 240) {
+    mig.bot = true;
+    this.frem(maksSek);
+    mig.bot = false;
+    return this.state;
+  },
+  botRetning: () => botRetning(bane, mig),
+  /** Spiller man sammen med en ven, er det her, testen kan se rummet. */
+  get sammen() {
+    if (!sam) return null;
+    const ven = bane.spillere[1];
+    return {
+      rolle: sam.rolle, status: sam.status, modspiller: sam.modspiller, runde: sam.runde,
+      version: sam.version, tilbage: tidTilbage(bane), faerdig: sam.minSlut, venSlut: sam.venSlut,
+      resultat: sam.res, venBedste: sam.venBedste, venLaengde: sam.venLaengde, drab: mig.drab,
+      mineSpist: sam.mineSpist.reduce((a, b) => a + b, 0), venSpist: sam.venSpist.reduce((a, b) => a + b, 0),
+      ven: ven ? { navn: ven.navn, levende: ven.levende, krop: ven.krop.length } : null,
+    };
+  },
+  get state() {
+    const h = mig.krop.length ? hoved(mig) : { x: -1, y: -1 };
+    return {
+      fase, seed, best, slut: bane.slut, grund: bane.grund,
+      t: bane.t, laengde: mig.krop.length, bedste: mig.bedste, score: score(mig),
+      mad: mig.mad, drab: mig.drab, doede: mig.doede,
+      x: h.x, y: h.y, retning: mig.dir, koe: mig.koe.slice(), levende: mig.levende,
+      krop: mig.krop.slice(), ekstra: bane.ekstra.length,
+      madPladser: alleMad(bane).map(m => m.felt),
+      sammen: this.sammen,
+      spillere: bane.spillere.map(p => ({
+        id: p.id, navn: p.navn, mig: p.mig, levende: p.levende,
+        laengde: p.krop.length, bedste: p.bedste, x: p.krop.length ? p.krop[0] % N : -1, y: p.krop.length ? (p.krop[0] / N) | 0 : -1,
+      })),
+    };
+  },
+};
+</script>
+</body></html>

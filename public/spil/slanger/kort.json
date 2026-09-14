@@ -1,0 +1,19 @@
+{
+  "navn": "Slanger",
+  "beskrivelse": "Spis perlerne og bliv den længste slange på pladen. To store knapper drejer dig – som på en gammel Nokia – og pas på de andre slanger!",
+  "nøgleord": [
+    "snake",
+    "snake io",
+    "snake.io",
+    "slither",
+    "orm",
+    "nokia"
+  ],
+  "url": "/spil/slanger/",
+  "orden": 164,
+  "sammen": true,
+  "højscore": {
+    "maks": 1024,
+    "unik": true
+  }
+}
