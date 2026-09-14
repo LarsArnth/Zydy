@@ -1,0 +1,21 @@
+{
+  "navn": "Klaverregn",
+  "beskrivelse": "Noderne regner ned – tryk på dem og spil rigtige sange på klaveret. Hvor mange rammer du, før hjerterne slipper op?",
+  "nøgleord": [
+    "klaver",
+    "piano",
+    "piano tiles",
+    "musik",
+    "noder",
+    "sange",
+    "melodi",
+    "mester jakob"
+  ],
+  "url": "/spil/klaverregn/",
+  "orden": 158,
+  "kapløb": true,
+  "højscore": {
+    "maks": 5000,
+    "unik": true
+  }
+}

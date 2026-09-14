@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Klaverregn: fliser der regner ned mod et klaver -->
+  <rect width="512" height="512" rx="96" fill="#0f1a3a"/>
+  <!-- baner -->
+  <line x1="128" y1="40" x2="128" y2="330" stroke="#2b3d72" stroke-width="6"/>
+  <line x1="256" y1="40" x2="256" y2="330" stroke="#2b3d72" stroke-width="6"/>
+  <line x1="384" y1="40" x2="384" y2="330" stroke="#2b3d72" stroke-width="6"/>
+  <!-- faldende fliser (dyb → lys, venstre → højre) -->
+  <rect x="30" y="150" width="92" height="74" rx="16" fill="#6cc5ff"/>
+  <rect x="158" y="52" width="92" height="74" rx="16" fill="#5ee0a8"/>
+  <rect x="286" y="196" width="92" height="74" rx="16" fill="#ffd447"/>
+  <rect x="414" y="96" width="68" height="74" rx="16" fill="#ff8a5c"/>
+  <text x="332" y="248" font-family="-apple-system,Helvetica,sans-serif" font-size="52" font-weight="700" fill="#0d1530" text-anchor="middle">♪</text>
+  <!-- klaveret nederst -->
+  <rect x="24" y="330" width="464" height="150" rx="20" fill="#0b1330"/>
+  <rect x="36" y="342" width="106" height="126" rx="10" fill="#eef3ff"/>
+  <rect x="150" y="342" width="106" height="126" rx="10" fill="#eef3ff"/>
+  <rect x="264" y="342" width="106" height="126" rx="10" fill="#ffd447"/>
+  <rect x="378" y="342" width="98" height="126" rx="10" fill="#eef3ff"/>
+  <rect x="118" y="342" width="52" height="70" rx="6" fill="#0d1530"/>
+  <rect x="232" y="342" width="52" height="70" rx="6" fill="#0d1530"/>
+</svg>
