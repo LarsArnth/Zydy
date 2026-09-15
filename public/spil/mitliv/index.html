@@ -863,6 +863,7 @@ function saetByg(paa) {
   $('#bygbakke').hidden = !paa;
   $('#knapper').hidden = paa;
   opdater();
+  maalOp();          // huset skifter højde her – mål om nu, ikke først i næste billede
   tegn();
 }
 
@@ -1002,7 +1003,20 @@ function tilSpil() {
 }
 
 /* ================= Input ================= */
+/*
+  ResizeObserveren kommer først i næste billede, så lige efter en knap eller
+  byg-bakken er dukket op, kan S og OY stamme fra den forrige størrelse – og så
+  lander fingeren et helt felt ved siden af dét, man trykkede på. Både trykket
+  og punktFor() måler derfor om med det samme, hvis lærredet ikke har den
+  størrelse, vi sidst regnede ud fra.
+*/
+function maalOpHvisSkiftet() {
+  const r = laerred.getBoundingClientRect();
+  if (Math.round(r.width) !== W || Math.round(r.height) !== H) { maalOp(); tegn(); }
+}
+
 function feltFor(e) {
+  maalOpHvisSkiftet();
   const r = laerred.getBoundingClientRect();
   const x = Math.floor((e.clientX - r.left - OX) / S);
   const y = Math.floor((e.clientY - r.top - OY) / S);
@@ -1095,7 +1109,7 @@ Object.assign(GAME, {
   arbejd: paaArbejde,
   ringTilVen: navn => { const n = ringTilVen(state.hjem, navn, rnd); opdater(); return n; },
   // Midten af et felt i lærredets egne pixels – så en test kan trykke præcis på et møbel
-  punktFor: (x, y) => ({ x: OX + (x + 0.5) * S, y: OY + (y + 0.5) * S }),
+  punktFor: (x, y) => { maalOpHvisSkiftet(); return { x: OX + (x + 0.5) * S, y: OY + (y + 0.5) * S }; },
   formue: () => formue(state.hjem),
   humoer: () => humoer(state.hjem),
   hygge: () => hygge(state.hjem),

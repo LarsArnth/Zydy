@@ -218,7 +218,11 @@ const css = `
 .kap-pille:focus-visible{outline:3px solid #ffd447;outline-offset:2px}
 .kap-lyser{background:#ffd447;color:#1c1f4a;animation:kap-puls 1.6s ease-in-out infinite}
 .kap-slut{background:rgba(255,92,122,.9);color:#fff}
-@keyframes kap-puls{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.04)}}
+/* Pulsen ligger i glødet og ikke i en scale(): pillen er en knap, man skal kunne
+   ramme, mens den lyser – og en knap, der bliver ved med at ændre størrelse,
+   hopper både under fingeren og under en test, der venter på, at den står stille. */
+@keyframes kap-puls{0%,100%{box-shadow:0 2px 10px rgba(0,0,0,.35)}
+  50%{box-shadow:0 0 0 7px rgba(255,212,71,.32),0 2px 10px rgba(0,0,0,.35)}}
 @media (prefers-reduced-motion:reduce){.kap-lyser{animation:none}}
 
 .kap-dlg{border:0;padding:0;background:none;color:#fff7e6;max-width:min(92vw,380px);width:100%}
