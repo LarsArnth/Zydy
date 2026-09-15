@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 38,
+      "dato": "2026-09-15",
+      "spil": "elementer",
+      "titel": "Elementløbet – ild, jord, vand og vind",
+      "hvad": "Sofie ønskede sig et spil om de fire elementer – ild, jord, vand og vind – og her er det. Du løber selv fremad og ER et element: tryk på de fire store knapper i bunden og skift form, lige før du rammer forhindringen. Ild brænder tornekrattet, vand slukker bålet, vind flyver over floden, og jord står fast i hvirvelstormen. Boblen over forhindringen viser, hvad den vil have – men det går hurtigere og hurtigere, og forhindringerne kommer tættere og tættere. Forkert element koster et liv, og du har tre. Score = hvor mange du klarer, og der er topliste – og du kan tage et kapløb mod en ven.",
+      "oensket": "Sofie"
+    },
+    {
       "nr": 37,
       "dato": "2026-09-15",
       "spil": "kaempetal",

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Elementløbet: de fire elementer i hver sit hjørne – ild, jord, vand og vind -->
+  <rect width="512" height="512" rx="96" fill="#12231a"/>
+  <!-- Ild: en flamme øverst til venstre -->
+  <path d="M140 60c46 46 68 82 68 116a68 68 0 01-136 0c0-34 22-70 68-116z" fill="#ff8a2a"/>
+  <path d="M140 122c22 24 32 42 32 60a32 32 0 01-64 0c0-18 10-36 32-60z" fill="#ffd447"/>
+  <!-- Vind: hvirvellinjer øverst til højre -->
+  <g stroke="#dfeefb" stroke-width="26" stroke-linecap="round" fill="none">
+    <path d="M292 108q64-30 116 0"/>
+    <path d="M310 168q56-26 104 2"/>
+    <path d="M336 226q40-18 74 2"/>
+  </g>
+  <!-- Jord: en klippe nederst til venstre med revner -->
+  <circle cx="140" cy="376" r="84" fill="#9a8262"/>
+  <g stroke="#6f5a41" stroke-width="16" stroke-linecap="round" fill="none">
+    <path d="M100 360l44 28"/>
+    <path d="M156 330l28 38"/>
+  </g>
+  <!-- Vand: en dråbe nederst til højre -->
+  <path d="M372 288c52 56 78 96 78 132a78 78 0 01-156 0c0-36 26-76 78-132z" fill="#4aa8ff"/>
+  <ellipse cx="344" cy="398" rx="14" ry="30" fill="#bfe3ff" transform="rotate(20 344 398)"/>
+</svg>

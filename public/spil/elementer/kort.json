@@ -1,0 +1,23 @@
+{
+  "navn": "Elementløbet",
+  "beskrivelse": "Løb som ild, jord, vand og vind og skift element i rette øjeblik: ild brænder krattet, vand slukker bålet, vind flyver over floden, og jord står fast i stormen.",
+  "nøgleord": [
+    "elementer",
+    "ild",
+    "vand",
+    "jord",
+    "vind",
+    "fire elementer",
+    "fireboy",
+    "watergirl",
+    "avatar",
+    "løbespil",
+    "runner"
+  ],
+  "url": "/spil/elementer/",
+  "orden": 168,
+  "kapløb": true,
+  "højscore": {
+    "maks": 2000
+  }
+}
