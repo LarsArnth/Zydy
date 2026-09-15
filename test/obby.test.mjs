@@ -554,6 +554,75 @@ await page.getByRole('button', { name: 'Spil', exact: true }).click();
 await page.evaluate(() => window.GAME.vaelgGrad('let'));
 assert.equal((await page.evaluate(() => window.GAME.state)).grad, 'svaer', 'graden kan kun skiftes på startskærmen');
 
+/* ---------- Musik på banen (Sofies ønske nr. 53) ---------- */
+// «Kan du add så at nå du er på banen kommer der sange på en ny sang være runde»
+// – musik, mens man er på banen, og en ny sang for hver runde.
+const sange = await page.evaluate(() => window.GAME.sange);
+assert.ok(sange.length >= 4, `der er flere sange at trække imellem (${sange.length})`);
+assert.equal(new Set(sange.map(s => s.navn)).size, sange.length, 'sangene har hver sit navn');
+
+await page.evaluate(() => window.GAME.tilMenu());
+let mus = (await page.evaluate(() => window.GAME.state)).musik;
+assert.equal(mus.spiller, false, 'der er stille på startskærmen – musikken hører til på banen');
+assert.ok(await page.locator('#sangHud').isHidden(), 'og så står der ingen sang i HUD\'en');
+assert.equal(mus.antal, sange.length);
+
+// Første runde: start fra menuen. Derefter en runde ad gangen: dø, vent, tryk.
+await page.getByRole('button', { name: 'Spil', exact: true }).click();
+const spilleliste = [];
+for (let runde = 0; runde < 6; runde++) {
+  if (runde > 0) {
+    await page.evaluate(() => window.GAME.die());
+    await page.evaluate(() => { const G = window.GAME; for (let n = 0; n < 120; n++) G.tick(1 / 120); G.jump(); });
+  }
+  mus = (await page.evaluate(() => window.GAME.state)).musik;
+  assert.ok(mus.sang, `runde ${runde + 1} har en sang`);
+  assert.equal(mus.spiller, true, `runde ${runde + 1} spiller musik, mens man er på banen`);
+  assert.equal(await page.locator('#sangHud').textContent(), '♪ ' + mus.sang, 'HUD\'en siger hvad der spiller');
+  assert.ok(await page.locator('#sangHud').isVisible(), 'sangens navn kan ses, mens man løber');
+  if (runde > 0) assert.notEqual(mus.sang, spilleliste[runde - 1], 'ny runde = ny sang – aldrig den samme to gange i træk');
+  spilleliste.push(mus.sang);
+}
+assert.ok(new Set(spilleliste).size >= 4, `seks runder giver mange forskellige sange (${new Set(spilleliste).size})`);
+assert.ok(spilleliste.every(n => sange.some(s => s.navn === n)), 'sangene kommer fra musik.mjs');
+await page.screenshot({ path: SHOTS + 'obby-musik.png' });
+
+// Dør man, holder musikken op – TRY AGAIN skal være stille, og næste runde har sin egen sang
+await page.evaluate(() => window.GAME.die());
+mus = (await page.evaluate(() => window.GAME.state)).musik;
+assert.equal(mus.spiller, false, 'musikken stopper, når man dør');
+assert.ok(await page.locator('#sangHud').isHidden(), 'og sangen forsvinder fra HUD\'en');
+await page.evaluate(() => { const G = window.GAME; for (let n = 0; n < 120; n++) G.tick(1 / 120); G.jump(); });
+
+// 🔊-knappen slår musikken fra – og valget huskes
+const lydKnap = page.locator('#lydBtn');
+assert.ok(await lydKnap.isVisible(), 'lydknappen står i toppen, hvor man kan finde den');
+const lydPlads = await lydKnap.boundingBox();
+assert.ok(lydPlads.width >= 44 && lydPlads.height >= 32, 'knappen er stor nok til en finger');
+assert.equal(await lydKnap.textContent(), '🔊');
+await lydKnap.click();
+mus = (await page.evaluate(() => window.GAME.state)).musik;
+assert.equal(mus.til, false, 'musikken er slået fra');
+assert.equal(mus.spiller, false);
+assert.equal(await lydKnap.textContent(), '🔇');
+assert.equal(await lydKnap.getAttribute('aria-pressed'), 'false');
+assert.ok(await page.locator('#sangHud').isHidden(), 'ingen sang i HUD\'en, når der ikke er musik');
+assert.equal(await page.evaluate(() => localStorage.getItem('zydy.obby.musik')), 'false', 'valget huskes');
+// … og spillet kører videre uden lyd (et tryk sætter figuren i gang som altid)
+await page.evaluate(() => { const G = window.GAME; G.jump(); for (let n = 0; n < 60; n++) G.tick(1 / 120); });
+assert.equal((await page.evaluate(() => window.GAME.state)).phase, 'run', 'spillet er upåvirket af, at musikken er slået fra');
+await page.evaluate(() => { const G = window.GAME; G.die(); for (let n = 0; n < 120; n++) G.tick(1 / 120); G.jump(); });
+mus = (await page.evaluate(() => window.GAME.state)).musik;
+assert.equal(mus.spiller, false, 'en ny runde begynder heller ikke at spille');
+assert.ok(mus.sang, 'men runden har stadig sin sang klar til man skruer op igen');
+
+await page.reload();
+await page.waitForSelector('#hsListe .hs-liste, #hsListe .hs-fejl');
+assert.equal(await lydKnap.textContent(), '🔇', 'musikken er stadig slået fra efter en genindlæsning');
+await lydKnap.click();
+assert.equal((await page.evaluate(() => window.GAME.state)).musik.til, true, 'og kan slås til igen');
+assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'lydknappen giver ikke vandret scroll');
+
 // API-fejl må ikke vælte spillet
 await page.unroute('**/api/highscore/**');
 await page.route('**/api/highscore/**', route => route.fulfill({ status: 500, json: { ok: false, fejl: 'test' } }));

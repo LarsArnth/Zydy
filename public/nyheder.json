@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 48,
+      "dato": "2026-09-15",
+      "spil": "obby",
+      "titel": "Obby: musik på banen – en ny sang hver runde",
+      "hvad": "Sofie ønskede sig sange, mens man er på banen, og en ny sang for hver runde. Nu spiller der musik, så snart du står klar på firkanten: seks sange – Lavaløb, Hoppe-hop, Stjernehop, Turbo, Disko-obby og Natteløb – og du får en ny, hver gang du starter forfra (også når du genopstår på et checkpoint). Navnet på sangen står oppe i hjørnet, mens du løber. Skal der være stille, trykker du bare på 🔊 i toppen, og så husker spillet det til næste gang.",
+      "oensket": "Sofie"
+    },
+    {
       "nr": 47,
       "dato": "2026-09-15",
       "spil": "fjolle",

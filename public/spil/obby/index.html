@@ -43,8 +43,13 @@
     men tiden går langsommere eller hurtigere. HARD er som spillet altid har
     været, så ingen skal vænne sig om.
 
-    Én fil, ingen afhængigheder (ud over toplistens fælles klient
-    /spil/highscore.js).
+    Syvende ønske (Sofie): «nå du er på banen kommer der sange, på en ny sang
+    være runde». Der spiller nu musik, så længe man er på banen, og hver ny runde
+    trækker en ny sang. Sangene er noder i musik.mjs, som spilles med WebAudio –
+    se «Musikken» nede i koden. 🔊-knappen i toppen slår dem fra igen.
+
+    To filer: musik.mjs (sangene) og index.html. Ellers ingen afhængigheder
+    (ud over toplistens fælles klient /spil/highscore.js).
 
     Spilverdenen regnes i "enheder" (1 enhed = spillerens bredde), og en
     enhed er så mange px, at der altid er 12 enheder på tværs og 16 i højden.
@@ -71,6 +76,9 @@
   .btn.ghost{background:var(--bg2);color:var(--text)}
   .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
   button.pill{color:var(--text);font-weight:700;min-height:36px}
+  /* 🔊/🔇: en lille ikonknap, så der stadig er plads til Skins og Menu på en telefon */
+  button.pill.lyd{padding:8px 12px;min-width:44px;font-size:17px;line-height:1.1}
+  button.pill.lyd[aria-pressed="false"]{opacity:.55}
 
   .wrap{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
   .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
@@ -96,6 +104,10 @@
   .hud .fart.bump{transform:scale(1.25)}
   /* Hvilken sværhedsgrad man spiller på – står under fartmåleren i sin egen farve */
   .hud .grad-hud{margin-top:3px;font-size:15px;font-weight:800;letter-spacing:1.4px}
+  /* Hvilken sang der spiller lige nu (Sofies ønske om musik på banen) */
+  .hud .sang-hud{margin-top:3px;font-size:14px;font-weight:700;color:var(--mint);animation:sangInd .5s}
+  .hud .sang-hud[hidden]{display:none}
+  @keyframes sangInd{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
   /* Coins i modsatte hjørne af hop-tælleren */
   .hud.hoejre{left:auto;right:14px;text-align:right}
   #coins{display:block;font-size:40px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:var(--sun);
@@ -204,7 +216,7 @@
   }
   @media (prefers-reduced-motion:reduce){
     .btn,#hop,#coins,.hud .fart,.skin-kort{transition:none}
-    #tryAgain.on .big,#readyHint .sub,.skin-kort.ryst{animation:none}
+    #tryAgain.on .big,#readyHint .sub,.skin-kort.ryst,.hud .sang-hud{animation:none}
   }
 </style>
 </head>
@@ -213,6 +225,7 @@
   <div class="top">
     <a class="back" href="/">‹ zydy.dk</a>
     <div class="name">Obby</div>
+    <button class="pill lyd" id="lydBtn" aria-pressed="true" aria-label="Musik til">🔊</button>
     <button class="pill" id="skinBtn" hidden>Skins</button>
     <button class="pill" id="menuBtn" hidden>Menu</button>
   </div>
@@ -226,6 +239,7 @@
       <div class="rek">Rekord <b id="rekHud">0</b></div>
       <div class="fart" id="fartHud">⚡ ×1,0</div>
       <div class="grad-hud" id="gradHud">HARD</div>
+      <div class="sang-hud" id="sangHud" hidden>♪ Lavaløb</div>
     </div>
 
     <div class="hud hoejre" aria-live="polite">
@@ -253,7 +267,7 @@
         <p class="grad-note" id="gradNote" hidden>EASY er til at øve sig på – de hop kommer ikke på toplisten.</p>
         <div class="hs" id="hsListe"></div>
         <div class="regler" aria-hidden="true">
-          <span>🟥 Laser = død</span><span>🌋 Lava = død</span><span>🟩 Hver 5. er checkpoint</span><span>🪙 Coins kun på checkpoints</span><span>⚡ Det går hurtigere og hurtigere</span>
+          <span>🟥 Laser = død</span><span>🌋 Lava = død</span><span>🟩 Hver 5. er checkpoint</span><span>🪙 Coins kun på checkpoints</span><span>⚡ Det går hurtigere og hurtigere</span><span>🎵 Ny sang hver runde</span>
         </div>
         <div class="rekord-row"><span>Rekord</span><b id="rekordVal">0</b></div>
         <button class="btn ghost tom" id="nameBtn">Name</button>
@@ -287,7 +301,8 @@
 <!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
 <script src="/spil/rum.js"></script>
 <script type="module" src="/spil/kaploeb.js"></script>
-<script>
+<script type="module">
+import * as Musik from './musik.mjs';
 (() => {
 'use strict';
 
@@ -339,6 +354,7 @@ const readyTekst = $('readyTekst'), tryAgainTekst = $('tryAgainTekst'), shopHint
 const coinsEl = $('coins'), coinsStart = $('coinsStart'), coinsShop = $('coinsShop');
 const shopScreen = $('shopScreen'), skinGitter = $('skinGitter'), skinBtn = $('skinBtn');
 const nameBtn = $('nameBtn'), nameForm = $('nameForm'), nameInput = $('nameInput'), menuBtn = $('menuBtn');
+const lydBtn = $('lydBtn'), sangHud = $('sangHud');
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- Fysik i enheder (1 enhed = spillerens bredde) ---------- */
@@ -721,6 +737,187 @@ function simJump() {
   return null;
 }
 
+/* ---------- Musikken ----------
+  Sofies ønske nr. 53: «nå du er på banen kommer der sange, på en ny sang være
+  runde». Sangene ligger som noder i musik.mjs og spilles med WebAudio – ingen
+  lydfiler, så der hentes ikke en eneste byte ekstra.
+
+  Fire ting er værd at huske:
+
+  1) Musikken laves først, når en runde starter. iPhone åbner ikke for WebAudio,
+     før en finger har rørt skærmen, og en runde starter altid med et tryk
+     (Spil-knappen eller et tryk på skærmen). Alt lydarbejde ligger i try/catch:
+     uden lyd er det stadig det samme spil.
+  2) Tonerne planlægges FORUD sekunder frem fra billedløkken. WebAudio spiller
+     dem selv på klokkeslæt, så rytmen ikke hakker, når browseren har travlt med
+     at tegne – derfor er det også ligegyldigt, at spillets eget ur (tempo)
+     løber hurtigere end virkelig tid.
+  3) Hver runde – også den, man starter fra et checkpoint efter en død – trækker
+     en ny sang af posen. Det var netop ønsket.
+  4) Musikken har sin egen gain-node. Skal den stoppe, skrues DEN ned og smides
+     væk; så dør de toner, der allerede var planlagt frem i tiden, stille ud, og
+     de kan ikke nå at lyde oven i den næste sang.
+*/
+const KEY_MUSIK = 'zydy.obby.musik';
+const MUSIK_VOL = 0.2;       // musikken skal ligge under spillet, ikke oven på det
+const FORUD = 0.25;          // sekunder toner planlægges frem
+let musikTil = laes(KEY_MUSIK, true) !== false;
+let musikAktiv = false;      // er der en runde i gang, som skal have musik?
+let sangNr = -1, sangPose = Musik.nyPose();
+let actx = null, musikUd = null, stoej = null;
+let sangT0 = 0;              // AudioContext-tiden hvor sangens slag 0 ligger
+let planlagtSlag = 0;        // hvor langt frem i sangen der er planlagt toner
+
+const sangen = () => Musik.SANGE[sangNr] || null;
+
+function lyd() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+  if (actx.state === 'suspended') actx.resume().catch(() => {});
+  return actx;
+}
+
+/** Hvid støj til trommerne – laves én gang og genbruges. */
+function stoejBuffer(c) {
+  if (stoej) return stoej;
+  const n = Math.floor(c.sampleRate * 0.3), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = fx() * 2 - 1;
+  stoej = b;
+  return stoej;
+}
+
+/** Skruer musikken ned og smider dens gain-node væk, så planlagte toner dør ud. */
+function stopLyd() {
+  const g = musikUd; musikUd = null;
+  if (!g || !actx) return;
+  try {
+    const t = actx.currentTime;
+    g.gain.cancelScheduledValues(t);
+    g.gain.setValueAtTime(g.gain.value, t);
+    g.gain.linearRampToValueAtTime(0.0001, t + 0.08);
+    setTimeout(() => { try { g.disconnect(); } catch (e) {} }, 1200);
+  } catch (e) {}
+}
+
+/** Starter (eller genoptager ved `fraSlag`) den valgte sang. */
+function startMusik(fraSlag = 0) {
+  stopLyd();
+  if (!musikTil || !musikAktiv || !sangen()) return;
+  const c = lyd(); if (!c) return;
+  try {
+    musikUd = c.createGain();
+    musikUd.gain.setValueAtTime(0.0001, c.currentTime);
+    musikUd.gain.linearRampToValueAtTime(MUSIK_VOL, c.currentTime + 0.3);
+    musikUd.connect(c.destination);
+    planlagtSlag = fraSlag;
+    sangT0 = c.currentTime + 0.08 - fraSlag / (sangen().bpm / 60);
+  } catch (e) { musikUd = null; }
+}
+
+/** Planlægger de toner, der skal lyde inden for de næste FORUD sekunder. Kaldes fra billedløkken. */
+function musikSkridt() {
+  const sang = sangen();
+  if (!musikUd || !musikAktiv || !musikTil || !sang || !actx) return;
+  if (actx.state !== 'running') return;                 // browseren har sat lyden på pause
+  const prSek = sang.bpm / 60;
+  const til = (actx.currentTime + FORUD - sangT0) * prSek;
+  if (til <= planlagtSlag) return;
+  for (const n of Musik.toner(sang, planlagtSlag, til)) spilTone(n, sangT0 + n.slag / prSek, prSek);
+  planlagtSlag = til;
+}
+
+/** Én tone (melodi, bas eller tromme) til tiden `tid` på AudioContextens ur. */
+function spilTone(n, tid, prSek) {
+  const c = actx;
+  if (!c || !musikUd || tid < c.currentTime - 0.05) return;
+  try {
+    if (n.stemme === 'kick' || n.stemme === 'klap' || n.stemme === 'hat') return spilTromme(n.stemme, tid);
+    const bas = n.stemme === 'bas';
+    const varighed = Math.max(0.1, Math.min(1.4, (n.laengde / prSek) * 0.92));
+    const f = Musik.frekvens(n.midi);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, tid);
+    g.gain.linearRampToValueAtTime(bas ? 0.5 : 0.32, tid + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, tid + varighed);
+    const filter = c.createBiquadFilter();
+    filter.type = 'lowpass'; filter.frequency.value = bas ? 700 : 2400;
+    g.connect(filter); filter.connect(musikUd);
+    // Melodien er to firkanttoner, den ene en anelse ude af stemning – det er
+    // dét, der giver den brede chiptune-klang. Bassen er en trekant alene.
+    const stemmer = bas ? [['triangle', 0]] : [['square', -6], ['square', 7]];
+    for (const [type, cent] of stemmer) {
+      const o = c.createOscillator();
+      o.type = type; o.frequency.value = f; o.detune.value = cent;
+      o.connect(g); o.start(tid); o.stop(tid + varighed + 0.05);
+    }
+  } catch (e) { /* musik er pynt */ }
+}
+
+function spilTromme(slags, tid) {
+  const c = actx; if (!c || !musikUd) return;
+  try {
+    const g = c.createGain();
+    g.connect(musikUd);
+    if (slags === 'kick') {
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(150, tid);
+      o.frequency.exponentialRampToValueAtTime(45, tid + 0.11);
+      g.gain.setValueAtTime(0.7, tid);
+      g.gain.exponentialRampToValueAtTime(0.0001, tid + 0.16);
+      o.connect(g); o.start(tid); o.stop(tid + 0.18);
+      return;
+    }
+    const s = c.createBufferSource();
+    s.buffer = stoejBuffer(c);
+    const filter = c.createBiquadFilter();
+    const klap = slags === 'klap';
+    filter.type = klap ? 'bandpass' : 'highpass';
+    filter.frequency.value = klap ? 1700 : 8000;
+    g.gain.setValueAtTime(klap ? 0.3 : 0.09, tid);
+    g.gain.exponentialRampToValueAtTime(0.0001, tid + (klap ? 0.14 : 0.04));
+    s.connect(filter); filter.connect(g);
+    s.start(tid); s.stop(tid + (klap ? 0.16 : 0.06));
+  } catch (e) {}
+}
+
+/** Ny runde = ny sang (selve ønsket). Kaldes fra spawn(), også efter en død. */
+function nyRundeMusik() {
+  const t = Musik.traekSang(sangPose, fx);
+  sangPose = { rest: t.rest, sidste: t.sidste };
+  sangNr = t.nr;
+  musikAktiv = true;
+  visSang();
+  startMusik(0);
+}
+
+function stopRundeMusik() {
+  musikAktiv = false;
+  stopLyd();
+  visSang();
+}
+
+/** Butik, faneskift og lignende: hold pause i musikken, men husk hvor i sangen vi var. */
+function pauseMusik() { if (musikUd) stopLyd(); }
+function fortsaetMusik() { if (musikAktiv && musikTil && !musikUd) startMusik(Math.max(0, planlagtSlag)); }
+
+function visSang() {
+  const sang = sangen();
+  const vis = !!sang && musikAktiv && musikTil;
+  sangHud.hidden = !vis;
+  if (vis) sangHud.textContent = '♪ ' + sang.navn;
+}
+
+/** 🔊-knappen. Valget huskes, så en telefon i en klasse kan spille uden lyd. */
+function saetMusik(til) {
+  musikTil = !!til;
+  skriv(KEY_MUSIK, musikTil);
+  lydBtn.textContent = musikTil ? '🔊' : '🔇';
+  lydBtn.setAttribute('aria-pressed', String(musikTil));
+  lydBtn.setAttribute('aria-label', musikTil ? 'Musik til' : 'Musik fra');
+  if (musikTil) startMusik(Math.max(0, planlagtSlag)); else stopLyd();
+  visSang();
+}
+
 /* ---------- Tilstand ---------- */
 let phase = 'menu';          // menu | ready | run | dead
 let T = 0;                   // spiltid i sekunder
@@ -800,6 +997,10 @@ function spawn() {
   tryAgain.classList.remove('on'); readyHint.classList.add('on'); startScreen.classList.remove('on');
   menuBtn.hidden = false; skinBtn.hidden = false;
   fyldBane(); updateHud();
+  // Ny runde, ny sang (Sofies ønske) – også når man genopstår på et checkpoint.
+  nyRundeMusik();
+  const sang = sangen();
+  if (sang && musikTil) popups.push({ text: '♪ ' + sang.navn, x: player.x + 0.5, y: player.y + 2.2, t: 0, color: '#5ee0a8' });
 }
 
 function doJump() {
@@ -851,6 +1052,7 @@ function onLand(pl) {
 
 function die(hvorfor) {
   phase = 'dead'; deadAt = T; player.running = false;
+  stopRundeMusik();                       // stille under TRY AGAIN – næste runde har sin egen sang
   shake = reduceMotion ? 0 : 0.5;
   navigator.vibrate && navigator.vibrate([60, 40, 60]);
   if (!reduceMotion) {
@@ -883,6 +1085,7 @@ function start() {
 
 function tilMenu() {
   phase = 'menu'; player.running = false;
+  stopRundeMusik();
   butikAaben = false; shopScreen.classList.remove('on');
   tryAgain.classList.remove('on'); readyHint.classList.remove('on');
   startScreen.classList.add('on'); menuBtn.hidden = true; skinBtn.hidden = true;
@@ -1091,6 +1294,7 @@ function frame(now) {
   if (!lastT) lastT = now;
   let dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   if (!paused && !butikAaben) frem(dt);
+  musikSkridt();               // planlægger toner frem i tiden – uafhængig af spillets ur
   draw();
 }
 requestAnimationFrame(frame);
@@ -1218,6 +1422,7 @@ function aabnButik() {
   shopFra = phase;
   if (phase === 'run' || phase === 'ready') butikAaben = true;   // fryser spillet
   shopScreen.classList.add('on'); startScreen.classList.remove('on');
+  pauseMusik();                                       // … og musikken holder pause med
   tegnButik();
 }
 
@@ -1225,6 +1430,7 @@ function lukButik() {
   shopScreen.classList.remove('on');
   butikAaben = false;
   lastT = 0; acc = 0;                                 // ingen kæmpe tidsspring efter pausen
+  fortsaetMusik();                                    // sangen fortsætter, hvor den slap
   if (shopFra === 'menu') startScreen.classList.add('on');
 }
 
@@ -1239,6 +1445,9 @@ addEventListener('keydown', e => {
   }
 });
 $('startBtn').addEventListener('click', start);
+lydBtn.addEventListener('click', () => saetMusik(!musikTil));
+// Skifter man væk fra fanen (eller låser telefonen), skal musikken ikke spille videre i lommen
+addEventListener('visibilitychange', () => { if (document.hidden) pauseMusik(); else if (!butikAaben) fortsaetMusik(); });
 menuBtn.addEventListener('click', tilMenu);
 skinBtn.addEventListener('click', aabnButik);
 $('skinStartBtn').addEventListener('click', aabnButik);
@@ -1264,11 +1473,13 @@ camX = -Wu * 0.3;
 fyldBane();
 shopHint.textContent = `Du får ${COINS_PR_CHECKPOINT} coins, hver gang du når et nyt checkpoint – det grønne flag på hver 5. firkant.`;
 byggGrader(); visGrad();
+saetMusik(musikTil);            // sætter 🔊/🔇 på knappen efter det, man valgte sidst
 visNavn(); updateHud(); visCoins(); hentListe();
 
 /* ---------- Test-API ---------- */
 window.GAME = {
-  start, jump, tick, frem, simJump, spawn, tilMenu, aabnButik, lukButik, seed, vaelgGrad,
+  start, jump, tick, frem, simJump, spawn, tilMenu, aabnButik, lukButik, seed, vaelgGrad, saetMusik,
+  sange: Musik.SANGE.map(s => ({ id: s.id, navn: s.navn, bpm: s.bpm })),
   skins: SKINS.map(k => ({ id: k.id, navn: k.navn, pris: k.pris, hat: k.hat || null })),
   grader: GRADER.map(g => ({ id: g.id, navn: g.navn, tempo: g.tempo })),
   pause() { paused = true; }, resume() { paused = false; lastT = 0; acc = 0; },
@@ -1286,6 +1497,8 @@ window.GAME = {
       phase, running: phase === 'run', streak, best, T, camX,
       coins, coinsPrCheckpoint: COINS_PR_CHECKPOINT, skin: valgtSkin, ejet: [...ejet], maksNaaet: maksNaaet(), butikAaben,
       grad: grad.id, gradNavn: grad.navn, gradTempo: grad.tempo, taellerMed: taellerMed(),
+      // Musikken: hvilken sang runden fik, og om den overhovedet skal spille
+      musik: { til: musikTil, spiller: musikAktiv && musikTil, nr: sangNr, sang: sangen() ? sangen().navn : null, antal: Musik.SANGE.length },
       fart: player.vx, maksFart: VX_MAKS,
       // tempo = spil-sekunder pr. virkeligt sekund; fart × tempo er den fart, man ser
       tempo, maksTempo: TEMPO_MAKS, fartPrSekund: player.vx * tempo, fartFaktor: fartFaktor(),
