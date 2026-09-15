@@ -1,0 +1,20 @@
+{
+  "navn": "Store Obby",
+  "beskrivelse": "En rigtig forhindringsbane med etaper og flag: løb, hop, undgå pigge og snurrende bomme – dør du, starter du ved flaget.",
+  "nøgleord": [
+    "obby",
+    "roblox",
+    "forhindringsbane",
+    "parkour",
+    "checkpoint",
+    "hop",
+    "etaper"
+  ],
+  "url": "/spil/storeobby/",
+  "orden": 121,
+  "kapløb": true,
+  "højscore": {
+    "maks": 500,
+    "unik": true
+  }
+}
