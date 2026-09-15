@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 41,
+      "dato": "2026-09-15",
+      "spil": "ordstige",
+      "titel": "Ordstige siger, hvad den starter og slutter med",
+      "hvad": "Liva ønskede sig, at der står, hvad stigen starter og slutter med. Nu står det med ord øverst på spilskærmen: «Starter med SPORT · slutter med STOLE» — startordet med gult og målordet med grønt. Så er man aldrig i tvivl om, hvor stigen begynder, og hvor den skal ende — hverken i dagens stige eller de tilfældige.",
+      "oensket": "Liva"
+    },
+    {
       "nr": 40,
       "dato": "2026-09-15",
       "spil": "klaver",

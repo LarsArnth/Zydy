@@ -70,6 +70,10 @@
   .row.target .tile{background:var(--mint);color:var(--ink)}
   .caption{text-align:center;color:var(--muted);font-size:13px;font-weight:700;letter-spacing:.5px;
     text-transform:uppercase;margin:2px 0 6px}
+  /* Livas ønske: skriv hvad stigen starter og slutter med */
+  .fratil{text-align:center;color:var(--muted);font-size:15px;margin:0 0 2px}
+  .fratil b{color:var(--sun);text-transform:uppercase;letter-spacing:.5px}
+  .fratil b.maal{color:var(--mint)}
 
   /* Stigen */
   .ladder-wrap{flex:1;min-height:0;position:relative;display:flex;flex-direction:column}
@@ -174,6 +178,7 @@
 <!-- Spilskærm -->
 <section id="game" class="screen">
   <div class="top"><a class="back" href="/">‹ zydy.dk</a><span class="name">Ordstige</span><span class="pill" id="pill">Trin 0 · par –</span></div>
+  <div class="fratil" id="fratil"></div>
   <div class="caption" id="caption">Mål</div>
   <div class="row target" id="target"></div>
   <div class="ladder-wrap">
@@ -523,6 +528,9 @@
     Array.prototype.slice.call(tileRow(state.target, '').childNodes).forEach(function (n) { el.appendChild(n); });
     document.getElementById('caption').textContent =
       'Mål · ' + (state.mode === 'daily' ? 'Dagens stige nr. ' + state.day : 'Tilfældig stige');
+    // Livas ønske: skriv med ord, hvad stigen starter og slutter med
+    document.getElementById('fratil').innerHTML =
+      'Starter med <b>' + state.start + '</b> · slutter med <b class="maal">' + state.target + '</b>';
   }
 
   function renderPill() {

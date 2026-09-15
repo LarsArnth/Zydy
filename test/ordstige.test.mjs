@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const { chromium, devices } = await import(process.env.PLAYWRIGHT ?? 'playwright');
 import { mockApi } from './api-mock.mjs';
 const BASE = process.env.BASE ?? 'http://localhost:4184';
+const SHOTS = new URL('./shots/', import.meta.url).pathname;   // i den worktree testen køres fra
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
 const page = await ctx.newPage();
@@ -44,6 +45,11 @@ assert.deepEqual(st.steps, [st.start]);
 assert.ok(await page.isVisible('#game'), 'spilskærm vises');
 assert.equal(await page.textContent('#pill'), `Trin 0 · par ${st.par}`);
 assert.equal(await page.$eval('#target', el => el.textContent), st.target, 'målord vises i toppen');
+
+// Livas ønske: der står med ord, hvad stigen starter og slutter med
+assert.equal(await page.textContent('#fratil'), `Starter med ${st.start} · slutter med ${st.target}`,
+  'der står hvad stigen starter og slutter med');
+assert.ok(await page.isVisible('#fratil'), 'starter/slutter-linjen kan ses');
 
 // Afvisninger: ikke-ord, to ændrede bogstaver, samme ord
 const cur = st.start;
@@ -116,7 +122,7 @@ for (let i = 0; i < path.length; i++) {
   if (i === Math.floor(path.length / 2)) {
     // Screenshot midt i spillet (vent på at toast og indgangsanimation er færdige)
     await page.waitForTimeout(1200);
-    await page.screenshot({ path: '/Users/lars/Projekter/Zydy/test/shots/ordstige.png' });
+    await page.screenshot({ path: SHOTS + 'ordstige.png' });
   }
   const res = await page.evaluate(w => GAME.tryWord(w), path[i]);
   assert.ok(res.ok, `trin ${i + 1} (${path[i]}) accepteres`);
@@ -139,6 +145,8 @@ await page.click('#end-random');
 assert.ok(!(await page.$eval('#end', e => e.classList.contains('on'))), 'overlay lukket ved nyt spil');
 st = await page.evaluate(() => GAME.state);
 assert.ok(st.par >= 4 && st.par <= 6);
+assert.equal(await page.textContent('#fratil'), `Starter med ${st.start} · slutter med ${st.target}`,
+  'starter/slutter-linjen følger med til det nye spil');
 await page.click('#btn-solve');
 st = await page.evaluate(() => GAME.state);
 assert.equal(st.done, true); assert.equal(st.won, false);
