@@ -139,8 +139,18 @@ await page.screenshot({ path: SHOTS + 'fjolle.png' });
 
 /* ---------- Etapen klaret: flaget er det nye checkpoint ---------- */
 {
-  assert.equal(await page.evaluate(() => window.GAME.spolEtape()), true, 'botten kan klare etape 1');
-  assert.match(await page.locator('#raabStor').textContent(), /ETAPE 1 KLARET/);
+  /*
+    «ETAPE 1 KLARET» skal læses i det *samme* evaluate som spolEtape(): den
+    sætter `ventTil = 0`, så næste billede med det samme går videre til etape 2
+    og skriver «ETAPE 2» i stedet. Henter man teksten i et kald for sig, når
+    rAF at komme først, og prøven falder tilfældigt på den ene eller den anden.
+  */
+  const klaret = await page.evaluate(() => ({
+    ok: window.GAME.spolEtape(),
+    raab: document.getElementById('raabStor').textContent,
+  }));
+  assert.equal(klaret.ok, true, 'botten kan klare etape 1');
+  assert.match(klaret.raab, /ETAPE 1 KLARET/);
   await page.waitForFunction(() => window.GAME.tal.etapeNr === 2, null, { timeout: 4000 });
   assert.equal(await page.locator('#etapeHud').textContent(), '2', 'HUD\'en tæller op');
   assert.match(await page.locator('#etapeNavn').textContent(), /Bananskrællen/, 'og etape 2 hedder noget andet');

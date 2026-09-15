@@ -78,7 +78,8 @@ const kapKnapper = sofie.page.locator('.v-kap-spil');
 assert.ok(await kapKnapper.count() >= 10, 'man kan tage et kapløb i alle spil med en score');
 await sofie.page.screenshot({ path: path.join(shots, 'kaploeb-vaelg.png') });
 
-await sofie.page.locator('.v-kap-spil', { hasText: 'Tårn' }).click();
+// Præcis «Tårn» – ikke «Tårnforsvar», som også står på listen
+await sofie.page.locator('.v-kap-spil', { hasText: /^Tårn$/ }).click();
 await sofie.page.waitForURL(/\/spil\/taarn\/\?rum=[A-Z0-9]{5}/, { timeout: 10_000 });
 const kode = new URL(sofie.page.url()).searchParams.get('rum');
 assert.equal(api.rum.rows.length, 1, 'der er lavet ét rum');
