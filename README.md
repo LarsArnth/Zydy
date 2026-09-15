@@ -344,6 +344,8 @@ venner, står spørgsmålet samme sted med *Ja tak* / *Nej*. Trykker man på en
 ven, kan man se hvor hen er, [skrive til hen](#skriv-med-en-ven),
 [ringe til hen](#ring-til-en-ven), hoppe med ind i det spil, hen er i gang
 med — og invitere hen til at spille *sammen*, se [Spil sammen](#spil-sammen).
+Under panelet står [dine grupper](#grupper): dig og et par venner, der skriver
+sammen alle på én gang.
 
 #### At blive venner — hvad en ny spiller ser
 
@@ -526,6 +528,63 @@ Test: `test/opkald.test.mjs` (repoets femte to-browser-test: Sofie ringer,
 Selmas telefon ringer, hun svarer, de taler sammen, og der lægges på — WebRTC og
 mikrofonen er byttet ud med en attrap, der taler samme sprog, for selve lyden er
 browserens sag) + `test/unit/opkald.test.mjs`.
+
+<a id="grupper"></a>
+
+#### Grupper — skriv sammen flere på én gang
+
+Under «Dine venner» står **«Dine grupper»** (Selmas ønske «Lav grupper»). En
+gruppe er dig og et par af dine venner, der kan skrive sammen *alle på én gang* —
+familien, dem man spiller Obby med, eller hvad man nu finder på. Man laver en
+gruppe med ét navn, tager sine venner med ind med ét tryk, og så er der en snak,
+alle i gruppen kan læse og skrive i. Brikken i panelet viser det sidste, der blev
+sagt, hvem der er med, hvem der er her lige nu — og et 💬-mærke, når der er
+kommet noget nyt.
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Database | tabellerne `grupper` og `gruppe_medlem` i `schema.sql` | `grupper(kode, navn, lavet_af, lavet_af_navn, oprettet)` og én række pr. medlem: `gruppe_medlem(kode, medlem, medlem_navn, kom)`. Koden er en rumkode (5 tegn uden I, O, 0 og 1). Begge laves også af Worker'en selv ved første gruppe (`d1Grupper`), som beskeder og opkald. |
+| API | `src/worker.mjs` → `src/grupper.mjs` | `GET /api/grupper?navn=Sofie&set=k7qfd:42` giver mine grupper med sidste besked og hvor meget der er nyt; `GET …&kode=K7QFD&efter=42` giver snakken. `POST {navn, handling, …}`: `'lav'` (gruppe), `'tilfoej'`/`'fjern'` (kode, ven), `'gaa'` (kode), `'omdoeb'` (kode, gruppe) og `'skriv'` (kode, tekst — standard). |
+| Klient | `public/grupper.js` + `<section id="grupper">` i `public/index.html` | Panelet, gruppe-dialogen og snakken. Henter hvert 15. sekund — og hvert 2,5 sekund, mens gruppen står åben. |
+
+Fire ting er værd at huske:
+
+1. **Snakken bor i besked-tabellen** under samtalen `gruppe|<kode>`
+   (`GRUPPE_PRAEFIKS` i `src/beskeder.mjs`). Så arver en gruppe trimning til de
+   nyeste 200 beskeder, 200-tegns-grænsen og spam-værnet gratis — og en person
+   har **én** fælles grænse for, hvor tit der må skrives, uanset om beskeden
+   skal til én ven eller til en hel gruppe. Til gengæld skal `sidste()` i
+   besked-lageret holde gruppesnakken ude af beskedoversigten (`NOT LIKE
+   'gruppe|%'`), ellers ville en gruppe stå som en «ven», der hedder noget
+   underligt — og en livlig gruppe kunne skubbe en vens besked ud af listen.
+2. **Man kan kun tage sine *egne* venner med ind** (ja begge veje i `venner`),
+   men i gruppen kan alle se hinanden. Det er meningen: det er sådan, en gruppe
+   bliver til noget, og det er stadig familiens egen side uden konti og login.
+   Navnet skrives, som vennen selv staver det (fra `venner`-rækken), ikke som
+   den telefon, der tog hen med, skrev det.
+3. **Kun den, der lavede gruppen, kan give den nyt navn eller tage nogen ud** —
+   resten kan altid gå selv. Og **den sidste slukker lyset**: går den sidste ud,
+   forsvinder gruppen og hele snakken, for en gruppe, ingen er med i, er der
+   ingen, der kan læse. Derfor spørger «Gå ud af gruppen» én gang til, og siger
+   det højt, hvis man er den eneste tilbage.
+4. **Hvem der har læst hvad, ligger på telefonen** (`zydy.grupper.set`, gemt
+   under den, der læste) — samme mønster som kælenavnene og beskederne. Så kan
+   ingen se, om de andre har læst det, og der er ikke noget at rydde op i.
+
+Grænserne er der, fordi API'et er åbent: højst `GRUPPER_MAKS` (12) grupper pr.
+person — også når det er en ven, der vil tage én med ind — og `MEDLEM_MAKS` (12)
+i én gruppe. Gruppenavnet fylder højst 24 tegn og renses som en besked.
+
+Skulle der komme skrald ind:
+
+```bash
+npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM gruppe_medlem WHERE kode='K7QFD'; DELETE FROM grupper WHERE kode='K7QFD'"
+```
+
+Test: `test/grupper.test.mjs` (to-browser-test: Sofie laver «Familien», tager
+Selma og Far med, skriver — Selma ser mærket på forsiden, åbner gruppen, ser hvem
+der skrev, og svarer med ét tryk; så omdøbes gruppen, Far tages ud, Selma går, og
+den sidste slukker lyset) + `test/unit/grupper.test.mjs`.
 
 <a id="spil-sammen"></a>
 
@@ -1795,7 +1854,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Tårnforsvars sti, tårne, bølger og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Tårnforsvars sti, tårne, bølger og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om
@@ -1822,12 +1881,13 @@ const api = await mockApi(page);    // før testens egen page.route, som så vin
 ```
 
 og kan bagefter kigge i `api.log.aktivitet`, `api.scores`, `api.ideer.rows`,
-`api.venner.rows`, `api.rum.rows` og `api.beskeder.rows`. Tårn, Sæt, Dybet
+`api.venner.rows`, `api.rum.rows`, `api.beskeder.rows` og `api.grupper.rows`. Tårn, Sæt, Dybet
 og Obby lægger deres egen `page.route('**/api/highscore/**')` ovenpå, når de
 har brug for en bestemt startliste. API'erne testes desuden hver for sig i
 `test/unit/highscore.test.mjs`, `test/unit/aktivitet.test.mjs`,
 `test/unit/ideer.test.mjs`, `test/unit/venner.test.mjs`,
-`test/unit/rum.test.mjs` og `test/unit/beskeder.test.mjs`. Forsiden har seks
+`test/unit/rum.test.mjs`, `test/unit/beskeder.test.mjs` og
+`test/unit/grupper.test.mjs`. Forsiden har syv
 browser-tests: `test/forside.test.mjs` (navn, ønsker, «hvem er her»),
 `test/soeg.test.mjs` (søgefeltet over listen),
 `test/venner.test.mjs` (den tomme liste med navne til ét tryk, søg uden at
@@ -1836,8 +1896,9 @@ giv en ven et kælenavn, fjern en ven — den anden part spilles af testen selv
 gennem `api.venner`),
 `test/nyheder.test.mjs` («Nyt på Zydy», hvor en ekstra nyhed serveres gennem
 `page.route('**/nyheder.json')`, så det kan prøves at der kommer noget til),
-`test/beskeder.test.mjs` («skriv med en ven») og
-`test/rum.test.mjs` («spil sammen»). De to sidste er blandt repoets syv tests
+`test/beskeder.test.mjs` («skriv med en ven»),
+`test/grupper.test.mjs` («dine grupper») og
+`test/rum.test.mjs` («spil sammen»). De tre sidste er blandt repoets otte tests
 med **to browsere** (de andre er `test/dybet-sammen.test.mjs`,
 `test/papir-sammen.test.mjs`, `test/kaploeb.test.mjs`, `test/slanger.test.mjs`
 og `test/kaempetal.test.mjs`): Sofie og Selma har

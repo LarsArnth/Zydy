@@ -6,6 +6,7 @@
 //   /api/venner             hvem der er venner med hvem på forsiden (src/venner.mjs)
 //   /api/rum                to venner der spiller det samme spil sammen (src/rum.mjs)
 //   /api/beskeder           to venner der skriver sammen (src/beskeder.mjs)
+//   /api/grupper            en gruppe venner der skriver sammen (src/grupper.mjs)
 //   /api/opkald             to venner der ringer sammen (src/opkald.mjs)
 // Kun /api/* rammer koden her (wrangler.jsonc: run_worker_first); alt andet går
 // direkte til filerne, og ukendte stier under /api/ falder tilbage til dem via env.ASSETS.
@@ -15,6 +16,7 @@ import { haandterIdeer, d1Ideer } from './ideer.mjs';
 import { haandterVenner, d1Venner } from './venner.mjs';
 import { haandterRum, d1Rum } from './rum.mjs';
 import { haandterBeskeder, d1Beskeder } from './beskeder.mjs';
+import { haandterGrupper, d1Grupper } from './grupper.mjs';
 import { haandterOpkald, d1Opkald } from './opkald.mjs';
 
 export default {
@@ -27,6 +29,7 @@ export default {
       || await haandterVenner(request, venner, beskeder)
       || await haandterRum(request, d1Rum(env.DB), venner)
       || await haandterBeskeder(request, beskeder, venner)
+      || await haandterGrupper(request, d1Grupper(env.DB), beskeder, venner)
       || await haandterOpkald(request, d1Opkald(env.DB), venner)
       || await haandterApi(request, hs);
     return svar || env.ASSETS.fetch(request);

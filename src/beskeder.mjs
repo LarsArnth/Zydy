@@ -45,6 +45,11 @@ export const OVERSIGT_MAKS = 60;       // hvor mange samtaler oversigten tager m
 export const SPAM_VINDUE_MS = 60_000;  // … og hvor tit man må skrive:
 export const SPAM_MAKS = 20;           // højst så mange beskeder pr. vindue
 
+// Grupperne (src/grupper.mjs) skriver i den samme tabel under 'gruppe|<kode>',
+// så de arver trimning, længdegrænse og spam-værn. Oversigten her er kun de
+// to-og-to-samtaler, så gruppesnak ikke dukker op som en «ven» med et gruppenavn.
+export const GRUPPE_PRAEFIKS = 'gruppe|';
+
 /** Nøglen på en samtale: de to navne med små bogstaver, altid i samme rækkefølge. */
 export const samtaleNoegle = (a, b) => [a, b].sort().join('|');
 
@@ -144,13 +149,24 @@ export function d1Beskeder(db) {
         ORDER BY id DESC LIMIT ?3`).bind(samtale, efter, n).all();
       return r.results.map(raekke).reverse();
     },
-    /** Den sidste besked i hver af mine samtaler, nyeste først. */
+    /**
+     * Den sidste besked i hver af mine to-og-to-samtaler, nyeste først.
+     * Gruppesnakken holdes udenfor (den har sin egen oversigt i src/grupper.mjs),
+     * så en livlig gruppe ikke kan skubbe en vens besked ud af listen.
+     */
     async sidste(k, n) {
       await sikr();
       const r = await db.prepare(`SELECT b.id, b.samtale, b.fra, b.fra_navn, b.til, b.til_navn, b.tekst, b.oprettet
-        FROM beskeder b JOIN (SELECT samtale, MAX(id) AS id FROM beskeder WHERE fra = ?1 OR til = ?1
-        GROUP BY samtale) s ON s.id = b.id ORDER BY b.id DESC LIMIT ?2`).bind(k, n).all();
+        FROM beskeder b JOIN (SELECT samtale, MAX(id) AS id FROM beskeder WHERE (fra = ?1 OR til = ?1)
+        AND samtale NOT LIKE '${GRUPPE_PRAEFIKS}%' GROUP BY samtale) s ON s.id = b.id
+        ORDER BY b.id DESC LIMIT ?2`).bind(k, n).all();
       return r.results.map(raekke);
+    },
+    /** Den sidste besked i én bestemt samtale – det, en gruppe viser på brikken. */
+    async sidsteI(samtale) {
+      await sikr();
+      return raekke(await db.prepare(`SELECT ${FELTER} FROM beskeder WHERE samtale = ?1 ORDER BY id DESC LIMIT 1`)
+        .bind(samtale).first());
     },
     /** Hvor meget er der kommet i samtalen, siden telefonen sidst så efter? */
     async antalEfter(samtale, efter) {

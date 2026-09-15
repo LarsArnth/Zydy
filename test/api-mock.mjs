@@ -11,7 +11,8 @@
 //   api.scores          → rækkerne i højscore-lageret
 //   api.ideer.rows      → de idéer og ønsker der er sendt ind
 //   api.venner.rows     → venskaberne, [{ fra, til, fraNavn, tilNavn, svaret }]
-//   api.beskeder.rows   → det de har skrevet til hinanden
+//   api.beskeder.rows   → det de har skrevet til hinanden (også i grupperne)
+//   api.grupper.rows    → grupperne, og api.grupper.medlemRows hvem der er med i dem
 //   api.opkald.rows     → opkaldene mellem dem, der har ringet sammen
 //
 // Options: { scores: [{ spil, navn, score }] } lægger startrækker på toplisterne.
@@ -20,7 +21,8 @@ import { haandterAktivitet } from '../src/aktivitet.mjs';
 import { haandterIdeer } from '../src/ideer.mjs';
 import { haandterVenner } from '../src/venner.mjs';
 import { haandterRum } from '../src/rum.mjs';
-import { haandterBeskeder, SAMTALE_MAKS } from '../src/beskeder.mjs';
+import { haandterBeskeder, SAMTALE_MAKS, GRUPPE_PRAEFIKS } from '../src/beskeder.mjs';
+import { haandterGrupper, GRUPPER_MAKS } from '../src/grupper.mjs';
 import { haandterOpkald } from '../src/opkald.mjs';
 
 /** Højscore-lager i hukommelsen – samme seks metoder som d1Lager(). */
@@ -173,8 +175,14 @@ export function huskBeskeder() {
     },
     async sidste(k, n) {
       const sidst = new Map();
-      rows.filter(r => r.fra === k || r.til === k).forEach(r => sidst.set(r.samtale, r));
+      // Gruppesnak ('gruppe|<kode>') holdes uden for oversigten – som i D1.
+      rows.filter(r => (r.fra === k || r.til === k) && !r.samtale.startsWith(GRUPPE_PRAEFIKS))
+        .forEach(r => sidst.set(r.samtale, r));
       return [...sidst.values()].sort((a, b) => b.id - a.id).slice(0, n);
+    },
+    async sidsteI(samtale) {
+      const mine = rows.filter(r => r.samtale === samtale);
+      return mine.length ? mine[mine.length - 1] : null;
     },
     async antalEfter(samtale, efter) {
       return rows.filter(r => r.samtale === samtale && r.id > efter).length;
@@ -184,6 +192,45 @@ export function huskBeskeder() {
     },
     async sletSamtale(samtale) {
       for (let i = rows.length - 1; i >= 0; i--) if (rows[i].samtale === samtale) rows.splice(i, 1);
+    },
+  };
+}
+
+/** Gruppe-lager i hukommelsen – samme metoder som d1Grupper(). */
+export function huskGrupper() {
+  const rows = [];                 // grupperne
+  const medlemRows = [];           // { kode, medlem, navn, kom } – hedder ikke `medlemmer`,
+                                   // for det navn er lagerets metode (medlemmer(kode))
+  const medlemmer = medlemRows;
+  const iGruppen = kode => medlemmer.filter(m => m.kode === kode).sort((a, b) => a.kom - b.kom);
+  return {
+    rows, medlemRows,
+    async find(kode) { return rows.find(g => g.kode === kode) || null; },
+    async mine(k) {
+      return medlemmer.filter(m => m.medlem === k).sort((a, b) => a.kom - b.kom)
+        .slice(0, GRUPPER_MAKS)
+        .map(m => rows.find(g => g.kode === m.kode)).filter(Boolean);
+    },
+    async antalMine(k) { return medlemmer.filter(m => m.medlem === k).length; },
+    async medlemmer(kode) { return iGruppen(kode); },
+    async medlemmerFlere(koder) {
+      const ud = {};
+      koder.forEach(kode => { ud[kode] = iGruppen(kode); });
+      return ud;
+    },
+    async opret(g) { rows.push({ ...g }); },
+    async tilfoej(kode, medlem, navn, kom) {
+      if (!medlemmer.some(m => m.kode === kode && m.medlem === medlem)) medlemmer.push({ kode, medlem, navn, kom });
+    },
+    async fjern(kode, medlem) {
+      const i = medlemmer.findIndex(m => m.kode === kode && m.medlem === medlem);
+      if (i >= 0) medlemmer.splice(i, 1);
+    },
+    async omdoeb(kode, navn) { const g = rows.find(x => x.kode === kode); if (g) g.navn = navn; },
+    async slet(kode) {
+      for (let i = medlemmer.length - 1; i >= 0; i--) if (medlemmer[i].kode === kode) medlemmer.splice(i, 1);
+      const i = rows.findIndex(g => g.kode === kode);
+      if (i >= 0) rows.splice(i, 1);
     },
   };
 }
@@ -230,6 +277,7 @@ export async function mockApi(page, opt = {}) {
   const venner = delt ? delt.venner : huskVenner(hs, akt);
   const rum = delt ? delt.rum : huskRum();
   const beskeder = delt ? delt.beskeder : huskBeskeder();
+  const grupper = delt ? delt.grupper : huskGrupper();
   const opkald = delt ? delt.opkald : huskOpkald();
   const log = delt ? delt.log : { aktivitet: [], highscore: [] };
 
@@ -260,6 +308,7 @@ export async function mockApi(page, opt = {}) {
       || (await haandterVenner(request, venner, beskeder))
       || (await haandterRum(request, rum, venner))
       || (await haandterBeskeder(request, beskeder, venner))
+      || (await haandterGrupper(request, grupper, beskeder, venner))
       || (await haandterOpkald(request, opkald, venner))
       || (await haandterApi(request, hs));
     if (!svar) return route.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"fejl":"Ikke API (mock)"}' });
@@ -270,5 +319,5 @@ export async function mockApi(page, opt = {}) {
     });
   });
 
-  return { hs, akt, ideer, venner, rum, beskeder, opkald, log, get scores() { return hs.rows; } };
+  return { hs, akt, ideer, venner, rum, beskeder, grupper, opkald, log, get scores() { return hs.rows; } };
 }

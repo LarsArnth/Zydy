@@ -107,6 +107,11 @@
        usynligt) indtil man har skrevet sit navn og svaret er hentet. -->
   <section id="venner"></section>
 
+  <!-- Gruppe-panelet: dine grupper og hvad der er skrevet i dem. Fyldes af
+       /grupper.js ud fra /api/grupper; tomt (og usynligt), til man har skrevet
+       sit navn. -->
+  <section id="grupper"></section>
+
   <ul class="apps" id="apps">
     <!-- Kortene herunder er genereret af scripts/byg-forside.mjs ud fra public/spil/*/kort.json — ret ikke i hånden. -->
 
@@ -1636,6 +1641,11 @@
      andre, "Find en ven", "Skriv til", "Ring til" og "Spil sammen". Skal stå
      efter /ideer.js, som ejer navnet og stilen til dialogen. -->
 <script src="/venner.js" defer></script>
+
+<!-- Grupper: panelet under vennerne, hvor et par venner kan skrive sammen alle
+     på én gang (/api/grupper). Skal stå efter /beskeder.js (stilen til snakken)
+     og /venner.js (venne-listen og kælenavnene). -->
+<script src="/grupper.js" defer></script>
 
 <!-- Ordles topliste: kassen under Ordle-kortet, der spørger om du klarede dagens
      ord, og tæller dine dage i træk. Ordle bor et andet sted og kan ikke selv

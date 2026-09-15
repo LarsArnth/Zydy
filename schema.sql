@@ -105,6 +105,27 @@ CREATE TABLE IF NOT EXISTS opkald (
 CREATE INDEX IF NOT EXISTS opkald_fra ON opkald (fra, opdateret);
 CREATE INDEX IF NOT EXISTS opkald_til ON opkald (til, opdateret);
 
+-- Grupper (src/grupper.mjs): en gruppe venner, der skriver sammen alle på én
+-- gang. Selve snakken ligger i `beskeder` under samtalen 'gruppe|<kode>', så
+-- gruppen arver trimning, længdegrænse og spam-værn derfra. Koden er en
+-- rumkode (5 tegn uden I, O, 0 og 1). Tabellerne laves også af Worker'en selv
+-- ved første gruppe (d1Grupper), som beskeder og opkald.
+CREATE TABLE IF NOT EXISTS grupper (
+  kode          TEXT PRIMARY KEY,            -- fx 'K7QFD'
+  navn          TEXT    NOT NULL,            -- 1-24 tegn, renset i Worker'en
+  lavet_af      TEXT    NOT NULL,            -- den der lavede den (nøgle, små bogstaver)
+  lavet_af_navn TEXT    NOT NULL,            -- som skrevet, fx 'Selma'
+  oprettet      INTEGER NOT NULL             -- ms siden epoch
+);
+CREATE TABLE IF NOT EXISTS gruppe_medlem (
+  kode        TEXT    NOT NULL,
+  medlem      TEXT    NOT NULL,              -- nøgle, små bogstaver
+  medlem_navn TEXT    NOT NULL,              -- som personen selv staver det
+  kom         INTEGER NOT NULL,              -- ms siden epoch – rækkefølgen i gruppen
+  PRIMARY KEY (kode, medlem)
+);
+CREATE INDEX IF NOT EXISTS gruppe_medlem_person ON gruppe_medlem (medlem, kom);
+
 -- Idéer og ønsker (src/ideer.mjs): forslag til nye spil og ting der mangler i
 -- dem der findes. Hentes ned med `npm run ideer`.
 CREATE TABLE IF NOT EXISTS ideer (
