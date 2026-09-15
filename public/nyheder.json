@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 52,
+      "dato": "2026-09-15",
+      "spil": "taarnforsvar",
+      "titel": "Tårnforsvar – otte slags tårne og fem niveauer",
+      "hvad": "SorteSlyngel ønskede sig flere forskellige tårne og flere opgraderinger til hvert af dem. Nu er der otte tårne i stedet for fire: giftskyen sprøjter gift, der bliver ved med at gøre ondt – og panser hjælper ikke; lynspolen sender et lyn, der hopper videre til flere monstre på én gang; guldminen skyder slet ikke, men graver guld frem, hver gang du har klaret en bølge; og snigskytten rammer hele banen og sigter altid efter det monster, der har mest liv. Oveni kan hvert eneste tårn nu opgraderes fire gange i stedet for to – et færdigbygget tårn får en guldring om foden, så du kan se det med det samme. Hele vejen op koster mere end tre nye tårne, så du skal stadig vælge: et tårn mere, eller et stærkere et?",
+      "oensket": "SorteSlyngel"
+    },
+    {
       "nr": 51,
       "dato": "2026-09-15",
       "spil": "",

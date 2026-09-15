@@ -12,7 +12,8 @@ import {
   FELT, KOLONNER, RAEKKER, RUTE, PORT, STI_LAENGDE, STI_FELTER, paaSti, punktPaaSti, midte,
   TAARNE, TAARN_VED, MAKS_NIVEAU, MONSTRE, START_GULD, START_LIV, BONUS_PR_SEK,
   nytSpil, byg, opgrader, saelg, salgspris, taarnPaa, startBoelge, tik, vaelgMaal,
-  boelgePlan, boelgeVarsel, hpFaktor, byggeFelter, bedsteFelt, botTraek, botSpiller,
+  boelgePlan, boelgeVarsel, hpFaktor, byggeFelter, bedsteFelt, ringesteFelt, daekning,
+  mineGuld, botTraek, botSpiller,
 } from '../../public/spil/taarnforsvar/forsvar.mjs';
 
 /** Spiller videre, til bølgen er ovre (eller man taber). */
@@ -91,11 +92,11 @@ test('opgradering koster, og et salg giver det meste tilbage', () => {
   const pris = TAARN_VED.bue.niveauer[0].opgradering;
   s.guld = pris - 1;
   assert.equal(opgrader(s, t).fejl, 'Ikke guld nok');
-  s.guld = 1000;
+  s.guld = 10000;
   assert.equal(opgrader(s, t).ok, true);
   assert.equal(t.niveau, 2);
   assert.ok(TAARN_VED.bue.niveauer[1].skade > TAARN_VED.bue.niveauer[0].skade, 'niveau 2 gør mere ondt');
-  opgrader(s, t);
+  for (let i = t.niveau; i < MAKS_NIVEAU; i++) assert.equal(opgrader(s, t).ok, true);
   assert.equal(t.niveau, MAKS_NIVEAU);
   assert.equal(opgrader(s, t).fejl, 'Tårnet er færdigbygget');
 
@@ -105,6 +106,150 @@ test('opgradering koster, og et salg giver det meste tilbage', () => {
   assert.equal(s.guld, foer + retur);
   assert.equal(taarnPaa(s, 0, 0), null, 'feltet er frit igen');
   assert.equal(saelg(s, t).ok, false, 'man kan ikke sælge det samme tårn to gange');
+});
+
+test('otte tårne, fem niveauer – og hvert niveau er både bedre og dyrere', () => {
+  // SorteSlyngels ønske #57 var «flere forskellige tårne og flere upgrades til
+  // hvert tårn». Prøven holder fast i begge dele, så et tårn ikke kan blive
+  // glemt halvvejs igennem en ombygning.
+  assert.equal(TAARNE.length, 8, 'der er otte slags tårne at vælge imellem');
+  assert.equal(new Set(TAARNE.map(t => t.id)).size, 8, 'de har hver sit id');
+  assert.ok(MAKS_NIVEAU >= 5, 'og mindst fire opgraderinger pr. tårn');
+
+  for (const t of TAARNE) {
+    assert.equal(t.niveauer.length, MAKS_NIVEAU, `${t.navn} har ${MAKS_NIVEAU} niveauer`);
+    assert.ok(t.pris > 0 && t.tegn && t.om, `${t.navn} har pris, tegn og en forklaring`);
+    t.niveauer.forEach((n, i) => {
+      const foer = t.niveauer[i - 1];
+      const sidste = i === MAKS_NIVEAU - 1;
+      assert.equal(n.opgradering > 0, !sidste, `${t.navn} niveau ${i + 1}: kun det sidste er færdigbygget`);
+      if (!foer) return;
+      assert.ok(n.opgradering === 0 || n.opgradering > foer.opgradering,
+        `${t.navn}: hvert niveau koster mere end det forrige`);
+      // Noget skal blive bedre – hvad det er, afhænger af tårnets rolle
+      const bedre = n.guld ? n.guld > foer.guld
+        : (n.skade > foer.skade || (n.gift || 0) > (foer.gift || 0) || (n.kaede || 0) > (foer.kaede || 0));
+      assert.ok(bedre, `${t.navn} niveau ${i + 1} er bedre end niveau ${i}`);
+      assert.ok(n.raekkevidde >= foer.raekkevidde, `${t.navn} rækker mindst lige så langt som før`);
+    });
+  }
+  // Et fuldt opgraderet tårn skal koste mere end et nyt – ellers er valget ikke et valg
+  for (const t of TAARNE) {
+    const alt = t.niveauer.reduce((s, n) => s + n.opgradering, t.pris);
+    assert.ok(alt > t.pris * 3, `${t.navn}: hele vejen op koster mere end tre nye`);
+  }
+});
+
+test('giften bliver ved med at gøre ondt – og panseret hjælper ikke', () => {
+  const s = nytSpil();
+  s.guld = 1000;
+  taarnVedSti(s, 'gift', 50);
+  s.fase = 'boelge';
+  s.monstre = [monster(1, 'trold', 50, 4000, 0)];
+  tik(s, 1.6);                                     // ét skud er nået ud
+  const efterSkud = s.monstre[0].hp;
+  assert.ok(efterSkud < 4000, 'skyen er landet');
+  tik(s, 1.2);
+  assert.ok(s.monstre[0].hp < efterSkud - 6, 'og giften tikker videre, også mellem skuddene');
+  assert.ok(s.monstre[0].gift, 'monsteret er forgiftet');
+
+  // Panser æder næsten al skaden fra små skud – men ikke giften
+  const skadePaa = (slags, monsterSlags) => {
+    const p = nytSpil();
+    p.guld = 1000;
+    taarnVedSti(p, slags, 50);
+    p.fase = 'boelge';
+    p.monstre = [monster(1, monsterSlags, 50, 9000, 0)];
+    tik(p, 10);
+    return 9000 - p.monstre[0].hp;
+  };
+  const giftAndel = skadePaa('gift', 'trold') / skadePaa('gift', 'slim');
+  const bueAndel = skadePaa('bue', 'trold') / skadePaa('bue', 'slim');
+  assert.ok(giftAndel > 0.9, `giften mærker knap nok panseret (${(giftAndel * 100).toFixed(0)} %)`);
+  assert.ok(giftAndel > bueAndel + 0.15,
+    `og den er derfor et bedre svar på trolde end bueskytten (${(bueAndel * 100).toFixed(0)} %)`);
+});
+
+test('giftskyen sprøjter ikke på den, der allerede er forgiftet', () => {
+  const s = nytSpil();
+  s.guld = 1000;
+  const t = taarnVedSti(s, 'gift', 50);
+  s.fase = 'boelge';
+  s.monstre = [monster(1, 'slim', 55, 400), monster(2, 'slim', 45, 400)];
+  tik(s, 1.6);
+  assert.ok(s.monstre.find(m => m.id === 1).gift, 'den forreste fik skyen');
+  assert.equal(vaelgMaal(s, t).id, 2, 'næste sky går til den anden – som isbøssen gør det');
+});
+
+test('lynspolen rammer flere på én gang, men kun dem der står tæt', () => {
+  const s = nytSpil();
+  s.guld = 1000;
+  taarnVedSti(s, 'spole', 50);
+  s.fase = 'boelge';
+  s.monstre = [monster(1, 'slim', 50, 900, 0), monster(2, 'slim', 48, 900, 0),
+    monster(3, 'slim', 46, 900, 0), monster(4, 'slim', 12, 900, 0)];
+  tik(s, 1.2);
+  const hp = id => s.monstre.find(m => m.id === id).hp;
+  const ramt = [1, 2, 3].filter(id => hp(id) < 900).length;
+  assert.equal(ramt, 3, 'lynet hoppede videre til de to nærmeste');
+  assert.equal(hp(4), 900, 'men ikke helt om på den anden side af banen');
+});
+
+test('guldminen skyder ikke – den betaler efter hver bølge', () => {
+  const s = nytSpil();
+  s.guld = 1000;
+  const m = byg(s, 'mine', 0, 0).taarn;
+  assert.equal(mineGuld(s), TAARN_VED.mine.niveauer[0].guld, 'minen graver sit niveaus guld frem');
+  opgrader(s, m);
+  assert.ok(mineGuld(s) > TAARN_VED.mine.niveauer[0].guld, 'og mere, når den opgraderes');
+
+  // Tre opgraderede troldmænd tager bølgen, så vi kan måle betalingen
+  for (const [kx, ky] of [[3, 1], [3, 5], [3, 8]]) {
+    const t = byg(s, 'trold', kx, ky).taarn;
+    opgrader(s, t); opgrader(s, t);
+  }
+  s.guld = 0;
+  startBoelge(s);
+  spolBoelge(s);
+  assert.equal(s.fase, 'pause', 'bølgen blev klaret');
+  assert.equal(s.sidsteMine, mineGuld(s), 'minens guld står for sig selv');
+  assert.ok(s.guld >= s.sidsteMine, 'og det er lagt til pungen');
+
+  // Uden mine er der ingen mine-betaling – og minen har ikke skudt på noget
+  const u = nytSpil();
+  u.guld = 1000;
+  byg(u, 'mine', 0, 0);
+  startBoelge(u);
+  spolBoelge(u);
+  assert.equal(u.drab, 0, 'minen nedlagde ingenting');
+  assert.ok(u.liv < START_LIV, 'alt gik forbi den');
+  assert.equal(mineGuld(nytSpil()), 0, 'og uden miner er der ingen mine-betaling');
+});
+
+test('minen bygges ude i hjørnet, hvor den ikke spilder en god plads', () => {
+  const s = nytSpil();
+  const hjoerne = ringesteFelt(s), bedst = bedsteFelt(s, 30);
+  assert.ok(hjoerne && bedst, 'der er altid et ledigt felt');
+  assert.ok(daekning(hjoerne.kx, hjoerne.ky, 30) < daekning(bedst.kx, bedst.ky, 30),
+    'det ringeste felt dækker mindre af stien end det bedste');
+  s.guld = 5000;
+  while (s.taarne.length < 6) botTraek(s);          // BOT_PLAN: den sjette er guldminen
+  const mine = s.taarne.find(t => t.slags === 'mine');
+  assert.ok(mine, 'botten byggede en guldmine');
+  assert.ok(daekning(mine.kx, mine.ky, 30) < daekning(s.taarne[0].kx, s.taarne[0].ky, 30),
+    'og den står længere fra stien end bueskytten');
+});
+
+test('snigskytten rammer hele banen og går efter det stærkeste monster', () => {
+  const s = nytSpil();
+  s.guld = 1000;
+  const t = byg(s, 'snig', KOLONNER - 1, 0).taarn;   // helt ude i hjørnet, langt fra stien
+  s.fase = 'boelge';
+  s.monstre = [monster(1, 'slim', 60, 30, 0), monster(2, 'trold', 20, 900, 0)];
+  assert.equal(vaelgMaal(s, t).id, 2, 'den med mest liv – ikke den, der er nået længst');
+  tik(s, 4);
+  assert.ok(s.monstre.find(m => m.id === 2).hp < 900, 'og den bliver ramt tværs over banen');
+  assert.equal(s.monstre.find(m => m.id === 1).hp, 30, 'mens den svage får lov at gå videre');
 });
 
 test('bølgerne vokser, og de særlige monstre kommer på de rigtige tidspunkter', () => {

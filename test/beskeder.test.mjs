@@ -18,9 +18,18 @@ const shots = path.join(path.dirname(fileURLToPath(import.meta.url)), 'shots');
 const browser = await chromium.launch();
 const fejl = [];
 
-/** Et vindue med et navn i localStorage – som når man har skrevet det på forsiden. */
+/**
+ * Et vindue med et navn i localStorage – som når man har skrevet det på forsiden.
+ *
+ * Uden service worker (som test/nyheder.test.mjs): her er der to forsider oppe
+ * på én gang, og service workeren henter hele skallen ned i baggrunden ved hver
+ * sideindlæsning. Tolv samtidige hentninger mod den lille testserver gav
+ * ind imellem ERR_CONNECTION_RESET på den ene telefon, og så faldt testen på
+ * «ingen console-fejl» uden at der var noget galt med beskederne. At filerne
+ * lægger sig på telefonen, hører hjemme i test/offline.test.mjs.
+ */
 async function telefon(navn, delMed) {
-  const ctx = await browser.newContext({ ...devices['iPhone 13'] });
+  const ctx = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
   const page = await ctx.newPage();
   page.on('pageerror', e => fejl.push(navn + ': ' + e));
   page.on('console', m => { if (m.type() === 'error') fejl.push(navn + ': ' + m.text()); });
@@ -38,7 +47,10 @@ await api.venner.spoerg('sofie', 'selma', 'Sofie', 'Selma');
 await api.venner.sigJa('sofie', 'selma', 'Selma');
 
 /** Oversigten hentes hvert 15. sekund i drift – i testen beder vi selv om den. */
-const kig = p => p.evaluate(() => window.Beskeder.hent());
+const kig = async p => {
+  await p.waitForFunction(() => !!window.Beskeder);     // scripts er indlæst
+  return p.evaluate(() => window.Beskeder.hent());
+};
 
 await sofie.page.goto(`${BASE}/`);
 await selma.page.goto(`${BASE}/`);

@@ -60,7 +60,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Kæmpetal | `public/spil/kaempetal/` | Selmas ønske, der lød «man kan møde sine venner man kan mindst Max 9999999999999»: et clicker-spil om at nå det største tal, **9.999.999.999.999**. Tallet selv er knappen – tryk, og det vokser – og i butikken køber man hjælpere (klikkemus, tællekat, talraket, sort hul …), der tæller videre af sig selv, også mens man er væk (dog højst 8 timer, en skoledag). Guldfingeren fordobler hvert tryk, og butikken viser kun de hjælpere, man har mødt, plus én hemmelig «???». Score = alt man har tjent – køb rører den ikke – og den ryger selv på toplisten, hver gang en tierpotens rundes. **Kan spilles sammen med en ven**, én på hver telefon: I ser hinandens tal live, og summen af jeres to tal kan nå loftet – så fejrer I det sammen. Se [Spil sammen](#spil-sammen) og «Kæmpetal – tallet, hjælperne og loftet» nedenfor. To filer: `tal.mjs` (tallet, hjælperne, priserne og loftet, enhedstestet) og `index.html`. |
 | Fjolle-Obby | `public/spil/fjolle/` | Alias ønske, der lød «En sjov obby» – den fjollede fætter til Store Obby. Ni **håndlavede** etaper man kan lære udenad, og ingenting kan slå én ihjel: man kan kun plaske i buddingen i bunden og starter så ved flaget igen. Undervejs er der bananskræl man skrider på, gelé der kaster én op af sig selv (og meget højere, hvis man trykker HOP i selve landingen), prutteskyer der skyder én til vejrs i takt, slim man går i slowmotion i, rullebånd der trækker med og imod, høns der vipper én op med et BAK BAK, fjedre og balloner der stiger, så længe man står på dem. Score = **tiden** for hele banen (`retning: 'asc'`), så den sendes først ind, når alle ni etaper er klaret; «Fortsæt» husker etape, tid og plask. To filer: `bane.mjs` (banen, fysikken og botten, enhedstestet) og `index.html`. Se «Fjolle-Obby – de ni etaper og det, der ikke slår ihjel» nedenfor. |
 
-| Tårnforsvar | `public/spil/taarnforsvar/` | SorteSlyngels ønske om «et Tower Defense-stil spil, hvor man kæmper om at komme længst». Stien snor sig fra hullet i toppen ned til porten, og på græsset ved siden af bygger man fire slags tårne: bueskytte (billig og hurtig), kanon (bomben rammer flere), isbøsse (fryser, så de andre når at skyde flere gange) og troldmand (dyr, men lynet går igennem panser). Tre niveauer pr. tårn, og man kan sælge igen. Monstrene kommer i bølger, der aldrig holder op: slim, flagermus, trolde med panser og en monsterkonge hver femte bølge. Score = **klarede bølger** – motoren er helt uden tilfældighed, så alle møder de samme bølger i den samme rækkefølge. To filer: `forsvar.mjs` (banen, tårnene, monstrene, bølgerne og en bot, enhedstestet) og `index.html`. Se «Tårnforsvar – stien, de fire tårne og bølgerne» nedenfor. |
+| Tårnforsvar | `public/spil/taarnforsvar/` | SorteSlyngels ønske om «et Tower Defense-stil spil, hvor man kæmper om at komme længst». Stien snor sig fra hullet i toppen ned til porten, og på græsset ved siden af bygger man otte slags tårne: bueskytte (billig og hurtig), isbøsse (fryser, så de andre når at skyde flere gange), giftsky (skade pr. sekund, som panser ikke stopper), kanon (bomben rammer flere), guldmine (skyder ikke – betaler efter hver bølge), lynspole (lynet hopper videre til flere), troldmand (dyr, men lynet går igennem panser) og snigskytte (rammer hele banen og går efter det stærkeste monster). Fem niveauer pr. tårn, og man kan sælge igen. Monstrene kommer i bølger, der aldrig holder op: slim, flagermus, trolde med panser og en monsterkonge hver femte bølge. Score = **klarede bølger** – motoren er helt uden tilfældighed, så alle møder de samme bølger i den samme rækkefølge. To filer: `forsvar.mjs` (banen, tårnene, monstrene, bølgerne og en bot, enhedstestet) og `index.html`. Se «Tårnforsvar – stien, de otte tårne og bølgerne» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -1829,14 +1829,14 @@ Test: `test/kaempetal.test.mjs` (klik, butik, milepæl, loftet med fest – og t
 browsere, hvor Sofie og Selma mødes og når loftet sammen) +
 `test/unit/kaempetal.test.mjs`.
 
-### Tårnforsvar – stien, de fire tårne og bølgerne
+### Tårnforsvar – stien, de otte tårne og bølgerne
 
 Banen er et gitter på 10 × 14 felter à 10 enheder (100 × 140), som tegnes midt
 på fladen — så den er lige stor på en iPhone på højkant og en iPad på tværs.
 Stien er håndlagt i `RUTE` og er **den samme hver gang**; alt der ikke er sti,
 kan bebygges (111 felter).
 
-Fem ting er værd at huske, hvis spillet skal røres igen:
+Seks ting er værd at huske, hvis spillet skal røres igen:
 
 1. **Der er ingen tilfældighed i motoren.** Bølgerne følger `boelgePlan(nr)` og
    `hpFaktor(nr)`, monstrene spawner på faste tidspunkter, og tårnene rammer
@@ -1868,6 +1868,29 @@ Fem ting er værd at huske, hvis spillet skal røres igen:
    omkring bølge 34, før monstrene vokser fra den. Tre bueskytter uden
    opgraderinger når 5. Enhedstesten holder fast i begge ender, så en ændring i
    priser eller skade ikke ubemærket gør spillet trivielt eller håbløst.
+
+6. **Et tårn er en rolle, ikke et sæt tal.** De otte tårne (SorteSlyngels
+   ønske #57 om «flere forskellige tårne og flere upgrades til hvert tårn») har
+   hver sin slags kraft, og motoren kender dem alle ved navn på niveauet:
+   `langsom` fryser (isbøssen), `splash` rammer hele klumpen (kanonen), `gift`
+   er skade pr. sekund, som panseret ikke kan stoppe (giftskyen), `kaede` lader
+   lynet hoppe videre til de nærmeste (lynspolen), `guld` graver frem efter hver
+   klaret bølge i stedet for at skyde (guldminen), og `maal: 'staerkest'` på
+   selve tårnet får det til at sigte efter det monster, der har mest liv
+   tilbage, frem for det, der er nået længst (snigskytten). Skal der et niende
+   tårn til, er det derfor som regel ét nyt felt i `niveauer` plus et par linjer
+   i `etSkridt()` — og en tegnegren i `tegnTaarn()`. Tre ting, der er nemme at
+   glemme: et tårn uden `fart` springes over i skydeløkken (ellers skyder
+   guldminen), giftskyen og isbøssen springer i `vaelgMaal()` dem over, der
+   allerede er ramt (ellers bruger de hele bølgen på ét monster), og botten
+   bygger tårne uden rækkevidde på `ringesteFelt()` — det felt, der dækker
+   *mindst* af stien — så minen ikke spilder den bedste plads.
+
+   **Fem niveauer pr. tårn.** `MAKS_NIVEAU` er 5, og hele vejen op koster mere
+   end tre nye tårne. Det er med vilje: valget mellem «et tårn mere» og «et
+   stærkere tårn» er dét, guldet handler om. Niveauprikkerne under tårnet står
+   centreret (der skal være plads til fem), og et færdigbygget tårn får en
+   guldring om sokkelen, så man kan se det uden at trykke.
 
 Guldet vokser lineært (`guldFaktor`), mens monstrenes liv vokser eksponentielt
 (`hpFaktor`, 1,16 pr. bølge) — derfor **ender alle med at tabe**, og det er

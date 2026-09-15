@@ -18,9 +18,15 @@ const shots = path.join(path.dirname(fileURLToPath(import.meta.url)), 'shots');
 const browser = await chromium.launch();
 const fejl = [];
 
-/** Et vindue med et navn i localStorage – som når man har skrevet det på forsiden. */
+/**
+ * Et vindue med et navn i localStorage – som når man har skrevet det på forsiden.
+ *
+ * Uden service worker, af samme grund som i test/beskeder.test.mjs: to forsider
+ * på én gang, der hver især henter hele skallen ned i baggrunden, gav ind
+ * imellem en fil, der aldrig kom frem — og så var window.Grupper ikke der.
+ */
 async function telefon(navn, delMed) {
-  const ctx = await browser.newContext({ ...devices['iPhone 13'] });
+  const ctx = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
   const page = await ctx.newPage();
   page.on('pageerror', e => fejl.push(navn + ': ' + e));
   page.on('console', m => { if (m.type() === 'error') fejl.push(navn + ': ' + m.text()); });
@@ -41,7 +47,10 @@ for (const [a, b, A, B] of [['sofie', 'selma', 'Sofie', 'Selma'], ['sofie', 'far
 }
 
 /** Listen hentes hvert 15. sekund i drift – i testen beder vi selv om den. */
-const kig = p => p.evaluate(() => window.Grupper.hent());
+const kig = async p => {
+  await p.waitForFunction(() => !!window.Grupper);      // scripts er indlæst
+  return p.evaluate(() => window.Grupper.hent());
+};
 
 await sofie.page.goto(`${BASE}/`);
 await selma.page.goto(`${BASE}/`);

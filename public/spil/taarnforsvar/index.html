@@ -19,14 +19,18 @@
     Tårnknapperne ligger nedenunder — uden for fladen, så fingeren ikke skygger
     for det felt, man er ved at bygge på.
 
-    Tre greb er værd at huske:
+    Fire greb er værd at huske:
       1) Man vælger et tårn i bunden og trykker så på et grønt felt. Mens et
          tårn er valgt, lyser rækkevidden op under fingeren — det er den eneste
          måde at se, om hjørnet er godt nok.
       2) Trykker man på et tårn, der allerede står, kommer der en lille kasse
          op med «Opgradér» og «Sælg». Den ligger oven på fladen, så resten af
          skærmen ikke hopper, når den kommer og går.
-      3) Selve spillet kører i forsvar.mjs; her tegnes det bare. Derfor kan
+      3) De otte tårne står i to rækker à fire (SorteSlyngels ønske #57). Derfor
+         er knapperne lave: ét emoji med prisen ved siden af og navnet under.
+         Bliver de højere, bliver banen tilsvarende mindre — og på en iPhone er
+         den i forvejen kun så stor, at den lige kan ses.
+      4) Selve spillet kører i forsvar.mjs; her tegnes det bare. Derfor kan
          testen spole ti bølger frem på et øjeblik med GAME.frem().
   */
   :root{
@@ -96,14 +100,17 @@
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .boelgelinje .tekst b{color:var(--text)}
   #sendBtn{border-radius:12px;padding:10px 14px;font-size:15px;font-weight:800;background:var(--sun);white-space:nowrap}
-  .taarnrække{display:flex;gap:7px;margin-top:7px}
-  .taarnknap{flex:1;min-width:0;background:var(--bg2);border-radius:14px;padding:7px 2px 6px;color:var(--text);
-    display:flex;flex-direction:column;align-items:center;gap:1px;border:2px solid transparent;transition:transform .08s}
-  .taarnknap .t{font-size:24px;line-height:1.15}
-  .taarnknap .n{font-size:12px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .taarnknap .p{font-size:12px;font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums}
+  /* Otte tårne fylder to rækker à fire – ét emoji med prisen ved siden af og
+     navnet under, så rækkerne bliver lave nok til, at banen stadig er stor. */
+  .taarnrække{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .taarnknap{flex:1 1 calc(25% - 6px);min-width:0;background:var(--bg2);border-radius:13px;padding:5px 3px 4px;
+    color:var(--text);text-align:center;border:2px solid transparent;transition:transform .08s;line-height:1.1}
+  .taarnknap .t{font-size:19px}
+  .taarnknap .p{font-size:12px;font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums;margin-left:3px}
+  .taarnknap .n{display:block;font-size:11px;font-weight:700;margin-top:1px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .taarnknap.dyr{opacity:.42}
-  .taarnknap.valgt{border-color:var(--sun);background:var(--bg3);transform:translateY(-3px)}
+  .taarnknap.valgt{border-color:var(--sun);background:var(--bg3);transform:translateY(-2px)}
 
   /* Start- og slutskærm oven på fladen */
   .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
@@ -125,9 +132,10 @@
   #nameForm input{width:100%;padding:14px;border-radius:var(--r);border:2px solid var(--bg3);background:var(--bg2);
     color:var(--text);font:inherit;font-size:18px;text-align:center}
   .hint{font-size:15px;margin:12px 0 0}
-  .taarnliste{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 0;text-align:left}
-  .taarnliste div{background:var(--bg2);border-radius:12px;padding:7px 9px;font-size:13px;color:var(--muted);line-height:1.25}
-  .taarnliste b{color:var(--text);font-size:14px}
+  /* De otte tårne forklaret – to spalter, korte linjer, så «Spil» ikke skubbes ud af skærmen */
+  .taarnliste{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:10px 0 0;text-align:left}
+  .taarnliste div{background:var(--bg2);border-radius:11px;padding:6px 8px;font-size:12px;color:var(--muted);line-height:1.25}
+  .taarnliste b{color:var(--text);font-size:13px}
   .taarnliste i{font-style:normal;color:var(--sun);font-weight:800}
 
   /* Toplisten (fælles klient) */
@@ -184,8 +192,8 @@
           <button class="btn" type="submit">OK</button>
         </form>
         <button class="btn" id="startBtn">Spil</button>
-        <p class="hint">Vælg et tårn i bunden og tryk på et grønt felt ved siden af stien. Tårnene skyder selv.
-          Monstre, der når porten, koster hjerter – og når hjerterne er væk, er det slut.
+        <p class="hint">Vælg et tårn i bunden og tryk på et grønt felt ved siden af stien. Tryk på et tårn,
+          du har bygget, for at opgradere det – hvert tårn kan blive fem niveauer stærkt.
           Bølgerne holder aldrig op, så det gælder om at komme længst.</p>
         <div class="taarnliste" id="taarnliste"></div>
       </div>
@@ -342,7 +350,7 @@ function visHud() {
     const sek = Math.max(0, Math.ceil(spil.pauseTid));
     $('boelgeTekst').innerHTML = spil.boelge === 0
       ? `Byg dine tårne · <b>${sek} sek.</b>`
-      : `Bølge ${spil.boelge} klaret! Næste om <b>${sek} sek.</b>`;
+      : `Bølge ${spil.boelge} klaret!${spil.sidsteMine ? ` Minerne gav ${spil.sidsteMine} 🪙 ·` : ''} Næste om <b>${sek} sek.</b>`;
     $('sendBtn').hidden = false;
     $('sendBtn').textContent = `Send nu +${sek * 2} 🪙`;
   } else {
@@ -368,7 +376,7 @@ function tegnKnapper() {
     for (const t of TAARNE) {
       const b = document.createElement('button');
       b.className = 'taarnknap'; b.dataset.slags = t.id;
-      b.innerHTML = `<span class="t">${t.tegn}</span><span class="n">${t.navn}</span><span class="p">${t.pris} 🪙</span>`;
+      b.innerHTML = `<span class="t">${t.tegn}</span><span class="p">${t.pris}</span><span class="n">${t.navn}</span>`;
       b.setAttribute('aria-label', `${t.navn}, ${t.pris} guld`);
       taarnRow.appendChild(b);
     }
@@ -390,6 +398,17 @@ taarnRow.addEventListener('pointerdown', e => {
 });
 
 /* ---------- Kassen med Opgradér/Sælg ---------- */
+/** Én linje om, hvad tårnet kan på det niveau – hvert tårn har sin egen slags kraft. */
+function niveauTekst(slags, n) {
+  const felter = Math.round(n.raekkevidde / FELT * 10) / 10;
+  if (slags === 'mine') return `Giver ${n.guld} 🪙, hver gang en bølge er klaret`;
+  if (slags === 'is') return `${n.skade} i skade · fryser til ${Math.round(n.langsom * 100)} %`;
+  if (slags === 'gift') return `${n.gift} gift pr. sek. · går gennem panser`;
+  if (slags === 'spole') return `${n.skade} i skade · rammer ${n.kaede + 1} på én gang`;
+  if (slags === 'snig') return `${n.skade} i skade · rammer hele banen`;
+  return `${n.skade} i skade${n.splash ? ' · rammer flere' : ''} · rækker ${felter} felter`;
+}
+
 let sidstePanel = '';
 function visPanel() {
   if (!valgtTaarn || fase !== 'spil') { panel.hidden = true; sidstePanel = ''; return; }
@@ -400,10 +419,8 @@ function visPanel() {
   if (noegle === sidstePanel) return;
   sidstePanel = noegle;
   $('panelTegn').textContent = type.tegn;
-  $('panelNavn').textContent = `${type.navn} · niveau ${t.niveau}`;
-  $('panelTal').textContent = n.langsom
-    ? `${n.skade} i skade · fryser til ${Math.round(n.langsom * 100)} %`
-    : `${n.skade} i skade${n.splash ? ' · rammer flere' : ''} · rækker ${Math.round(n.raekkevidde / FELT * 10) / 10} felter`;
+  $('panelNavn').textContent = `${type.navn} · niveau ${t.niveau}/${MAKS_NIVEAU}`;
+  $('panelTal').textContent = niveauTekst(t.slags, n);
   const op = $('opgraderBtn');
   if (t.niveau >= MAKS_NIVEAU) {
     op.disabled = true; op.innerHTML = 'Færdig-<br>bygget';
@@ -541,7 +558,9 @@ function tegnGitter() {
   const p = midte(kx, ky);
   g.fillStyle = kan ? 'rgba(61,220,132,.3)' : 'rgba(255,77,94,.3)';
   g.fillRect(px(kx * FELT), py(ky * FELT), s, s);
-  tegnRaekkevidde(p.x, p.y, TAARN_VED[valgtSlags].niveauer[0].raekkevidde, kan);
+  // Guldminen har ingen rækkevidde at vise – den må gerne stå i hjørnet
+  const rk = TAARN_VED[valgtSlags].niveauer[0].raekkevidde;
+  if (rk) tegnRaekkevidde(p.x, p.y, rk, kan);
 }
 
 function tegnRaekkevidde(x, y, r, god = true) {
@@ -559,10 +578,15 @@ function tegnTaarn(t) {
   g.beginPath(); g.roundRect(x - s * 0.36, y - s * 0.3, s * 0.72, s * 0.62, s * 0.14); g.fill();
   g.fillStyle = '#4d5f53';
   g.beginPath(); g.roundRect(x - s * 0.36, y - s * 0.3, s * 0.72, s * 0.2, s * 0.1); g.fill();
+  // Færdigbygget: en guldring om sokkelen, så man kan se det uden at trykke
+  if (t.niveau >= MAKS_NIVEAU) {
+    g.strokeStyle = '#ffd447'; g.lineWidth = Math.max(1, s * 0.035);
+    g.beginPath(); g.roundRect(x - s * 0.4, y - s * 0.34, s * 0.8, s * 0.7, s * 0.16); g.stroke();
+  }
   // Hovedet, der drejer efter målet
   g.save();
   g.translate(x, y - s * 0.06);
-  g.rotate(t.vinkel);
+  if (t.slags !== 'mine') g.rotate(t.vinkel);
   g.fillStyle = type.farve;
   if (t.slags === 'kanon') {
     g.beginPath(); g.roundRect(-s * 0.08, -s * 0.11, s * 0.44, s * 0.22, s * 0.07); g.fill();
@@ -580,18 +604,50 @@ function tegnTaarn(t) {
       i ? g.lineTo(fx, fy) : g.moveTo(fx, fy);
     }
     g.closePath(); g.fill();
+  } else if (t.slags === 'gift') {
+    // En kolbe med en prop: rund bund og en hals, der peger mod målet
+    g.beginPath(); g.arc(0, 0, s * 0.18, 0, 7); g.fill();
+    g.beginPath(); g.roundRect(s * 0.1, -s * 0.06, s * 0.24, s * 0.12, s * 0.05); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.5)';
+    g.beginPath(); g.arc(-s * 0.06, -s * 0.06, s * 0.05, 0, 7); g.fill();
+  } else if (t.slags === 'spole') {
+    // Spolen: to ringe og en gnist, der sidder yderst
+    g.strokeStyle = type.farve; g.lineWidth = s * 0.05;
+    g.beginPath(); g.arc(0, 0, s * 0.2, 0, 7); g.stroke();
+    g.beginPath(); g.arc(0, 0, s * 0.12, 0, 7); g.stroke();
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(s * 0.22, 0, s * 0.07, 0, 7); g.fill();
+  } else if (t.slags === 'mine') {
+    // Guldminen: en bunke mønter, der ikke drejer nogen steder hen
+    g.fillStyle = '#7a5b2a';
+    g.beginPath(); g.roundRect(-s * 0.26, s * 0.02, s * 0.52, s * 0.16, s * 0.06); g.fill();
+    for (const [mx, my] of [[-s * 0.12, -s * 0.02], [s * 0.12, -s * 0.02], [0, -s * 0.16]]) {
+      g.fillStyle = type.farve;
+      g.beginPath(); g.arc(mx, my, s * 0.11, 0, 7); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.45)';
+      g.beginPath(); g.arc(mx - s * 0.03, my - s * 0.03, s * 0.035, 0, 7); g.fill();
+    }
+  } else if (t.slags === 'snig') {
+    // Snigskytten: et langt løb med et sigtekorn
+    g.fillStyle = type.farve;
+    g.beginPath(); g.roundRect(-s * 0.1, -s * 0.05, s * 0.46, s * 0.1, s * 0.04); g.fill();
+    g.beginPath(); g.arc(0, 0, s * 0.14, 0, 7); g.fill();
+    g.strokeStyle = '#fff'; g.lineWidth = Math.max(1, s * 0.03);
+    g.beginPath(); g.arc(s * 0.18, 0, s * 0.07, 0, 7); g.stroke();
   } else {
     g.beginPath(); g.arc(0, 0, s * 0.19, 0, 7); g.fill();
     g.fillStyle = 'rgba(255,255,255,.55)';
     g.beginPath(); g.arc(-s * 0.06, -s * 0.06, s * 0.06, 0, 7); g.fill();
   }
   g.restore();
-  // Niveauprikkerne
+  // Niveauprikkerne – de står midt under tårnet, så der er plads til alle fem
   g.fillStyle = '#ffd447';
+  const spring = s * 0.13;
   for (let i = 0; i < t.niveau; i++) {
-    g.beginPath(); g.arc(x - s * 0.16 + i * s * 0.16, y + s * 0.24, s * 0.045, 0, 7); g.fill();
+    const fx = x + (i - (t.niveau - 1) / 2) * spring;
+    g.beginPath(); g.arc(fx, y + s * 0.24, s * 0.04, 0, 7); g.fill();
   }
-  if (valgtTaarn === t) tegnRaekkevidde(t.x, t.y, taarnData(t).raekkevidde);
+  if (valgtTaarn === t && taarnData(t).raekkevidde) tegnRaekkevidde(t.x, t.y, taarnData(t).raekkevidde);
 }
 
 function tegnMonster(m) {
@@ -653,19 +709,35 @@ function tegnMonster(m) {
     g.strokeStyle = 'rgba(160,220,255,.85)'; g.lineWidth = 1.4;
     g.beginPath(); g.arc(x, y, r * 1.35, 0, 7); g.stroke();
   }
+  // Forgiftet: små bobler, der stiger op – ellers kan man ikke se, at giften virker
+  if (m.gift) {
+    g.fillStyle = 'rgba(183,224,75,.85)';
+    for (let i = 0; i < 3; i++) {
+      const fase = (m.vinge * 1.6 + i / 3) % 1;
+      g.beginPath();
+      g.arc(x + (i - 1) * r * 0.6, y - r * (0.8 + fase * 1.4), r * 0.22 * (1 - fase * 0.5), 0, 7);
+      g.fill();
+    }
+  }
 }
+
+const SKUD_FARVE = {
+  kanon: '#20271f', is: '#9ad7ff', gift: '#c9f06a', spole: '#bff4ff', snig: '#ffd0dd', bue: '#ffe9a8',
+};
 
 function tegnSkud(s) {
   const x = px(s.x), y = py(s.y);
-  if (s.slags === 'trold') {
-    g.strokeStyle = '#e4b6ff'; g.lineWidth = 2.4;
+  if (s.slags === 'trold' || s.slags === 'snig' || s.slags === 'spole') {
+    // De hurtige skud tegnes som en stribe efter sig, så man kan se hvor de kom fra
+    g.strokeStyle = s.slags === 'trold' ? '#e4b6ff' : s.slags === 'spole' ? '#bff4ff' : '#ffd0dd';
+    g.lineWidth = s.slags === 'snig' ? 1.6 : 2.4;
     g.beginPath(); g.moveTo(x, y);
     g.lineTo(x - (s.mx - s.x) * skala * 0.25 - 4, y - (s.my - s.y) * skala * 0.25);
     g.stroke();
     return;
   }
-  g.fillStyle = s.slags === 'kanon' ? '#20271f' : s.slags === 'is' ? '#9ad7ff' : '#ffe9a8';
-  const r = (s.slags === 'kanon' ? 2.2 : 1.5) * skala;
+  g.fillStyle = SKUD_FARVE[s.slags] || '#ffe9a8';
+  const r = (s.slags === 'kanon' ? 2.2 : s.slags === 'gift' ? 2 : 1.5) * skala;
   g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
 }
 
@@ -678,6 +750,17 @@ function tegnSmaeld(s) {
   } else if (s.slags === 'lyn') {
     g.fillStyle = '#e4b6ff';
     g.beginPath(); g.arc(px(s.x), py(s.y), s.r * skala * (0.5 + del), 0, 7); g.fill();
+  } else if (s.slags === 'kaede') {
+    // Lynet tegnet som en streg fra det ene monster til det næste
+    g.strokeStyle = '#bff4ff'; g.lineWidth = 2.2; g.lineJoin = 'round';
+    g.beginPath();
+    s.punkter.forEach((p, i) => (i ? g.lineTo(px(p.x), py(p.y)) : g.moveTo(px(p.x), py(p.y))));
+    g.stroke();
+    g.fillStyle = '#fff';
+    for (const p of s.punkter) { g.beginPath(); g.arc(px(p.x), py(p.y), 1.2 * skala, 0, 7); g.fill(); }
+  } else if (s.slags === 'gift') {
+    g.fillStyle = '#b7e04b';
+    g.beginPath(); g.arc(px(s.x), py(s.y), s.r * skala * (0.5 + del * 1.1), 0, 7); g.fill();
   } else {
     g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 2;
     g.beginPath(); g.arc(px(s.x), py(s.y), s.r * skala * (0.6 + del * 1.4), 0, 7); g.stroke();

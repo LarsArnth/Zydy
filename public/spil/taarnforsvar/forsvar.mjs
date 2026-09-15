@@ -89,51 +89,120 @@ export const PORT = RUTE[RUTE.length - 1];
 
 /* ================= Tårnene ================= */
 /*
-  Fire tårne med hver sin rolle. `fart` er skud pr. sekund, `raekkevidde` måles
-  i enheder (et felt er 10), og `opgradering` er, hvad det næste niveau koster
-  (0 på sidste niveau). Priserne er valgt, så man kan bygge to bueskytter fra
-  start, og så en kanon skal tjenes hjem.
+  Otte tårne med hver sin rolle (SorteSlyngels ønske #57: «flere forskellige
+  tårne og flere upgrades til hvert tårn»). `fart` er skud pr. sekund,
+  `raekkevidde` måles i enheder (et felt er 10), og `opgradering` er, hvad det
+  næste niveau koster (0 på sidste niveau). Priserne er valgt, så man kan bygge
+  to bueskytter fra start, og så alt andet skal tjenes hjem.
+
+  Hvert tårn har fem niveauer. De to sidste er med vilje dyre: et fuldt
+  opgraderet tårn koster mere end tre nye, så man hele tiden skal vælge mellem
+  «et tårn mere» og «et stærkere tårn» — og guldet er dét, spillet handler om.
+
+  De fire slags virkning, motoren kender:
+    langsom  – fryser monsteret (isbøssen)
+    splash   – bomben rammer alle tæt på (kanonen)
+    gift     – skade pr. sekund, som panser ikke kan stoppe (giftskyen)
+    kaede    – lynet hopper videre til flere monstre (lynspolen)
+    guld     – graver guld frem efter hver bølge i stedet for at skyde (guldminen)
+  og `maal: 'staerkest'` får tårnet til at sigte efter det monster, der har mest
+  liv tilbage, frem for det, der er nået længst (snigskytten).
 */
 export const TAARNE = [
   {
     id: 'bue', navn: 'Bueskytte', tegn: '🏹', farve: '#3ddc84', pris: 50,
-    om: 'Skyder hurtigt på ét monster ad gangen. Billig – begynd med et par stykker.',
+    om: 'Hurtig og billig. Begynd med et par stykker.',
     niveauer: [
       { skade: 7, fart: 1.5, raekkevidde: 26, opgradering: 40 },
       { skade: 12, fart: 1.8, raekkevidde: 29, opgradering: 75 },
-      { skade: 20, fart: 2.1, raekkevidde: 32, opgradering: 0 },
-    ],
-  },
-  {
-    id: 'kanon', navn: 'Kanon', tegn: '💣', farve: '#ffd447', pris: 90,
-    om: 'Langsom, men bomben rammer alle monstre tæt på – og panser går den ikke op i.',
-    niveauer: [
-      { skade: 15, fart: 0.6, raekkevidde: 24, splash: 11, opgradering: 80 },
-      { skade: 24, fart: 0.7, raekkevidde: 26, splash: 13, opgradering: 140 },
-      { skade: 38, fart: 0.8, raekkevidde: 28, splash: 15, opgradering: 0 },
+      { skade: 20, fart: 2.1, raekkevidde: 32, opgradering: 130 },
+      { skade: 30, fart: 2.4, raekkevidde: 34, opgradering: 210 },
+      { skade: 46, fart: 2.8, raekkevidde: 36, opgradering: 0 },
     ],
   },
   {
     id: 'is', navn: 'Isbøsse', tegn: '❄️', farve: '#4d8dff', pris: 60,
-    om: 'Gør ikke meget skade, men monstrene bliver langsomme – og så når de andre tårne at skyde flere gange.',
+    om: 'Fryser monstrene, så de andre tårne når flere skud.',
     niveauer: [
       { skade: 3, fart: 1.1, raekkevidde: 22, langsom: 0.55, langsomTid: 1.6, opgradering: 55 },
       { skade: 5, fart: 1.3, raekkevidde: 25, langsom: 0.45, langsomTid: 2.0, opgradering: 95 },
-      { skade: 9, fart: 1.5, raekkevidde: 28, langsom: 0.35, langsomTid: 2.4, opgradering: 0 },
+      { skade: 9, fart: 1.5, raekkevidde: 28, langsom: 0.35, langsomTid: 2.4, opgradering: 150 },
+      { skade: 14, fart: 1.7, raekkevidde: 30, langsom: 0.28, langsomTid: 2.8, opgradering: 240 },
+      { skade: 20, fart: 1.9, raekkevidde: 32, langsom: 0.22, langsomTid: 3.2, opgradering: 0 },
+    ],
+  },
+  {
+    id: 'gift', navn: 'Giftsky', tegn: '☠️', farve: '#b7e04b', pris: 75,
+    om: 'Giften bliver ved med at gøre ondt – og panser hjælper ikke.',
+    niveauer: [
+      { skade: 2, fart: 0.8, raekkevidde: 24, gift: 7, giftTid: 3.0, opgradering: 65 },
+      { skade: 3, fart: 0.9, raekkevidde: 26, gift: 12, giftTid: 3.4, opgradering: 110 },
+      { skade: 5, fart: 1.0, raekkevidde: 28, gift: 20, giftTid: 3.8, opgradering: 175 },
+      { skade: 7, fart: 1.1, raekkevidde: 30, gift: 32, giftTid: 4.2, opgradering: 270 },
+      { skade: 10, fart: 1.2, raekkevidde: 32, gift: 50, giftTid: 4.6, opgradering: 0 },
+    ],
+  },
+  {
+    id: 'kanon', navn: 'Kanon', tegn: '💣', farve: '#ffd447', pris: 90,
+    om: 'Bomben rammer hele klumpen på én gang.',
+    niveauer: [
+      { skade: 15, fart: 0.6, raekkevidde: 24, splash: 11, opgradering: 80 },
+      { skade: 24, fart: 0.7, raekkevidde: 26, splash: 13, opgradering: 140 },
+      { skade: 38, fart: 0.8, raekkevidde: 28, splash: 15, opgradering: 230 },
+      { skade: 58, fart: 0.9, raekkevidde: 30, splash: 17, opgradering: 360 },
+      { skade: 88, fart: 1.0, raekkevidde: 32, splash: 19, opgradering: 0 },
+    ],
+  },
+  {
+    id: 'mine', navn: 'Guldmine', tegn: '💰', farve: '#f0a500', pris: 100,
+    om: 'Skyder ikke – graver guld frem efter hver bølge.',
+    niveauer: [
+      { skade: 0, fart: 0, raekkevidde: 0, guld: 22, opgradering: 90 },
+      { skade: 0, fart: 0, raekkevidde: 0, guld: 38, opgradering: 150 },
+      { skade: 0, fart: 0, raekkevidde: 0, guld: 60, opgradering: 240 },
+      { skade: 0, fart: 0, raekkevidde: 0, guld: 90, opgradering: 370 },
+      { skade: 0, fart: 0, raekkevidde: 0, guld: 130, opgradering: 0 },
+    ],
+  },
+  {
+    id: 'spole', navn: 'Lynspole', tegn: '⚡', farve: '#7fe8ff', pris: 110,
+    om: 'Lynet hopper videre til flere monstre. Kort rækkevidde.',
+    niveauer: [
+      { skade: 9, fart: 1.0, raekkevidde: 20, kaede: 2, opgradering: 95 },
+      { skade: 14, fart: 1.1, raekkevidde: 22, kaede: 2, opgradering: 160 },
+      { skade: 21, fart: 1.2, raekkevidde: 24, kaede: 3, opgradering: 250 },
+      { skade: 31, fart: 1.35, raekkevidde: 26, kaede: 3, opgradering: 390 },
+      { skade: 46, fart: 1.5, raekkevidde: 28, kaede: 4, opgradering: 0 },
     ],
   },
   {
     id: 'trold', navn: 'Troldmand', tegn: '🔮', farve: '#c56cf0', pris: 130,
-    om: 'Dyr og langsom, men lynet gør kæmpe skade og rækker helt over på den anden side.',
+    om: 'Ét kæmpe lyn – det eneste, der rigtig bider på panser.',
     niveauer: [
       { skade: 36, fart: 0.5, raekkevidde: 34, opgradering: 120 },
       { skade: 58, fart: 0.55, raekkevidde: 37, opgradering: 200 },
-      { skade: 95, fart: 0.6, raekkevidde: 40, opgradering: 0 },
+      { skade: 95, fart: 0.6, raekkevidde: 40, opgradering: 320 },
+      { skade: 145, fart: 0.65, raekkevidde: 43, opgradering: 500 },
+      { skade: 220, fart: 0.7, raekkevidde: 46, opgradering: 0 },
+    ],
+  },
+  {
+    id: 'snig', navn: 'Snigskytte', tegn: '🎯', farve: '#ff7aa2', pris: 165,
+    om: 'Rammer hele banen og sigter efter det stærkeste monster.',
+    maal: 'staerkest',
+    niveauer: [
+      { skade: 40, fart: 0.35, raekkevidde: 200, opgradering: 150 },
+      { skade: 65, fart: 0.4, raekkevidde: 200, opgradering: 250 },
+      { skade: 105, fart: 0.45, raekkevidde: 200, opgradering: 400 },
+      { skade: 165, fart: 0.5, raekkevidde: 200, opgradering: 620 },
+      { skade: 260, fart: 0.55, raekkevidde: 200, opgradering: 0 },
     ],
   },
 ];
 export const TAARN_VED = Object.fromEntries(TAARNE.map(t => [t.id, t]));
-export const MAKS_NIVEAU = 3;
+export const MAKS_NIVEAU = 5;
+/** Hvor langt lynet hopper videre til det næste monster. */
+export const KAEDE_RAEKKE = 16;
 
 /* ================= Monstrene ================= */
 /*
@@ -189,7 +258,7 @@ export function nytSpil() {
     tid: 0, fase: 'pause', pauseTid: FOERSTE_PAUSE,
     guld: START_GULD, liv: START_LIV, boelge: 0, klarede: 0, drab: 0,
     taarne: [], monstre: [], skud: [], smaeld: [], koe: [],
-    naesteId: 1, slut: null,
+    naesteId: 1, slut: null, sidsteBonus: 0, sidsteMine: 0,
   };
 }
 
@@ -268,12 +337,17 @@ export function startBoelge(spil, tidligt = false) {
 /** Monsteret fylder `hp` af sin egen slags, så livbjælken kan tegnes. */
 const skadePaa = (m, skade) => Math.max(1, skade - m.panser);
 
-function ramt(spil, m, skade, langsom, langsomTid) {
-  m.hp -= skadePaa(m, skade);
-  if (langsom) {
+function ramt(spil, m, skud) {
+  m.hp -= skadePaa(m, skud.skade);
+  if (skud.langsom) {
     // Det stærkeste og længste is-greb vinder – to isbøsser skal ikke ophæve hinanden.
-    if (!m.langsom || langsom < m.langsom.faktor) m.langsom = { faktor: langsom, til: spil.tid + langsomTid };
-    else if (m.langsom && spil.tid + langsomTid > m.langsom.til) m.langsom.til = spil.tid + langsomTid;
+    if (!m.langsom || skud.langsom < m.langsom.faktor) m.langsom = { faktor: skud.langsom, til: spil.tid + skud.langsomTid };
+    else if (m.langsom && spil.tid + skud.langsomTid > m.langsom.til) m.langsom.til = spil.tid + skud.langsomTid;
+  }
+  if (skud.gift) {
+    // Samme regel for giften: den stærkeste sky vinder, og den længste varer ved.
+    if (!m.gift || skud.gift > m.gift.dps) m.gift = { dps: skud.gift, til: spil.tid + skud.giftTid };
+    else if (spil.tid + skud.giftTid > m.gift.til) m.gift.til = spil.tid + skud.giftTid;
   }
   m.blink = 0.12;
 }
@@ -316,6 +390,12 @@ function etSkridt(spil, dt) {
   for (let i = spil.monstre.length - 1; i >= 0; i--) {
     const m = spil.monstre[i];
     if (m.langsom && m.langsom.til <= spil.tid) m.langsom = null;
+    if (m.gift) {
+      // Giften tikker af sig selv og går uden om panseret – den er svaret på trolde
+      if (m.gift.til <= spil.tid) m.gift = null;
+      else m.hp -= m.gift.dps * dt;
+    }
+    if (m.hp <= 0) continue;        // giften nåede det først – doedeMonstre() rydder op sidst i skridtet
     m.d += m.fart * (m.langsom ? m.langsom.faktor : 1) * dt;
     const p = punktPaaSti(m.d);
     m.x = p.x; m.y = p.y; m.dx = p.dx; m.dy = p.dy;
@@ -336,6 +416,7 @@ function etSkridt(spil, dt) {
   /* --- Tårnene skyder --- */
   for (const t of spil.taarne) {
     const n = niveauet(t);
+    if (!n.fart) continue;                        // guldminen skyder ikke – den graver
     t.ladt += dt;
     const maal = vaelgMaal(spil, t, n);
     if (maal) t.vinkel = Math.atan2(maal.y - t.y, maal.x - t.x);
@@ -344,7 +425,8 @@ function etSkridt(spil, dt) {
     spil.skud.push({
       x: t.x, y: t.y, maal: maal.id, mx: maal.x, my: maal.y, slags: t.slags, fra: t.id,
       skade: n.skade, splash: n.splash || 0, langsom: n.langsom || 0, langsomTid: n.langsomTid || 0,
-      fart: t.slags === 'trold' ? SKUD_FART * 2.6 : SKUD_FART, alder: 0,
+      gift: n.gift || 0, giftTid: n.giftTid || 0, kaede: n.kaede || 0,
+      fart: t.slags === 'trold' || t.slags === 'spole' || t.slags === 'snig' ? SKUD_FART * 2.6 : SKUD_FART, alder: 0,
     });
   }
 
@@ -365,11 +447,22 @@ function etSkridt(spil, dt) {
     if (s.splash) {
       spil.smaeld.push({ x: s.x, y: s.y, r: s.splash, liv: 0.25, alder: 0, slags: 'bomb' });
       for (const m of spil.monstre) {
-        if (Math.hypot(m.x - s.x, m.y - s.y) <= s.splash + m.r) ramt(spil, m, s.skade, s.langsom, s.langsomTid);
+        if (Math.hypot(m.x - s.x, m.y - s.y) <= s.splash + m.r) ramt(spil, m, s);
       }
     } else if (maal) {
-      ramt(spil, maal, s.skade, s.langsom, s.langsomTid);
+      ramt(spil, maal, s);
+      if (s.kaede) {
+        // Lynet hopper videre til de nærmeste – ét hop pr. «kaede», og aldrig tilbage til det samme
+        const naeste = spil.monstre
+          .filter(m => m !== maal && Math.hypot(m.x - s.x, m.y - s.y) <= KAEDE_RAEKKE)
+          .sort((a, b) => Math.hypot(a.x - s.x, a.y - s.y) - Math.hypot(b.x - s.x, b.y - s.y))
+          .slice(0, s.kaede);
+        const punkter = [{ x: s.x, y: s.y }];
+        for (const m of naeste) { ramt(spil, m, s); punkter.push({ x: m.x, y: m.y }); }
+        spil.smaeld.push({ x: s.x, y: s.y, r: 4, liv: 0.22, alder: 0, slags: 'kaede', punkter });
+      }
       if (s.slags === 'trold') spil.smaeld.push({ x: s.x, y: s.y, r: 5, liv: 0.2, alder: 0, slags: 'lyn' });
+      if (s.gift) spil.smaeld.push({ x: s.x, y: s.y, r: 5, liv: 0.3, alder: 0, slags: 'gift' });
     }
     spil.skud.splice(i, 1);
   }
@@ -385,27 +478,35 @@ function etSkridt(spil, dt) {
   /* --- Bølgen klaret --- */
   if (!spil.koe.length && !spil.monstre.length) {
     spil.klarede += 1;
-    spil.guld += boelgeBonus(spil.boelge);
+    const mine = mineGuld(spil);
+    spil.guld += boelgeBonus(spil.boelge) + mine;
     spil.fase = 'pause';
     spil.pauseTid = PAUSE;
     spil.sidsteBonus = boelgeBonus(spil.boelge);
+    spil.sidsteMine = mine;
   }
 }
 
 export const boelgeBonus = nr => 18 + nr * 5;
+/** Hvad guldminerne graver frem, når en bølge er klaret. */
+export const mineGuld = spil => spil.taarne.reduce((sum, t) => sum + (niveauet(t).guld || 0), 0);
 
 /**
  * Hvem skal tårnet skyde på? Den, der er nået længst ad stien, inden for
- * rækkevidde. Isbøssen springer dem over, der allerede er frosne – ellers
- * bruger den hele bølgen på det samme monster.
+ * rækkevidde — eller, for snigskytten (`maal: 'staerkest'`), den med mest liv
+ * tilbage. Isbøssen og giftskyen springer dem over, der allerede er frosne
+ * eller forgiftede – ellers bruger de hele bølgen på det samme monster.
  */
 export function vaelgMaal(spil, taarn, n = niveauet(taarn)) {
-  let bedst = null, bedstD = -1, nødløsning = null, nødD = -1;
+  const staerkest = TAARN_VED[taarn.slags] && TAARN_VED[taarn.slags].maal === 'staerkest';
+  const vaerdi = m => (staerkest ? m.hp : m.d);
+  let bedst = null, bedstV = -Infinity, nødløsning = null, nødV = -Infinity;
   for (const m of spil.monstre) {
     if (Math.hypot(m.x - taarn.x, m.y - taarn.y) > n.raekkevidde + m.r) continue;
-    if (m.d > nødD) { nødløsning = m; nødD = m.d; }
+    if (vaerdi(m) > nødV) { nødløsning = m; nødV = vaerdi(m); }
     if (n.langsom && m.langsom) continue;
-    if (m.d > bedstD) { bedst = m; bedstD = m.d; }
+    if (n.gift && m.gift) continue;
+    if (vaerdi(m) > bedstV) { bedst = m; bedstV = vaerdi(m); }
   }
   return bedst || nødløsning;
 }
@@ -457,7 +558,10 @@ export function daekning(kx, ky, raekkevidde) {
   for hård. Den bygger efter en fast plan og opgraderer, når der ikke er flere
   tårne i planen.
 */
-export const BOT_PLAN = ['bue', 'bue', 'is', 'kanon', 'bue', 'kanon', 'trold', 'is', 'kanon', 'bue', 'trold', 'kanon'];
+export const BOT_PLAN = [
+  'bue', 'bue', 'is', 'kanon', 'bue', 'mine', 'gift', 'trold', 'spole', 'is',
+  'kanon', 'snig', 'bue', 'trold', 'gift', 'kanon', 'mine', 'spole',
+];
 
 /** Det bedste ledige felt til et tårn med den rækkevidde. */
 export function bedsteFelt(spil, raekkevidde) {
@@ -466,6 +570,20 @@ export function bedsteFelt(spil, raekkevidde) {
     if (spil.taarne.some(t => t.kx === f.kx && t.ky === f.ky)) continue;
     const v = daekning(f.kx, f.ky, raekkevidde);
     if (v > bedstVaerdi) { bedstVaerdi = v; bedst = f; }
+  }
+  return bedst;
+}
+
+/**
+ * Det ledige felt, der dækker mindst af stien. Guldminen skyder ikke, så den
+ * skal ud i hjørnet og ikke stå og spilde den bedste plads ved stien.
+ */
+export function ringesteFelt(spil) {
+  let bedst = null, mindst = Infinity;
+  for (const f of byggeFelter()) {
+    if (spil.taarne.some(t => t.kx === f.kx && t.ky === f.ky)) continue;
+    const v = daekning(f.kx, f.ky, 30);
+    if (v < mindst) { mindst = v; bedst = f; }
   }
   return bedst;
 }
@@ -479,7 +597,8 @@ export function botTraek(spil) {
     const slags = BOT_PLAN[spil.taarne.length % BOT_PLAN.length];
     const type = TAARN_VED[slags];
     if (spil.guld < type.pris) return null;
-    const f = bedsteFelt(spil, type.niveauer[0].raekkevidde);
+    const rk = type.niveauer[0].raekkevidde;
+    const f = rk ? bedsteFelt(spil, rk) : ringesteFelt(spil);
     if (!f || !byg(spil, slags, f.kx, f.ky).ok) return null;
     return { hvad: 'byg', slags, ...f };
   };

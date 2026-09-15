@@ -47,7 +47,15 @@ assert.match(await page.locator('.lavet').textContent(), /SorteSlyngel/, 'der st
 assert.equal((await state()).fase, 'menu');
 await page.waitForFunction(() => document.querySelector('#hsStart .hs-titel'), null, { timeout: 4000 });
 assert.match(await page.locator('#hsStart').textContent(), /Længst i Tårnforsvar/, 'toplisten hentes på startskærmen');
-assert.match(await page.locator('#taarnliste').textContent(), /Bueskytte[\s\S]*Troldmand/, 'alle fire tårne er forklaret');
+{
+  // Alle otte tårne skal være forklaret på startskærmen – ellers er der fire af
+  // dem, man kun opdager ved at trykke på en knap, man ikke ved hvad gør
+  const liste = await page.locator('#taarnliste').textContent();
+  for (const navn of ['Bueskytte', 'Isbøsse', 'Giftsky', 'Kanon', 'Guldmine', 'Lynspole', 'Troldmand', 'Snigskytte']) {
+    assert.ok(liste.includes(navn), `${navn} er forklaret på startskærmen`);
+  }
+  assert.match(liste, /Bueskytte[\s\S]*Troldmand/, 'og de står i prisorden');
+}
 {
   // Spil-knappen skal kunne nås uden at rulle – ellers finder et barn den ikke
   const knap = await page.locator('#startBtn').boundingBox();
@@ -67,6 +75,15 @@ await page.click('#startBtn');
   assert.equal(s.spilFase, 'pause', 'der er en pause til at bygge i');
 }
 assert.equal(await page.locator('#bund').isVisible(), true, 'tårnknapperne kommer frem');
+{
+  // Otte knapper i to rækker – og de skal alle sammen kunne nås på en iPhone
+  assert.equal(await page.locator('.taarnknap').count(), 8, 'der er en knap til hvert af de otte tårne');
+  const h = await page.evaluate(() => innerHeight);
+  const sidste = await page.locator('.taarnknap').last().boundingBox();
+  assert.ok(sidste.y + sidste.height <= h, `den sidste knap er inde på skærmen (${Math.round(sidste.y + sidste.height)} af ${h})`);
+  const g = await page.evaluate(() => window.GAME.geo());
+  assert.ok(g.skala >= 2.5, `og banen er stadig stor nok (skala=${g.skala.toFixed(1)})`);
+}
 assert.equal(await page.locator('#livVal').textContent(), '20');
 assert.equal(await page.locator('#guldVal').textContent(), '140');
 assert.match(await page.locator('#boelgeTekst').textContent(), /Byg dine tårne/, 'og der står hvad man skal');
@@ -102,7 +119,7 @@ assert.equal(await page.locator('#sendBtn').isVisible(), true, 'man kan sende b�
   assert.equal(await page.locator('#taarnPanel').isVisible(), false, 'kassen er væk, når intet er valgt');
   await klik(await feltPx(3, 2));                       // tryk på tårnet
   assert.equal(await page.locator('#taarnPanel').isVisible(), true, 'kassen kommer frem');
-  assert.match(await page.locator('#panelNavn').textContent(), /Bueskytte · niveau 1/);
+  assert.match(await page.locator('#panelNavn').textContent(), /Bueskytte · niveau 1\/5/, 'der er fem niveauer at gå efter');
   assert.match(await page.locator('#opgraderBtn').textContent(), /40/, 'opgraderingen koster 40 guld');
 
   await page.evaluate(() => window.GAME.saetOp({ guld: 10 }));
@@ -111,7 +128,17 @@ assert.equal(await page.locator('#sendBtn').isVisible(), true, 'man kan sende b�
   assert.equal(await page.locator('#opgraderBtn').isDisabled(), false, 'med guld nok kan man opgradere');
   await page.click('#opgraderBtn');
   assert.equal((await state()).taarne[0].niveau, 2, 'tårnet blev opgraderet');
-  assert.match(await page.locator('#panelNavn').textContent(), /niveau 2/);
+  assert.match(await page.locator('#panelNavn').textContent(), /niveau 2\/5/);
+
+  // Hele vejen op: fire opgraderinger, og så er tårnet færdigbygget
+  for (let n = 2; n < 5; n++) {
+    assert.equal(await page.locator('#opgraderBtn').isDisabled(), false, `niveau ${n} kan opgraderes videre`);
+    await page.click('#opgraderBtn');
+  }
+  assert.equal((await state()).taarne[0].niveau, 5, 'tårnet er på øverste niveau');
+  assert.match(await page.locator('#panelNavn').textContent(), /niveau 5\/5/);
+  assert.match(await page.locator('#opgraderBtn').textContent(), /Færdig/, 'og så er der ikke mere at opgradere');
+  assert.equal(await page.locator('#opgraderBtn').isDisabled(), true);
 
   const foer = (await state()).guld;
   await page.click('#saelgBtn');
@@ -177,6 +204,30 @@ await tjekBillede(page, 'iPhone');
   assert.match(await page.locator('#boelgeTekst').textContent(), /Bølge 1 klaret/);
 }
 
+/* ---------- Guldminen skyder ikke – den betaler, når bølgen er klaret ---------- */
+{
+  // Lang pause, så bølge 2 ikke når at gå i gang, mens minen bygges
+  await page.evaluate(() => { window.GAME.saetOp({ guld: 300, pauseTid: 60 }); window.GAME.vaelg('mine'); });
+  await klik(await feltPx(0, 13));                      // ude i hjørnet, langt fra stien
+  await page.evaluate(() => window.GAME.vaelg(null));
+  const bygget = await state();
+  const mine = bygget.taarne.find(t => t.slags === 'mine');
+  assert.ok(mine, 'guldminen står på banen');
+  assert.equal(bygget.guld, 200, 'og den kostede 100 guld');
+
+  await klik(await feltPx(0, 13));                      // tryk på den igen: kassen fortæller hvad den giver
+  assert.match(await page.locator('#panelNavn').textContent(), /Guldmine · niveau 1\/5/);
+  assert.match(await page.locator('#panelTal').textContent(), /22 🪙/, 'kassen siger, hvad minen betaler');
+  await page.evaluate(() => window.GAME.tryk(0, 13));   // luk kassen igen
+
+  const foer = (await state()).guld;
+  await page.evaluate(() => { window.GAME.sendNu(); window.GAME.spolBoelge(); });
+  const efter = await state();
+  assert.equal(efter.klarede, 2, 'bølge 2 blev også klaret');
+  assert.ok(efter.guld >= foer + 22, 'minen gravede guld frem oveni');
+  assert.match(await page.locator('#boelgeTekst').textContent(), /Minerne gav 22 🪙/, 'og det står i bunden');
+}
+
 /* ---------- Uden tårne slipper monstrene ind – og så er det slut ---------- */
 {
   await page.evaluate(() => {
@@ -190,17 +241,17 @@ await tjekBillede(page, 'iPhone');
   const s = await state();
   assert.equal(s.fase, 'slut', 'da hjertet var væk, sluttede spillet');
   assert.equal(s.liv, 0);
-  assert.equal(s.klarede, 1, 'man nåede én bølge');
+  assert.equal(s.klarede, 2, 'man nåede to bølger');
   await page.waitForSelector('#slutScreen.on');
-  assert.equal(await page.locator('#slutTal').textContent(), '1 bølge');
-  assert.match(await page.locator('#slutSub').textContent(), /Du nåede bølge 2/);
+  assert.equal(await page.locator('#slutTal').textContent(), '2 bølger');
+  assert.match(await page.locator('#slutSub').textContent(), /Du nåede bølge 3/);
   assert.equal(await page.locator('#nyRekord').isVisible(), true, 'første runde er altid en rekord');
   assert.equal(await page.locator('#bund').isVisible(), false, 'tårnknapperne er væk på slutskærmen');
 
   await page.waitForTimeout(400);
   assert.equal(sendte.length, 1, 'bølgerne sendes til toplisten');
-  assert.deepEqual({ navn: sendte[0].navn, score: sendte[0].score }, { navn: 'Selma', score: 1 });
-  assert.equal(await page.evaluate(() => +localStorage.getItem('zydy.taarnforsvar.bedste')), 1,
+  assert.deepEqual({ navn: sendte[0].navn, score: sendte[0].score }, { navn: 'Selma', score: 2 });
+  assert.equal(await page.evaluate(() => +localStorage.getItem('zydy.taarnforsvar.bedste')), 2,
     'rekorden huskes på telefonen');
   await page.waitForFunction(() => /Selma/.test(document.getElementById('hsSlut').textContent), null, { timeout: 4000 });
   await page.screenshot({ path: SHOTS + 'taarnforsvar-slut.png' });
@@ -213,7 +264,7 @@ await tjekBillede(page, 'iPhone');
   assert.equal(s.fase, 'spil');
   assert.deepEqual({ liv: s.liv, guld: s.guld, boelge: s.boelge, taarne: s.taarne.length },
     { liv: 20, guld: 140, boelge: 0, taarne: 0 }, 'alting er som i begyndelsen');
-  assert.equal(s.bedste, 1, 'men rekorden står stadig');
+  assert.equal(s.bedste, 2, 'men rekorden står stadig');
 }
 
 /* ---------- iPad: alting kan ses og nås ---------- */

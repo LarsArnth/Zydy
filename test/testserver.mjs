@@ -39,9 +39,42 @@ export async function startServer(oensket, rod, { porte = 20, log = console.erro
   return null;
 }
 
+/*
+  Serveren er Pythons egen http.server — men startet i hånden, fordi `python3 -m
+  http.server` lytter med en kø på kun **fem** ventende forbindelser
+  (`request_queue_size` i socketserver). To browsere på forsiden på én gang
+  åbner let et dusin forbindelser i samme nu (service workeren henter selv 6
+  filer ad gangen), og så løber køen over: macOS afviser resten, browseren siger
+  ERR_CONNECTION_RESET / ERR_SOCKET_NOT_CONNECTED, og en tilfældig .js-fil
+  bliver aldrig indlæst. Det ligner en fejl i spillet — window.Beskeder eller
+  window.Grupper er «undefined» — men er bare en fuld kø. Tests som
+  beskeder/grupper/opkald faldt på skift på det.
+
+  Resten er magen til CLI'ens egen opsætning: to tråde om det, og en dobbelt
+  stak, så både ::1 og 127.0.0.1 svarer. Og som CLI'en afslutter den med det
+  samme (kode 1), hvis porten er optaget — det er dét, portvalget nedenfor
+  bygger på.
+*/
+const PYTHON = `
+import contextlib, socket, sys
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+
+class Server(ThreadingHTTPServer):
+    request_queue_size = 128          # CPython's standard er 5 – alt for lidt til to browsere
+    address_family = socket.AF_INET6 if socket.has_ipv6 else socket.AF_INET
+    def server_bind(self):
+        with contextlib.suppress(Exception):
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        return super().server_bind()
+
+port, rod = int(sys.argv[1]), sys.argv[2]
+Server(('', port), partial(SimpleHTTPRequestHandler, directory=rod)).serve_forever()
+`;
+
 /** Ét portforsøg: start python, og bliv kun ved, hvis det er vores egen, der svarer. */
 async function proevPort(port, rod) {
-  const p = spawn('python3', ['-m', 'http.server', String(port), '-d', rod], { stdio: 'ignore' });
+  const p = spawn('python3', ['-c', PYTHON, String(port), rod], { stdio: 'ignore' });
   let lever = true;
   p.on('exit', () => { lever = false; });
 
