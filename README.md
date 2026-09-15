@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet fireogtredive spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet femogtredive spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby og Tårnforsvar, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar og Baseforsvar, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -61,12 +61,13 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Fjolle-Obby | `public/spil/fjolle/` | Alias ønske, der lød «En sjov obby» – den fjollede fætter til Store Obby. Ni **håndlavede** etaper man kan lære udenad, og ingenting kan slå én ihjel: man kan kun plaske i buddingen i bunden og starter så ved flaget igen. Undervejs er der bananskræl man skrider på, gelé der kaster én op af sig selv (og meget højere, hvis man trykker HOP i selve landingen), prutteskyer der skyder én til vejrs i takt, slim man går i slowmotion i, rullebånd der trækker med og imod, høns der vipper én op med et BAK BAK, fjedre og balloner der stiger, så længe man står på dem. Score = **tiden** for hele banen (`retning: 'asc'`), så den sendes først ind, når alle ni etaper er klaret; «Fortsæt» husker etape, tid og plask. To filer: `bane.mjs` (banen, fysikken og botten, enhedstestet) og `index.html`. Se «Fjolle-Obby – de ni etaper og det, der ikke slår ihjel» nedenfor. |
 
 | Tårnforsvar | `public/spil/taarnforsvar/` | SorteSlyngels ønske om «et Tower Defense-stil spil, hvor man kæmper om at komme længst». Stien snor sig fra hullet i toppen ned til porten, og på græsset ved siden af bygger man otte slags tårne: bueskytte (billig og hurtig), isbøsse (fryser, så de andre når at skyde flere gange), giftsky (skade pr. sekund, som panser ikke stopper), kanon (bomben rammer flere), guldmine (skyder ikke – betaler efter hver bølge), lynspole (lynet hopper videre til flere), troldmand (dyr, men lynet går igennem panser) og snigskytte (rammer hele banen og går efter det stærkeste monster). Fem niveauer pr. tårn, og man kan sælge igen. Monstrene kommer i bølger, der aldrig holder op: slim, flagermus, trolde med panser og en monsterkonge hver femte bølge. Score = **klarede bølger** – motoren er helt uden tilfældighed, så alle møder de samme bølger i den samme rækkefølge. To filer: `forsvar.mjs` (banen, tårnene, monstrene, bølgerne og en bot, enhedstestet) og `index.html`. Se «Tårnforsvar – stien, de otte tårne og bølgerne» nedenfor. |
+| Baseforsvar | `public/spil/baseforsvar/` | SorteSlyngels ønske om «et spil hvor man bygger en base og skal forsvare den fra fjender», med Warcraft 3-banen «Zombie Defense» som forbillede. Rådhuset står midt på et gitter på 11 × 15 felter, og resten må bebygges: **mure** (står i vejen), **skydetårn** og **kanontårn** (skyder), **farm** (her træner man bønder — hver bonde giver guld ved daggry) og **kaserne** (her træner man soldater, der selv går ud og slås). Alt kan opgraderes fire niveauer op, og opgraderer man kasernen, bliver de soldater, der allerede står på banen, stærkere med det samme. Zombierne kommer **ikke** i bølger: de dukker tilfældigt op hen over tiden fra alle fire kanter, over dobbelt så tit om natten, og bliver stærkere for hver dag. Score = **overlevede dage**. To filer: `base.mjs` (basen, zombiernes vej, økonomien og en bot, enhedstestet) og `index.html`. Se «Baseforsvar – basen, zombiernes vej og døgnet» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby og Tårnforsvar — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar og Baseforsvar — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -1902,6 +1903,70 @@ Test: `test/taarnforsvar.test.mjs` (bygger et tårn med en rigtig finger, prøve
 at bygge på stien, opgraderer og sælger, sender en bølge af sted og klarer den,
 og mister så det sidste hjerte) + `test/unit/taarnforsvar.test.mjs`.
 
+### Baseforsvar – basen, zombiernes vej og døgnet
+
+SorteSlyngels ønske #58: «et spil hvor man bygger en base og skal forsvare den
+fra fjender … mure, tårne som kan skyde og tropper til at angribe … farms, hvor
+man skal træne bønder … fjenderne skal ikke komme i faste bølger som i et Tower
+Defense-spil, men mere tilfældigt over tid», med Warcraft 3-banen «Zombie
+Defense» som forbillede.
+
+Banen er et gitter på 11 × 15 felter à 10 enheder (110 × 150) med rådhuset i det
+præcise midtpunkt (5,7). Alt andet må bebygges. Fem ting er værd at huske, hvis
+spillet skal røres igen:
+
+1. **Der er ingen sti og ingen pathfinding.** En zombie ser på sine fire naboer
+   og går til det ledige felt, der kommer tættest på rådhuset; er alle de felter,
+   der kommer tættere på, spærret af bygninger, bider den sig igennem den
+   nærmeste af dem. Derfor går den, der kommer skråt ind, udenom en enkelt mur,
+   mens den, der kommer lige imod, bider sig igennem — et skridt til siden
+   kommer jo ikke tættere på. Det gør mure til noget værd uden at nogen skal
+   regne ruter ud, og det er umuligt at lukke zombierne ude for evigt.
+
+   Det giver også spillets vigtigste greb: **de fire felter lige nord, syd, øst
+   og vest for rådhuset er de eneste, en zombie kan stå på og nå huset fra.** En
+   mur på hver af dem koster 80 guld og køber en masse tid — og holder tårnene
+   fri, så de ikke selv bliver ædt. Botten åbner med netop det.
+
+2. **Tiden går i dage, ikke i bølger.** En dag er 36 sekunder, og `spawnPrSek()`
+   er en sandsynlighed pr. sekund, ikke en liste: zombierne dukker op hen over
+   døgnet, 2,4 gange så tit om natten (som tegnes med et blåt slør over fladen).
+   Score = hele dage, basen holdt. Slags og styrke følger dagen: løbere fra dag
+   3, bæster med panser fra dag 5, kæmper fra dag 8, og alle får 15 % mere liv
+   pr. dag, mens guldet kun vokser 6 % — derfor ender alle med at tabe.
+
+3. **Tilfældigheden ligger i ét frø.** `nytSpil(froeTal)` laver sin egen terning,
+   så motoren aldrig rører `Math.random()`. En test kan derfor spille den samme
+   uge to gange og få nøjagtig det samme; `?froe=1` i adressen gør det samme i
+   browseren (det er sådan `test/baseforsvar.test.mjs` kører).
+
+4. **Bønderne bor i farmen.** Man træner dem dér — det koster guld og tager fem
+   sekunder — og hver bonde giver `indtaegt` guld ved daggry. Falder farmen,
+   ryger bønderne med, og det er dét, der gør, at man også skal passe på sit
+   bagland og ikke kun på rådhuset. Soldaterne trænes på samme måde i kasernen.
+
+5. **Soldaterne henter deres tal fra kasernen, hver gang de bruges.** Derfor
+   bliver de, der allerede står på banen, stærkere i samme øjeblik kasernen
+   opgraderes (og får fyldt liv op). «Opgraderinger til tropper» er altså én
+   pris ét sted i stedet for et opgraderingstræ pr. soldat.
+
+Bygninger repareres langsomt af sig selv om dagen, når der er gået tre sekunder,
+siden nogen sidst bed i dem — om natten står håndværkerne stille.
+
+Kurven er målt med en bot, ikke gættet. `botSpiller()` bygger mure om huset,
+tårne, farme med bønder og en kaserne, og opgraderer, når der er råd; den når
+dag 10-17. To tårne og ellers ingenting når 6, og gør man slet ingenting, falder
+huset på dag 2. Det vigtigste ved botten er, at den **sparer op**: den køber
+ét ønske ad gangen i en fast rækkefølge og venter, hvis den ikke har råd. En
+tidligere udgave brugte bare pengene på det billigste, den kunne betale lige nu,
+og endte med tyve mure, ét tårn og ingen bønder — spillet så håbløst ud, men det
+var botten, der var dum.
+
+Test: `test/baseforsvar.test.mjs` (bygger en mur med en rigtig finger, prøver at
+bygge oven på rådhuset, opgraderer hele vejen op og sælger, træner en bonde og
+en soldat, henter guld ved daggry, skyder zombier ned, ser natten falde på og
+mister til sidst rådhuset) + `test/unit/baseforsvar.test.mjs`.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -1926,7 +1991,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Tårnforsvars sti, tårne, bølger og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om

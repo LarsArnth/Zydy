@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 53,
+      "dato": "2026-09-15",
+      "spil": "baseforsvar",
+      "titel": "Baseforsvar – byg en base, og hold zombierne ude",
+      "hvad": "SorteSlyngel ønskede sig et spil, hvor man bygger en base og skal forsvare den. Midt på banen står dit rådhus – falder det, er det slut. Rundt om det bygger du mure, der står i vejen, skydetårne og kanontårne, der skyder, farme, hvor du træner bønder (hver bonde giver guld, hver gang det bliver morgen), og en kaserne, hvor du træner soldater, der selv går ud og slås. Alt kan opgraderes fire gange – og opgraderer du kasernen, bliver de soldater, du allerede har ude, stærkere med det samme. Zombierne kommer ikke i bølger som i Tårnforsvar: de dukker op hele tiden, fra alle fire sider, og der kommer dobbelt så mange, når det bliver mørkt. For hver dag bliver de stærkere, og efter et stykke tid kommer der løbere, bæster med panser og til sidst kæmper. Et godt trick: de fire felter lige op ad rådhuset er de eneste, en zombie kan stå på og nå huset fra – en mur på hver af dem koster ikke meget og køber en masse tid. Score er, hvor mange dage din base holdt.",
+      "oensket": "SorteSlyngel"
+    },
+    {
       "nr": 52,
       "dato": "2026-09-15",
       "spil": "taarnforsvar",
