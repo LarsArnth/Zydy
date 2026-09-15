@@ -1,0 +1,1050 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#14161f">
+<meta name="description" content="Baseforsvar: byg mure, tårne, farme med bønder og en kaserne med soldater, og hold zombierne væk fra rådhuset. De kommer tilfældigt hele døgnet – og flest om natten.">
+<title>Baseforsvar – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314161f'/%3E%3Crect x='22' y='24' width='20' height='18' rx='2' fill='%23ff9f43'/%3E%3Cpath d='M20 24l12-9 12 9z' fill='%23ffd447'/%3E%3Crect x='8' y='34' width='8' height='12' rx='2' fill='%238d9aa8'/%3E%3Crect x='48' y='34' width='8' height='12' rx='2' fill='%238d9aa8'/%3E%3Ccircle cx='32' cy='52' r='6' fill='%237bd88f'/%3E%3C/svg%3E">
+<style>
+  /*
+    Baseforsvar – SorteSlyngels ønske #58 («et spil hvor man bygger en base og
+    skal forsvare den fra fjender … mure, tårne og tropper … farms med bønder
+    … fjenderne skal komme tilfældigt over tid»).
+
+    Banen er 110 × 150 enheder (base.mjs) og tegnes i midten af fladen med en
+    smal rand udenom, så man kan se zombierne komme, før de er inde på gitteret.
+    Byggeknapperne ligger nedenunder — uden for fladen, så fingeren ikke skygger
+    for det felt, man er ved at bygge på.
+
+    Fire greb er værd at huske:
+      1) Man vælger en bygning i bunden og trykker så på et grønt felt. Mens en
+         bygning er valgt, lyser rækkevidden op under fingeren.
+      2) Trykker man på noget, man har bygget, kommer kassen op med «Træn»,
+         «Opgradér» og «Sælg». Den ligger oven på fladen i to små rækker, så
+         resten af skærmen ikke hopper, når den kommer og går — og så der er
+         plads til tre knapper på en iPhone.
+      3) Natten tegnes som et blåt slør, der lægger sig hen over fladen. Det er
+         den eneste besked om, at der nu kommer over dobbelt så mange zombier.
+      4) Selve spillet kører i base.mjs; her tegnes det bare. Derfor kan testen
+         spole en hel uge frem på et øjeblik med GAME.frem().
+  */
+  :root{
+    --bg:#14161f; --bg2:#1e2230; --bg3:#2c3243; --text:#f2f4f8; --muted:#a2adc2;
+    --sun:#ffd447; --coral:#ff4d5e; --mint:#3ddc84; --sky:#4d8dff; --sand:#ff9f43;
+    --ink:#101320; --r:20px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}          /* .btn sætter display:block, og så gemmer hidden ikke af sig selv */
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 10px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:36px;line-height:1;margin:0 0 8px;letter-spacing:-1.6px;font-weight:800}
+  p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:16px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;text-align:center;text-decoration:none;color:var(--ink);transition:transform .08s}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:6px 12px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--text);font-variant-numeric:tabular-nums}
+
+  .wrap{width:100%;max-width:760px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;min-height:42px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .brand{flex:1;text-align:center;font-weight:800;font-size:20px;letter-spacing:-.4px}
+
+  /* Rådhusets liv, guldet og dagen */
+  .hud{display:flex;align-items:center;gap:8px;padding:2px 0 4px}
+  .hud .pill{flex:1;text-align:center;font-size:14px;padding:6px 4px}
+  #husPill.lavt b{color:var(--coral)}
+  #guldPill b{color:var(--sun)}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#171a24}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+  .stage.ryst{animation:ryst .35s}
+  @keyframes ryst{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  /* Beskeden midt på fladen («Ikke guld nok», «Der står allerede noget») */
+  #besked{position:absolute;left:0;right:0;top:34%;text-align:center;pointer-events:none;font-weight:800;
+    font-size:21px;letter-spacing:-.5px;color:var(--sun);text-shadow:0 2px 10px rgba(0,0,0,.75);opacity:0;transition:opacity .2s}
+  #besked.vis{opacity:1}
+  /* Varslet, når en ny dag begynder */
+  #varsel{position:absolute;left:0;right:0;top:13%;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
+  #varsel.vis{opacity:1}
+  #varsel .nr{font-size:34px;font-weight:800;letter-spacing:-1px;color:var(--text);text-shadow:0 2px 12px rgba(0,0,0,.8)}
+  #varsel .hvad{font-size:17px;font-weight:700;color:var(--coral);text-shadow:0 2px 8px rgba(0,0,0,.8)}
+
+  /* Kassen med Træn/Opgradér/Sælg – to rækker, så der er plads på en iPhone */
+  #panel{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(20,22,31,.94);border-radius:16px;
+    padding:8px 10px;border:1px solid var(--bg3)}
+  .panelinfo{display:flex;align-items:center;gap:9px}
+  .panelinfo .ikon{width:26px;height:26px;flex:none}
+  .panelinfo .om{flex:1;min-width:0;font-size:12.5px;color:var(--muted);line-height:1.25}
+  .panelinfo .om b{display:block;color:var(--text);font-size:15px}
+  .panelknapper{display:flex;gap:6px;margin-top:7px}
+  .panelknapper button{flex:1;border-radius:12px;padding:8px 4px;font-size:13px;font-weight:800;
+    background:var(--mint);line-height:1.15}
+  .panelknapper button.traen{background:var(--sun)}
+  .panelknapper button.sael{background:var(--bg3);color:var(--text)}
+  .panelknapper button:disabled{opacity:.4}
+
+  /* Linjen og byggeknapperne under fladen */
+  .doegn{display:flex;align-items:center;gap:8px;margin-top:8px;min-height:30px}
+  .doegn .tekst{flex:1;min-width:0;font-size:14px;color:var(--muted);font-weight:600;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .doegn .tekst b{color:var(--text)}
+  /* Fem bygninger i én række – ét mærke med prisen ved siden af og navnet under */
+  .byggerække{display:flex;gap:5px;margin-top:6px}
+  .byggeknap{flex:1 1 0;min-width:0;background:var(--bg2);border-radius:13px;padding:5px 2px 4px;
+    color:var(--text);text-align:center;border:2px solid transparent;transition:transform .08s;line-height:1.1}
+  .byggeknap canvas{display:block;margin:0 auto;width:20px;height:20px}
+  .byggeknap .p{font-size:12px;font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums}
+  .byggeknap .n{display:block;font-size:10.5px;font-weight:700;margin-top:1px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .byggeknap.dyr{opacity:.42}
+  .byggeknap.valgt{border-color:var(--sun);background:var(--bg3);transform:translateY(-2px)}
+
+  /* Start- og slutskærm oven på fladen */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:14px 16px 20px;background:rgba(20,22,31,.93);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .lavet{margin:0 0 10px;font-size:14px;color:var(--muted);line-height:1.4}
+  .lavet b{color:var(--text)}
+  .rekord-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:6px 0}
+  .rekord-row span{color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:13px}
+  .rekord-row b{font-size:30px;font-weight:800;color:var(--sun);letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  .slutstort{font-size:44px;line-height:1.1;margin:2px 0;font-weight:800;color:var(--sun);letter-spacing:-1.5px}
+  .slutsub{font-size:17px;color:var(--muted);margin:0 0 10px}
+  .ny{color:var(--mint);font-weight:800;font-size:19px;margin:0 0 8px}
+  #nameBtn{position:relative}
+  #nameBtn small{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-top:2px}
+  #nameBtn.tom{color:var(--muted)}
+  #nameForm{margin-top:10px}
+  #nameForm input{width:100%;padding:14px;border-radius:var(--r);border:2px solid var(--bg3);background:var(--bg2);
+    color:var(--text);font:inherit;font-size:18px;text-align:center}
+  .hint{font-size:15px;margin:12px 0 0}
+  /* De fem bygninger forklaret – to spalter, korte linjer, så «Spil» ikke skubbes ud af skærmen */
+  .bygliste{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:10px 0 0;text-align:left}
+  .bygliste div{background:var(--bg2);border-radius:11px;padding:6px 8px;font-size:12px;color:var(--muted);line-height:1.25}
+  .bygliste b{color:var(--text);font-size:13px}
+  .bygliste i{font-style:normal;color:var(--sun);font-weight:800}
+
+  /* Toplisten (fælles klient) */
+  .hs{margin-bottom:10px}
+  .hs-titel{font-size:20px;margin:0 0 8px;letter-spacing:-.5px;font-weight:800}
+  .hs-liste{list-style:none;margin:0;padding:0;max-height:24vh;overflow-y:auto}
+  .hs-raekke{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:12px;font-size:16px}
+  .hs-raekke:nth-child(odd){background:rgba(255,255,255,.05)}
+  .hs-mig{background:rgba(255,212,71,.18)!important;font-weight:800}
+  .hs-nr{width:22px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+  .hs-navn{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hs-score{font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums}
+  .hs-tom,.hs-fejl,.hs-venter{font-size:15px;color:var(--muted);margin:0}
+  .hs-flere{display:block;margin:6px auto 0;background:var(--bg2);color:var(--text);border-radius:999px;
+    padding:6px 14px;font-size:14px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="brand">Baseforsvar</div>
+    <div class="pill" id="drabPill">💀 <b id="drabVal">0</b></div>
+  </div>
+
+  <div class="hud">
+    <div class="pill" id="husPill">🏠 <b id="husVal">1400</b></div>
+    <div class="pill" id="guldPill">🪙 <b id="guldVal">260</b></div>
+    <div class="pill" id="dagPill">☀️ Dag <b id="dagVal">1</b></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <div id="varsel"><div class="nr" id="varselNr">DAG 1</div><div class="hvad" id="varselHvad"></div></div>
+    <div id="besked"></div>
+
+    <div id="panel" hidden>
+      <div class="panelinfo">
+        <canvas class="ikon" id="panelTegn" width="52" height="52"></canvas>
+        <div class="om"><b id="panelNavn">Mur</b><span id="panelTal">Niveau 1</span></div>
+      </div>
+      <div class="panelknapper">
+        <button class="traen" id="traenBtn" hidden>Træn bonde<br>35 🪙</button>
+        <button id="opgraderBtn">Opgradér<br>25 🪙</button>
+        <button class="sael" id="saelgBtn">Sælg<br>10 🪙</button>
+      </div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Baseforsvar</h1>
+        <div class="lavet"><b>SorteSlyngel</b> ønskede sig spillet · <b>Far</b> og <b>Claude</b> byggede det</div>
+        <div class="hs" id="hsStart"></div>
+        <div class="rekord-row"><span>Din rekord</span><b id="rekordVal">0</b><span>dage</span></div>
+        <button class="btn ghost tom" id="nameBtn">Skriv dit navn</button>
+        <form id="nameForm" hidden autocomplete="off">
+          <input id="nameInput" type="text" maxlength="12" placeholder="Skriv dit navn" aria-label="Dit navn"
+            enterkeyhint="done" autocapitalize="words" spellcheck="false">
+          <button class="btn" type="submit">OK</button>
+        </form>
+        <button class="btn" id="startBtn">Spil</button>
+        <p class="hint">Zombierne kommer fra alle sider og går efter rådhuset i midten – flest om natten,
+          og stærkere for hver dag. Vælg noget i bunden, og tryk på et felt for at bygge det.
+          Tryk på din egen bygning for at træne folk eller opgradere den.</p>
+        <div class="bygliste" id="bygliste"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Rådhuset faldt</h1>
+        <div class="slutstort" id="slutTal">0 dage</div>
+        <p class="slutsub" id="slutSub">Du nåede dag 1</p>
+        <p class="ny" id="nyRekord" hidden>Ny rekord!</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Spil igen</button>
+        <button class="btn ghost" id="menuBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="bund" hidden>
+    <div class="doegn">
+      <div class="tekst" id="doegnTekst">Byg dit forsvar</div>
+    </div>
+    <div class="byggerække" id="byggeRow"></div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="baseforsvar"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+<script type="module">
+import {
+  FELT, KOLONNER, RAEKKER, BREDDE, HOEJDE, RAADHUS_FELT, midte, paaBanen,
+  BYGNINGER, BYGGES, BYGNING_VED, MAKS_NIVEAU, bygData, FJENDER,
+  DAG_LAENGDE, NAT_START, BONDE_PRIS, SOLDAT_PRIS,
+  nytSpil, byg, opgrader, saelg, salgspris, bygningPaa, traen, traening, bemanding,
+  boenderIAlt, farmIndtaegt, tik, dagVarsel, botTraek,
+} from './base.mjs';
+
+const params = new URLSearchParams(location.search);
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), g = canvas.getContext('2d');
+if (!g.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const bund = $('bund'), byggeRow = $('byggeRow'), panel = $('panel');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen'), besked = $('besked'), varsel = $('varsel');
+const nameBtn = $('nameBtn'), nameForm = $('nameForm'), nameInput = $('nameInput');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Lagring ---------- */
+const KEY_BEST = 'zydy.baseforsvar.bedste';
+const tal = n => { try { return Math.max(0, parseInt(localStorage.getItem(n), 10) || 0); } catch (e) { return 0; } };
+const gem = (n, v) => { try { localStorage.setItem(n, String(v)); } catch (e) {} };
+let bedste = tal(KEY_BEST);
+
+/* ---------- Fladen ---------- */
+/* Der tegnes med en rand på 7 enheder hele vejen rundt om gitteret, så man kan
+   se zombierne komme, før de er inde på banen. */
+const MARGEN = 7;
+let W = 1, H = 1, dpr = 1, skala = 1, ox = 0, oy = 0;
+function maalOp() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  skala = Math.min(W / (BREDDE + MARGEN * 2), H / (HOEJDE + MARGEN * 2));
+  ox = (W - BREDDE * skala) / 2;
+  oy = (H - HOEJDE * skala) / 2;
+}
+const px = x => ox + x * skala;
+const py = y => oy + y * skala;
+/** Skærmpunkt → punkt på banen. */
+function tilBane(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  return { x: (clientX - r.left - ox) / skala, y: (clientY - r.top - oy) / skala };
+}
+maalOp();
+addEventListener('resize', maalOp);
+addEventListener('orientationchange', () => setTimeout(maalOp, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maalOp).observe(stage);
+
+/* ---------- Spillet ---------- */
+const nytFroe = () => {
+  // ?froe=1 (eller ?seed=1, som de andre spil bruger) giver den samme uge hver gang – det er sådan testene kører
+  const fast = parseInt(params.get('froe') ?? params.get('seed'), 10);
+  return Number.isFinite(fast) ? fast : (Date.now() % 100000) + 1;
+};
+let spil = nytSpil(nytFroe());
+let fase = 'menu';            // menu | spil | slut
+let valgtSlags = null;        // bygningen, man er ved at rejse
+let valgtBygning = null;      // bygningen, man har trykket på
+let sigte = null;             // feltet under fingeren, mens man bygger
+let sidsteT = 0, beskedUr = 0, varselUr = 0, pauseret = false, sidsteHusHp = 0, rystTil = 0;
+let sidsteDag = 1, daggryUr = 0;
+
+function visBesked(tekst, sek = 1.3) {
+  besked.textContent = tekst;
+  besked.classList.add('vis');
+  beskedUr = sek;
+}
+
+function visVarsel(dag) {
+  $('varselNr').textContent = 'DAG ' + dag;
+  $('varselHvad').textContent = dagVarsel(dag) || '';
+  varsel.classList.add('vis');
+  varselUr = 1.8;
+}
+
+function start() {
+  spil = nytSpil(nytFroe());
+  fase = 'spil'; valgtSlags = null; valgtBygning = null; sigte = null;
+  sidsteHusHp = spil.raadhus.hp; sidsteDag = 1; daggryUr = 0;
+  startScreen.classList.remove('on');
+  slutScreen.classList.remove('on');
+  bund.hidden = false;
+  $('nyRekord').hidden = true;
+  visPanel(); tegnKnapper(); visHud();
+}
+
+function tilMenu() {
+  fase = 'menu'; valgtSlags = null; valgtBygning = null; sigte = null;
+  slutScreen.classList.remove('on');
+  startScreen.classList.add('on');
+  bund.hidden = true;
+  visPanel(); visHud(); visStart(); hentListe();
+}
+
+function slut() {
+  fase = 'slut';
+  valgtSlags = null; valgtBygning = null; sigte = null;
+  bund.hidden = true;
+  visPanel();
+  const klarede = spil.klarede;
+  const rekord = klarede > bedste;
+  if (rekord) { bedste = klarede; gem(KEY_BEST, bedste); }
+  $('slutTitel').textContent = klarede >= 10 ? 'Flot forsvaret!' : 'Rådhuset faldt';
+  $('slutTal').textContent = klarede === 1 ? '1 dag' : klarede + ' dage';
+  $('slutSub').textContent = `Du nåede dag ${spil.dag} · ${spil.drab} zombier nedlagt`;
+  $('nyRekord').hidden = !rekord;
+  slutScreen.classList.add('on');
+  visHud(); tegnListe();
+  if (rekord) sendRekord(klarede);
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(klarede, klarede === 1 ? '1 dag' : klarede + ' dage');
+  if (!roligt) navigator.vibrate && navigator.vibrate([40, 70, 40]);
+}
+
+/* ---------- HUD ---------- */
+let sidsteHud = '';
+function visHud() {
+  const hus = spil.raadhus;
+  const noegle = [Math.round(hus.hp), spil.guld, spil.dag, spil.nat, spil.fjender.length,
+    spil.drab, Math.ceil(daggryUr)].join('|');
+  if (noegle === sidsteHud) return;
+  sidsteHud = noegle;
+  $('husVal').textContent = String(Math.max(0, Math.round(hus.hp)));
+  $('husPill').classList.toggle('lavt', hus.hp <= hus.maksHp * 0.3);
+  $('guldVal').textContent = String(spil.guld);
+  $('dagVal').textContent = String(spil.dag);
+  $('dagPill').firstChild.textContent = spil.nat ? '🌙 Dag ' : '☀️ Dag ';
+  $('drabVal').textContent = String(spil.drab);
+  const zombier = spil.fjender.length;
+  if (daggryUr > 0 && spil.sidsteIndtaegt > 0) {
+    $('doegnTekst').innerHTML = `Ny dag! Farmene gav <b>${spil.sidsteIndtaegt} 🪙</b>`;
+  } else if (spil.nat) {
+    $('doegnTekst').innerHTML = `🌙 Nat – der kommer flest nu · <b>${zombier}</b> på banen`;
+  } else if (!zombier && spil.dag === 1) {
+    $('doegnTekst').innerHTML = 'Byg dit forsvar – der er ro for nu';
+  } else {
+    $('doegnTekst').innerHTML = `☀️ Dag <b>${spil.dag}</b> · ${zombier} zombier på banen`;
+  }
+  tegnKnapper();
+}
+
+function visStart() {
+  $('rekordVal').textContent = String(bedste);
+}
+
+/* ---------- Byggeknapperne i bunden ---------- */
+let sidsteKnapper = '';
+function tegnKnapper() {
+  const noegle = BYGGES.map(b => (spil.guld >= b.pris ? '1' : '0')).join('') + '|' + valgtSlags;
+  if (noegle === sidsteKnapper) return;
+  sidsteKnapper = noegle;
+  if (byggeRow.children.length !== BYGGES.length) {
+    byggeRow.innerHTML = '';
+    for (const type of BYGGES) {
+      const b = document.createElement('button');
+      b.className = 'byggeknap'; b.dataset.slags = type.id;
+      b.innerHTML = `<canvas width="44" height="44"></canvas><span class="p">${type.pris}</span><span class="n">${type.navn}</span>`;
+      b.setAttribute('aria-label', `${type.navn}, ${type.pris} guld`);
+      byggeRow.appendChild(b);
+      tegnMaerke(b.querySelector('canvas'), type.id);
+    }
+  }
+  BYGGES.forEach((type, nr) => {
+    const b = byggeRow.children[nr];
+    b.classList.toggle('valgt', valgtSlags === type.id);
+    b.classList.toggle('dyr', spil.guld < type.pris);
+  });
+}
+
+byggeRow.addEventListener('pointerdown', e => {
+  const knap = e.target.closest('.byggeknap');
+  if (!knap || fase !== 'spil') return;
+  const id = knap.dataset.slags;
+  valgtSlags = valgtSlags === id ? null : id;
+  valgtBygning = null; sigte = null;
+  visPanel(); tegnKnapper();
+});
+
+/* ---------- Kassen med Træn/Opgradér/Sælg ---------- */
+/** Én linje om, hvad bygningen kan på det niveau. */
+function niveauTekst(b) {
+  const n = bygData(b);
+  const liv = `${Math.round(b.hp)}/${b.maksHp} liv`;
+  if (b.slags === 'farm') {
+    const m = bemanding(spil, b);
+    return `${m.har}/${m.plads} bønder · ${n.indtaegt} 🪙 pr. bonde ved daggry · ${liv}`;
+  }
+  if (b.slags === 'kaserne') {
+    const m = bemanding(spil, b);
+    return `${m.har}/${m.plads} soldater · ${n.soldatSkade} i hug · ${liv}`;
+  }
+  if (b.slags === 'mur') return `Står i vejen for zombierne · ${liv}`;
+  if (b.slags === 'raadhus') return `Falder det, er spillet slut · ${liv}`;
+  const felter = Math.round(n.raekkevidde / FELT * 10) / 10;
+  return `${n.skade} i skade${n.splash ? ' · rammer flere' : ''} · rækker ${felter} felter · ${liv}`;
+}
+
+let sidstePanel = '';
+function visPanel() {
+  if (!valgtBygning || fase !== 'spil' || !spil.bygninger.includes(valgtBygning)) {
+    panel.hidden = true; sidstePanel = ''; valgtBygning = spil.bygninger.includes(valgtBygning) ? valgtBygning : null;
+    return;
+  }
+  const b = valgtBygning, type = BYGNING_VED[b.slags], n = bygData(b);
+  panel.hidden = false;
+  const t = traening(b);
+  const m = t ? bemanding(spil, b) : null;
+  // Kassen står, mens man spiller videre – rør kun DOM'en, når der er sket noget
+  const noegle = [b.id, b.niveau, Math.round(b.hp), spil.guld >= (n.opgradering || 0),
+    t && spil.guld >= t.pris, m && m.har, !!b.traener].join('|');
+  if (noegle === sidstePanel) return;
+  sidstePanel = noegle;
+  tegnMaerke($('panelTegn'), b.slags, b);
+  $('panelNavn').textContent = `${type.navn} · niveau ${b.niveau}/${MAKS_NIVEAU}`;
+  $('panelTal').textContent = b.traener
+    ? `Træner ${b.traener.slags}… ${Math.max(0, Math.ceil(b.traener.til - spil.tid))} sek.`
+    : niveauTekst(b);
+
+  const traenBtn = $('traenBtn');
+  traenBtn.hidden = !t;
+  if (t) {
+    const fuldt = m.har >= m.plads;
+    traenBtn.disabled = !!b.traener || fuldt || spil.guld < t.pris;
+    traenBtn.innerHTML = fuldt ? `Fuldt hus<br>${m.har}/${m.plads}` : `Træn ${t.navn}<br>${t.pris} 🪙`;
+  }
+  const op = $('opgraderBtn');
+  if (b.niveau >= MAKS_NIVEAU) {
+    op.disabled = true; op.innerHTML = 'Færdig-<br>bygget';
+  } else {
+    op.disabled = spil.guld < n.opgradering;
+    op.innerHTML = `Opgradér<br>${n.opgradering} 🪙`;
+  }
+  const sael = $('saelgBtn');
+  sael.hidden = b.slags === 'raadhus';
+  sael.innerHTML = `Sælg<br>${salgspris(b)} 🪙`;
+}
+
+$('traenBtn').addEventListener('click', () => {
+  if (!valgtBygning) return;
+  const svar = traen(spil, valgtBygning);
+  if (!svar.ok) return visBesked(svar.fejl);
+  visPanel(); visHud();
+});
+$('opgraderBtn').addEventListener('click', () => {
+  if (!valgtBygning) return;
+  const svar = opgrader(spil, valgtBygning);
+  if (!svar.ok) return visBesked(svar.fejl);
+  visPanel(); visHud();
+});
+$('saelgBtn').addEventListener('click', () => {
+  if (!valgtBygning) return;
+  const svar = saelg(spil, valgtBygning);
+  if (!svar.ok) return visBesked(svar.fejl);
+  valgtBygning = null;
+  visPanel(); visHud();
+});
+
+/* ---------- Fingeren på banen ---------- */
+function feltUnder(clientX, clientY) {
+  const p = tilBane(clientX, clientY);
+  return { kx: Math.floor(p.x / FELT), ky: Math.floor(p.y / FELT) };
+}
+
+/** Bygger (eller vælger) på et felt. Bruges både af fingeren og af testen. */
+function trykPaaFelt(kx, ky) {
+  if (fase !== 'spil') return false;
+  if (valgtSlags) {
+    const svar = byg(spil, valgtSlags, kx, ky);
+    if (!svar.ok) { visBesked(svar.fejl); return false; }
+    if (spil.guld < BYGNING_VED[valgtSlags].pris) valgtSlags = null;   // ikke råd til en til
+    sigte = null;
+    visHud(); tegnKnapper();
+    return true;
+  }
+  const b = paaBanen(kx, ky) ? bygningPaa(spil, kx, ky) : null;
+  valgtBygning = b && b === valgtBygning ? null : b;
+  visPanel();
+  return !!b;
+}
+
+canvas.addEventListener('pointerdown', e => {
+  if (fase !== 'spil') return;
+  e.preventDefault();
+  const f = feltUnder(e.clientX, e.clientY);
+  if (valgtSlags) { sigte = f; canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId); }
+  else trykPaaFelt(f.kx, f.ky);
+});
+canvas.addEventListener('pointermove', e => {
+  if (!sigte || !valgtSlags) return;
+  e.preventDefault();
+  sigte = feltUnder(e.clientX, e.clientY);
+});
+canvas.addEventListener('pointerup', e => {
+  if (fase !== 'spil' || !valgtSlags) return;
+  const f = feltUnder(e.clientX, e.clientY);
+  sigte = null;
+  trykPaaFelt(f.kx, f.ky);
+});
+
+/* ================= Tegning ================= */
+const GRAES = ['#2f3a2c', '#344031'];
+const OEDEMARK = '#1b1e28';
+
+/** Hvor mørkt der er lige nu: 0 om dagen, 1 midt om natten. */
+function moerke() {
+  const del = (spil.tid % DAG_LAENGDE) / DAG_LAENGDE;
+  if (del < NAT_START) return Math.max(0, 1 - del / 0.08) * 0.35;      // de første sekunder er det stadig halvmørkt
+  if (del > 0.94) return Math.max(0, (1 - del) / 0.06);
+  return Math.min(1, (del - NAT_START) / 0.06);
+}
+
+function tegnBane() {
+  // Ødemarken udenom – det er der, zombierne kommer fra
+  g.fillStyle = OEDEMARK;
+  g.fillRect(0, 0, W, H);
+  // Græsset som et ternet tæppe, så felterne kan ses uden streger
+  for (let ky = 0; ky < RAEKKER; ky++) for (let kx = 0; kx < KOLONNER; kx++) {
+    g.fillStyle = GRAES[(kx + ky) % 2];
+    g.fillRect(px(kx * FELT), py(ky * FELT), FELT * skala + 1, FELT * skala + 1);
+  }
+  g.strokeStyle = 'rgba(255,255,255,.07)';
+  g.lineWidth = 1.5;
+  g.strokeRect(px(0), py(0), BREDDE * skala, HOEJDE * skala);
+}
+
+function tegnGitter() {
+  // Kun mens man bygger: grønt på det, der er ledigt, rødt på det, der er optaget
+  if (!valgtSlags || fase !== 'spil') return;
+  const s = FELT * skala;
+  for (let ky = 0; ky < RAEKKER; ky++) for (let kx = 0; kx < KOLONNER; kx++) {
+    const optaget = !!bygningPaa(spil, kx, ky);
+    g.strokeStyle = optaget ? 'rgba(255,77,94,.3)' : 'rgba(61,220,132,.4)';
+    g.lineWidth = 1.5;
+    g.strokeRect(px(kx * FELT) + 2, py(ky * FELT) + 2, s - 4, s - 4);
+  }
+  if (!sigte) return;
+  const { kx, ky } = sigte;
+  const kan = paaBanen(kx, ky) && !bygningPaa(spil, kx, ky) && spil.guld >= BYGNING_VED[valgtSlags].pris;
+  const p = midte(kx, ky);
+  g.fillStyle = kan ? 'rgba(61,220,132,.3)' : 'rgba(255,77,94,.3)';
+  g.fillRect(px(kx * FELT), py(ky * FELT), s, s);
+  const rk = BYGNING_VED[valgtSlags].niveauer[0].raekkevidde;
+  if (rk) tegnRaekkevidde(p.x, p.y, rk, kan);
+}
+
+function tegnRaekkevidde(x, y, r, god = true) {
+  g.beginPath(); g.arc(px(x), py(y), r * skala, 0, Math.PI * 2);
+  g.fillStyle = god ? 'rgba(255,255,255,.07)' : 'rgba(255,77,94,.07)';
+  g.fill();
+  g.strokeStyle = god ? 'rgba(255,255,255,.3)' : 'rgba(255,77,94,.4)';
+  g.lineWidth = 1.5; g.stroke();
+}
+
+/**
+ * Selve bygningen, tegnet omkring (x,y) i en kasse på `s`. Den bruges både på
+ * banen, i kassen med knapperne og på de fem knapper i bunden — derfor tager
+ * den en tegnestok med, i stedet for at bruge `g` direkte.
+ */
+function tegnBygning(gg, slags, x, y, s, niveau = 1, vinkel = -Math.PI / 2) {
+  const type = BYGNING_VED[slags];
+  if (slags === 'mur') {
+    gg.fillStyle = '#5b6474';
+    gg.beginPath(); gg.roundRect(x - s * 0.42, y - s * 0.34, s * 0.84, s * 0.68, s * 0.08); gg.fill();
+    gg.fillStyle = type.farve;
+    for (let r = 0; r < 3; r++) {
+      const skub = r % 2 ? s * 0.1 : 0;
+      for (let k = -1; k <= 1; k++) {
+        gg.beginPath();
+        gg.roundRect(x - s * 0.38 + k * s * 0.26 + skub, y - s * 0.3 + r * s * 0.21, s * 0.22, s * 0.17, s * 0.03);
+        gg.fill();
+      }
+    }
+    return;
+  }
+  if (slags === 'raadhus') {
+    gg.fillStyle = '#6b4a2a';                                  // bindingsværk
+    gg.beginPath(); gg.roundRect(x - s * 0.38, y - s * 0.2, s * 0.76, s * 0.52, s * 0.06); gg.fill();
+    gg.fillStyle = type.farve;                                 // taget
+    gg.beginPath();
+    gg.moveTo(x - s * 0.46, y - s * 0.18); gg.lineTo(x, y - s * 0.5); gg.lineTo(x + s * 0.46, y - s * 0.18);
+    gg.closePath(); gg.fill();
+    gg.fillStyle = '#ffe9a8';                                  // døren og vinduerne
+    gg.fillRect(x - s * 0.08, y + s * 0.02, s * 0.16, s * 0.3);
+    gg.fillRect(x - s * 0.28, y - s * 0.08, s * 0.12, s * 0.12);
+    gg.fillRect(x + s * 0.16, y - s * 0.08, s * 0.12, s * 0.12);
+    gg.fillStyle = '#ffd447';                                  // flaget på toppen
+    gg.fillRect(x - s * 0.02, y - s * 0.72, s * 0.04, s * 0.24);
+    gg.beginPath();
+    gg.moveTo(x + s * 0.02, y - s * 0.7); gg.lineTo(x + s * 0.26, y - s * 0.62); gg.lineTo(x + s * 0.02, y - s * 0.54);
+    gg.closePath(); gg.fill();
+    return;
+  }
+  if (slags === 'farm') {
+    gg.fillStyle = '#7a4f34';                                  // lade
+    gg.beginPath(); gg.roundRect(x - s * 0.36, y - s * 0.14, s * 0.72, s * 0.44, s * 0.05); gg.fill();
+    gg.fillStyle = '#a5643f';
+    gg.beginPath();
+    gg.moveTo(x - s * 0.42, y - s * 0.12); gg.lineTo(x, y - s * 0.42); gg.lineTo(x + s * 0.42, y - s * 0.12);
+    gg.closePath(); gg.fill();
+    gg.strokeStyle = type.farve; gg.lineWidth = Math.max(1, s * 0.05); gg.lineCap = 'round';
+    for (let i = -1; i <= 1; i++) {                            // kornet foran
+      const fx = x + i * s * 0.2;
+      gg.beginPath(); gg.moveTo(fx, y + s * 0.3); gg.lineTo(fx, y + s * 0.1); gg.stroke();
+      gg.beginPath(); gg.arc(fx, y + s * 0.07, s * 0.05, 0, 7); gg.fillStyle = type.farve; gg.fill();
+    }
+    return;
+  }
+  if (slags === 'kaserne') {
+    gg.fillStyle = '#3a4a68';                                  // teltet
+    gg.beginPath();
+    gg.moveTo(x - s * 0.42, y + s * 0.3); gg.lineTo(x, y - s * 0.4); gg.lineTo(x + s * 0.42, y + s * 0.3);
+    gg.closePath(); gg.fill();
+    gg.fillStyle = '#121722';
+    gg.beginPath();
+    gg.moveTo(x - s * 0.12, y + s * 0.3); gg.lineTo(x, y - s * 0.02); gg.lineTo(x + s * 0.12, y + s * 0.3);
+    gg.closePath(); gg.fill();
+    gg.strokeStyle = type.farve; gg.lineWidth = Math.max(1, s * 0.07); gg.lineCap = 'round';
+    gg.beginPath();                                            // sværdene på siden
+    gg.moveTo(x - s * 0.3, y + s * 0.24); gg.lineTo(x - s * 0.02, y - s * 0.32); gg.stroke();
+    gg.beginPath();
+    gg.moveTo(x + s * 0.3, y + s * 0.24); gg.lineTo(x + s * 0.02, y - s * 0.32); gg.stroke();
+    return;
+  }
+  // Tårnene: sokkel og et hoved, der drejer efter målet
+  gg.fillStyle = '#414b5c';
+  gg.beginPath(); gg.roundRect(x - s * 0.34, y - s * 0.28, s * 0.68, s * 0.6, s * 0.12); gg.fill();
+  gg.fillStyle = '#52607a';
+  gg.beginPath(); gg.roundRect(x - s * 0.34, y - s * 0.28, s * 0.68, s * 0.18, s * 0.09); gg.fill();
+  if (niveau >= MAKS_NIVEAU) {
+    gg.strokeStyle = '#ffd447'; gg.lineWidth = Math.max(1, s * 0.035);
+    gg.beginPath(); gg.roundRect(x - s * 0.38, y - s * 0.32, s * 0.76, s * 0.68, s * 0.14); gg.stroke();
+  }
+  gg.save();
+  gg.translate(x, y - s * 0.04);
+  gg.rotate(vinkel);
+  gg.fillStyle = type.farve;
+  if (slags === 'kanon') {
+    gg.beginPath(); gg.roundRect(-s * 0.06, -s * 0.11, s * 0.42, s * 0.22, s * 0.07); gg.fill();
+    gg.fillStyle = '#2b3242';
+    gg.beginPath(); gg.arc(0, 0, s * 0.15, 0, 7); gg.fill();
+  } else {
+    gg.strokeStyle = type.farve; gg.lineWidth = s * 0.08; gg.lineCap = 'round';
+    gg.beginPath(); gg.arc(0, 0, s * 0.2, -1.1, 1.1); gg.stroke();
+    gg.beginPath(); gg.moveTo(-s * 0.06, 0); gg.lineTo(s * 0.3, 0); gg.stroke();
+  }
+  gg.restore();
+}
+
+/** Mærket på en byggeknap eller i kassen – samme tegning som på banen. */
+function tegnMaerke(el, slags, b = null) {
+  const gg = el.getContext('2d');
+  gg.setTransform(1, 0, 0, 1, 0, 0);
+  gg.clearRect(0, 0, el.width, el.height);
+  tegnBygning(gg, slags, el.width / 2, el.height / 2, el.width, b ? b.niveau : 1);
+}
+
+function tegnPaaBanen(b) {
+  const x = px(b.x), y = py(b.y), s = FELT * skala;
+  g.save();
+  if (b.blink > 0) g.globalAlpha = 0.6;
+  tegnBygning(g, b.slags, x, y, s, b.niveau, b.vinkel);
+  g.restore();
+  // Niveauprikkerne under bygningen
+  g.fillStyle = '#ffd447';
+  const spring = s * 0.14;
+  for (let i = 0; i < b.niveau; i++) {
+    const fx = x + (i - (b.niveau - 1) / 2) * spring;
+    g.beginPath(); g.arc(fx, y + s * 0.4, s * 0.045, 0, 7); g.fill();
+  }
+  // Bønder og soldater som små hoveder over bygningen
+  const m = traening(b) ? bemanding(spil, b) : null;
+  if (m && m.har) {
+    g.fillStyle = b.slags === 'farm' ? '#ffe9a8' : '#9cc4ff';
+    for (let i = 0; i < m.har; i++) {
+      g.beginPath(); g.arc(x - s * 0.3 + i * s * 0.15, y - s * 0.42, s * 0.055, 0, 7); g.fill();
+    }
+  }
+  // Træningen som en lille bjælke
+  if (b.traener) {
+    const del = 1 - Math.max(0, (b.traener.til - spil.tid) / b.traener.laengde);
+    g.fillStyle = 'rgba(0,0,0,.45)';
+    g.fillRect(x - s * 0.32, y + s * 0.3, s * 0.64, s * 0.08);
+    g.fillStyle = '#ffd447';
+    g.fillRect(x - s * 0.32, y + s * 0.3, s * 0.64 * del, s * 0.08);
+  }
+  // Livbjælken, når der er bidt i den
+  if (b.hp < b.maksHp) {
+    const del = Math.max(0, b.hp / b.maksHp);
+    g.fillStyle = 'rgba(0,0,0,.5)';
+    g.fillRect(x - s * 0.4, y - s * 0.5, s * 0.8, s * 0.09);
+    g.fillStyle = del > 0.5 ? '#3ddc84' : del > 0.25 ? '#ffd447' : '#ff4d5e';
+    g.fillRect(x - s * 0.4, y - s * 0.5, s * 0.8 * del, s * 0.09);
+  }
+  if (valgtBygning === b) {
+    g.strokeStyle = '#ffd447'; g.lineWidth = 2;
+    g.strokeRect(px(b.kx * FELT) + 1, py(b.ky * FELT) + 1, s - 2, s - 2);
+    const n = bygData(b);
+    if (n.raekkevidde) tegnRaekkevidde(b.x, b.y, n.raekkevidde);
+  }
+}
+
+function tegnZombie(f) {
+  const x = px(f.x), y = py(f.y), r = f.r * skala;
+  const art = FJENDER[f.slags];
+  const vip = Math.sin(f.gang * 7) * r * 0.12;
+  g.save();
+  if (f.blink > 0) g.globalAlpha = 0.65;
+  g.fillStyle = art.farve;
+  if (f.slags === 'kaempe') {
+    g.beginPath(); g.roundRect(x - r, y - r + vip, r * 2, r * 2, r * 0.5); g.fill();
+    g.fillStyle = '#2a1016';                                   // hornene
+    g.beginPath(); g.moveTo(x - r * 0.8, y - r + vip); g.lineTo(x - r * 1.1, y - r * 1.6 + vip); g.lineTo(x - r * 0.3, y - r * 0.95 + vip); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(x + r * 0.8, y - r + vip); g.lineTo(x + r * 1.1, y - r * 1.6 + vip); g.lineTo(x + r * 0.3, y - r * 0.95 + vip); g.closePath(); g.fill();
+  } else if (f.slags === 'brute') {
+    g.beginPath(); g.roundRect(x - r, y - r * 0.9 + vip, r * 2, r * 1.9, r * 0.4); g.fill();
+    g.fillStyle = 'rgba(0,0,0,.22)';                           // panserpladen
+    g.beginPath(); g.roundRect(x - r * 0.75, y - r * 0.25 + vip, r * 1.5, r * 0.45, r * 0.15); g.fill();
+  } else if (f.slags === 'loeber') {
+    g.beginPath(); g.ellipse(x, y + vip, r * 0.85, r * 1.15, 0, 0, 7); g.fill();
+  } else {
+    g.beginPath(); g.arc(x, y + vip, r, 0, 7); g.fill();
+    g.fillStyle = 'rgba(0,0,0,.14)';                           // en klat på skulderen
+    g.beginPath(); g.arc(x + r * 0.4, y + r * 0.35 + vip, r * 0.35, 0, 7); g.fill();
+  }
+  // Øjne, så man kan se hvilken vej den kigger
+  const kig = r * 0.36, ret = f.retning || 0;
+  g.fillStyle = '#fff';
+  g.beginPath(); g.arc(x - kig, y - r * 0.15 + vip, r * 0.3, 0, 7); g.fill();
+  g.beginPath(); g.arc(x + kig, y - r * 0.15 + vip, r * 0.3, 0, 7); g.fill();
+  g.fillStyle = '#1b0f12';
+  const bx = Math.cos(ret) * r * 0.1, by = Math.sin(ret) * r * 0.1;
+  g.beginPath(); g.arc(x - kig + bx, y - r * 0.15 + vip + by, r * 0.14, 0, 7); g.fill();
+  g.beginPath(); g.arc(x + kig + bx, y - r * 0.15 + vip + by, r * 0.14, 0, 7); g.fill();
+  g.restore();
+  // Livbjælken
+  if (f.hp < f.maksHp) {
+    const del = Math.max(0, f.hp / f.maksHp), b = r * 2.2;
+    g.fillStyle = 'rgba(0,0,0,.5)';
+    g.fillRect(x - b / 2, y - r * 1.7, b, r * 0.3);
+    g.fillStyle = '#ff4d5e';
+    g.fillRect(x - b / 2, y - r * 1.7, b * del, r * 0.3);
+  }
+}
+
+function tegnSoldat(s) {
+  const x = px(s.x), y = py(s.y), r = 2.6 * skala;
+  const vip = Math.sin(s.gang * 9) * r * 0.16;
+  g.save();
+  if (s.blink > 0) g.globalAlpha = 0.6;
+  g.fillStyle = '#4d8dff';
+  g.beginPath(); g.roundRect(x - r * 0.55, y - r * 0.4 + vip, r * 1.1, r * 1.3, r * 0.3); g.fill();
+  g.fillStyle = '#ffe1c4';                                     // hovedet
+  g.beginPath(); g.arc(x, y - r * 0.75 + vip, r * 0.45, 0, 7); g.fill();
+  g.strokeStyle = '#d9e3f5'; g.lineWidth = Math.max(1, r * 0.2); g.lineCap = 'round';
+  g.beginPath(); g.moveTo(x + r * 0.5, y + r * 0.4 + vip); g.lineTo(x + r * 0.95, y - r * 0.7 + vip); g.stroke();
+  g.restore();
+  if (s.hp < s.maksHp) {
+    const del = Math.max(0, s.hp / s.maksHp), b = r * 1.8;
+    g.fillStyle = 'rgba(0,0,0,.5)';
+    g.fillRect(x - b / 2, y - r * 1.5, b, r * 0.26);
+    g.fillStyle = '#3ddc84';
+    g.fillRect(x - b / 2, y - r * 1.5, b * del, r * 0.26);
+  }
+}
+
+function tegnSkud(s) {
+  const x = px(s.x), y = py(s.y);
+  if (s.slags === 'kanon') {
+    g.fillStyle = '#ffd447';
+    g.beginPath(); g.arc(x, y, 1.6 * skala, 0, 7); g.fill();
+  } else {
+    g.strokeStyle = '#eafff2'; g.lineWidth = Math.max(1, 0.5 * skala); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x, y); g.lineTo(px(s.x - (s.mx - s.x) * 0.06), py(s.y - (s.my - s.y) * 0.06)); g.stroke();
+  }
+}
+
+function tegnSmaeld(s) {
+  const del = s.alder / s.liv, x = px(s.x), y = py(s.y);
+  g.save();
+  g.globalAlpha = Math.max(0, 1 - del);
+  if (s.slags === 'bomb') {
+    g.fillStyle = '#ffd447';
+    g.beginPath(); g.arc(x, y, s.r * skala * (0.4 + del), 0, 7); g.fill();
+  } else if (s.slags === 'hug') {
+    g.strokeStyle = '#fff'; g.lineWidth = Math.max(1, 0.6 * skala);
+    g.beginPath(); g.arc(x, y, s.r * skala * (0.6 + del), 0, 7); g.stroke();
+  } else if (s.slags === 'ruin') {
+    g.fillStyle = '#6b6f7d';
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2, d = s.r * skala * del * 1.2;
+      g.fillRect(x + Math.cos(a) * d, y + Math.sin(a) * d, skala, skala);
+    }
+  } else {
+    g.fillStyle = s.slags === 'soldat' ? '#9cc4ff' : '#7bd88f';
+    for (let i = 0; i < 5; i++) {
+      const a = i / 5 * Math.PI * 2, d = s.r * skala * del * 1.5;
+      g.beginPath(); g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, skala * 0.6, 0, 7); g.fill();
+    }
+  }
+  g.restore();
+}
+
+function tegn() {
+  tegnBane();
+  tegnGitter();
+  for (const b of spil.bygninger) tegnPaaBanen(b);
+  for (const s of spil.soldater) tegnSoldat(s);
+  for (const f of spil.fjender) tegnZombie(f);
+  for (const s of spil.skud) tegnSkud(s);
+  for (const s of spil.smaeld) tegnSmaeld(s);
+  // Natten som et blåt slør over det hele
+  const m = fase === 'menu' ? 0 : moerke();
+  if (m > 0.01) {
+    g.fillStyle = `rgba(18,28,70,${0.52 * m})`;
+    g.fillRect(0, 0, W, H);
+  }
+}
+
+/* ---------- Spillets gang ---------- */
+function opdater(dt) {
+  tik(spil, dt);
+  if (spil.dag !== sidsteDag) {
+    sidsteDag = spil.dag;
+    visVarsel(spil.dag);
+    daggryUr = 3;
+  }
+  if (daggryUr > 0) daggryUr -= dt;
+  if (spil.raadhus.hp < sidsteHusHp - 0.5) {
+    if (!roligt && spil.raadhus.hp < sidsteHusHp - 20) { stage.classList.add('ryst'); rystTil = 0.35; }
+    sidsteHusHp = spil.raadhus.hp;
+  } else sidsteHusHp = spil.raadhus.hp;
+  visHud();
+  visPanel();
+  if (spil.fase === 'slut' && fase === 'spil') slut();
+}
+
+function billede(nu) {
+  requestAnimationFrame(billede);
+  const dt = Math.min(0.1, (nu - sidsteT) / 1000 || 0);
+  sidsteT = nu;
+  if (beskedUr > 0) { beskedUr -= dt; if (beskedUr <= 0) besked.classList.remove('vis'); }
+  if (varselUr > 0) { varselUr -= dt; if (varselUr <= 0) varsel.classList.remove('vis'); }
+  if (rystTil > 0) { rystTil -= dt; if (rystTil <= 0) stage.classList.remove('ryst'); }
+  if (fase === 'spil' && !pauseret && !document.hidden) opdater(dt);
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ---------- Topliste (navnet skrives på startskærmen som i Obby) ---------- */
+const SPIL = 'baseforsvar';
+const navn = () => Highscore.navn.hent();
+const KEY_MIN = 'zydy.baseforsvar.min';
+let top = null;
+const minRaekke = {
+  hent() { try { return JSON.parse(localStorage.getItem(KEY_MIN)) || null; } catch (e) { return null; } },
+  gem(v) { try { localStorage.setItem(KEY_MIN, JSON.stringify(v)); } catch (e) {} },
+};
+const formatDage = v => v + (v === 1 ? ' dag' : ' dage');
+
+function visNavn() {
+  const n = navn();
+  nameBtn.classList.toggle('tom', !n);
+  nameBtn.innerHTML = '';
+  if (n) {
+    nameBtn.appendChild(document.createTextNode(n));
+    const s = document.createElement('small');
+    s.textContent = 'Tryk for at ændre navn';
+    nameBtn.appendChild(s);
+  } else nameBtn.textContent = 'Skriv dit navn';
+}
+
+function tegnListe() {
+  if (!top) return;
+  const liste = top.liste || [], mig = navn() || null;
+  Highscore.tegnListe($('hsStart'), liste, mig, 'Længst i Baseforsvar', formatDage);
+  Highscore.tegnListe($('hsSlut'), liste, mig, 'Længst i Baseforsvar', formatDage);
+}
+
+async function hentListe() {
+  const rod = $('hsStart');
+  if (!top) rod.innerHTML = '<p class="hs-venter">Henter toplisten…</p>';
+  try { top = await Highscore.hent(SPIL); tegnListe(); }
+  catch (e) { if (!top) Highscore.tegnFejl(rod); }
+}
+
+async function sendRekord(dage) {
+  const n = navn();
+  if (!n || !top || !Highscore.kvalificerer(top, dage)) return;
+  try {
+    const svar = await Highscore.send(SPIL, n, dage);
+    if (svar.token) minRaekke.gem({ id: svar.id, token: svar.token });
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { /* toplisten er pynt – spillet kører videre */ }
+}
+
+async function omdoebMigSelv(nyt) {
+  const m = minRaekke.hent();
+  if (!m || !m.id || !m.token) return;
+  try {
+    const svar = await Highscore.omdoeb(SPIL, m.id, m.token, nyt);
+    if (svar.id !== m.id) minRaekke.gem(null);
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { minRaekke.gem(null); }
+}
+
+/* ---------- Knapper ---------- */
+$('startBtn').addEventListener('click', start);
+$('igenBtn').addEventListener('click', start);
+$('menuBtn').addEventListener('click', tilMenu);
+nameBtn.addEventListener('click', () => {
+  nameBtn.hidden = true; nameForm.hidden = false;
+  nameInput.value = navn();
+  setTimeout(() => nameInput.focus({ preventScroll: true }), 30);
+});
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const n = nameInput.value.replace(/\s+/g, ' ').trim().slice(0, 12);
+  const foer = navn();
+  if (n) Highscore.navn.gem(n);
+  nameForm.hidden = true; nameBtn.hidden = false;
+  visNavn(); tegnListe();
+  if (n && foer && n !== foer) omdoebMigSelv(n);
+});
+
+/* ---------- Bygningerne forklaret på startskærmen ---------- */
+$('bygliste').innerHTML = BYGNINGER.map(t => {
+  const pris = t.kanBygges === false ? 'står der' : `${t.pris} 🪙`;
+  return `<div><b>${t.navn}</b> <i>${pris}</i><br>${t.om}</div>`;
+}).join('');
+
+/* ---------- Start ---------- */
+visNavn(); visStart(); visHud(); hentListe();
+if (params.get('spil') === '1') start();
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  BYGNINGER, BYGGES, FJENDER, RAADHUS_FELT, start, tilMenu,
+  pause() { pauseret = true; },
+  fortsaet() { pauseret = false; },
+  /** Spoler spillet frem i faste skridt – en hel dag på et øjeblik. */
+  frem(sek) {
+    let rest = sek;
+    while (rest > 1e-9 && fase === 'spil') { const d = Math.min(1 / 60, rest); opdater(d); rest -= d; }
+    return this.state;
+  },
+  /** Spoler frem til næste daggry. */
+  spolDag(maks = 120) {
+    const maal = spil.dag + 1, stop = spil.tid + maks;
+    while (fase === 'spil' && spil.dag < maal && spil.tid < stop) opdater(1 / 60);
+    return this.state;
+  },
+  /** Vælger en bygning i bunden (som at trykke på knappen). */
+  vaelg(slags) { valgtSlags = valgtSlags === slags ? null : slags; valgtBygning = null; visPanel(); tegnKnapper(); return valgtSlags; },
+  /** Trykker på et felt: bygger det valgte, eller vælger det, der står. */
+  tryk: trykPaaFelt,
+  byg: (slags, kx, ky) => { const s = byg(spil, slags, kx, ky); visHud(); tegnKnapper(); return s; },
+  opgraderValgte: () => { const s = opgrader(spil, valgtBygning); visPanel(); visHud(); return s; },
+  saelgValgte: () => { const s = saelg(spil, valgtBygning); if (s.ok) valgtBygning = null; visPanel(); visHud(); return s; },
+  traenValgte: () => { const s = traen(spil, valgtBygning); visPanel(); visHud(); return s; },
+  /** Lader botten bygge, så testen kan komme langt ned i dagene. */
+  bot: () => botTraek(spil),
+  /** Feltets midte på skærmen, så testen kan trykke rigtigt. */
+  feltPx(kx, ky) {
+    const r = canvas.getBoundingClientRect(), p = midte(kx, ky);
+    return { x: r.left + px(p.x), y: r.top + py(p.y) };
+  },
+  knapPx(slags) {
+    const b = byggeRow.querySelector(`[data-slags="${slags}"]`).getBoundingClientRect();
+    return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+  },
+  /** Stiller spillet op til en bestemt situation (bruges af testene). */
+  saetOp(opt = {}) {
+    if (opt.guld != null) spil.guld = opt.guld;
+    if (opt.husHp != null) { spil.raadhus.hp = opt.husHp; sidsteHusHp = opt.husHp; }
+    if (opt.tid != null) { spil.tid = opt.tid; spil.dag = Math.floor(opt.tid / DAG_LAENGDE) + 1; sidsteDag = spil.dag; }
+    if (opt.roligt) spil.rng = () => 0.999;          // ingen nye zombier af sig selv
+    visHud(); tegnKnapper(); visPanel();             // også kassen, så en test ikke skal vente på næste billede
+    return this.state;
+  },
+  /** Sætter en zombie et bestemt sted, så en prøve kan stilles op. */
+  sendZombie(slags, kx, ky) {
+    const p = midte(kx, ky);
+    const art = FJENDER[slags];
+    spil.fjender.push({
+      id: spil.naesteId++, slags, kx, ky, x: p.x, y: p.y, mx: p.x, my: p.y,
+      hp: art.hp, maksHp: art.hp, fart: art.fart, skade: art.skade, angrebFart: art.angrebFart,
+      panser: art.panser, r: art.r, guld: art.guld, ladt: 0, blink: 0, gang: 0, slaar: null,
+    });
+    return this.state;
+  },
+  /** Hvor og hvor stort der tegnes – så testen kan se, at banen er inde i billedet. */
+  geo() {
+    const r = canvas.getBoundingClientRect();
+    return { W, H, dpr, skala, ox, oy, bredde: r.width, hoejde: r.height, lw: canvas.width, lh: canvas.height };
+  },
+  get state() {
+    return {
+      fase, dag: spil.dag, nat: spil.nat, klarede: spil.klarede, guld: spil.guld, drab: spil.drab,
+      tid: spil.tid, bedste, valgtSlags, valgtBygning: valgtBygning ? valgtBygning.id : null,
+      husHp: spil.raadhus.hp, husMaksHp: spil.raadhus.maksHp, indtaegt: farmIndtaegt(spil),
+      boender: boenderIAlt(spil), soldater: spil.soldater.length, zombier: spil.fjender.length,
+      bygninger: spil.bygninger.map(b => ({
+        id: b.id, slags: b.slags, kx: b.kx, ky: b.ky, niveau: b.niveau,
+        hp: b.hp, maksHp: b.maksHp, boender: b.boender, traener: b.traener ? b.traener.slags : null,
+      })),
+      slut: spil.slut,
+    };
+  },
+};
+</script>
+</body></html>

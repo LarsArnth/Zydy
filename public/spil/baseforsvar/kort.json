@@ -1,0 +1,26 @@
+{
+  "navn": "Baseforsvar",
+  "beskrivelse": "Byg mure, skydetårne, farme med bønder og en kaserne med soldater – og hold zombierne væk fra rådhuset. De kommer tilfældigt hele døgnet, flest om natten, og bliver stærkere for hver dag. Hvor mange dage holder din base?",
+  "nøgleord": [
+    "base",
+    "zombie",
+    "zombies",
+    "zombie defense",
+    "forsvar",
+    "mure",
+    "bønder",
+    "farm",
+    "soldater",
+    "tropper",
+    "overlevelse",
+    "strategi",
+    "warcraft"
+  ],
+  "url": "/spil/baseforsvar/",
+  "orden": 178,
+  "kapløb": true,
+  "højscore": {
+    "maks": 200,
+    "unik": true
+  }
+}
