@@ -125,6 +125,40 @@
   .hs{margin-bottom:10px}
   .hs .hs-liste{max-height:26vh}
 
+  /* ---------- Dit eget klaver (Livas ønske «På ens egen klaver») ----------
+     Et rigtigt lille klaviatur nederst: hvide tangenter side om side og sorte
+     oven på skellene. Alt lægges i procent af klaviaturets bredde i JS, så det
+     passer sig selv på både iPhone og iPad. */
+  #egetScreen{padding:12px 14px calc(env(safe-area-inset-bottom)/2 + 12px);overflow:hidden}
+  .eget{width:100%;max-width:760px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .eget-top{display:flex;align-items:center;gap:8px}
+  .eget-top .titel{flex:1;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.4px}
+  .eget-top .luft{min-width:74px}
+  .chip{background:var(--bg2);color:var(--text);border:0;border-radius:999px;padding:10px 14px;
+    font-size:14px;font-weight:700;transition:transform .08s}
+  .chip:active{transform:scale(.95)}
+  .chip.valgt{background:var(--sun);color:var(--ink)}
+  .eget-sange{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:12px 0 0}
+  .eget-midt{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:10px;text-align:center;min-height:0;padding:6px 0}
+  .eget-status{font-size:16px;font-weight:700;color:var(--text);line-height:1.4}
+  .eget-status.flot{color:var(--sun);font-size:22px}
+  .eget-skift{display:flex;gap:8px}
+  .klaviatur{position:relative;flex:0 0 auto;height:clamp(150px,30vh,240px);
+    background:#0b1330;border-radius:14px;padding:5px;touch-action:none}
+  .tangent{position:absolute;top:5px;bottom:5px;padding:0;background:#eef3ff;
+    border-radius:0 0 8px 8px;box-shadow:inset -2px 0 0 #0b1330;touch-action:none}
+  .tangent span{position:absolute;left:0;right:0;bottom:7px;text-align:center;
+    font-size:12px;font-weight:700;color:#8b9ac4;pointer-events:none}
+  .tangent.sort{bottom:auto;height:52%;background:#0d1530;border-radius:0 0 6px 6px;
+    box-shadow:0 3px 0 rgba(0,0,0,.4);z-index:2}
+  .tangent.spillet{background:var(--sky);transform:translateY(2px)}
+  .tangent.sort.spillet{background:#2b3d72}
+  .tangent.naeste{background:var(--sun);box-shadow:inset -2px 0 0 #0b1330,0 0 20px rgba(255,212,71,.8)}
+  .tangent.naeste::after{content:'♪';position:absolute;left:0;right:0;bottom:36%;text-align:center;
+    font-size:22px;font-weight:800;color:var(--ink)}
+  @media (max-height:660px){ .chip{padding:8px 11px;font-size:13px} .eget-status{font-size:14px} }
+
   @media (max-height:660px){
     h1{font-size:32px} #scoreEl{font-size:38px} .slutscore{font-size:50px}
     .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
@@ -174,6 +208,7 @@
           <button class="btn" type="submit">OK</button>
         </form>
         <button class="btn" id="startBtn">Spil</button>
+        <button class="btn ghost" id="egetBtn">🎹 Dit eget klaver</button>
         <!-- Reglerne står UNDER Spil-knappen med vilje: startskærmen skal kunne
              bruges uden at rulle på en iPhone, og knappen er det vigtigste. -->
         <div class="regler" aria-hidden="true">
@@ -183,6 +218,27 @@
         </div>
         <p class="hint">Dybe toner falder til venstre, lyse til højre – så du kan se melodien komme. Jo flere noder du
           rammer, jo hurtigere regner det.</p>
+      </div>
+    </div>
+
+    <!-- Dit eget klaver: spil frit, eller følg en sang i dit eget tempo -->
+    <div class="screen" id="egetScreen">
+      <div class="eget">
+        <div class="eget-top">
+          <button class="chip" id="egetTilbage">‹ Menu</button>
+          <div class="titel">Dit eget klaver</div>
+          <div class="luft" aria-hidden="true"></div>
+        </div>
+        <div class="eget-sange" id="egetSange"></div>
+        <div class="eget-midt">
+          <div class="eget-status" id="egetStatus"></div>
+          <button class="chip" id="egetIgen" hidden>⟲ Én gang til</button>
+          <div class="eget-skift" id="egetSkift">
+            <button class="chip" id="dybere">‹ Dybere</button>
+            <button class="chip" id="lysere">Lysere ›</button>
+          </div>
+        </div>
+        <div class="klaviatur" id="klaviatur" aria-label="Klaverets tangenter"></div>
       </div>
     </div>
 
@@ -209,6 +265,7 @@
 import {
   BANER, HØJDE, FLISE_H, LIV, START_FART,
   SANGE, nytSpil, fart, tik, tryk, naesteFlise, sangIGang, frekvens, bot,
+  klaviatur, sangOmfang, nyEgenSang, egenNaeste, egetTryk,
 } from './noder.mjs';
 
 /* ---------- Opsætning ---------- */
@@ -249,7 +306,7 @@ addEventListener('orientationchange', () => setTimeout(maal, 60));
 if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
 
 /* ---------- Tilstand ---------- */
-let fase = 'menu';                  // menu | spil | doed
+let fase = 'menu';                  // menu | spil | doed | eget
 let spil = nytSpil();
 let best = hentBest();
 let T = 0, sidst = 0, acc = 0;
@@ -427,11 +484,123 @@ function doed() {
 function tilMenu() {
   fase = 'menu';
   spil = nytSpil(); gnister = [];
-  slutScreen.classList.remove('on'); startScreen.classList.add('on');
+  slutScreen.classList.remove('on'); egetScreen.classList.remove('on');
+  startScreen.classList.add('on');
   stage.classList.remove('igang');
   raab.classList.remove('on'); råbTil = 0;
   visHud(); hentListe();
 }
+
+/* ---------- Dit eget klaver (Livas ønske «På ens egen klaver») ----------
+   Et rigtigt klaviatur i stedet for fire baner: spil frit, eller vælg en af
+   sangene og spil den i dit eget tempo – den næste tangent lyser. Ingen
+   hjerter og ingen fart; en forkert tangent giver bare sin egen tone.
+   Reglerne (nyEgenSang/egetTryk) bor i noder.mjs og er enhedstestede. */
+const egetScreen = $('egetScreen'), egetStatus = $('egetStatus'), egetIgen = $('egetIgen');
+const egetSkift = $('egetSkift'), klaviaturEl = $('klaviatur'), egetSangeEl = $('egetSange');
+let egenSang = null;                // null = frit spil
+let egetLav = 60;                   // frit spils dybeste tangent (C4); ‹›-knapperne flytter en oktav
+const tangenter = new Map();        // midi → knappen på skærmen
+
+function egetVis() {
+  fase = 'eget';
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  egetScreen.classList.add('on');
+  stage.classList.remove('igang');
+  lyd();                            // knappen ER et tryk – så er lyden klar
+  vaelgSang(null);
+}
+
+/** Bygger tangenterne fra `lav` til `høj`. Alt måles i procent af bredden:
+    de hvide deler pladsen ligeligt, de sorte sidder oven på skellene. */
+function bygKlaviatur(lav, høj) {
+  const taster = klaviatur(lav, høj);
+  const hvide = taster.filter(t => !t.sort).length;
+  klaviaturEl.innerHTML = ''; tangenter.clear();
+  let hv = 0;
+  for (const t of taster) {
+    const k = document.createElement('button');
+    k.className = 'tangent' + (t.sort ? ' sort' : '');
+    k.dataset.midi = String(t.midi);
+    k.setAttribute('aria-label', t.navn);
+    if (t.sort) {
+      const b = (100 / hvide) * 0.62;
+      k.style.left = `calc(5px + (100% - 10px) * ${(hv * 100 / hvide - b / 2).toFixed(3)} / 100)`;
+      k.style.width = `calc((100% - 10px) * ${b.toFixed(3)} / 100)`;
+    } else {
+      k.style.left = `calc(5px + (100% - 10px) * ${(hv * 100 / hvide).toFixed(3)} / 100)`;
+      k.style.width = `calc((100% - 10px) * ${(100 / hvide).toFixed(3)} / 100)`;
+      const navn = document.createElement('span');
+      navn.textContent = t.navn;
+      k.appendChild(navn);
+      hv++;
+    }
+    tangenter.set(t.midi, k);
+    klaviaturEl.appendChild(k);
+  }
+}
+
+/** Skifter mellem frit spil (null) og en af sangene. */
+function vaelgSang(nr) {
+  egenSang = nr == null ? null : nyEgenSang(nr);
+  if (nr == null) bygKlaviatur(egetLav, egetLav + 12);
+  else { const o = sangOmfang(nr); bygKlaviatur(o.lav, o.høj); }
+  egetSkift.hidden = nr != null;
+  for (const [i, chip] of sangChips.entries()) chip.classList.toggle('valgt', (nr == null ? 0 : nr + 1) === i);
+  visEgetStatus();
+}
+
+/** Statuslinjen og den lysende tangent følger sangen. */
+function visEgetStatus() {
+  for (const k of tangenter.values()) k.classList.remove('naeste');
+  egetIgen.hidden = !(egenSang && egenSang.faerdig);
+  egetStatus.classList.toggle('flot', !!(egenSang && egenSang.faerdig));
+  if (!egenSang) { egetStatus.textContent = 'Spil løs – alle tangenter er dine 🎶'; return; }
+  const sang = SANGE[egenSang.sangNr];
+  if (egenSang.faerdig) { egetStatus.textContent = `FLOT! 🎶 Du spillede hele ${sang.navn}`; return; }
+  egetStatus.textContent = `🎵 ${sang.navn} · node ${egenSang.nodeNr + 1} af ${sang.noder.length} – tryk på den gule tangent`;
+  const k = tangenter.get(egenNaeste(egenSang));
+  if (k) k.classList.add('naeste');
+}
+
+function tangentTryk(midi) {
+  if (!tangenter.has(midi)) return;
+  spilNode(midi);
+  const k = tangenter.get(midi);
+  k.classList.add('spillet');
+  setTimeout(() => k.classList.remove('spillet'), 150);
+  if (egenSang && !egenSang.faerdig) {
+    const h = egetTryk(egenSang, midi);
+    if (h.sangSlut) navigator.vibrate && navigator.vibrate(20);
+    visEgetStatus();
+  }
+}
+
+klaviaturEl.addEventListener('pointerdown', e => {
+  const k = e.target.closest('.tangent');
+  if (!k) return;
+  e.preventDefault();
+  tangentTryk(parseInt(k.dataset.midi, 10));
+});
+
+// Sang-vælgeren: «Frit spil» først, så sangene i spillets rækkefølge
+const sangChips = [];
+{
+  const lav = ['Frit spil', ...SANGE.map(s => s.navn)];
+  for (const [i, navn] of lav.entries()) {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.textContent = navn;
+    chip.addEventListener('click', () => vaelgSang(i === 0 ? null : i - 1));
+    sangChips.push(chip);
+    egetSangeEl.appendChild(chip);
+  }
+}
+$('egetBtn').addEventListener('click', egetVis);
+$('egetTilbage').addEventListener('click', tilMenu);
+egetIgen.addEventListener('click', () => vaelgSang(egenSang.sangNr));
+$('dybere').addEventListener('click', () => { egetLav = Math.max(36, egetLav - 12); vaelgSang(null); });
+$('lysere').addEventListener('click', () => { egetLav = Math.min(84, egetLav + 12); vaelgSang(null); });
 
 /* ---------- Løkken ---------- */
 function billede(nu) {
@@ -535,7 +704,7 @@ const TASTER = { KeyD: 0, KeyF: 1, KeyJ: 2, KeyK: 3, Digit1: 0, Digit2: 1, Digit
 addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code in TASTER) { if (fase === 'spil') { e.preventDefault(); trykBane(TASTER[e.code]); } }
-  else if (e.code === 'Enter' && fase !== 'spil' && nameForm.hidden) start();
+  else if (e.code === 'Enter' && (fase === 'menu' || fase === 'doed') && nameForm.hidden) start();
 });
 
 /* ---------- Topliste (navnet skrives på startskærmen som i Obby) ---------- */
@@ -654,6 +823,17 @@ window.GAME = {
       fart: fart(spil), sang: sangIGang(spil).navn,
       naeste: f ? { bane: f.bane, y: f.y, midi: f.midi } : null,
       fliser: spil.fliser.length,
+    };
+  },
+  /** Dit eget klaver, set udefra – bruges af browsertesten. */
+  get egetState() {
+    return {
+      fase,
+      sang: egenSang ? SANGE[egenSang.sangNr].navn : null,
+      nodeNr: egenSang ? egenSang.nodeNr : null,
+      faerdig: egenSang ? egenSang.faerdig : null,
+      naeste: egenSang ? egenNaeste(egenSang) : null,
+      taster: tangenter.size,
     };
   },
 };

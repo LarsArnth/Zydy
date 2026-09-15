@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 39,
+      "dato": "2026-09-15",
+      "spil": "klaverregn",
+      "titel": "Klaverregn – på dit eget klaver",
+      "hvad": "Liva ønskede sig at spille på ens eget klaver – så nu har Klaverregn fået et. Tryk på «🎹 Dit eget klaver» på startskærmen, og du står ved et rigtigt lille klaviatur med hvide og sorte tangenter. Spil løs med alle fingrene (og skift til dybere eller lysere toner), eller vælg en af de seks sange: så lyser den tangent, du skal trykke på, og du spiller hele melodien i dit helt eget tempo. Ingen hjerter og ingen fart – en forkert tangent giver bare sin egen tone, som på et rigtigt klaver.",
+      "oensket": "Liva"
+    },
+    {
       "nr": 38,
       "dato": "2026-09-15",
       "spil": "elementer",

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
   BANER, HØJDE, FLISE_H, LIV, AFSTAND_MIN, START_FART, MAKS_FART, FART_PR_NODE,
   SANGE, baneFor, frekvens, nytSpil, fart, tik, tryk, naesteFlise, sangIGang, bot, koer,
+  erSort, tonenavn, klaviatur, sangOmfang, nyEgenSang, egenNaeste, egetTryk,
 } from '../../public/spil/klaverregn/noder.mjs';
 
 /* ---------- Sangene ---------- */
@@ -213,6 +214,66 @@ test('sangene går rundt: efter den sidste kommer den første igen', () => {
   const efter = spil.fliser.find(f => f.sangNr === SANGE.length);
   assert.ok(efter, 'der spawnes fliser fra runde to');
   assert.equal(efter.nodeNr, 0, '… og de begynder forfra på den første sang');
+});
+
+/* ---------- Dit eget klaver (Livas ønske «På ens egen klaver») ---------- */
+
+test('tangenterne ligger som på et rigtigt klaver – og hedder det, de hedder på dansk', () => {
+  assert.equal(erSort(60), false, 'C er hvid');
+  assert.equal(erSort(61), true, 'cis er sort');
+  assert.equal(erSort(64), false);
+  assert.equal(erSort(65), false, 'mellem e og f er der ingen sort');
+  assert.equal(tonenavn(60), 'C');
+  assert.equal(tonenavn(69), 'A');
+  assert.equal(tonenavn(71), 'H', 'på dansk hedder tonen H, ikke B');
+  assert.equal(tonenavn(70), 'B', '… og B er den sorte under H');
+});
+
+test('klaviaturet er ubrudt og begynder og slutter altid på en hvid tangent', () => {
+  const taster = klaviatur(61, 70);   // sorte yderpunkter trækkes ud til hvide
+  assert.equal(taster[0].midi, 60);
+  assert.equal(taster[taster.length - 1].midi, 71);
+  assert.equal(taster[0].sort, false);
+  assert.equal(taster[taster.length - 1].sort, false);
+  for (let i = 1; i < taster.length; i++) assert.equal(taster[i].midi, taster[i - 1].midi + 1, 'et hul i klaviaturet');
+  const oktav = klaviatur(60, 72);
+  assert.equal(oktav.filter(t => !t.sort).length, 8, 'en oktav C-C har otte hvide');
+  assert.equal(oktav.filter(t => t.sort).length, 5, '… og fem sorte');
+});
+
+test('hver sang får et klaver, der dækker den, er mindst en oktav og ender på hvide', () => {
+  for (let s = 0; s < SANGE.length; s++) {
+    const { lav, høj } = sangOmfang(s);
+    assert.equal(erSort(lav), false, `sang ${s}: dybeste tangent er sort`);
+    assert.equal(erSort(høj), false, `sang ${s}: lyseste tangent er sort`);
+    assert.ok(høj - lav >= 12, `sang ${s}: klaveret er under en oktav`);
+    for (const [midi] of SANGE[s].noder) assert.ok(midi >= lav && midi <= høj, `sang ${s}: node ${midi} er uden for klaveret`);
+  }
+});
+
+test('på ens eget klaver flytter kun den rigtige tangent sangen – en forkert koster ingenting', () => {
+  const s = nyEgenSang(0);
+  assert.equal(egenNaeste(s), 60, 'Mester Jakob begynder på C');
+  const gal = egetTryk(s, 64);
+  assert.equal(gal.rigtig, false);
+  assert.equal(s.nodeNr, 0, 'en forkert tangent flytter ikke sangen');
+  const god = egetTryk(s, 60);
+  assert.equal(god.rigtig, true);
+  assert.equal(egenNaeste(s), 62, 'og så er det re');
+});
+
+test('en hel sang på ens eget klaver: hver node i rækkefølge og FLOT til sidst', () => {
+  const s = nyEgenSang(0);
+  let slut = null;
+  while (!s.faerdig) {
+    const h = egetTryk(s, egenNaeste(s));
+    assert.equal(h.rigtig, true);
+    if (h.sangSlut) slut = h.sangSlut;
+  }
+  assert.equal(slut, 'Mester Jakob');
+  assert.equal(s.rigtige, SANGE[0].noder.length);
+  assert.equal(egenNaeste(s), null);
+  assert.deepEqual(egetTryk(s, 60), { rigtig: false, faerdig: false, sangSlut: null }, 'efter FLOT sker der ikke mere');
 });
 
 test('et langt spil bliver ikke til ingenting', () => {

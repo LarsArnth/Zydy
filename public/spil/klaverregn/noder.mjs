@@ -238,6 +238,75 @@ export function tryk(spil, bane) {
   return h;
 }
 
+/* ---------- Ens eget klaver ----------
+   Livas andet ønske lød «På ens egen klaver»: ikke kun fire baner, men et
+   rigtigt lille klaver med hvide og sorte tangenter. Ingen fliser, ingen
+   hjerter og ingen fart – man spiller frit, eller følger en af sangene i sit
+   eget tempo, hvor den næste tangent lyser. En forkert tangent er ikke en
+   fejl: den giver bare sin egen tone, som på et rigtigt klaver. */
+
+/** Er midi-noden en sort tangent? (cis, dis, fis, gis og ais i hver oktav) */
+export const erSort = midi => [1, 3, 6, 8, 10].includes(((midi % 12) + 12) % 12);
+
+/** Tonens danske navn – med H for det, englænderne kalder B. */
+const TONENAVNE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H'];
+export const tonenavn = midi => TONENAVNE[((midi % 12) + 12) % 12];
+
+/**
+ * Tangenterne fra `lav` til `høj` – begge trukket ud til nærmeste hvide, så
+ * klaveret aldrig begynder eller slutter på en sort. Hver tangent er
+ * { midi, sort, navn }, og de ligger i ubrudt rækkefølge.
+ */
+export function klaviatur(lav, høj) {
+  while (erSort(lav)) lav--;
+  while (erSort(høj)) høj++;
+  const taster = [];
+  for (let m = lav; m <= høj; m++) taster.push({ midi: m, sort: erSort(m), navn: tonenavn(m) });
+  return taster;
+}
+
+/**
+ * Klaveret, en sang skal spilles på: sangens omfang trukket ud til hvide
+ * tangenter og mindst en hel oktav – ellers er Ode til glæden fem tangenter,
+ * og det ligner ikke et klaver.
+ */
+export function sangOmfang(sangNr) {
+  const sang = SANGE[sangNr % SANGE.length];
+  let lav = Infinity, høj = -Infinity;
+  for (const [midi] of sang.noder) { lav = Math.min(lav, midi); høj = Math.max(høj, midi); }
+  while (erSort(lav)) lav--;
+  while (erSort(høj)) høj++;
+  for (let side = 0; høj - lav < 12; side++) {
+    if (side % 2) { høj++; while (erSort(høj)) høj++; }
+    else { lav--; while (erSort(lav)) lav--; }
+  }
+  return { lav, høj };
+}
+
+/** En sang på ens eget klaver – i ens eget tempo, uden hjerter. */
+export function nyEgenSang(sangNr) {
+  return { sangNr: sangNr % SANGE.length, nodeNr: 0, rigtige: 0, faerdig: false };
+}
+
+/** Den tangent, der skal trykkes på nu – eller null, når sangen er færdig. */
+export const egenNaeste = s => (s.faerdig ? null : SANGE[s.sangNr].noder[s.nodeNr][0]);
+
+/**
+ * Et tryk på tangenten `midi`. Den rigtige tangent flytter sangen et hak;
+ * en forkert gør ingenting ud over sin egen tone – det er ens eget klaver.
+ *   { rigtig, faerdig, sangSlut: navn|null }
+ */
+export function egetTryk(s, midi) {
+  const h = { rigtig: false, faerdig: false, sangSlut: null };
+  if (s.faerdig || midi !== egenNaeste(s)) return h;
+  h.rigtig = true;
+  s.nodeNr++; s.rigtige++;
+  if (s.nodeNr >= SANGE[s.sangNr].noder.length) {
+    s.faerdig = true; h.faerdig = true; h.sangSlut = SANGE[s.sangNr].navn;
+  }
+  return h;
+}
+
 /* ---------- En spiller der kan spille selv (bruges af testene) ---------- */
 
 /**

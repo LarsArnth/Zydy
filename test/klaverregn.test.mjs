@@ -142,6 +142,50 @@ await page.click('#igenBtn');
   assert.equal(s.sang, 'Mester Jakob', 'man begynder forfra på den første sang');
 }
 
+/* ---------- Dit eget klaver (Livas ønske «På ens egen klaver») ---------- */
+await page.evaluate(() => window.GAME.tilMenu());
+assert.equal(await page.locator('#egetBtn').isVisible(), true, 'knappen står på startskærmen');
+await page.click('#egetBtn');
+await page.waitForSelector('#egetScreen.on');
+assert.equal((await state()).fase, 'eget');
+
+// Frit spil: et rigtigt klaviatur med hvide og sorte tangenter
+assert.ok(await page.locator('.tangent:not(.sort)').count() >= 8, 'mindst en oktav hvide tangenter');
+assert.ok(await page.locator('.tangent.sort').count() >= 5, 'og de sorte imellem');
+await page.click('.tangent[data-midi="60"]');   // en tone for tonens skyld – ingen hjerter at miste
+assert.match(await page.locator('#egetStatus').textContent(), /Spil løs/, 'frit spil er frit');
+assert.equal(await page.locator('#egetSkift').isVisible(), true, 'dybere/lysere kan vælges i frit spil');
+
+// Vælg Mester Jakob: klaveret følger sangen, og den næste tangent lyser
+await page.click('#egetSange button:has-text("Mester Jakob")');
+await page.waitForSelector('.tangent.naeste');
+assert.equal(await page.locator('.tangent.naeste').getAttribute('data-midi'), '60', 'Mester Jakob begynder på C – og C lyser');
+assert.equal(await page.locator('#egetSkift').isVisible(), false, 'i en sang bestemmer sangen klaveret');
+assert.match(await page.locator('#egetStatus').textContent(), /node 1 af 32/, 'man kan se hvor langt man er');
+
+// En forkert tangent giver bare sin tone – sangen flytter sig ikke
+await page.click('.tangent[data-midi="64"]');
+assert.equal(await page.locator('.tangent.naeste').getAttribute('data-midi'), '60', 'en forkert tangent flytter ikke sangen');
+await page.screenshot({ path: SHOTS + 'klaverregn-eget.png' });
+
+// Spil hele sangen i eget tempo: tryk på den lysende tangent, til den siger FLOT
+for (let i = 0; i < 40 && await page.locator('.tangent.naeste').count(); i++) {
+  await page.click('.tangent.naeste');
+}
+{
+  const s = await page.evaluate(() => window.GAME.egetState);
+  assert.equal(s.faerdig, true, 'hele sangen kom igennem');
+  assert.equal(s.sang, 'Mester Jakob');
+}
+assert.match(await page.locator('#egetStatus').textContent(), /FLOT.*Mester Jakob/, 'der bliver sagt FLOT');
+
+// Én gang til begynder forfra – og Menu-knappen fører hjem
+await page.click('#egetIgen');
+assert.equal(await page.locator('.tangent.naeste').getAttribute('data-midi'), '60', 'én gang til begynder forfra');
+await page.click('#egetTilbage');
+await page.waitForSelector('#startScreen.on');
+assert.equal((await state()).fase, 'menu');
+
 assert.deepEqual(errors, [], 'ingen fejl i konsollen');
 await browser.close();
 console.log('klaverregn.test.mjs: alt godt');
