@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 43,
+      "dato": "2026-09-15",
+      "spil": "pjat",
+      "titel": "Pjattemaskinen – sjovt og randomt",
+      "hvad": "Alia ønskede sig noget sjovt og randomt – så her er en maskine, der laver det! Tryk på PJAT!, og de tre ruller finder på en splinterny pjattet sætning: hvem, der gør hvad, og hvor. Måske danser den kræsne haj ballet i farmors have? Alle figurer, du møder, kommer i dit album – de fire gyldne er sjældne – og den, der har mødt flest, står øverst på toplisten. Maskinen kan også læse sætningen højt!",
+      "oensket": "Alia"
+    },
+    {
       "nr": 42,
       "dato": "2026-09-15",
       "spil": "",

@@ -1,0 +1,22 @@
+{
+  "navn": "Pjattemaskinen",
+  "beskrivelse": "Træk i maskinen og få en splinterny pjattet sætning – hvem gør hvad, og hvor? Saml alle 24 figurer i albummet.",
+  "nøgleord": [
+    "random",
+    "randomt",
+    "tilfældig",
+    "pjat",
+    "fjollet",
+    "sjov",
+    "grin",
+    "spilleautomat",
+    "lykkehjul",
+    "sætninger"
+  ],
+  "url": "/spil/pjat/",
+  "orden": 170,
+  "højscore": {
+    "maks": 24,
+    "unik": true
+  }
+}

@@ -1,0 +1,491 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1c1033">
+<meta name="description" content="Pjattemaskinen: træk i håndtaget og få en splinterny pjattet sætning – og saml alle 24 figurer i albummet.">
+<title>Pjattemaskinen – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c1033'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle'%3E%F0%9F%8E%B0%3C/text%3E%3C/svg%3E">
+<style>
+  /*
+    Pjattemaskinen – Alias ønske #48: «Lav noget sjovt og randomt».
+
+    Så det her er en maskine, der laver noget sjovt og randomt: tre ruller
+    (HVEM · GØR HVAD · HVOR) snurrer og lander på en pjattet sætning, som
+    maskinen også kan læse højt. Reglerne bor i maskine.mjs (enhedstestet);
+    denne fil tegner dem. Tre ting:
+
+      1) Rullerne står under hinanden, ikke ved siden af hinanden – på en
+         iPhone i højkant er der plads til tre brede rækker, ikke tre smalle
+         søjler med lange sætningsstumper i.
+      2) Albummet er gulerodens anden halvdel: hver figur man møder, sættes
+         ind, og scoren på toplisten er antallet. De gyldne er sjældne, så et
+         guldtræk får konfetti som en rigtig gevinst.
+      3) Alt pjattet sker i maskine.mjs med en seedet terning (?seed=), så
+         testen kan trække præcis de samme sætninger som et barn.
+  */
+  :root{
+    --bg:#1c1033; --bg2:#2d1b52; --bg3:#3f2a70; --text:#f6f1ff; --muted:#b3a5dd;
+    --sun:#ffd447; --coral:#ff5c7a; --mint:#5ee0a8; --sky:#6cc5ff; --ink:#1c1033; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}          /* .btn m.fl. sætter display, så hidden skal have hjælp */
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    user-select:none;-webkit-user-select:none;touch-action:manipulation}
+
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+    padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 14px);
+    overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .screen.on{display:flex}
+
+  /* ---------- Startskærmen ---------- */
+  #startScreen{text-align:center;justify-content:flex-start}
+  #startScreen h1{font-size:40px;margin:14px 0 2px}
+  .lavet{color:var(--muted);font-size:13px;margin:0 0 12px}
+  .navnBoks{width:100%;max-width:340px;margin:0 auto 10px}
+  #navnFelt{font:inherit;font-size:20px;font-weight:700;text-align:center;padding:12px;border-radius:16px;
+    border:2px solid transparent;background:var(--bg2);color:var(--text);outline:none;width:100%;
+    -webkit-user-select:text;user-select:text}
+  #navnFelt:focus{border-color:var(--sun)}
+  #navnFelt::placeholder{color:var(--muted);font-weight:500}
+  .btn{display:block;width:100%;max-width:340px;margin:6px auto 0;padding:16px;border:0;border-radius:var(--r);
+    background:var(--sun);color:var(--ink);font:inherit;font-size:22px;font-weight:800;cursor:pointer}
+  .btn:active{transform:scale(.97)}
+  .btn.blaa{background:var(--bg3);color:var(--text);font-size:17px;padding:12px}
+  #nulstilBtn{background:none;border:0;color:var(--muted);font:inherit;font-size:14px;text-decoration:underline;
+    padding:10px;margin-top:4px;cursor:pointer}
+  .regler{color:var(--muted);font-size:15px;line-height:1.5;max-width:340px;margin:14px auto 8px}
+  .regler b{color:var(--text)}
+  .rekord{display:block;margin:6px auto 0;background:var(--bg2);border:0;border-radius:14px;color:var(--text);
+    font:inherit;font-size:15px;font-weight:600;padding:10px 16px;cursor:pointer;max-width:340px}
+  .rekord:empty{display:none}
+
+  /* ---------- Spilskærmen ---------- */
+  #spilSkaerm{justify-content:flex-start;padding-bottom:calc(env(safe-area-inset-bottom) + 12px)}
+  #topBar{width:100%;max-width:420px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  #hjemBtn,#albumBtn{background:var(--bg2);border:0;border-radius:12px;color:var(--text);font:inherit;
+    font-size:15px;font-weight:700;padding:8px 12px;cursor:pointer}
+  #hjemBtn{color:var(--muted)}
+
+  #maskine{width:100%;max-width:420px;background:var(--bg2);border-radius:var(--r);padding:12px;
+    display:flex;flex-direction:column;gap:10px;border:3px solid var(--bg3)}
+  .rulle{display:flex;align-items:center;gap:12px;background:var(--bg);border-radius:16px;padding:10px 14px;min-height:64px}
+  .rulle .maerkat{flex:none;writing-mode:vertical-rl;transform:rotate(180deg);font-size:10px;font-weight:800;
+    letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+  .rulle .rEmoji{flex:none;font-size:36px;width:46px;text-align:center}
+  .rulle .rTekst{flex:1;font-size:17px;font-weight:700;line-height:1.25}
+  .rulle.snurrer .rEmoji,.rulle.snurrer .rTekst{opacity:.55;filter:blur(.5px)}
+  .rulle.guld{background:linear-gradient(90deg,#3a2c08,#221a3f);box-shadow:inset 0 0 0 2px var(--sun)}
+
+  #boble{width:100%;max-width:420px;margin-top:12px;background:var(--text);color:var(--ink);border-radius:20px;
+    padding:14px 16px;font-size:19px;font-weight:800;line-height:1.35;text-align:center;position:relative;min-height:76px;
+    display:flex;align-items:center;justify-content:center}
+  #boble:empty{visibility:hidden}
+  #nyBadge{position:absolute;top:-12px;right:10px;background:var(--mint);color:var(--ink);border-radius:999px;
+    padding:4px 12px;font-size:13px;font-weight:900;transform:rotate(4deg)}
+  #nyBadge.guld{background:var(--sun)}
+  #lydBtn{position:absolute;bottom:-14px;right:12px;border:0;border-radius:999px;background:var(--bg3);
+    color:var(--text);font-size:16px;padding:7px 12px;cursor:pointer}
+
+  #spilSkaerm .flex1{flex:1;min-height:12px}
+  #pjatBtn{max-width:420px;font-size:26px;padding:18px;box-shadow:0 8px 30px rgba(255,212,71,.25)}
+  #pjatBtn:disabled{opacity:.6}
+  .tael{color:var(--muted);font-size:13px;margin:8px 0 0}
+
+  /* ---------- Albummet ---------- */
+  #albumSkaerm h2{margin:12px 0 2px}
+  #albumTal{color:var(--muted);font-size:14px;margin:0 0 10px}
+  #albumGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:420px}
+  .figKort{background:var(--bg2);border-radius:14px;padding:8px 4px;text-align:center;min-height:74px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .figKort .fe{font-size:30px;line-height:1}
+  .figKort .fn{font-size:10px;color:var(--muted);line-height:1.2}
+  .figKort.mangler .fe{opacity:.5}
+  .figKort.guld{box-shadow:inset 0 0 0 2px var(--sun)}
+  .figKort.guld .fn{color:var(--sun)}
+  #albumTilbage{margin-top:14px}
+
+  /* ---------- Fest, konfetti og topliste ---------- */
+  #fest{position:fixed;inset:0;background:rgba(14,8,30,.88);z-index:9;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:24px}
+  #fest h2{font-size:30px;margin:8px 0;color:var(--sun)}
+  #fest p{color:var(--muted);font-size:16px;max-width:340px}
+  .konfetti{position:fixed;top:-14px;width:10px;height:14px;border-radius:3px;z-index:9;pointer-events:none;
+    animation:dryss linear forwards}
+  @keyframes dryss{to{transform:translateY(105vh) rotate(720deg)}}
+  @media (prefers-reduced-motion: reduce){.konfetti{display:none}}
+
+  #listeSkaerm h2{margin:14px 0 4px}
+  #hsListe{width:100%;max-width:360px}
+</style>
+</head><body>
+
+<!-- Startskærmen: navnet, knappen og det korte hvorfor -->
+<div class="screen on" id="startScreen">
+  <h1>🎰 Pjattemaskinen</h1>
+  <p class="lavet">Alia ønskede sig noget sjovt og randomt · Far og Claude byggede det</p>
+  <div class="navnBoks"><input id="navnFelt" type="text" maxlength="12" placeholder="Dit navn"
+    autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" aria-label="Dit navn"></div>
+  <button class="btn" id="startBtn">Pjat løs!</button>
+  <button id="nulstilBtn" hidden>Start forfra</button>
+  <p class="regler">Tryk på <b>PJAT!</b>, og maskinen finder på noget sjovt og randomt – hvem, der gør hvad,
+    og hvor. Alle figurer, du møder, kommer i dit <b>album</b> – de gyldne er sjældne.
+    Kan du samle alle <b id="reglerAntal"></b>?</p>
+  <button id="rekordLinje" class="rekord" hidden></button>
+</div>
+
+<!-- Toplisten, foldet ud fra startskærmen -->
+<div class="screen" id="listeSkaerm">
+  <h2>Topliste</h2>
+  <div id="hsListe"></div>
+  <button class="btn blaa" id="tilbageBtn">Tilbage</button>
+</div>
+
+<!-- Albummet: hvem har man mødt? -->
+<div class="screen" id="albumSkaerm">
+  <h2>📖 Albummet</h2>
+  <p id="albumTal"></p>
+  <div id="albumGrid"></div>
+  <button class="btn blaa" id="albumTilbage">Tilbage</button>
+</div>
+
+<!-- Selve maskinen -->
+<div class="screen" id="spilSkaerm">
+  <div id="topBar">
+    <button id="hjemBtn">‹ Menu</button>
+    <button id="albumBtn" aria-label="Åbn albummet">📖 0/0</button>
+  </div>
+  <div id="maskine" aria-label="Maskinen">
+    <div class="rulle" id="rulleFigur"><span class="maerkat">Hvem</span><span class="rEmoji">❔</span><span class="rTekst">…</span></div>
+    <div class="rulle" id="rulleHandling"><span class="maerkat">Gør hvad</span><span class="rEmoji">❔</span><span class="rTekst">…</span></div>
+    <div class="rulle" id="rulleSted"><span class="maerkat">Hvor</span><span class="rEmoji">❔</span><span class="rTekst">…</span></div>
+  </div>
+  <div id="boble"><span id="bobleTekst"></span>
+    <span id="nyBadge" hidden>NY FIGUR!</span>
+    <button id="lydBtn" hidden aria-label="Læs sætningen højt">🔊</button>
+  </div>
+  <div class="flex1"></div>
+  <button class="btn" id="pjatBtn">🎰 PJAT!</button>
+  <p class="tael" id="drejTal"></p>
+</div>
+
+<!-- Festen, når albummet er fuldt -->
+<div id="fest" hidden>
+  <h2>🎉 DU HAR MØDT DEM ALLE! 🎉</h2>
+  <p id="festTekst"></p>
+  <button class="btn" id="festLuk">Pjat videre</button>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="pjat"></script>
+<script type="module">
+import {
+  FIGURER, HANDLINGER, STEDER, TOERKE_MAKS,
+  mulberry32, nytSpil, traek, saetning, alleFundet, gem, hent,
+} from './maskine.mjs';
+
+const $ = sel => document.querySelector(sel);
+const K_SPIL = 'zydy.pjat.spil';
+const K_FEST = 'zydy.pjat.fest';
+const K_NAVN = 'zydy.navn';                 // fælles med hele zydy.dk
+const SPIL_ID = 'pjat';
+const ANTAL = FIGURER.length;
+
+const lsHent = (k, ellers) => { try { return localStorage.getItem(k) ?? ellers; } catch (e) { return ellers; } };
+const lsGem = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const lsVaek = k => { try { localStorage.removeItem(k); } catch (e) {} };
+
+/* ---------- Spillet og terningen ---------- */
+let s = hent(lsHent(K_SPIL, ''));
+// ?seed= giver den samme række pjat igen – det er sådan, testen spiller med.
+const seedParam = Number(new URLSearchParams(location.search).get('seed'));
+const rng = mulberry32(Number.isFinite(seedParam) && seedParam ? seedParam : (Math.random() * 2 ** 31) | 0);
+
+const gemNu = () => lsGem(K_SPIL, gem(s));
+const navnNu = () => (lsHent(K_NAVN, '') || '').trim();
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Skærme ---------- */
+function visSkaerm(id) {
+  ['startScreen', 'listeSkaerm', 'albumSkaerm', 'spilSkaerm'].forEach(x => $('#' + x).classList.toggle('on', x === id));
+}
+
+/* ---------- Lyd: små klik fra maskinen, fanfare ved en ny figur ---------- */
+let lydCtx = null;
+function tone(hz, naar, laengde, styrke = 0.05, form = 'square') {
+  const o = lydCtx.createOscillator(), g = lydCtx.createGain();
+  o.type = form; o.frequency.value = hz;
+  g.gain.setValueAtTime(styrke, lydCtx.currentTime + naar);
+  g.gain.exponentialRampToValueAtTime(0.0001, lydCtx.currentTime + naar + laengde);
+  o.connect(g).connect(lydCtx.destination);
+  o.start(lydCtx.currentTime + naar); o.stop(lydCtx.currentTime + naar + laengde);
+}
+function lyd(hvad) {
+  try {
+    lydCtx = lydCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (lydCtx.state === 'suspended') lydCtx.resume();
+    if (hvad === 'tik') tone(700 + Math.random() * 300, 0, 0.04);
+    if (hvad === 'stop') tone(340, 0, 0.1, 0.07);
+    if (hvad === 'ny') [523, 659, 784].forEach((hz, i) => tone(hz, i * 0.09, 0.16, 0.07, 'triangle'));
+    if (hvad === 'guld') [523, 659, 784, 1047, 1319].forEach((hz, i) => tone(hz, i * 0.09, 0.2, 0.08, 'triangle'));
+  } catch (e) { /* ingen lyd er også fint */ }
+}
+
+/* ---------- Læs højt: maskinens stemme ---------- */
+const kanTale = 'speechSynthesis' in window;
+function laesHoejt(tekst) {
+  if (!kanTale) return;
+  try {
+    speechSynthesis.cancel();
+    const y = new SpeechSynthesisUtterance(tekst);
+    y.lang = 'da-DK';
+    y.rate = 0.95;
+    speechSynthesis.speak(y);
+  } catch (e) { /* stum maskine, det går nok */ }
+}
+
+/* ---------- Rullerne ---------- */
+const ruller = {
+  figur: $('#rulleFigur'),
+  handling: $('#rulleHandling'),
+  sted: $('#rulleSted'),
+};
+function saetRulle(el, emoji, tekst) {
+  el.querySelector('.rEmoji').textContent = emoji;
+  el.querySelector('.rTekst').textContent = tekst;
+}
+/** Tilfældig sludder at vise, MENS rullen snurrer – resultatet er trukket i forvejen. */
+const sludder = liste => liste[(Math.random() * liste.length) | 0];
+
+let sidste = null;                 // det seneste træk – også til testkrogene
+let snurrer = false;
+
+function visResultat(t) {
+  sidste = t;
+  saetRulle(ruller.figur, t.figur.emoji, (t.figur.koen === 'det' ? 'det ' : 'den ') + t.figur.navn);
+  saetRulle(ruller.handling, t.handling.emoji, t.handling.tekst);
+  saetRulle(ruller.sted, t.sted.emoji, t.sted.tekst);
+  ruller.figur.classList.toggle('guld', t.guld);
+  $('#bobleTekst').textContent = saetning(t);
+  const badge = $('#nyBadge');
+  badge.hidden = !t.ny;
+  badge.textContent = t.guld ? '✨ NY GULDFIGUR!' : 'NY FIGUR!';
+  badge.classList.toggle('guld', t.guld);
+  $('#lydBtn').hidden = !kanTale;
+  tegnTal();
+}
+
+function tegnTal() {
+  $('#albumBtn').textContent = '📖 ' + s.album.length + '/' + ANTAL;
+  $('#drejTal').textContent = s.drej === 0 ? 'Maskinen venter på dig …'
+    : s.drej + ' træk · ' + s.album.length + ' af ' + ANTAL + ' figurer mødt';
+}
+
+/* ---------- Selve trækket ---------- */
+const pjatBtn = $('#pjatBtn');
+
+function drej() {
+  if (snurrer) return;
+  snurrer = true;
+  pjatBtn.disabled = true;
+  $('#bobleTekst').textContent = '';
+  $('#nyBadge').hidden = true;
+  $('#lydBtn').hidden = true;
+
+  const t = traek(s, rng);        // resultatet ligger fast, før rullerne snurrer
+  gemNu();
+
+  if (roligt) { faerdig(t); return; }
+
+  // Rullerne lander én ad gangen, som på en rigtig maskine. Mens en rulle
+  // snurrer, viser den tilfældig sludder – resultatet er trukket i forvejen.
+  const stop = { figur: 420, handling: 720, sted: 1020 };
+  const start = performance.now();
+  ruller.figur.classList.remove('guld');
+  for (const el of Object.values(ruller)) el.classList.add('snurrer');
+  const flikker = setInterval(() => {
+    const gaaet = performance.now() - start;
+    lyd('tik');
+    if (gaaet < stop.figur) {
+      const f = sludder(FIGURER); saetRulle(ruller.figur, f.emoji, f.navn);
+    } else if (ruller.figur.classList.contains('snurrer')) {
+      ruller.figur.classList.remove('snurrer'); lyd('stop');
+      saetRulle(ruller.figur, t.figur.emoji, (t.figur.koen === 'det' ? 'det ' : 'den ') + t.figur.navn);
+    }
+    if (gaaet < stop.handling) {
+      const h = sludder(HANDLINGER); saetRulle(ruller.handling, h.emoji, h.tekst);
+    } else if (ruller.handling.classList.contains('snurrer')) {
+      ruller.handling.classList.remove('snurrer'); lyd('stop');
+      saetRulle(ruller.handling, t.handling.emoji, t.handling.tekst);
+    }
+    if (gaaet < stop.sted) {
+      const st = sludder(STEDER); saetRulle(ruller.sted, st.emoji, st.tekst);
+    } else {
+      clearInterval(flikker);
+      faerdig(t);
+    }
+  }, 70);
+}
+
+function faerdig(t) {
+  for (const el of Object.values(ruller)) el.classList.remove('snurrer');
+  visResultat(t);
+  if (t.ny) { lyd(t.guld ? 'guld' : 'ny'); if (t.guld) konfetti(40); }
+  sendScore();
+  tjekAlbumFuldt();
+  snurrer = false;
+  pjatBtn.disabled = false;
+}
+
+pjatBtn.addEventListener('click', drej);
+$('#lydBtn').addEventListener('click', () => { if (sidste) laesHoejt(saetning(sidste)); });
+
+/* ---------- Albummet ---------- */
+function tegnAlbum() {
+  $('#albumTal').textContent = s.album.length + ' af ' + ANTAL + ' figurer mødt'
+    + (alleFundet(s) ? ' – alle sammen! 🎉' : '');
+  const grid = $('#albumGrid');
+  grid.innerHTML = '';
+  for (const f of FIGURER) {
+    const kort = document.createElement('div');
+    const har = s.album.includes(f.id);
+    kort.className = 'figKort' + (har ? '' : ' mangler') + (f.guld && har ? ' guld' : '');
+    const e = document.createElement('span'); e.className = 'fe'; e.textContent = har ? f.emoji : '❔';
+    const n = document.createElement('span'); n.className = 'fn';
+    n.textContent = har ? f.navn : (f.guld ? '??? ✨' : '???');
+    kort.append(e, n);
+    grid.appendChild(kort);
+  }
+}
+$('#albumBtn').addEventListener('click', () => { tegnAlbum(); visSkaerm('albumSkaerm'); });
+$('#albumTilbage').addEventListener('click', () => visSkaerm('spilSkaerm'));
+
+/* ---------- Festen, når albummet er fuldt ---------- */
+function konfetti(antal = 70) {
+  const farver = ['#ffd447', '#5ee0a8', '#6cc5ff', '#ff5c7a', '#f6f1ff'];
+  for (let i = 0; i < antal; i++) {
+    const k = document.createElement('i');
+    k.className = 'konfetti';
+    k.style.left = (i * 137 % 100) + 'vw';
+    k.style.background = farver[i % farver.length];
+    k.style.animationDuration = (1.8 + (i * 53 % 100) / 60) + 's';
+    k.style.animationDelay = (i * 29 % 100) / 120 + 's';
+    document.body.appendChild(k);
+    setTimeout(() => k.remove(), 4200);
+  }
+}
+function tjekAlbumFuldt() {
+  if (!alleFundet(s) || lsHent(K_FEST, '') === '1') return;
+  lsGem(K_FEST, '1');
+  $('#festTekst').textContent = 'Alle ' + ANTAL + ' figurer står i dit album – også de fire gyldne. '
+    + 'Maskinen er stolt af dig og finder gerne på mere pjat.';
+  $('#fest').hidden = false;
+  konfetti();
+}
+$('#festLuk').addEventListener('click', () => { $('#fest').hidden = true; });
+
+/* ---------- Toplisten: scoren er figurer i albummet ---------- */
+const formatScore = n => n + ' af ' + ANTAL + ' figurer';
+let sendtScore = 0;
+function sendScore() {
+  const navn = navnNu();
+  if (!navn || !window.Highscore || s.album.length <= sendtScore) return;
+  sendtScore = s.album.length;
+  Highscore.send(SPIL_ID, navn, s.album.length).catch(() => {});
+}
+
+/** «🏆 Sofie har rekorden · 18 af 24 figurer» på startskærmen – tryk folder listen ud. */
+async function tegnRekordLinje() {
+  if (!window.Highscore) return;
+  try {
+    const top = await Highscore.hent(SPIL_ID);
+    const liste = top.liste || [];
+    if (!liste.length) return;
+    const bedst = liste[0];
+    const mig = navnNu();
+    const hvem = mig && bedst.navn.toLowerCase() === mig.toLowerCase() ? 'Du har rekorden' : bedst.navn + ' har rekorden';
+    const linje = $('#rekordLinje');
+    linje.textContent = '🏆 ' + hvem + ' · ' + formatScore(bedst.score);
+    linje.hidden = false;
+    linje.onclick = () => {
+      Highscore.tegnListe($('#hsListe'), liste, mig || null, 'Topliste', formatScore);
+      visSkaerm('listeSkaerm');
+    };
+  } catch (e) { /* ingen forbindelse: linjen udelades bare */ }
+}
+$('#tilbageBtn').addEventListener('click', () => visSkaerm('startScreen'));
+
+/* ---------- Start, menu og nulstil ---------- */
+const navnFelt = $('#navnFelt');
+navnFelt.value = navnNu();
+$('#reglerAntal').textContent = ANTAL;
+
+function opdaterStartKnap() {
+  $('#startBtn').textContent = s.drej > 0 ? 'Videre · ' + s.album.length + '/' + ANTAL + ' figurer' : 'Pjat løs!';
+  $('#nulstilBtn').hidden = s.drej <= 0;
+}
+
+$('#startBtn').addEventListener('click', () => {
+  const n = navnFelt.value.trim().slice(0, 12);
+  if (n && n !== navnNu()) lsGem(K_NAVN, n);       // som Stenalder: siden lærer navnet
+  startSpillet();
+});
+
+$('#nulstilBtn').addEventListener('click', () => {
+  if (!confirm('Start helt forfra? Albummet tømmes.')) return;
+  s = nytSpil();
+  sendtScore = 0;
+  lsVaek(K_SPIL); lsVaek(K_FEST);
+  opdaterStartKnap();
+});
+
+$('#hjemBtn').addEventListener('click', () => {
+  gemNu();
+  opdaterStartKnap();
+  visSkaerm('startScreen');
+  tegnRekordLinje();
+});
+
+function startSpillet() {
+  visSkaerm('spilSkaerm');
+  tegnTal();
+}
+
+addEventListener('pagehide', gemNu);
+
+/* ---------- Ud af starthullerne ---------- */
+opdaterStartKnap();
+tegnTal();
+tegnRekordLinje();
+
+/* ---------- Testkroge ---------- */
+window.GAME = {
+  get state() { return s; },
+  get sidste() { return sidste; },
+  /** Ét træk uden snurre-ventetid – til tests og hurtige fingre. */
+  spin() {
+    const t = traek(s, rng);
+    gemNu();
+    visResultat(t);
+    sendScore();
+    tjekAlbumFuldt();
+    return t;
+  },
+  /** Sætter dele af spillet direkte (album, drej, toerke), så en test slipper for at trække sig derhen. */
+  saetOp(del) {
+    Object.assign(s, del);
+    gemNu();
+    tegnTal();
+    opdaterStartKnap();
+  },
+  start: startSpillet,
+  saetning, FIGURER, ANTAL, TOERKE_MAKS,
+};
+</script>
+</body></html>

@@ -36,6 +36,7 @@ export const KORT = [
   { id: 'slanger', navn: 'Slanger', url: '/spil/slanger/' },
   { id: 'kaempetal', navn: 'Kæmpetal', url: '/spil/kaempetal/' },
   { id: 'elementer', navn: 'Elementløbet', url: '/spil/elementer/' },
+  { id: 'pjat', navn: 'Pjattemaskinen', url: '/spil/pjat/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -71,6 +72,7 @@ export const SPIL = {
   slanger: { maks: 1024, unik: true },
   kaempetal: { maks: 9999999999999, unik: true },
   elementer: { maks: 2000 },
+  pjat: { maks: 24, unik: true },
 };
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).
