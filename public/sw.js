@@ -13,7 +13,10 @@
      skal være friske, og de skal fejle ærligt, når der ikke er net. Service
      workeren svarer slet ikke på dem — den lader dem gå direkte ud, præcis som
      om den ikke var her. Det er også dét, der gør, at Playwright-testenes
-     page.route('**/api/**') stadig fanger dem.
+     page.route på /api/ stadig fanger dem.
+     (Og pas på med at skrive et Playwright-mønster med stjerner her i en
+     blok-kommentar: stjerne-skråstreg lukker kommentaren midt i sætningen, og
+     så er hele filen pludselig ugyldig og service workeren registreres aldrig.)
 
   2. Alt andet på vores eget domæne er «cache først»: ligger filen, bruges den,
      og der bliver ikke spurgt nettet om lov. Det er hele pointen — et opslag

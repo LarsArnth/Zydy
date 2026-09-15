@@ -112,11 +112,13 @@ function tegn() {
   linje.textContent = 'Hent spillene hjem, mens du er på wifi. Så virker de i bilen og i sommerhuset — og koster ikke data bagefter.';
   knap.hidden = false;
   knap.textContent = '📥 Hent alle spil';
-  knap.onclick = () => {
-    if (!sw) return;
+  knap.onclick = async () => {
     henter = { hentet: 0, ialt: 0 };
     tegn();
-    sw.postMessage({ type: 'hentAlt' });
+    // Der kan godt nås at blive trykket, før service workeren er vågen.
+    const w = sw || await naarKlar();
+    if (w) w.postMessage({ type: 'hentAlt' });
+    else { henter = null; tegn(); }
   };
 }
 
@@ -148,19 +150,26 @@ window.addEventListener('offline', tegn);
 
 /* ---------- Start ---------- */
 
+/** Venter på, at der er en vågen service worker at snakke med. */
+function naarKlar() {
+  return navigator.serviceWorker.ready
+    .then(reg => reg.active || navigator.serviceWorker.controller || null)
+    .catch(() => null);
+}
+
 async function start() {
-  let reg;
+  // Panelet står der med det samme. Det skal ikke vente på service workeren:
+  // knappen er hele pointen, og det er bedre at den er der og venter et øjeblik,
+  // end at der er et tomt hul nederst på siden.
+  tegn();
   try {
-    reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-  } catch (e) { return; }                     // fx privat vindue – så er der bare ikke noget panel
-  sw = reg.active || reg.waiting || reg.installing || navigator.serviceWorker.controller;
-  await navigator.serviceWorker.ready.catch(() => {});
-  sw = reg.active || navigator.serviceWorker.controller || sw;
+    await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  } catch (e) { return; }                     // fx privat vindue – så sker der ikke mere
+  sw = await naarKlar();
   if (!sw) return;
   // Ét lille opslag: er der kommet en ny version? Det er den eneste netværks-
   // trafik, et gensyn med siden koster.
   sw.postMessage({ type: 'tjek' });
-  sw.postMessage({ type: 'status' });
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
