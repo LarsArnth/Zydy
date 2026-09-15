@@ -1,0 +1,776 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2b1746">
+<meta name="description" content="Fjolle-Obby: en sjov forhindringsbane med bananskræl, gelé, prutteskyer, slim, rullebånd, høns og balloner. Ni etaper – hvor hurtigt klarer du dem alle?">
+<title>Fjolle-Obby – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232b1746'/%3E%3Cpath d='M14 30c0 12 9 18 20 18 6 0 10-2 13-5-8 1-14-1-19-6s-8-9-8-15z' fill='%23ffd447'/%3E%3Ccircle cx='40' cy='20' r='9' fill='%2385e88a'/%3E%3Ccircle cx='48' cy='26' r='6' fill='%2385e88a'/%3E%3C/svg%3E">
+<style>
+  /*
+    «Fjolle-Obby» – Alias ønske: «En sjov obby».
+
+    Store Obby er den alvorlige forhindringsbane med pigge, bomme og lava.
+    Den her er den fjollede: intet kan slå dig ihjel undtagen buddingen i
+    bunden, og banen er ni håndlavede etaper, man kan lære udenad – for scoren
+    er tiden, det tager at komme hele vejen igennem.
+
+    Banen, fysikken og botten (den, der beviser, at etaperne kan klares) bor i
+    bane.mjs, så de kan enhedstestes uden browser. Denne fil er skærmen:
+    tegningen, knapperne og de tre skærme.
+  */
+  :root{
+    --bg:#2b1746; --bg2:#3c2263; --bg3:#4f2e80; --text:#fff3fb; --muted:#c7aee8;
+    --sun:#ffd447; --mint:#85e88a; --pink:#ff7ad9; --ink:#2b1746; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 12px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:34px;line-height:1;margin:0 0 8px;letter-spacing:-1.4px;font-weight:800}
+  p{margin:0 0 12px;color:var(--muted);font-size:16px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:16px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:9px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn.rolig{background:var(--bg3);color:var(--text)}
+  [hidden]{display:none!important}
+
+  .top{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex:none}
+  .back,.pill{background:var(--bg2);color:var(--text);border-radius:999px;padding:8px 13px;font-size:14px;
+    font-weight:700;text-decoration:none;white-space:nowrap}
+  .top .navn{flex:1;text-align:center;font-weight:800;font-size:18px;letter-spacing:-.4px}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#6b3fa8}
+  /* width/height skal stå her: uden dem bruger lærredet sine egne pixels som
+     størrelse (W × dpr), og så bliver hele banen tegnet dobbelt så stort og
+     skubbet uden for billedet. */
+  #c{display:block;position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+
+  /* HUD: etapen til venstre, uret og faldene til højre */
+  .hud{position:absolute;left:14px;top:10px;pointer-events:none;text-shadow:0 3px 14px rgba(0,0,0,.55);
+    opacity:0;transition:opacity .25s;max-width:52%}
+  .stage.igang .hud{opacity:1}
+  .hud .lbl{font-size:12px;font-weight:700;color:#e8d4ff;text-transform:uppercase;letter-spacing:1px}
+  #etapeHud{display:block;font-size:40px;font-weight:800;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+  #etapeNavn{display:block;font-size:14px;font-weight:700;color:var(--sun);line-height:1.15}
+  .hud.hoejre{left:auto;right:14px;text-align:right;max-width:44%}
+  .hud.hoejre b{display:block;font-size:24px;font-weight:800;line-height:1.2;color:var(--mint);font-variant-numeric:tabular-nums}
+  .hud.hoejre .fald{color:#ffb4e4;font-size:15px}
+  #pauseBtn{position:absolute;right:12px;bottom:12px;z-index:3}
+
+  /* Styring: ◀ ▶ under venstre tommel, stor HOP under højre */
+  .styring{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between;
+    padding:10px 12px 12px;gap:12px;pointer-events:none;z-index:2}
+  .gaa{display:flex;gap:10px}
+  .knap{pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,243,251,.16);border:2px solid rgba(255,243,251,.3);color:var(--text);
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);font-weight:800;transition:transform .06s,background .1s}
+  .knap.tryk{background:rgba(255,212,71,.55);transform:scale(.94)}
+  .gaa .knap{width:74px;height:74px;border-radius:24px;font-size:30px}
+  .hopknap{width:104px;height:104px;border-radius:50%;font-size:19px;letter-spacing:.5px}
+  @media (max-width:360px){ .gaa .knap{width:64px;height:64px} .hopknap{width:88px;height:88px;font-size:17px} }
+
+  /* Råb midt på fladen: PRRRT!, BAK BAK! og SPLASH */
+  .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .25s;z-index:2}
+  .msg.on{opacity:1}
+  .msg .stor{font-size:clamp(30px,10vw,58px);font-weight:900;letter-spacing:-1.5px;line-height:1.05;color:#fff;
+    text-shadow:0 0 26px rgba(0,0,0,.5),0 6px 0 rgba(0,0,0,.25);transform:rotate(-4deg)}
+  .msg.on .stor{animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+  .msg .under{margin-top:14px;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(43,23,70,.72);border-radius:999px;padding:8px 16px}
+  @keyframes pop{from{transform:scale(.3) rotate(-4deg);opacity:0}to{transform:scale(1) rotate(-4deg);opacity:1}}
+  @media (prefers-reduced-motion:reduce){ .msg.on .stor{animation:none} }
+
+  /* Skærmene */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:16px 18px 20px;background:rgba(43,23,70,.9);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);z-index:4}
+  .screen.on{display:flex}
+  .kort{width:100%;max-width:420px;text-align:center;margin:auto}
+  .lavetaf{font-size:13px;color:var(--muted);margin:0 0 12px;font-weight:700}
+  .lavetaf b{color:var(--sun)}
+  .regler{display:flex;flex-direction:column;gap:6px;margin:0 0 12px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:8px 12px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .hs{margin:6px 0}
+  .hs .hs-liste{max-height:30vh}
+  .stortal{font-size:58px;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--sun);
+    font-variant-numeric:tabular-nums;margin:2px 0}
+  .under2{font-size:15px;color:var(--muted);margin:0 0 8px}
+  .hint{font-size:14px;margin:12px 0 0}
+
+  dialog.dlg{border:0;padding:0;background:none;color:var(--text);max-width:min(92vw,360px);width:100%}
+  dialog.dlg::backdrop{background:rgba(20,8,36,.72)}
+  .dlg-indhold{background:var(--bg2);border-radius:24px;padding:18px 20px;text-align:center}
+  .dlg h2{margin:0 0 4px;font-size:22px}
+
+  @media (max-height:660px){
+    h1{font-size:28px} #etapeHud{font-size:32px} .stortal{font-size:44px} .hs .hs-liste{max-height:22vh}
+    .screen .btn{padding:13px} .regler span{font-size:14px;padding:7px 11px} .regler{gap:5px}
+  }
+</style>
+</head><body>
+
+<div class="top">
+  <a class="back" href="/">‹ zydy.dk</a>
+  <div class="navn">Fjolle-Obby</div>
+  <span class="pill" id="etapePill" hidden>Etape 1</span>
+</div>
+
+<div class="stage" id="stage">
+  <canvas id="c" aria-label="Den fjollede forhindringsbane"></canvas>
+
+  <div class="hud" aria-live="polite">
+    <span class="lbl">Etape</span>
+    <b id="etapeHud">1</b>
+    <span id="etapeNavn">Kom nu i gang</span>
+  </div>
+  <div class="hud hoejre">
+    <span class="lbl">Tid</span>
+    <b id="tidHud">0:00</b>
+    <b class="fald" id="faldHud">0 plask</b>
+  </div>
+
+  <button class="pill" id="pauseBtn" hidden>Pause</button>
+
+  <div class="styring" id="styring" hidden>
+    <div class="gaa">
+      <button class="knap" id="vBtn" aria-label="Gå til venstre">◀</button>
+      <button class="knap" id="hBtn" aria-label="Gå til højre">▶</button>
+    </div>
+    <button class="knap hopknap" id="hopBtn" aria-label="Hop">HOP</button>
+  </div>
+
+  <div class="msg" id="raab">
+    <div class="stor" id="raabStor">SPLASH!</div>
+    <div class="under" id="raabUnder">Tilbage til flaget</div>
+  </div>
+
+  <div class="screen on" id="startScreen">
+    <div class="kort">
+      <h1>Fjolle-Obby</h1>
+      <p class="lavetaf"><b>Alia</b> ønskede sig en sjov obby · Far og Claude byggede den</p>
+      <div class="regler" aria-hidden="true">
+        <span>🍌 <b>Ni fjollede etaper</b> – bananskræl, gelé, prutteskyer, slim, rullebånd, høns og balloner</span>
+        <span>🍮 <b>Intet gør dig fortræd</b> – du kan kun plaske i buddingen, og så starter du ved flaget</span>
+        <span>⏱️ <b>Tiden tæller</b> – banen er den samme hver gang, så du kan blive hurtigere og hurtigere</span>
+      </div>
+      <div class="hs" id="hsStart"></div>
+      <button class="btn" id="fortsaetBtn" hidden>Fortsæt</button>
+      <button class="btn" id="startBtn">Spil</button>
+      <p class="hint">◀ ▶ for at løbe, den store knap for at hoppe. På computer: piletaster og mellemrum.</p>
+    </div>
+  </div>
+
+  <div class="screen" id="slutScreen">
+    <div class="kort">
+      <h1 id="slutTitel">Du klarede den!</h1>
+      <div class="stortal" id="slutTal">0:00</div>
+      <p class="under2" id="slutUnder">hele banen</p>
+      <div class="hs" id="hsSlut"></div>
+      <button class="btn" id="igenBtn">Spil igen</button>
+      <a class="btn rolig" href="/">Tilbage til zydy.dk</a>
+    </div>
+  </div>
+</div>
+
+<dialog class="dlg" id="pauseDlg">
+  <div class="dlg-indhold">
+    <h2>Pause</h2>
+    <p id="pauseUnder">Etape 1</p>
+    <button class="btn" id="videreBtn">Spil videre</button>
+    <button class="btn rolig" id="forfraBtn">Start forfra på etapen</button>
+    <button class="btn rolig" id="stopBtn">Stop</button>
+  </div>
+</dialog>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="fjolle"></script>
+<!-- Kapløb: to venner spiller den samme bane på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+<script type="module">
+import {
+  SP_B, SP_H, DT_MAKS, ANTAL_ETAPER, HOENE_B, HOENE_H,
+  opretBane, nyStand, skridt, botTryk, pladeY, prutAktiv, prutSkifter, prutX, hoene,
+} from './bane.mjs';
+
+const $ = id => document.getElementById(id);
+const SPIL = 'fjolle';
+const params = new URLSearchParams(location.search);
+
+/* ---------- Opsætning ---------- */
+const laerred = $('c'), ctx = laerred.getContext('2d');
+const stage = $('stage'), styring = $('styring'), pauseBtn = $('pauseBtn');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen');
+
+let W = 320, H = 240, dpr = 1, S = 30;     // S = pixels pr. enhed
+function maalOp() {
+  const r = stage.getBoundingClientRect();
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  W = Math.max(200, Math.round(r.width)); H = Math.max(200, Math.round(r.height));
+  laerred.width = Math.round(W * dpr); laerred.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Så meget af banen skal kunne ses på én gang. Loftet på 56 er for iPad'en:
+  // uden det bliver en stor skærm bare zoomet helt ind på figuren.
+  S = Math.max(20, Math.min(W / 12, H / 8.2, 56));
+}
+addEventListener('resize', () => { maalOp(); tegn(); });
+if (window.ResizeObserver) new ResizeObserver(() => { maalOp(); tegn(); }).observe(stage);
+
+/* ---------- Spillets tilstand ---------- */
+const GEMT = 'zydy.fjolle.gemt';
+const BEDSTE = 'zydy.fjolle.bedste';
+
+const bane = opretBane();
+let etape = null, stand = null;
+let fase = 'menu';                 // menu | spil | doed | flag | slut
+let etapeNr = 1, fald = 0, sek = 0, bedste = 0;
+let ventTil = 0, kamX = 0, kamY = 0, tid = 0, rystTil = 0;
+const ind = { venstre: false, hoejre: false, hop: false };
+let botStyrer = false;             // kun til test: botten trykker på knapperne
+let pauseret = false;              // kun til test: så tiden kan gå i faste skridt
+
+const gem = {
+  hent() { try { return JSON.parse(localStorage.getItem(GEMT)) || null; } catch (e) { return null; } },
+  saet(v) { try { v ? localStorage.setItem(GEMT, JSON.stringify(v)) : localStorage.removeItem(GEMT); } catch (e) {} },
+};
+try { bedste = Math.max(0, parseInt(localStorage.getItem(BEDSTE), 10) || 0); } catch (e) {}
+
+const tidTekst = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+
+/** En frisk figur på etapens flag. Råbene nulstilles med, for tiden i standen
+ *  begynder forfra, og ellers ville det næste prut eller hønseknald blive stumt. */
+function nyFigur() {
+  stand = nyStand(etape);
+  sidstePrut = sidsteBak = -99;
+  return stand;
+}
+
+/** Bygger etape `nr` og stiller figuren på flaget. */
+function saetEtape(nr) {
+  etapeNr = nr;
+  etape = bane.etape(nr);
+  nyFigur();
+  kamX = stand.x - 4; kamY = stand.y;
+  visHud();
+}
+
+function start(fra = 1) {
+  const gammelt = gem.hent();
+  fald = fra > 1 && gammelt ? (gammelt.fald || 0) : 0;
+  sek = fra > 1 && gammelt ? (gammelt.sek || 0) : 0;
+  saetEtape(fra);
+  fase = 'spil';
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  styring.hidden = false; pauseBtn.hidden = false; $('etapePill').hidden = false;
+  stage.classList.add('igang');
+  raab(fra === 1 ? 'FJOLL LØS!' : 'ETAPE ' + fra, etape.tip, 1.8);
+}
+
+/** Hele banen er klaret – det er her, tiden bliver til en score. */
+function faerdig() {
+  fase = 'slut';
+  styring.hidden = true; pauseBtn.hidden = true; $('etapePill').hidden = true;
+  stage.classList.remove('igang');
+  gem.saet(null);
+  const score = Math.max(1, Math.round(sek));
+  const ny = !bedste || score < bedste;
+  if (ny) { bedste = score; try { localStorage.setItem(BEDSTE, String(score)); } catch (e) {} }
+  $('slutTitel').textContent = ny ? 'Ny rekord!' : 'Du klarede den!';
+  $('slutTal').textContent = tidTekst(score);
+  $('slutUnder').textContent = 'hele banen · ' + fald + (fald === 1 ? ' plask i buddingen' : ' plask i buddingen');
+  slutScreen.classList.add('on');
+  Highscore.panel($('hsSlut'), { spil: SPIL, score, format: tidTekst });
+  if (window.Kaploeb) Kaploeb.slut(score, tidTekst(score), 'asc');
+}
+
+/** Stop uden at være nået hele vejen – ingen score, men fremskridtet står gemt. */
+function slut() {
+  fase = 'slut';
+  styring.hidden = true; pauseBtn.hidden = true; $('etapePill').hidden = true;
+  stage.classList.remove('igang');
+  $('slutTitel').textContent = 'Pause i fjolleriet';
+  $('slutTal').textContent = tidTekst(sek);
+  $('slutUnder').textContent = 'du nåede til etape ' + etapeNr + ' af ' + ANTAL_ETAPER +
+    ' · tiden tæller først, når hele banen er klaret';
+  slutScreen.classList.add('on');
+  Highscore.panel($('hsSlut'), { spil: SPIL, format: tidTekst });
+}
+
+function tilMenu() {
+  fase = 'menu';
+  styring.hidden = true; pauseBtn.hidden = true; $('etapePill').hidden = true;
+  stage.classList.remove('igang'); slutScreen.classList.remove('on');
+  startScreen.classList.add('on');
+  visFortsaet();
+}
+
+/* ---------- Råb midt på skærmen ---------- */
+let raabTil = 0;
+function raab(stor, under, sekunder) {
+  $('raabStor').textContent = stor;
+  $('raabUnder').textContent = under;
+  $('raab').classList.add('on');
+  raabTil = tid + sekunder;
+}
+
+/* ---------- HUD ---------- */
+function visHud() {
+  $('etapeHud').textContent = etapeNr;
+  $('etapeNavn').textContent = etape ? etape.navn : '';
+  $('etapePill').textContent = 'Etape ' + etapeNr + '/' + ANTAL_ETAPER;
+  $('tidHud').textContent = tidTekst(sek);
+  $('faldHud').textContent = fald + (fald === 1 ? ' plask' : ' plask');
+}
+
+function visFortsaet() {
+  const g = gem.hent();
+  const kan = g && g.etape > 1 && g.etape <= ANTAL_ETAPER;
+  $('fortsaetBtn').hidden = !kan;
+  if (kan) $('fortsaetBtn').textContent = 'Fortsæt · etape ' + g.etape;
+  $('startBtn').textContent = kan ? 'Start forfra' : 'Spil';
+  $('startBtn').className = kan ? 'btn rolig' : 'btn';
+}
+
+/* ---------- Etapen klaret / figuren i buddingen ---------- */
+function naaetFlaget() {
+  if (etapeNr >= ANTAL_ETAPER) { faerdig(); return; }
+  fase = 'flag';
+  gem.saet({ etape: etapeNr + 1, sek, fald });
+  raab('ETAPE ' + etapeNr + ' KLARET!', 'Flaget er dit checkpoint', 1.4);
+  ventTil = tid + 1.4;
+  visHud();
+}
+
+const PLASK = [
+  'Buddingen smagte godt, men du skal videre',
+  'Plask! Op igen med dig',
+  'Det var ikke vejen – prøv igen',
+  'Buddingen tog dig. Den er glad for det',
+];
+function doede() {
+  fase = 'doed';
+  fald++;
+  rystTil = tid + 0.35;
+  raab('SPLASH!', PLASK[fald % PLASK.length], 1.0);
+  ventTil = tid + 1.0;
+  visHud();
+}
+
+/* ---------- Løkken ---------- */
+let sidst = 0;
+function billede(nu) {
+  requestAnimationFrame(billede);
+  const dt = Math.min(DT_MAKS, (nu - sidst) / 1000 || 0);
+  sidst = nu;
+  tid += dt;
+  if (raabTil && tid > raabTil) { $('raab').classList.remove('on'); raabTil = 0; }
+
+  if (fase === 'spil' && !pauseDlg.open && !pauseret) {
+    sek += dt;
+    if (Math.floor(sek) !== Math.floor(sek - dt)) $('tidHud').textContent = tidTekst(sek);
+    const knapper = botStyrer ? botTryk(stand, etape) : { venstre: ind.venstre, hoejre: ind.hoejre, hop: ind.hop };
+    skridt(stand, knapper, dt, etape);
+    ind.hop = false;
+    efterSkridt();
+  } else if ((fase === 'doed' || fase === 'flag') && tid >= ventTil) {
+    if (fase === 'doed') { nyFigur(); fase = 'spil'; }
+    else { saetEtape(etapeNr + 1); fase = 'spil'; raab('ETAPE ' + etapeNr, etape.tip, 1.6); }
+  }
+  foelgKamera(dt);
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/** Det, der kan ske af sig selv efter et skridt: et plask, et flag – eller et brøl. */
+let sidstePrut = -99, sidsteBak = -99;
+function efterSkridt() {
+  if (stand.prutTid > sidstePrut) { sidstePrut = stand.prutTid; raab('PRRRT!', 'Op i luften med dig', 0.8); }
+  if (stand.bak > sidsteBak) { sidsteBak = stand.bak; raab('BAK BAK!', 'Hønen vippede dig', 0.7); }
+  if (stand.doed) doede();
+  else if (stand.iMaal) naaetFlaget();
+}
+
+/** Kameraet holder figuren lidt til venstre for midten og glider blødt efter. */
+function foelgKamera(dt) {
+  if (!stand) return;
+  const maalX = stand.x - (W / S) * 0.36;
+  const k = 1 - Math.pow(0.0015, dt);
+  kamX += (maalX - kamX) * k;
+  kamY += (stand.y - kamY) * k;
+  if (etape) kamX = Math.max(-1.5, Math.min(kamX, etape.laengde + 2 - W / S));
+}
+
+/* ================= Tegningen ================= */
+/*
+  Alt tegnes i enheder og regnes om med px()/py(). Y vender opad i spillet og
+  nedad på skærmen, så py() spejler. Hver slags plade har sin egen farve og sit
+  eget fjolleri på toppen – man skal kunne se på en plade, hvad den gør ved én,
+  før man lander på den.
+*/
+const px = x => (x - kamX) * S;
+const py = y => H * 0.62 - (y - kamY) * S;
+
+function rrect(x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+const fyld = (farve, x, y, w, h, r) => { ctx.fillStyle = farve; rrect(x, y, w, h, r); ctx.fill(); };
+
+const FARVER = {
+  start: ['#7b5bc9', '#a98cf0'], fast: ['#7b5bc9', '#a98cf0'], maal: ['#b98a11', '#ffd447'],
+  banan: ['#b8951a', '#ffe066'], gele: ['#c0398f', '#ff8ad2'], slim: ['#2f8f5a', '#6ee2a0'],
+  baand: ['#4a4a6a', '#8f8fc0'], fjeder: ['#a83a3a', '#ff8a7a'], ballon: ['#2f6f9f', '#7fd0ff'],
+};
+
+function tegn() {
+  ctx.save();
+  if (tid < rystTil) {                                  // skærmen ryster ved et plask
+    const k = (rystTil - tid) * 18;
+    ctx.translate(Math.sin(tid * 90) * k, Math.cos(tid * 70) * k);
+  }
+  himmel();
+  if (etape) { pudding(); for (const p of etape.plader) plade(p); }
+  if (stand) figur();
+  ctx.restore();
+}
+
+function himmel() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#5b2f96'); g.addColorStop(.55, '#a45fd0'); g.addColorStop(1, '#ffb0e0');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // Fjollede skyer, der driver langsomt forbi
+  ctx.fillStyle = 'rgba(255,255,255,.22)';
+  for (let i = 0; i < 6; i++) {
+    const x = ((i * 137 - kamX * S * 0.25) % (W + 220)) - 110;
+    const y = 30 + ((i * 53) % Math.max(40, H * 0.45));
+    const r = 18 + (i % 3) * 8;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 7); ctx.arc(x + r, y - r * 0.4, r * 0.8, 0, 7); ctx.arc(x + r * 1.9, y, r * 0.7, 0, 7);
+    ctx.fill();
+  }
+}
+
+function pudding() {
+  const y = py(etape.pudding);
+  if (y > H) return;
+  const g = ctx.createLinearGradient(0, y - 10, 0, H);
+  g.addColorStop(0, '#a5642a'); g.addColorStop(1, '#5c3416');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(0, y + 8);
+  for (let x = 0; x <= W; x += 18) ctx.lineTo(x, y + 8 + Math.sin(x * 0.06 + tid * 2) * 6);
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,233,200,.45)';
+  for (let i = 0; i < 5; i++) {
+    const bx = ((i * 97 + tid * 12) % (W + 40)) - 20;
+    ctx.beginPath(); ctx.arc(bx, y + 22 + Math.sin(tid * 2 + i) * 5, 4 + (i % 3), 0, 7); ctx.fill();
+  }
+}
+
+function plade(p) {
+  const x = px(p.x), y = py(pladeY(p, stand)), w = p.w * S, h = Math.max(10, S * 0.55);
+  if (x > W + 120 || x + w < -120) return;
+  const [moerk, lys] = FARVER[p.slags] || FARVER.fast;
+
+  if (p.op) ballon(p, x, y, w);                          // snoren og ballonen tegnes bag pladen
+  fyld(moerk, x, y, w, h, 7);
+  fyld(lys, x, y, w, h * 0.42, 7);
+
+  if (p.slags === 'banan') bananer(p, x, y, w);
+  if (p.slags === 'gele') geleklat(p, x, y, w, h);
+  if (p.slags === 'slim') slimklat(x, y, w);
+  if (p.slags === 'baand') baandpile(p, x, y, w, h);
+  if (p.slags === 'fjeder') fjeder(x, y, w);
+  if (p.slags === 'start' || p.slags === 'maal') flag(p, x, y, w);
+  if (p.prut) sky(p, x, y);
+  if (p.hoene) hoenen(p, y);
+}
+
+function bananer(p, x, y, w) {
+  ctx.strokeStyle = '#fff07a'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+  const n = Math.max(2, Math.floor(p.w / 1.3));
+  for (let i = 0; i < n; i++) {
+    const bx = x + ((i + 0.5) / n) * w;
+    ctx.beginPath(); ctx.arc(bx, y - 1, S * 0.2, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+  }
+}
+
+function geleklat(p, x, y, w, h) {
+  // Geléen skvulper et øjeblik, når nogen er landet i den
+  const siden = stand ? stand.t - stand.gelePlask : 9;
+  const svulp = siden < 0.5 ? Math.sin(siden * 34) * (0.5 - siden) * S * 0.7 : 0;
+  ctx.fillStyle = 'rgba(255,138,210,.75)';
+  rrect(x + 2, y - S * 0.5 - svulp, w - 4, S * 0.5 + svulp + h * 0.5, 10); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.55)';
+  ctx.beginPath(); ctx.ellipse(x + w * 0.3, y - S * 0.28, w * 0.12, S * 0.1, -0.3, 0, 7); ctx.fill();
+}
+
+function slimklat(x, y, w) {
+  ctx.fillStyle = 'rgba(110,226,160,.85)';
+  ctx.beginPath();
+  ctx.moveTo(x, y + 2);
+  for (let i = 0; i <= 10; i++) {
+    const t = i / 10;
+    ctx.lineTo(x + t * w, y + 2 - Math.abs(Math.sin(t * 6 + tid * 2)) * S * 0.16);
+  }
+  ctx.lineTo(x + w, y + 8); ctx.lineTo(x, y + 8); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.4)';
+  for (let i = 0; i < 3; i++) {
+    const bx = x + ((i + 0.5) / 3) * w;
+    ctx.beginPath(); ctx.arc(bx, y - 4 - Math.sin(tid * 1.6 + i) * 4, 2.6, 0, 7); ctx.fill();
+  }
+}
+
+function baandpile(p, x, y, w, h) {
+  ctx.fillStyle = 'rgba(255,255,255,.55)';
+  const fart = p.band * S * 0.5;
+  const afst = S * 0.75;
+  for (let i = -1; i < p.w / 0.75 + 1; i++) {
+    const bx = x + ((i * afst + tid * fart) % (w + afst) + w + afst) % (w + afst);
+    if (bx < x || bx > x + w - 6) continue;
+    ctx.beginPath();
+    const r = Math.sign(p.band);
+    ctx.moveTo(bx, y + h * 0.12); ctx.lineTo(bx + 7 * r, y + h * 0.26); ctx.lineTo(bx, y + h * 0.4);
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+function fjeder(x, y, w) {
+  ctx.strokeStyle = '#ffd447'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let i = 0; i <= 12; i++) {
+    const t = i / 12;
+    ctx.lineTo(x + w * (0.2 + 0.6 * (i % 2)), y - 2 - t * S * 0.45);
+  }
+  ctx.stroke();
+}
+
+function flag(p, x, y, w) {
+  const sidste = etape.sidste && p.slags === 'maal';
+  const fx = x + w / 2, top = y - S * 2.1;
+  ctx.fillStyle = '#efe3ff'; ctx.fillRect(fx - 2, top, 4, S * 2.1);
+  if (sidste) {                                         // den gyldne banan for enden af det hele
+    ctx.fillStyle = '#ffd447';
+    ctx.beginPath();
+    ctx.moveTo(fx, top - 4);
+    ctx.quadraticCurveTo(fx + S * 0.9, top + S * 0.1, fx + S * 0.25, top + S * 0.75);
+    ctx.quadraticCurveTo(fx + S * 0.55, top + S * 0.05, fx, top + S * 0.18);
+    ctx.closePath(); ctx.fill();
+  } else {
+    ctx.fillStyle = p.slags === 'maal' ? '#ffd447' : '#85e88a';
+    ctx.beginPath();
+    ctx.moveTo(fx + 2, top);
+    ctx.lineTo(fx + S * 1.1, top + S * 0.28);
+    ctx.lineTo(fx + 2, top + S * 0.56);
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+function sky(p, x, y) {
+  const cx = px(prutX(p)), bw = p.prut.bw * S;
+  const aktiv = stand ? prutAktiv(p, stand.t) : false;
+  const om = stand ? prutSkifter(p, stand.t) : 1;
+  // Hullet i pladen kan altid ses – ellers kan man ikke vide, hvor man skal
+  // stille sig og vente. Skyen puster sig op lige inden den blæser.
+  ctx.fillStyle = aktiv ? '#9dffa2' : 'rgba(133,232,138,.6)';
+  rrect(cx - bw / 2, y - 5, bw, 10, 5); ctx.fill();
+  const k = aktiv ? 1.4 : 0.55 + 0.45 * Math.max(0, 1 - om / 0.7);
+  for (let i = 0; i < 5; i++) {
+    const h = S * (0.35 + i * (aktiv ? 0.85 : 0.42));
+    ctx.fillStyle = 'rgba(133,232,138,' + (aktiv ? 0.85 - i * 0.12 : 0.42 - i * 0.06) + ')';
+    ctx.beginPath();
+    ctx.arc(cx + Math.sin(tid * 3 + i) * S * 0.14, y - h, S * 0.42 * k * (1 - i * 0.1), 0, 7);
+    ctx.fill();
+  }
+}
+
+function hoenen(p, y) {
+  const h = hoene(p, stand ? stand.t : 0);
+  const x = px(h.x), b = HOENE_B * S, hoej = HOENE_H * S;
+  const vip = Math.sin((stand ? stand.t : 0) * 9) * 2;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(h.vender, 1);
+  ctx.fillStyle = '#ff8a7a';                             // ben
+  ctx.fillRect(-3, -6, 2.5, 6); ctx.fillRect(3, -6, 2.5, 6);
+  fyld('#fffdf6', -b * 0.5, -hoej + vip, b, hoej * 0.8, 8);       // krop
+  fyld('#fffdf6', b * 0.05, -hoej - hoej * 0.3 + vip, b * 0.5, hoej * 0.42, 6);  // hoved
+  ctx.fillStyle = '#ff4d5e';                             // kam
+  ctx.beginPath(); ctx.arc(b * 0.2, -hoej - hoej * 0.32 + vip, 3.2, 0, 7); ctx.fill();
+  ctx.fillStyle = '#ffb02e';                             // næb
+  ctx.beginPath();
+  ctx.moveTo(b * 0.55, -hoej - hoej * 0.1 + vip);
+  ctx.lineTo(b * 0.85, -hoej - hoej * 0.02 + vip);
+  ctx.lineTo(b * 0.55, -hoej + hoej * 0.06 + vip);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#2b1746';
+  ctx.fillRect(b * 0.32, -hoej - hoej * 0.16 + vip, 2.6, 2.6);
+  ctx.restore();
+}
+
+function ballon(p, x, y, w) {
+  const bx = x + w / 2, by = y - S * 1.9;
+  ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(bx, y); ctx.lineTo(bx, by + S * 0.55); ctx.stroke();
+  ctx.fillStyle = '#ff7ad9';
+  ctx.beginPath(); ctx.ellipse(bx, by, S * 0.62, S * 0.72, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.45)';
+  ctx.beginPath(); ctx.ellipse(bx - S * 0.2, by - S * 0.25, S * 0.13, S * 0.18, -0.4, 0, 7); ctx.fill();
+}
+
+/** Figuren: en fjollet fyr med alt for store øjne og tungen ude af munden. */
+function figur() {
+  const x = px(stand.x), y = py(stand.y);
+  const b = SP_B * S, h = SP_H * S;
+  const luft = stand.paa < 0;
+  const loeber = stand.loeber && !luft;
+  const svig = loeber ? Math.sin(stand.t * 16) : 0;
+  const nyPrut = stand.t - stand.prutTid < 0.5;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(stand.vender, 1);
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  ctx.beginPath(); ctx.ellipse(0, 2, b * 0.55, 4, 0, 0, Math.PI * 2); ctx.fill();
+  // ben
+  ctx.fillStyle = '#4f2e80';
+  const benH = h * 0.32;
+  ctx.fillRect(-b * 0.36, -benH, b * 0.28, benH + (luft ? -h * 0.06 : svig * 2));
+  ctx.fillRect(b * 0.08, -benH, b * 0.28, benH - (luft ? h * 0.06 : svig * 2));
+  // krop
+  fyld('#ff7ad9', -b * 0.45, -h * 0.72, b * 0.9, h * 0.42, 6);
+  // arme – de flakser, når man er i luften
+  ctx.fillStyle = '#ffd447';
+  ctx.save(); ctx.translate(b * 0.4, -h * 0.68); ctx.rotate(luft ? -1.1 : svig * 0.5); ctx.fillRect(0, 0, b * 0.2, h * 0.32); ctx.restore();
+  ctx.save(); ctx.translate(-b * 0.58, -h * 0.68); ctx.rotate(luft ? 1.1 : -svig * 0.5); ctx.fillRect(0, 0, b * 0.2, h * 0.32); ctx.restore();
+  // hoved med store øjne og tunge
+  fyld('#ffe9a8', -b * 0.45, -h, b * 0.9, h * 0.32, 7);
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(b * 0.02, -h * 0.86, b * 0.16, 0, 7); ctx.arc(b * 0.28, -h * 0.86, b * 0.16, 0, 7); ctx.fill();
+  ctx.fillStyle = '#2b1746';
+  ctx.beginPath();
+  ctx.arc(b * 0.02 + (luft ? 1.5 : 0), -h * 0.86, b * 0.075, 0, 7);
+  ctx.arc(b * 0.28 + (luft ? 1.5 : 0), -h * 0.86, b * 0.075, 0, 7);
+  ctx.fill();
+  ctx.fillStyle = '#ff4d5e';
+  ctx.beginPath(); ctx.ellipse(b * 0.2, -h * 0.72, b * 0.1, b * 0.06, 0, 0, 7); ctx.fill();
+  ctx.restore();
+  // en grøn sky under fødderne lige efter en prut
+  if (nyPrut) {
+    ctx.fillStyle = 'rgba(133,232,138,' + (0.5 - (stand.t - stand.prutTid)) + ')';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath(); ctx.arc(x - 6 + i * 7, y + 6 + i * 3, 6 + i * 2, 0, 7); ctx.fill();
+    }
+  }
+}
+
+/* ================= Styring ================= */
+/*
+  Tre knapper i bunden: ◀ ▶ under venstre tommel og en stor HOP under højre.
+  På en iPad kan man ikke nå toppen af skærmen, mens man holder den – derfor
+  ingen «tryk på skærmen for at hoppe».
+*/
+function knap(el, ned, op) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (el.setPointerCapture) el.setPointerCapture(e.pointerId);
+    el.classList.add('tryk'); ned();
+  });
+  for (const t of ['pointerup', 'pointercancel', 'pointerleave']) {
+    el.addEventListener(t, () => { el.classList.remove('tryk'); if (op) op(); });
+  }
+}
+knap($('vBtn'), () => { ind.venstre = true; }, () => { ind.venstre = false; });
+knap($('hBtn'), () => { ind.hoejre = true; }, () => { ind.hoejre = false; });
+knap($('hopBtn'), () => { ind.hop = true; });
+
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') { ind.venstre = true; e.preventDefault(); }
+  else if (e.code === 'ArrowRight' || e.code === 'KeyD') { ind.hoejre = true; e.preventDefault(); }
+  else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+    e.preventDefault();
+    if (e.repeat) return;
+    if (fase === 'spil') ind.hop = true;
+    else if (fase === 'menu') start(1);
+  }
+});
+addEventListener('keyup', e => {
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') ind.venstre = false;
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') ind.hoejre = false;
+});
+addEventListener('blur', () => { ind.venstre = ind.hoejre = false; });
+
+const pauseDlg = $('pauseDlg');
+pauseBtn.addEventListener('click', () => {
+  $('pauseUnder').textContent = 'Etape ' + etapeNr + ' af ' + ANTAL_ETAPER + ' · ' + tidTekst(sek) + ' · ' + fald + ' plask';
+  pauseDlg.showModal();
+});
+$('videreBtn').addEventListener('click', () => pauseDlg.close());
+$('forfraBtn').addEventListener('click', () => { pauseDlg.close(); nyFigur(); fase = 'spil'; });
+$('stopBtn').addEventListener('click', () => { pauseDlg.close(); slut(); });
+$('startBtn').addEventListener('click', () => { gem.saet(null); start(1); });
+$('fortsaetBtn').addEventListener('click', () => { const g = gem.hent(); start(g ? g.etape : 1); });
+$('igenBtn').addEventListener('click', () => { gem.saet(null); start(1); });
+
+/* ================= Til test ================= */
+window.GAME = {
+  get stand() { return stand; },
+  get etape() { return etape; },
+  get fase() { return fase; },
+  get tal() { return { etapeNr, fald, sek, bedste, antal: ANTAL_ETAPER }; },
+  ind, start, slut, tilMenu, saetEtape,
+  /** Hvor figuren havner på skærmen – så en test kan se, at der bliver tegnet dér, hvor man kigger. */
+  geo() {
+    return { W, H, S, kamX, kamY, dpr, x: px(stand.x), y: py(stand.y), pudding: py(etape.pudding) };
+  },
+  /** Stopper uret, så en test kan lade tiden gå i faste skridt med `tik()`. */
+  pause() { pauseret = true; },
+  fortsaet() { pauseret = false; },
+  tik(dt) {
+    if (fase !== 'spil') return;
+    skridt(stand, { venstre: ind.venstre, hoejre: ind.hoejre, hop: ind.hop }, dt, etape);
+    ind.hop = false;
+    efterSkridt();
+  },
+  /** Lader botten spille etapen færdig med det samme – bruges i browsertesten. */
+  spolEtape(maks = 90) {
+    if (fase !== 'spil') return false;
+    const fra = stand.t;
+    while (stand.t - fra < maks && !stand.doed && !stand.iMaal) {
+      skridt(stand, botTryk(stand, etape), 1 / 120, etape);
+      sek += 1 / 120;
+    }
+    efterSkridt();
+    ventTil = 0;
+    return stand.iMaal;
+  },
+  /** Smider figuren i buddingen – så testen kan prøve et plask uden at spille dårligt. */
+  doedNu() { if (fase === 'spil') { stand.y = etape.pudding - 1; stand.doed = 'pudding'; doede(); } },
+  /** Snyder uret frem, så en hel bane ikke skal spilles i rigtig tid. */
+  saetTid(s) { sek = s; visHud(); },
+  botStyrer(paa) { botStyrer = !!paa; },
+};
+
+/* ================= Start ================= */
+maalOp();
+visFortsaet();
+Highscore.panel($('hsStart'), { spil: SPIL, format: tidTekst });
+if (params.get('etape')) start(Math.max(1, Math.min(ANTAL_ETAPER, parseInt(params.get('etape'), 10) || 1)));
+tegn();
+</script>
+</body></html>

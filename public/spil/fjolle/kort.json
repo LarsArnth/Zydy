@@ -1,0 +1,24 @@
+{
+  "navn": "Fjolle-Obby",
+  "beskrivelse": "En rigtig fjollet forhindringsbane: skrid på bananskræl, hop i gelé, bliv skudt op af en pruttesky og vippet af en høne. Ni etaper – hvor hurtigt klarer du dem alle?",
+  "nøgleord": [
+    "obby",
+    "sjov",
+    "fjollet",
+    "roblox",
+    "forhindringsbane",
+    "parkour",
+    "banan",
+    "prut",
+    "hop"
+  ],
+  "url": "/spil/fjolle/",
+  "orden": 174,
+  "kapløb": true,
+  "højscore": {
+    "retning": "asc",
+    "min": 30,
+    "maks": 5400,
+    "unik": true
+  }
+}

@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 47,
+      "dato": "2026-09-15",
+      "spil": "fjolle",
+      "titel": "Fjolle-Obby: en obby hvor ingenting gør ondt",
+      "hvad": "Alia ønskede sig en sjov obby, så her er den fjollede fætter til Store Obby. Ni etaper, du kan lære udenad, og INGENTING kan slå dig ihjel – du kan kun plaske i buddingen i bunden og starter så ved flaget igen. Undervejs skrider du på bananskræl, hopper i gelé (tryk HOP lige i landingen, så ryger du ekstra højt), bliver skudt op i luften af en pruttesky, sjasker gennem slim, kører på rullebånd, bliver vippet af høns og sejler op med balloner. Til sidst venter den gyldne banan. Det er TIDEN for hele banen, der tæller på toplisten – så du kan blive hurtigere og hurtigere på præcis den bane, du kender.",
+      "oensket": "Alia"
+    },
+    {
       "nr": 46,
       "dato": "2026-09-15",
       "spil": "obby",
