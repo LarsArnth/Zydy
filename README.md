@@ -799,6 +799,55 @@ Listen begynder 2026-09-12; det, der blev lavet før, står kun i git.
 `test/unit/nyheder.test.mjs` fejler, hvis en linje mangler noget, hvis to har
 samme `nr`, eller hvis `spil` ikke er et spil, der findes.
 
+### Spil uden internet
+
+Selma ønskede sig, at «appen ikke koster internet». Siden ligger nu på
+telefonen: andet besøg koster ingenting, og har man trykket **«📥 Hent alle
+spil»** i panelet nederst på forsiden, kan man spille i bilen og i sommerhuset,
+hvor der ikke er wifi.
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Service worker | `public/sw.js` | Svarer på alle opslag: ligger filen på telefonen, bruges den — ellers hentes den og lægges samtidig til side. |
+| Panelet | `public/offline.js` | «Hent alle spil» med tæller, «Du er uden internet», «Der er noget nyt» og «Fjern fra telefonen». Sektionen `<section id="offline">` nederst på forsiden. |
+| Listen | `public/offline-filer.json` | **Genereret.** Alt under `public/`, delt i `skal` (forsiden + de fælles scripts) og `spil` (de 34 spilmapper), plus en `version`. |
+
+Tre ting er værd at huske, før man retter i det:
+
+1. **`/api/*` bliver aldrig rørt.** Toplister, venner, beskeder og «hvem er her
+   nu» skal være friske og skal fejle ærligt uden net, så service workeren
+   svarer slet ikke på dem — de går direkte ud, som om den ikke var der. Det er
+   også dét, der gør, at Playwright-testenes mock af API'et stadig virker.
+2. **Alt andet er «cache først», uden at spørge nettet om lov.** Et opslag for
+   at høre, om filen er ny, koster næsten det samme som filen. Nyt kommer ind
+   ad én vej: `version` i `offline-filer.json` er en hash af alt indholdet, og
+   den ene lille fil er den eneste trafik, et gensyn med siden koster. Er
+   versionen en anden, hentes det nye ned i baggrunden, og panelet tilbyder
+   «✨ Der er noget nyt — hent siden igen». Cachen hedder `zydy-<version>`, så
+   den gamle kan smides væk i ét stykke og de to udgaver aldrig blandes.
+3. **Spillene hentes ikke af sig selv.** Ved første besøg lægges kun skallen
+   ned; spillene kommer, når man selv trykker på knappen (eller efterhånden som
+   man går ind i dem). Ellers ville første besøg koste 2,6 MB, man ikke bad om.
+
+Et nyt spil kommer med af sig selv: `node scripts/byg-forside.mjs` skriver
+listen, og `test/unit/offline.test.mjs` fejler, hvis generatoren ikke er kørt,
+eller hvis en spilmappe mangler i listen.
+
+Testene: `test/unit/sw.test.mjs` kører hele `sw.js` igennem i en efterlignet
+service worker-verden (falske `caches`, `fetch` og `clients`) — install,
+«hent alle spil», opslag, opdatering og «ingen internet». `test/offline.test.mjs`
+slukker rigtigt for nettet med `ctx.setOffline(true)` og spiller et parti Kryds
+og bolle uden forbindelse. **Tester du noget, der bytter en statisk fil ud med
+`page.route`, så lav konteksten med `serviceWorkers: 'block'`** — ellers
+serverer service workeren den rigtige fil fra cachen, og ombytningen når aldrig
+frem (det er derfor `test/nyheder.test.mjs` gør det).
+
+En advarsel, der kostede en testkørsel: **skriv aldrig et glob-mønster med
+stjerner i en blok-kommentar** i `sw.js`. Stjerne-skråstreg midt i `'**/api/**'`
+lukker kommentaren, resten af sætningen bliver til kode, og filen fejler ved
+indlæsning — `node --check` siger god for den, men browseren nægter at
+registrere service workeren, og så er der bare ikke noget panel.
+
 ### Obby: hurtigere uden at banen bliver grovere
 
 Sofie ønskede sig, at «det her spil skal gå meget hurtigere». Det nærliggende

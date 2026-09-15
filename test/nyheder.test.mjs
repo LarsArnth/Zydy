@@ -18,7 +18,12 @@ const data = JSON.parse(readFileSync(path.join(here, '..', 'public', 'nyheder.js
 const nyheder = data.nyheder;
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ ...devices['iPhone 13'] });
+// Uden service worker. Testen her bytter /nyheder.json ud med page.route for at
+// se, hvad der sker, når der kommer en nyhed til — og service workeren (sw.js)
+// serverer med vilje den rigtige fil fra telefonen uden at spørge nettet, så
+// ombytningen aldrig ville nå frem. At filen ligger i cachen, og hvordan den
+// bliver frisk igen, hører hjemme i test/offline.test.mjs.
+const ctx = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
 // Vi er ikke ude efter navne-dialogen her – sig at vi er blevet spurgt.
 await ctx.addInitScript(() => { try { localStorage.setItem('zydy.navn.spurgt', '1'); } catch (e) {} });
 const page = await ctx.newPage();
@@ -106,7 +111,7 @@ assert.equal(await page.evaluate(() => localStorage.getItem('zydy.nyheder.set'))
 
 /* ---------- Uden filen sker der ingenting ---------- */
 {
-  const ctx2 = await browser.newContext({ ...devices['iPhone 13'] });
+  const ctx2 = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
   await ctx2.addInitScript(() => { try { localStorage.setItem('zydy.navn.spurgt', '1'); } catch (e) {} });
   const p2 = await ctx2.newPage();
   const fejl2 = [];

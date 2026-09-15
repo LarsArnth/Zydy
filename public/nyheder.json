@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 51,
+      "dato": "2026-09-15",
+      "spil": "",
+      "titel": "Spil uden internet",
+      "hvad": "Selma ønskede sig, at siden ikke skulle koste internet. Nu ligger zydy.dk på telefonen: nederst på forsiden er der en knap, der hedder «📥 Hent alle spil». Tryk på den én gang, mens du er på wifi – så bliver alle spillene hentet ned, og bagefter kan du spille dem i bilen, i sommerhuset og alle de andre steder, hvor der ikke er noget internet. Det koster heller ikke data mere, når du bare går ind på siden, for spillene bliver ikke hentet forfra hver gang. Kommer der noget nyt, siger siden selv til.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 50,
       "dato": "2026-09-15",
       "spil": "",
