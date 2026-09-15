@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 45,
+      "dato": "2026-09-15",
+      "spil": "storeobby",
+      "titel": "Store Obby – en rigtig forhindringsbane",
+      "hvad": "Alia ønskede sig «en god obby», og her er den: en bane delt op i etaper med et flag for enden af hver. Du styrer selv med ◀ ▶ og HOP, og du skal over huller, forbi pigge og snurrende bomme, hen over plader der falder væk under dig, og med på plader der glider frem og tilbage. Falder du i lavaen, starter du ved flaget – aldrig forfra på hele banen – og etaperne bliver ved. Hvor mange når du?",
+      "oensket": "Alia"
+    },
+    {
       "nr": 44,
       "dato": "2026-09-15",
       "spil": "straffe",

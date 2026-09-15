@@ -15,6 +15,7 @@ export const KORT = [
   { id: 'stenalder', navn: 'Stenalder', url: '/spil/stenalder/' },
   { id: 'dybet', navn: 'Dybet', url: '/spil/dybet/' },
   { id: 'obby', navn: 'Obby', url: '/spil/obby/' },
+  { id: 'storeobby', navn: 'Store Obby', url: '/spil/storeobby/' },
   { id: 'lava', navn: 'Gulvet er lava', url: '/spil/lava/' },
   { id: 'kryds', navn: 'Kryds og bolle', url: '/spil/kryds/' },
   { id: 'klodser', navn: 'Klodser', url: '/spil/klodser/' },
@@ -55,6 +56,7 @@ export const SPIL = {
   stenalder: { maks: 2000 },
   dybet: { maks: 500 },
   obby: { maks: 10000, unik: true },
+  storeobby: { maks: 500, unik: true },
   lava: { maks: 3000 },
   klodser: { retning: 'asc', min: 10, maks: 3600 },
   kat: { maks: 50 },
@@ -84,4 +86,4 @@ export const SAMMEN = ['dybet', 'kryds', 'papir', 'slanger', 'kaempetal'];
 /** Spil to venner kan tage et kapløb i: samme spil, hver sin telefon, bedste
  *  runde vinder ("kapløb": true i kort.json). Forsiden kender dem på
  *  data-kaploeb, og de må inviteres til gennem /api/rum ligesom SAMMEN. */
-export const KAPLOEB = ['taarn', 'saet', 'farvesortering', 'duel', 'obby', 'lava', 'klodser', 'miskmask', 'blokblast', 'slotskamp', 'weee', 'klaverregn', 'sejl', 'flaske', 'elementer', 'straffe'];
+export const KAPLOEB = ['taarn', 'saet', 'farvesortering', 'duel', 'obby', 'storeobby', 'lava', 'klodser', 'miskmask', 'blokblast', 'slotskamp', 'weee', 'klaverregn', 'sejl', 'flaske', 'elementer', 'straffe'];

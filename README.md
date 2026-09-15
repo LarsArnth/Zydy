@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; enogtredive spil
+afhængigheder. De store apps bor i egne repoer og linkes til; toogtredive spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet enogtredive spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet toogtredive spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen og Straffespark, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark og Store Obby, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -56,13 +56,14 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Elementløbet | `public/spil/elementer/` | Sofies ønske om «et spil som handler om ild, jord, vand og vin – de der fire elementer» (vin læst som vind). Man løber automatisk fremad og **er** et af de fire elementer: fire store knapper i bunden skifter form, og hver forhindring klares af netop ét element – ild brænder tornekrattet, vand slukker bålet, vind flyver over floden, og jord står fast i hvirvelstormen. En boble over forhindringen viser, hvilket element den vil have, så det er fingrene og ikke hukommelsen, der arbejder; tager man alligevel fejl, koster det et liv (af tre), og skærmen siger hvad man skulle have trykket. Forhindringerne lægges med et fast antal **sekunders** mellemrum (aldrig under 0,7 s), så reaktionstiden er den samme, uanset hvor stærkt det går – banen bliver hurtigere og tættere, men aldrig umulig (den perfekte bot i `elementer.mjs` overlever altid, enhedstestet). Score = klarede forhindringer, online topliste og kapløb. To filer: `elementer.mjs` (banen, farten og reglerne, enhedstestet) og `index.html` (canvas, knapperne og skærmene). |
 | Pjattemaskinen | `public/spil/pjat/` | Alias ønske, der bare lød «Lav noget sjovt og randomt» – så det er en maskine, der laver noget sjovt og randomt. Tre ruller (HVEM · GØR HVAD · HVOR) snurrer og lander på en pjattet sætning: «Den fnisende flodhest danser ballet på månen!» – 24 figurer × 22 handlinger × 22 steder, og maskinen kan læse sætningen højt (speechSynthesis, fejler stumt). Hver figur, man møder, sættes i **albummet**; de fire gyldne er sjældne (vægt 1 mod 5), og efter `TOERKE_MAKS` (8) træk uden en ny figur er den næste garanteret ny, så albummet altid kan fyldes – enhedstesten sætter loftet til 24 × 9 træk. Grammatikken kan ikke gå i stykker: hver figur bærer sit eget «den/det», og enhedstesten prøver alle kombinationer. Score = figurer i albummet (`maks: 24`, `unik: true`), sendt af sig selv ved hver ny figur; navnet skrives på startskærmen som i Obby. To filer: `maskine.mjs` (ruller, lodtrækning, tørke-regel og album, enhedstestet) og `index.html`. |
 | Straffespark | `public/spil/straffe/` | Jonas' ønske: «Man sparker og skal score på målmand». Man står på straffesparkspletten og swiper bolden af sted: retningen bestemmer hvor i målet man sigter, og swipe-farten hvor hårdt der sparkes – et hårdt spark er svært at nå for målmanden, men spreder mere, så det kan ryge på stolpen eller forbi. Målmanden læser sparket og kaster sig – eller gætter forkert og springer det gale hjørne – og han bliver bedre for hvert andet mål (hurtigere reaktion, længere spring, færre fejlgæt, niveau 1-12; hans niveau står i HUD'en). Tre brændte bolde, og kampen er slut. Alt regnes i meter i målets plan (et rigtigt mål på 7,32 × 2,44 m, sparket fra 11 m), så motoren kan enhedstestes uden browser. Score = mål, online topliste og kapløb. To filer: `straffe.mjs` (bolden, målmanden og reglerne, enhedstestet) og `index.html` (canvas, swipen og skærmene). |
+| Store Obby | `public/spil/storeobby/` | Alias ønske, der lød «En god obby»: en rigtig forhindringsbane ved siden af Sofies ét-tryks-Obby. Man styrer selv (◀ ▶ + HOP), banen er delt op i **etaper** med et checkpoint-flag for enden af hver, og dør man, starter man forfra på etapen – aldrig forfra på banen. Undervejs er der huller med lava under, pigge og snurrende bomme der slår til i takt, plader der falder væk, når man har stået på dem, plader der glider frem og tilbage eller hejser op og ned, og trampoliner der sender én højere op. Forhindringerne kommer én ad gangen, efterhånden som man kommer frem (trampolin i etape 2, faldeplader i 3, pigge i 4 …), så banen lærer sig selv. Score = etaper klaret, online topliste og kapløb; rekorden sendes af sig selv ved hvert flag, og «Fortsæt» husker bane og etape til næste besøg. To filer: `bane.mjs` (bane, fysik og bot, enhedstestet) og `index.html`. Se «Store Obby – etaperne og de to løfter» nedenfor. |
 | Kæmpetal | `public/spil/kaempetal/` | Selmas ønske, der lød «man kan møde sine venner man kan mindst Max 9999999999999»: et clicker-spil om at nå det største tal, **9.999.999.999.999**. Tallet selv er knappen – tryk, og det vokser – og i butikken køber man hjælpere (klikkemus, tællekat, talraket, sort hul …), der tæller videre af sig selv, også mens man er væk (dog højst 8 timer, en skoledag). Guldfingeren fordobler hvert tryk, og butikken viser kun de hjælpere, man har mødt, plus én hemmelig «???». Score = alt man har tjent – køb rører den ikke – og den ryger selv på toplisten, hver gang en tierpotens rundes. **Kan spilles sammen med en ven**, én på hver telefon: I ser hinandens tal live, og summen af jeres to tal kan nå loftet – så fejrer I det sammen. Se [Spil sammen](#spil-sammen) og «Kæmpetal – tallet, hjælperne og loftet» nedenfor. To filer: `tal.mjs` (tallet, hjælperne, priserne og loftet, enhedstestet) og `index.html`. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet og Straffespark — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark og Store Obby — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -781,6 +782,60 @@ Tre ting hænger sammen med det:
    farten ville ellers kun kunne mærkes: derfor fartstriber i baggrunden, der
    bliver længere og tydeligere med tempoet, ⚡-måleren, og et «⚡ Hurtigere!»
    der popper op, hver gang tempoet runder et nyt tiendedels-trin.
+
+### Store Obby – etaperne og de to løfter
+
+Alias ønske lød bare «En god obby». Der *var* allerede en Obby på siden, så
+det første spørgsmål var, om ønsket var opfyldt i forvejen. Det var det ikke:
+Sofies Obby er et ét-tryks-spil, hvor figuren løber af sig selv og man kun
+bestemmer, hvornår den hopper. Det, børnene kalder en obby i Roblox, er noget
+andet — man styrer selv, banen er delt op i **etaper**, og for enden af hver
+står et flag, som er ens checkpoint. Derfor et nyt spil ved siden af det gamle
+i stedet for en ombygning: de to spil er gode på hver sin måde, og Obbys score
+(hop i træk) ville være meningsløs, hvis man kunne genopstå frit.
+
+Reglen, der gør en obby til en obby: **man mister aldrig sine etaper.** Falder
+man i lavaen eller går ind i en pig, står man ved flaget igen efter et sekund,
+og kun faldtælleren tikker op. Det er dét, der gør, at man bliver ved med at
+prøve — hver etape er et lille problem, man kan lære udenad — og det er også
+grunden til, at scoren er *etaper klaret* og ikke tid eller liv.
+
+Motoren i `bane.mjs` giver to løfter, som `test/unit/storeobby.test.mjs`
+holder den fast på:
+
+1. **Hvert hop kan tages i det værst tænkelige øjeblik.** `naaes(a, b)` regner
+   ikke med pladerne dér, hvor de tilfældigvis står, men dér hvor de er
+   sværest: en plade, der glider vandret, tænkes så langt væk, den kan komme,
+   og en hejseplade så højt (henholdsvis så lavt, når man springer fra den).
+   Er hoppet muligt dér, er det muligt hele tiden — så kan man aldrig komme
+   til at stå og vente på et øjeblik, der ikke findes. Generatoren regner
+   gabet baglæns ud fra det (`gabMaks`), så løftet holdes ved konstruktionen
+   og ikke ved at prøve sig frem.
+2. **Et farligt bånd kan altid passeres.** Pigge og snurrende bomme fylder kun
+   et bånd midt på en bred plade, der er mindst `SIKKER_KANT` (1 m) frit i
+   begge ender at vente på, og båndet er sikkert mindst `BAAND_LUFT` (2,2)
+   gange så længe, som det tager at løbe over det. Derfor bestemmes båndet
+   *før* pladens bredde: en plade med bånd er bred med vilje, og
+   sværhedsgraden ligger i rytmen, ikke i, hvor lidt man har at stå på.
+
+Tre ting mere er værd at huske:
+
+- **Botten er målestokken, ikke en modstander.** `botSpiller(etape)` spiller en
+  etape igennem med præcis de samme knapper som et barn — den løber ud til
+  kanten, venter hvis et bånd er farligt, og hopper først, når springet kan
+  lykkes med pladerne dér, hvor de står lige nu. Enhedstesten kræver, at den
+  klarer 300 etaper i træk uden et eneste fald. Det er den, der fanger, hvis en
+  ny slags forhindring gør en etape uspillelig — geometrien alene kan se fin ud,
+  selv om timingen ikke kan lade sig gøre.
+- **Forhindringerne kommer én ad gangen** (`FRA_ETAPE`): trampolin i etape 2,
+  plader der falder væk i 3, pigge i 4, glidende plader i 5, bomme i 6 og
+  hejseplader i 8. Banen lærer sig selv, og man behøver ikke læse en vejledning.
+  Efter en plade, der forsvinder under én, kommer der aldrig noget, man skal
+  stå og vente på — så ville man stå og vente på en plade, der ikke er der.
+- **Etaperne hænger ikke sammen.** Hver etape bygges af sit eget frø
+  (`banens frø + etapenummer`), så etape 9 ser ens ud, hvad enten man kom
+  dertil i ét stræk eller trykkede «Fortsæt» dagen efter. Det gemte er derfor
+  bare `{seed, etape, fald}` i `localStorage` — ikke hele banen.
 
 ### Gulvet er lava – styring og bane
 
@@ -1550,7 +1605,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om
