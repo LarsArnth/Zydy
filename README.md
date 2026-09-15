@@ -335,9 +335,9 @@ node ../zydy-feedback-loop.mjs --afvist 42 "hvorfor det ikke kan lade sig gøre"
 Øverst på forsiden står **«Dine venner»**: hvem du er venner med, og om de er
 på zydy.dk lige nu («Selma spiller Obby»). Spørger nogen, om I skal være
 venner, står spørgsmålet samme sted med *Ja tak* / *Nej*. Trykker man på en
-ven, kan man se hvor hen er, [skrive til hen](#skriv-med-en-ven), hoppe med ind
-i det spil, hen er i gang med — og invitere hen til at spille *sammen*, se
-[Spil sammen](#spil-sammen).
+ven, kan man se hvor hen er, [skrive til hen](#skriv-med-en-ven),
+[ringe til hen](#ring-til-en-ven), hoppe med ind i det spil, hen er i gang
+med — og invitere hen til at spille *sammen*, se [Spil sammen](#spil-sammen).
 
 #### At blive venner — hvad en ny spiller ser
 
@@ -469,6 +469,57 @@ npx wrangler@4 d1 execute zydy-highscore --remote --command "DELETE FROM beskede
 Test: `test/beskeder.test.mjs` (repoets fjerde to-browser-test: Sofie skriver,
 Selma får mærket på forsiden, læser og svarer med ét tryk, og svaret dukker op
 hos Sofie) + `test/unit/beskeder.test.mjs`.
+
+<a id="ring-til-en-ven"></a>
+
+#### Ring til en ven
+
+Trykker man på en ven, står der også **«📞 Ring til Selma»** — og så ringer det
+hos Selma på forsiden, med ringetone og to store knapper: *Svar* og *Nej tak*.
+Tager hun den, taler de to rigtigt sammen, med lyd, fra hver sin telefon
+(Selmas ønske «Gør at man kan ringe med sine venner»). Under samtalen står en
+lille boks nederst på skærmen — «Du taler med Selma · 1:23» — med lyd fra/til
+og en rød *Læg på*.
+
+Lyden går **direkte mellem de to telefoner** (WebRTC, peer-to-peer) og kommer
+aldrig forbi serveren. Serveren er kun telefondamen fra gamle dage: den bærer
+opkaldets *tilbud* og *svar* (SDP) frem og tilbage, mens forbindelsen laves, og
+ved kun, om der ringes, tales eller er lagt på — høre noget kan den ikke.
+
+| Del | Fil | Hvad |
+|---|---|---|
+| Database | tabellen `opkald` i `schema.sql` | `opkald(kode, fra, fra_navn, til, til_navn, status, tilbud, svar, opdateret)`. `status` er `'ringer'`, `'igang'` eller `'slut'`. Tabellen laves også af Worker'en selv ved første opkald (`d1Opkald`), som beskederne. |
+| API | `src/worker.mjs` → `src/opkald.mjs` | `POST /api/opkald {navn, ven, tilbud}` ringer op (kun til en ven). `GET /api/opkald?navn=` giver mine åbne opkald, så telefonen kan ringe. `GET`/`POST /api/opkald/<kode>` med `handling`: `'svar'` (tag den, med WebRTC-svaret), `'slut'` (læg på / nej tak / fortryd), `'se'`. |
+| Klient | `public/opkald.js` | Ring-skærmen, samtale-boksen, ringetonen (WebAudio, ingen filer) og selve WebRTC-forbindelsen. `/venner.js` viser «📞 Ring til …», når den kan se, at `Opkald` findes. |
+
+Fem ting er værd at huske:
+
+1. **Man kan kun ringe til sine venner** (ja begge veje i `venner`) — samme værn
+   som beskederne og «spil sammen»: der er stadig hverken konti eller login.
+2. **Telefonen kan kun høres på forsiden.** Ligesom beskederne bor opkald ikke
+   inde i spillene, og det står der, når man ringer til en, der ikke er her
+   («Selma skal være på forsiden for at høre det»). Et opkald, ingen tager inden
+   `RING_MS` (45 sek.), regnes som ubesvaret — det *læses* som `'slut'`
+   (`effektivStatus`), i stedet for at nogen skal skrive rækken om, så en
+   telefon, der først kigger senere, aldrig ringer over noget, der er forbi.
+3. **Tilbuddet følger kun med til den, der skal svare, og svaret kun tilbage** —
+   den, der ringer, ser aldrig sit eget tilbud igen. Ingen tredje kan hente dem
+   (kun de to i opkaldet kan læse det), og der sendes ikke flere kilobyte ned ad
+   linjen end nødvendigt, mens der polles.
+4. **Der er STUN, men ingen TURN-server** (Cloudflares og Googles gratis STUN).
+   Hjemme på det samme wi-fi — og i langt de fleste andre tilfælde — finder
+   telefonerne hinanden selv; kan lyden ikke komme igennem inden `FORBIND_MS`,
+   siger boksen det ærligt og foreslår at skrive sammen i stedet. En TURN-server
+   ville koste rigtige penge for at videresende al lyden.
+5. **En rest af en samtale rydder sig selv.** Lukker man fanen midt i et opkald,
+   står rækken som `'igang'` uden nogen bag: næste gang telefonen kigger og ser
+   et i gang-opkald, den ikke selv er i, lægger den på for dem begge, så ingen
+   står og venter på en samtale, der ikke findes.
+
+Test: `test/opkald.test.mjs` (repoets femte to-browser-test: Sofie ringer,
+Selmas telefon ringer, hun svarer, de taler sammen, og der lægges på — WebRTC og
+mikrofonen er byttet ud med en attrap, der taler samme sprog, for selve lyden er
+browserens sag) + `test/unit/opkald.test.mjs`.
 
 <a id="spil-sammen"></a>
 

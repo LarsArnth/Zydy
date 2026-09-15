@@ -607,6 +607,17 @@ function venDialog(hvem) {
       }));
     }
 
+    // Og at ringe: rigtig lyd mellem to telefoner (/opkald.js). Vennen skal være
+    // på forsiden for at høre det – det står der, så man ikke ringer ud i mørket.
+    if (window.Opkald && Opkald.kanRinge) {
+      rod.appendChild(knap('id-knap v-ring', '📞 Ring til ' + vis, () => {
+        dlg.close();
+        Opkald.ring(hvem);
+      }));
+      if (!h.online) rod.appendChild(el('p', 'v-under v-ring-hint',
+        vis + ' er her ikke lige nu og kan kun høre telefonen på forsiden af zydy.dk.'));
+    }
+
     // Det bedste: at spille *sammen* – ét spil, to telefoner. Vi laver et rum og
     // hopper derind; den anden får invitationen på forsiden og kan hoppe med.
     const status = el('p', 'id-status', '');
@@ -767,6 +778,11 @@ const css = `
   background:var(--sun,#ffd447);color:#1c1f4a}
 .v-skriv{display:block;width:100%;margin-top:4px;text-align:center;
   background:rgba(255,255,255,.09);color:var(--text,#fff7e6)}
+
+/* Ring til en ven: samme form som skriv-knappen, grøn som en telefon */
+.v-ring{display:block;width:100%;margin-top:10px;text-align:center;
+  background:rgba(94,224,168,.16);color:#bff7e0}
+.v-ring-hint{font-size:13px}
 
 /* Spil sammen: invitationen står øverst i panelet og lyser, så den ikke overses */
 .v-rum{background:rgba(94,224,168,.14)}

@@ -87,6 +87,24 @@ CREATE TABLE IF NOT EXISTS beskeder (
 CREATE INDEX IF NOT EXISTS beskeder_samtale ON beskeder (samtale, id);
 CREATE INDEX IF NOT EXISTS beskeder_fra ON beskeder (fra, oprettet);
 
+-- Opkald (src/opkald.mjs): to venner der ringer sammen. Lyden går peer-to-peer
+-- (WebRTC) og rører aldrig serveren; her står kun tilbud/svar, mens forbindelsen
+-- laves, og om der ringes, tales eller er lagt på. Tabellen laves også af
+-- Worker'en selv ved første opkald (d1Opkald), som beskeder.
+CREATE TABLE IF NOT EXISTS opkald (
+  kode      TEXT PRIMARY KEY,              -- som rummets koder: 5 tegn uden I, O, 0 og 1
+  fra       TEXT    NOT NULL,              -- den der ringer op (nøgle, små bogstaver)
+  fra_navn  TEXT    NOT NULL,              -- som skrevet, fx 'Sofie'
+  til       TEXT    NOT NULL,
+  til_navn  TEXT    NOT NULL,
+  status    TEXT    NOT NULL,              -- 'ringer', 'igang' eller 'slut'
+  tilbud    TEXT,                          -- WebRTC-tilbuddet fra den, der ringer (JSON)
+  svar      TEXT,                          -- WebRTC-svaret fra den, der tager den (JSON)
+  opdateret INTEGER NOT NULL               -- ms siden epoch
+);
+CREATE INDEX IF NOT EXISTS opkald_fra ON opkald (fra, opdateret);
+CREATE INDEX IF NOT EXISTS opkald_til ON opkald (til, opdateret);
+
 -- Idéer og ønsker (src/ideer.mjs): forslag til nye spil og ting der mangler i
 -- dem der findes. Hentes ned med `npm run ideer`.
 CREATE TABLE IF NOT EXISTS ideer (

@@ -1377,9 +1377,14 @@
      skrev …" ud fra den. -->
 <script src="/beskeder.js" defer></script>
 
+<!-- Ring til en ven: ring-skærmen, samtale-boksen nederst og selve lyden
+     (WebRTC gennem /api/opkald). Skal stå før /venner.js, som viser
+     «📞 Ring til …»-knappen, når den kan se, at Opkald findes. -->
+<script src="/opkald.js" defer></script>
+
 <!-- Venne-panelet øverst: dine venner og om de er her lige nu, spørgsmål fra
-     andre, "Find en ven", "Skriv til" og "Spil sammen". Skal stå efter
-     /ideer.js, som ejer navnet og stilen til dialogen. -->
+     andre, "Find en ven", "Skriv til", "Ring til" og "Spil sammen". Skal stå
+     efter /ideer.js, som ejer navnet og stilen til dialogen. -->
 <script src="/venner.js" defer></script>
 
 <!-- Ordles topliste: kassen under Ordle-kortet, der spørger om du klarede dagens

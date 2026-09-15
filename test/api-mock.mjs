@@ -12,6 +12,7 @@
 //   api.ideer.rows      → de idéer og ønsker der er sendt ind
 //   api.venner.rows     → venskaberne, [{ fra, til, fraNavn, tilNavn, svaret }]
 //   api.beskeder.rows   → det de har skrevet til hinanden
+//   api.opkald.rows     → opkaldene mellem dem, der har ringet sammen
 //
 // Options: { scores: [{ spil, navn, score }] } lægger startrækker på toplisterne.
 import { haandterApi } from '../src/highscore.mjs';
@@ -20,6 +21,7 @@ import { haandterIdeer } from '../src/ideer.mjs';
 import { haandterVenner } from '../src/venner.mjs';
 import { haandterRum } from '../src/rum.mjs';
 import { haandterBeskeder, SAMTALE_MAKS } from '../src/beskeder.mjs';
+import { haandterOpkald } from '../src/opkald.mjs';
 
 /** Højscore-lager i hukommelsen – samme seks metoder som d1Lager(). */
 export function huskLager(start = []) {
@@ -186,6 +188,35 @@ export function huskBeskeder() {
   };
 }
 
+/** Opkalds-lager i hukommelsen – samme metoder som d1Opkald(). */
+export function huskOpkald() {
+  const rows = [];
+  return {
+    rows,
+    async find(kode) { return rows.find(r => r.kode === kode) || null; },
+    async mine(k, efter) {
+      return rows.filter(r => (r.fra === k || r.til === k) && r.status !== 'slut' && r.opdateret >= efter)
+        .sort((a, b) => b.opdateret - a.opdateret).slice(0, 10);
+    },
+    async opret(r) { rows.push({ ...r }); },
+    async saetStatus(kode, status, nu) {
+      const r = rows.find(x => x.kode === kode);
+      if (r) { r.status = status; r.opdateret = nu; }
+    },
+    async saetSvar(kode, svar, nu) {
+      const r = rows.find(x => x.kode === kode);
+      if (r) { r.svar = svar; r.status = 'igang'; r.opdateret = nu; }
+    },
+    async sletPar(a, b) {
+      for (let i = rows.length - 1; i >= 0; i--) {
+        const r = rows[i];
+        if ((r.fra === a && r.til === b) || (r.fra === b && r.til === a)) rows.splice(i, 1);
+      }
+    },
+    async ryd(foer) { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].opdateret < foer) rows.splice(i, 1); },
+  };
+}
+
 /**
  * Sætter mocken op på `page`. Returnerer lagrene og en log over aktivitets-kald.
  * `opt.delMed` er et tidligere svar fra mockApi: så deler de to sider database,
@@ -199,6 +230,7 @@ export async function mockApi(page, opt = {}) {
   const venner = delt ? delt.venner : huskVenner(hs, akt);
   const rum = delt ? delt.rum : huskRum();
   const beskeder = delt ? delt.beskeder : huskBeskeder();
+  const opkald = delt ? delt.opkald : huskOpkald();
   const log = delt ? delt.log : { aktivitet: [], highscore: [] };
 
   // Cloudflare Web Analytics-beaconen holdes ude af testene. Den hører ikke til
@@ -228,6 +260,7 @@ export async function mockApi(page, opt = {}) {
       || (await haandterVenner(request, venner, beskeder))
       || (await haandterRum(request, rum, venner))
       || (await haandterBeskeder(request, beskeder, venner))
+      || (await haandterOpkald(request, opkald, venner))
       || (await haandterApi(request, hs));
     if (!svar) return route.fulfill({ status: 404, contentType: 'application/json', body: '{"ok":false,"fejl":"Ikke API (mock)"}' });
     return route.fulfill({
@@ -237,5 +270,5 @@ export async function mockApi(page, opt = {}) {
     });
   });
 
-  return { hs, akt, ideer, venner, rum, beskeder, log, get scores() { return hs.rows; } };
+  return { hs, akt, ideer, venner, rum, beskeder, opkald, log, get scores() { return hs.rows; } };
 }
