@@ -20,6 +20,12 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const shots = path.join(here, 'shots');
 const liste = JSON.parse(readFileSync(path.join(here, '..', 'public', 'offline-filer.json'), 'utf8'));
 
+/** Panelet står nederst på forsiden – rul derned, så skærmbilledet viser det. */
+const visPanel = async () => {
+  await page.locator('#offline').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(150);
+};
+
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 13'] });
 // Vi er ikke ude efter navne-dialogen her – sig at vi er blevet spurgt.
@@ -39,6 +45,7 @@ assert.match(await page.locator('#offline .off-titel').textContent(), /uden inte
   'panelet fortæller, hvad det handler om');
 assert.match(await page.locator('#offline .off-knap').textContent(), /Hent alle spil/,
   'der er en knap, der henter det hele ned');
+await visPanel();
 await page.screenshot({ path: path.join(shots, 'offline-hent.png') });
 
 /* ---------- Service workeren tager over uden at spærre for API'et ---------- */
@@ -63,6 +70,7 @@ await page.waitForFunction(
   null, { timeout: 60000 });
 assert.match(await page.locator('#offline .off-under').textContent(), /koster ikke data/,
   'og så koster det ikke data mere');
+await visPanel();
 await page.screenshot({ path: path.join(shots, 'offline-hentet.png') });
 
 // Alt det, generatoren har skrevet på listen, ligger nu i cachen.
@@ -107,6 +115,7 @@ assert.match(await page.locator('#offline .off-under').textContent(), /ligger p�
   'og beroliger med, at spillene stadig er der');
 assert.ok(await page.locator('#apps li[data-spil="kryds"]').count() > 0,
   'hele listen af spil er der stadig uden net');
+await visPanel();
 await page.screenshot({ path: path.join(shots, 'offline-uden-net.png') });
 
 /* ---------- Et spil, der ikke er hentet, får en pæn besked ---------- */
