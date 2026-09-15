@@ -1,0 +1,23 @@
+{
+  "navn": "Straffespark",
+  "beskrivelse": "Swipe bolden mod målet og scor på målmanden – han kaster sig efter den og bliver bedre for hvert andet mål. Tre brændte, så er kampen slut.",
+  "nøgleord": [
+    "fodbold",
+    "straffe",
+    "straffespark",
+    "penalty",
+    "målmand",
+    "keeper",
+    "football",
+    "soccer",
+    "spark",
+    "mål"
+  ],
+  "url": "/spil/straffe/",
+  "orden": 172,
+  "kapløb": true,
+  "højscore": {
+    "maks": 200,
+    "unik": true
+  }
+}

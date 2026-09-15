@@ -121,7 +121,7 @@ test('spillene kan findes på det, de også hedder', () => {
 });
 
 test('en søgning på noget vi ikke har, giver ingenting', () => {
-  assert.deepEqual(ids('fodbold'), []);
+  assert.deepEqual(ids('basketball'), []);
   assert.deepEqual(ids('zzzz'), []);
 });
 

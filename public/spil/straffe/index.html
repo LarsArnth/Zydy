@@ -1,0 +1,671 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0e2415">
+<meta name="description" content="Straffespark: swipe bolden mod målet og scor på målmanden. Han bliver bedre for hvert andet mål – hvor mange kan du nå, før du har brændt tre?">
+<title>Straffespark – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e2415'/%3E%3Cpath d='M10 18h44v22H10z' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Ccircle cx='32' cy='48' r='9' fill='%23fff'/%3E%3Cpath d='M32 43l4.7 3.4-1.8 5.5h-5.8l-1.8-5.5z' fill='%230e2415'/%3E%3C/svg%3E">
+<style>
+  /*
+    «Straffespark» – Jonas' ønske: «Man sparker og skal score på målmand».
+
+    Man står på pletten og swiper bolden af sted: retningen bestemmer hvor i
+    målet man sigter, og swipe-farten hvor hårdt der sparkes. Målmanden vælger
+    et hjørne og kaster sig – nogle gange det forkerte. Tre brændte bolde, og
+    kampen er slut; målmanden bliver bedre for hvert andet mål.
+
+    Målet regnes i meter; bolden, målmanden og reglerne bor i straffe.mjs, så
+    de kan enhedstestes uden browser.
+  */
+  :root{
+    --bg:#0e2415; --bg2:#1a3a24; --bg3:#265233; --text:#f2fbf4; --muted:#a7c9b0;
+    --sun:#ffd447; --ink:#0e2415; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 10px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  button.pill{color:var(--text);font-weight:700;min-height:36px}
+
+  .wrap{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.4px}
+  #menuBtn[hidden]{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#8ecae6;
+    touch-action:none}
+  #c{display:block;position:absolute;inset:0}
+
+  /* Mål i venstre hjørne, rekord + målmandens niveau i højre */
+  .hud{position:absolute;left:14px;top:12px;pointer-events:none;text-shadow:0 3px 14px rgba(0,0,0,.6);
+    background:rgba(14,36,21,.55);border-radius:16px;padding:7px 12px;
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+    opacity:0;transition:opacity .25s}
+  .stage.igang .hud{opacity:1}
+  .hud .lbl{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  #maalEl{display:block;font-size:48px;font-weight:800;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums;
+    transition:transform .12s}
+  #maalEl.bump{transform:scale(1.12)}
+  #livEl{display:block;font-size:19px;margin-top:4px;letter-spacing:2px}
+  .hud.hoejre{left:auto;right:14px;text-align:right}
+  #rekHud{display:block;font-size:24px;font-weight:800;line-height:1.1;color:var(--sun);font-variant-numeric:tabular-nums}
+  #keeperHud{display:block;font-size:14px;font-weight:700;margin-top:4px;color:var(--text)}
+
+  /* Beskeder midt på fladen */
+  .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .3s}
+  .msg.on{opacity:1}
+  #raab .big{font-size:clamp(30px,11vw,62px);font-weight:900;letter-spacing:-1.5px;line-height:1.05;color:#fff;
+    text-shadow:0 0 26px #2f8a50,0 6px 0 #0d3320,0 10px 30px rgba(0,0,0,.6);transform:rotate(-3deg)}
+  #raab.on .big{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+  #raab .sub{margin-top:16px;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(14,36,21,.7);border-radius:999px;padding:8px 16px}
+  @keyframes pop{from{transform:scale(.3) rotate(-3deg);opacity:0}to{transform:scale(1) rotate(-3deg);opacity:1}}
+
+  /* Start- og slutskærm */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:18px 20px 24px;background:rgba(14,36,21,.84);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .regler{display:flex;flex-direction:column;gap:7px;margin:0 0 4px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:9px 13px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .hs{margin-top:12px}
+  .hs .hs-liste{max-height:30vh}
+  .stor{font-size:64px;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--sun);
+    font-variant-numeric:tabular-nums;margin:2px 0 2px}
+  .stor small{font-size:26px;color:var(--muted);letter-spacing:0}
+  .under{font-size:15px;color:var(--muted);margin:0 0 8px}
+  .hint{font-size:15px;margin:10px 0 0}
+
+  @media (max-height:660px){
+    h1{font-size:30px} #maalEl{font-size:38px} .stor{font-size:48px} .hs .hs-liste{max-height:24vh}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+  }
+  @media (max-width:380px){ .top .name{display:none} }
+  @media (prefers-reduced-motion:reduce){
+    .btn,#maalEl{transition:none} #raab.on .big{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Straffespark</div>
+    <button class="pill" id="menuBtn" hidden>Menu</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Målet set fra straffesparkspletten"></canvas>
+
+    <div class="hud" aria-live="polite">
+      <span class="lbl">Mål</span>
+      <b id="maalEl">0</b>
+      <span id="livEl">⚽⚽⚽</span>
+    </div>
+    <div class="hud hoejre">
+      <span class="lbl">Rekord</span>
+      <b id="rekHud">0</b>
+      <span id="keeperHud">🧤 Niveau 1</span>
+    </div>
+
+    <div class="msg" id="raab">
+      <div class="big" id="raabTekst">STRAFFESPARK!</div>
+      <div class="sub" id="raabUnder">Swipe bolden mod målet</div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Straffespark</h1>
+        <div class="regler" aria-hidden="true">
+          <span>👆 <b>Swipe</b> bolden derhen, hvor du vil sparke</span>
+          <span>💨 Hurtig swipe = <b>hårdt</b> spark: svært at redde, men let at brænde</span>
+          <span>🧤 Målmanden bliver <b>bedre</b> for hvert andet mål</span>
+          <span>⚽ <b>Tre</b> brændte bolde, så er kampen slut</span>
+        </div>
+        <button class="btn" id="startBtn">Spark!</button>
+        <p class="hint">Sigt efter hjørnerne – midt i målet står målmanden jo.</p>
+        <div class="hs" id="hsStart"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Kampen er slut!</h1>
+        <div class="stor" id="slutMaal">0<small> mål</small></div>
+        <p class="under" id="slutUnder">Din rekord er 0</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Spark igen</button>
+        <button class="btn ghost" id="tilbageBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="straffe"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+<script type="module">
+import {
+  MAAL, AFSTAND, LIV, NIVEAU_MAKS, KEEPER_START, RAEKKE, STOLPE,
+  nyKamp, spark as motorSpark, keeperFor,
+} from './straffe.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const harFastSeed = Number.isFinite(fastSeed);
+let seed = harFastSeed ? fastSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
+if (!ctx.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const maalEl = $('maalEl'), rekHud = $('rekHud'), livEl = $('livEl'), keeperHud = $('keeperHud');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen');
+const raab = $('raab'), raabTekst = $('raabTekst'), raabUnder = $('raabUnder'), menuBtn = $('menuBtn');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY_BEST = 'zydy.straffe.best';
+const hentBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const gemBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+
+const DT = 1 / 120;                  // fast tegne-trin
+const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// Hvad der råbes ved hvert udfald – og et lille råd, når det gik galt
+const RAAB = {
+  maal:       ['MÅL!', 'Sikke et spark!'],
+  redning:    ['REDDET!', 'Han nåede den – prøv et hjørne'],
+  stolpe:     ['STOLPE!', 'KLONK! Lige ved og næsten'],
+  overligger: ['OVERLIGGER!', 'KLONK! En anelse for højt'],
+  forbi:      ['FORBI!', 'Sigt lidt mere mod målet'],
+};
+
+/* ---------- Mål (skærmen) ---------- */
+let W = 1, H = 1, dpr = 1;
+let gu = 40;                         // pixels pr. meter i målets plan
+let gy0 = 200;                       // målstregen på skærmen
+let bx0 = 200, by0 = 400, r0 = 18;   // bolden på pletten
+function maalSkaerm() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Målet skal kunne være der i bredden OG efterlade plads til bolden forneden
+  gu = Math.min((W * 0.84) / MAAL.bredde, (H * 0.24) / MAAL.hoejde);
+  gy0 = H * 0.46;
+  bx0 = W / 2; by0 = H - Math.max(80, H * 0.14); r0 = Math.max(14, Math.min(26, W * 0.045));
+}
+maalSkaerm();
+addEventListener('resize', maalSkaerm);
+addEventListener('orientationchange', () => setTimeout(maalSkaerm, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maalSkaerm).observe(stage);
+
+// Målets plan → skærmen
+const gx = mx => W / 2 + mx * gu;
+const gy = my => gy0 - my * gu;
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';                   // menu | klar | flyver | resultat | doed
+let kamp = nyKamp(seed);
+let T = 0, best = hentBest();
+let anim = null;                     // { e, t, dur, ramt } – det spark der er i luften
+let pauseTil = 0, raabTil = 0;
+let ryst = 0, partikler = [];
+let paused = false, acc = 0, sidst = 0;
+
+const traek = { aktiv: false, x0: 0, y0: 0, x: 0, y: 0, spor: [] };
+
+function nulstil() {
+  if (!harFastSeed) seed = (Math.random() * 4294967296) >>> 0;
+  kamp = nyKamp(seed);
+  T = 0; anim = null; pauseTil = 0; raabTil = 0; ryst = 0; partikler = [];
+  traek.aktiv = false;
+  visHud();
+}
+
+/* ---------- Pynt ---------- */
+function sigTil(stor, lille, sek) {
+  raabTekst.textContent = stor; raabUnder.textContent = lille;
+  raab.classList.add('on'); raabTil = T + sek;
+}
+function rumler(styrke) { if (!roligt) ryst = Math.max(ryst, styrke / 30); }
+function drys(px, py, farver, n) {
+  if (roligt) return;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    partikler.push({
+      x: px + (Math.random() - 0.5) * 20, y: py + (Math.random() - 0.5) * 14,
+      vx: Math.cos(a) * (40 + Math.random() * 160), vy: Math.sin(a) * (40 + Math.random() * 160) - 60,
+      r: 2.5 + Math.random() * 3.5, farve: farver[i % farver.length], t: 0, liv: 0.6 + Math.random() * 0.6,
+    });
+  }
+}
+
+/* ---------- Skærmene ---------- */
+function visHud() {
+  maalEl.textContent = kamp.maal;
+  maalEl.classList.add('bump'); setTimeout(() => maalEl.classList.remove('bump'), 120);
+  rekHud.textContent = best;
+  livEl.textContent = '⚽'.repeat(Math.max(0, kamp.liv)) + '▫️'.repeat(Math.max(0, LIV - kamp.liv));
+  keeperHud.textContent = '🧤 Niveau ' + kamp.niveau;
+}
+
+function start() {
+  nulstil();
+  fase = 'klar';
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  menuBtn.hidden = false; stage.classList.add('igang');
+  sigTil('SPARK!', 'Swipe bolden mod målet – hjørnerne er bedst', 2);
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+function doed() {
+  if (fase === 'doed') return;
+  fase = 'doed';
+  navigator.vibrate && navigator.vibrate([60, 40, 60]);
+  const ny = kamp.maal > best;
+  if (ny) { best = kamp.maal; gemBest(best); }
+  stage.classList.remove('igang');
+  raab.classList.remove('on');
+  $('slutTitel').textContent = kamp.maal === 0 ? 'Øv, ingen mål!' : kamp.maal >= 10 ? 'Sikke en fod!' : 'Kampen er slut!';
+  $('slutMaal').innerHTML = kamp.maal + '<small> mål</small>';
+  $('slutUnder').textContent = ny && kamp.maal > 0 ? 'Så mange har du aldrig scoret før.' : 'Din rekord er ' + best;
+  slutScreen.classList.add('on');
+  visHud();
+  Highscore.panel($('hsSlut'), { spil: 'straffe', score: kamp.maal, format: v => v + ' mål' });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(kamp.maal, kamp.maal + ' mål');
+}
+
+function tilMenu() {
+  fase = 'menu';
+  nulstil();
+  slutScreen.classList.remove('on'); startScreen.classList.add('on');
+  menuBtn.hidden = true; raab.classList.remove('on'); stage.classList.remove('igang');
+  Highscore.panel($('hsStart'), { spil: 'straffe', format: v => v + ' mål' });
+}
+
+/* ---------- Sparket ---------- */
+
+/** Sparker via motoren og sætter animationen i gang. Bruges af swipe OG tests. */
+function sparkNu(sigte, kraft) {
+  if (fase !== 'klar' || kamp.faerdig) return null;
+  const e = motorSpark(kamp, sigte, kraft);
+  if (!e) return null;
+  // Animationen er pynt: den bruger flyvetiden, men aldrig under et halvt
+  // sekund, for ellers kan øjet ikke følge bolden de 11 meter.
+  anim = { e, t: 0, dur: Math.max(0.5, e.flyvetid * 1.5), ramt: false };
+  fase = 'flyver';
+  raab.classList.remove('on'); raabTil = 0;
+  return e;
+}
+
+/** Swipen → et spark: retningen sigter, farten (px/ms) er kraften. */
+function svirp(dx, dy, ms) {
+  if (dy > -24) return null;                       // der skal swipes OPAD mod målet
+  const sigte = {
+    x: klem((dx / (W * 0.33)) * (MAAL.bredde / 2), -6, 6),
+    y: klem((-dy / (H * 0.38)) * MAAL.hoejde, 0.1, 4.5),
+  };
+  const fartPxMs = Math.hypot(dx, dy) / Math.max(1, ms);
+  const kraft = klem(fartPxMs / 2.0, 0.15, 1);
+  return sparkNu(sigte, kraft);
+}
+
+/* ---------- Løkken ---------- */
+function uiTik(dt) {
+  T += dt;
+
+  if (fase === 'flyver' && anim) {
+    anim.t += dt;
+    if (!anim.ramt && anim.t >= anim.dur) {
+      anim.ramt = true;
+      const e = anim.e;
+      const [stor, lille] = RAAB[e.resultat];
+      sigTil(stor, e.resultat === 'maal' && e.keeper.forkert ? 'Målmanden sprang det forkerte hjørne!' : lille, 1.2);
+      if (e.resultat === 'maal') {
+        navigator.vibrate && navigator.vibrate(30);
+        drys(gx(e.bold.x), gy(e.bold.y), ['#ffd447', '#fff', '#7ee08a'], 26);
+      } else if (e.resultat === 'stolpe' || e.resultat === 'overligger') {
+        rumler(14); navigator.vibrate && navigator.vibrate(50);
+        drys(gx(e.bold.x), gy(e.bold.y), ['#fff', '#dfeefb'], 12);
+      } else if (e.resultat === 'redning') {
+        navigator.vibrate && navigator.vibrate(40);
+      }
+      visHud();
+      fase = 'resultat';
+      pauseTil = T + 1.25;
+    }
+  } else if (fase === 'resultat' && T >= pauseTil) {
+    if (anim && anim.e.slut) { anim = null; doed(); }
+    else { anim = null; fase = 'klar'; }
+  }
+
+  if (raabTil && T > raabTil) { raab.classList.remove('on'); raabTil = 0; }
+  ryst = Math.max(0, ryst - dt * 1.5);
+  for (const p of partikler) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 380 * dt; }
+  partikler = partikler.filter(p => p.t < p.liv);
+}
+
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!sidst) sidst = nu;
+  let dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  if (!paused) { acc += dt; while (acc >= DT) { uiTik(DT); acc -= DT; } }
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ---------- Tegning ---------- */
+function tegn() {
+  ctx.save();
+  if (ryst > 0) ctx.translate((Math.random() - 0.5) * ryst * 22, (Math.random() - 0.5) * ryst * 22);
+
+  tegnStadion();
+  tegnBane();
+  tegnMaalet();
+  tegnKeeper();
+  tegnBold();
+  tegnPil();
+  tegnPartikler();
+
+  ctx.restore();
+}
+
+/** Himlen og tilskuerne bag målet. */
+function tegnStadion() {
+  const g = ctx.createLinearGradient(0, 0, 0, gy0);
+  g.addColorStop(0, '#8ecae6'); g.addColorStop(1, '#cfe9f5');
+  ctx.fillStyle = g; ctx.fillRect(-30, -30, W + 60, gy0 + 30);
+  // Tribunen: et mørkt bånd med prikker af tilskuere i mange farver
+  const tribuneTop = gy0 - MAAL.hoejde * gu - Math.max(30, H * 0.07);
+  ctx.fillStyle = '#3a4a5c';
+  ctx.fillRect(-30, tribuneTop, W + 60, gy0 - tribuneTop - MAAL.hoejde * gu * 0.12);
+  const farver = ['#ffd447', '#e3655b', '#7ee08a', '#4aa8ff', '#f2fbf4', '#c98bde'];
+  const raekker = 4, hoejde = (gy0 - MAAL.hoejde * gu * 0.12) - tribuneTop;
+  for (let r = 0; r < raekker; r++) {
+    for (let i = 0; i < Math.ceil(W / 18) + 1; i++) {
+      const t = Math.sin(i * 12.9898 + r * 78.233) * 43758.5453;
+      const h = t - Math.floor(t);
+      ctx.fillStyle = farver[Math.floor(h * farver.length)];
+      const jubel = anim && anim.ramt && anim.e.resultat === 'maal' ? Math.abs(Math.sin(T * 9 + i)) * 4 : 0;
+      ctx.beginPath();
+      ctx.arc(i * 18 + (r % 2) * 9 - 6, tribuneTop + 8 + r * (hoejde / raekker) - jubel, 4, 0, 6.283);
+      ctx.fill();
+    }
+  }
+}
+
+/** Græsset med striber, straffefeltet og pletten. */
+function tegnBane() {
+  ctx.fillStyle = '#4c9e53'; ctx.fillRect(-30, gy0, W + 60, H - gy0 + 30);
+  // Klippede striber, der bliver bredere ned mod pletten (perspektiv)
+  ctx.fillStyle = 'rgba(255,255,255,.05)';
+  for (let i = 0; i < 6; i += 2) {
+    const y1 = gy0 + ((H - gy0) * i) / 6, y2 = gy0 + ((H - gy0) * (i + 1)) / 6;
+    ctx.fillRect(-30, y1, W + 60, y2 - y1);
+  }
+  // Straffefeltets linjer løber ind mod målet
+  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  const felt = MAAL.bredde / 2 + 1.6;
+  ctx.beginPath();
+  ctx.moveTo(gx(-felt) - W * 0.16, H + 10); ctx.lineTo(gx(-felt), gy0);
+  ctx.lineTo(gx(felt), gy0); ctx.lineTo(gx(felt) + W * 0.16, H + 10);
+  ctx.stroke();
+  // Straffesparkspletten under bolden
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.beginPath(); ctx.ellipse(bx0, by0 + r0 * 1.15, r0 * 0.85, r0 * 0.3, 0, 0, 6.283); ctx.fill();
+}
+
+/** Målet: stolper, overligger og net. */
+function tegnMaalet() {
+  const B = MAAL.bredde / 2, Hm = MAAL.hoejde;
+  const vx = gx(-B), hx = gx(B), ty = gy(Hm), by = gy0;
+  // Nettet – lodrette og vandrette masker, og et «bulet» sted når bolden går ind
+  ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1;
+  const maske = Math.max(7, gu * 0.28);
+  ctx.beginPath();
+  for (let x = vx + maske; x < hx; x += maske) { ctx.moveTo(x, ty); ctx.lineTo(x, by); }
+  for (let y = ty + maske; y < by; y += maske) { ctx.moveTo(vx, y); ctx.lineTo(hx, y); }
+  ctx.stroke();
+  if (anim && anim.ramt && anim.e.resultat === 'maal') {
+    const e = anim.e;
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(gx(e.bold.x), gy(e.bold.y), r0 * 0.9, 0, 6.283); ctx.stroke();
+    ctx.beginPath(); ctx.arc(gx(e.bold.x), gy(e.bold.y), r0 * 1.4, 0, 6.283); ctx.stroke();
+  }
+  // Træværket ovenpå
+  ctx.strokeStyle = '#f8f8f8'; ctx.lineWidth = Math.max(4, gu * 0.12); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(vx, by); ctx.lineTo(vx, ty); ctx.lineTo(hx, ty); ctx.lineTo(hx, by); ctx.stroke();
+}
+
+/** Målmanden: står og tripper – og kaster sig, når bolden er sparket. */
+function tegnKeeper() {
+  let px, py, laen = 0, vinkel = 0;
+  if (anim && fase !== 'menu') {
+    // Han venter sin reaktionstid og springer så mod naaet-punktet
+    const e = anim.e;
+    const ventAndel = e.keeper.reaktion / e.flyvetid;           // af flyvetiden
+    const andel = klem((anim.t / anim.dur - ventAndel) / Math.max(0.001, 1 - ventAndel), 0, 1);
+    px = gx(KEEPER_START.x + (e.keeper.naaet.x - KEEPER_START.x) * andel);
+    py = gy(KEEPER_START.y + (e.keeper.naaet.y - KEEPER_START.y) * andel);
+    laen = andel;                                                // strakt ud i springet
+    vinkel = (e.keeper.naaet.x >= KEEPER_START.x ? 1 : -1) * andel * 1.1;
+  } else {
+    // Tripper fra side til side, så man kan se han er klar
+    px = gx(Math.sin(T * 1.6) * 0.35);
+    py = gy(KEEPER_START.y) + Math.abs(Math.sin(T * 6)) * -gu * 0.06;
+  }
+
+  const k = gu * 0.5;                                            // grundstørrelse
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(vinkel);
+  // Krop (trøje i en farve ingen af holdene har)
+  ctx.fillStyle = '#e3655b';
+  ctx.beginPath(); ctx.roundRect(-k * 0.55, -k * 0.9, k * 1.1, k * 1.6, k * 0.35); ctx.fill();
+  // Shorts og ben
+  ctx.fillStyle = '#2b3a4a';
+  ctx.beginPath(); ctx.roundRect(-k * 0.5, k * 0.55, k, k * 0.55, k * 0.2); ctx.fill();
+  ctx.strokeStyle = '#f0c8a0'; ctx.lineWidth = k * 0.28; ctx.lineCap = 'round';
+  const benSpred = 0.45 + laen * 0.5;
+  ctx.beginPath(); ctx.moveTo(-k * 0.28, k * 1.0); ctx.lineTo(-k * benSpred, k * 1.7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(k * 0.28, k * 1.0); ctx.lineTo(k * benSpred, k * 1.7); ctx.stroke();
+  // Arme med store handsker – strakt ud i springet
+  const armV = -0.9 - laen * 0.9, armH = 0.9 + laen * 0.9;
+  ctx.strokeStyle = '#e3655b'; ctx.lineWidth = k * 0.26;
+  ctx.beginPath(); ctx.moveTo(-k * 0.45, -k * 0.5); ctx.lineTo(k * armV, -k * (0.8 + laen * 0.8)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(k * 0.45, -k * 0.5); ctx.lineTo(k * armH, -k * (0.8 + laen * 0.8)); ctx.stroke();
+  ctx.fillStyle = '#ffd447';
+  ctx.beginPath(); ctx.arc(k * armV, -k * (0.8 + laen * 0.8), k * 0.24, 0, 6.283); ctx.fill();
+  ctx.beginPath(); ctx.arc(k * armH, -k * (0.8 + laen * 0.8), k * 0.24, 0, 6.283); ctx.fill();
+  // Hoved
+  ctx.fillStyle = '#f0c8a0';
+  ctx.beginPath(); ctx.arc(0, -k * 1.25, k * 0.42, 0, 6.283); ctx.fill();
+  ctx.fillStyle = '#4a3120';
+  ctx.beginPath(); ctx.arc(0, -k * 1.45, k * 0.36, Math.PI, 0); ctx.fill();
+  // Øjne, der kigger på bolden
+  ctx.fillStyle = '#12231a';
+  const blink = (T % 3.2) < 0.12 ? 0.03 : 0.09;
+  for (const side of [-1, 1]) {
+    ctx.beginPath(); ctx.ellipse(side * k * 0.15, -k * 1.22, k * 0.07, k * blink, 0, 0, 6.283); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Bolden: på pletten, eller på vej mod målet (den bliver mindre undervejs). */
+function tegnBold() {
+  let px = bx0, py = by0, r = r0;
+  if (anim) {
+    const e = anim.e, a = klem(anim.t / anim.dur, 0, 1);
+    const maalX = gx(e.bold.x), maalY = gy(e.bold.y);
+    px = bx0 + (maalX - bx0) * a;
+    // Et lille buet svæv, så sparket ser levende ud
+    py = by0 + (maalY - by0) * a - Math.sin(a * Math.PI) * H * 0.04;
+    r = r0 * (1 - 0.62 * a);
+    if (anim.ramt) {
+      // Efter nedslaget: reddet = i handskerne, træværk/forbi = fald til jorden
+      if (e.resultat === 'redning') { px = gx(e.keeper.naaet.x); py = gy(e.keeper.naaet.y); }
+      else if (e.resultat !== 'maal') { py = maalY + (anim.t - anim.dur) * 90; px = maalX; }
+      r = r0 * 0.38;
+    }
+  } else if (fase === 'klar' && traek.aktiv) {
+    px = bx0 + (traek.x - traek.x0) * 0.15;                     // bolden følger fingeren lidt
+    py = by0 + Math.min(0, traek.y - traek.y0) * 0.1;
+  }
+  ctx.save();
+  ctx.translate(px, py);
+  // Skygge
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  ctx.beginPath(); ctx.ellipse(0, r * 1.1, r * 0.9, r * 0.32, 0, 0, 6.283); ctx.fill();
+  // Selve bolden
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.283); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.15)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.283); ctx.stroke();
+  // Femkanterne (helt enkle: en i midten og fire om den)
+  const rul = anim ? anim.t * 14 : 0;
+  ctx.fillStyle = '#20303c';
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.3, 0, 6.283); ctx.fill();
+  for (let i = 0; i < 4; i++) {
+    const a = rul + (i / 4) * 6.283;
+    ctx.beginPath(); ctx.arc(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72, r * 0.18, 0, 6.283); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Pilen, mens man trækker: hvorhen og hvor hårdt. */
+function tegnPil() {
+  if (fase !== 'klar' || !traek.aktiv) return;
+  const dx = traek.x - traek.x0, dy = traek.y - traek.y0;
+  if (dy > -12) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,212,71,.9)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.setLineDash([10, 9]);
+  ctx.beginPath(); ctx.moveTo(bx0, by0); ctx.lineTo(bx0 + dx, by0 + dy); ctx.stroke();
+  ctx.setLineDash([]);
+  const a = Math.atan2(dy, dx);
+  ctx.fillStyle = 'rgba(255,212,71,.9)';
+  ctx.beginPath();
+  ctx.moveTo(bx0 + dx + Math.cos(a) * 14, by0 + dy + Math.sin(a) * 14);
+  ctx.lineTo(bx0 + dx + Math.cos(a + 2.5) * 11, by0 + dy + Math.sin(a + 2.5) * 11);
+  ctx.lineTo(bx0 + dx + Math.cos(a - 2.5) * 11, by0 + dy + Math.sin(a - 2.5) * 11);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function tegnPartikler() {
+  for (const p of partikler) {
+    ctx.globalAlpha = Math.max(0, 1 - p.t / p.liv);
+    ctx.fillStyle = p.farve;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- Styring: swipen ---------- */
+/*
+  Man kan begynde swipen hvor som helst på fladen – på en telefon sidder
+  tommelfingeren sjældent præcis på bolden. Kun opadgående swipes sparker.
+*/
+stage.addEventListener('pointerdown', e => {
+  if (fase !== 'klar') return;
+  if (e.target.closest('.screen') || e.target.closest('button')) return;
+  traek.aktiv = true;
+  traek.x0 = traek.x = e.clientX; traek.y0 = traek.y = e.clientY;
+  traek.spor = [{ x: e.clientX, y: e.clientY, t: performance.now() }];
+  e.preventDefault();
+});
+stage.addEventListener('pointermove', e => {
+  if (!traek.aktiv) return;
+  traek.x = e.clientX; traek.y = e.clientY;
+  const nu = performance.now();
+  traek.spor.push({ x: e.clientX, y: e.clientY, t: nu });
+  while (traek.spor.length > 2 && nu - traek.spor[0].t > 140) traek.spor.shift();
+});
+function slipTraek() {
+  if (!traek.aktiv) return;
+  traek.aktiv = false;
+  const dx = traek.x - traek.x0, dy = traek.y - traek.y0;
+  // Kraften måles på den SIDSTE del af swipen – det er dér, flicket sidder
+  const s0 = traek.spor[0], s1 = traek.spor[traek.spor.length - 1];
+  const ms = s1 && s0 ? Math.max(1, s1.t - s0.t) : 1;
+  const fartPxMs = s1 && s0 ? Math.hypot(s1.x - s0.x, s1.y - s0.y) / ms : 0;
+  if (dy <= -24) {
+    const sigte = {
+      x: klem((dx / (W * 0.33)) * (MAAL.bredde / 2), -6, 6),
+      y: klem((-dy / (H * 0.38)) * MAAL.hoejde, 0.1, 4.5),
+    };
+    sparkNu(sigte, klem(fartPxMs / 2.0, 0.15, 1));
+  }
+}
+stage.addEventListener('pointerup', slipTraek);
+stage.addEventListener('pointercancel', () => { traek.aktiv = false; });
+
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space' && !e.repeat && fase === 'menu') { e.preventDefault(); start(); }
+});
+
+$('startBtn').addEventListener('click', start);
+$('igenBtn').addEventListener('click', start);
+$('tilbageBtn').addEventListener('click', tilMenu);
+menuBtn.addEventListener('click', tilMenu);
+
+/* ---------- Start ---------- */
+nulstil();
+visHud();
+Highscore.panel($('hsStart'), { spil: 'straffe', format: v => v + ' mål' });
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  seed, start, tilMenu,
+  tik: dt => uiTik(dt),
+  pause() { paused = true; }, resume() { paused = false; sidst = 0; acc = 0; },
+  /** Sparker direkte via motoren (tests) – returnerer hændelsen. */
+  spark(sigte, kraft) { return sparkNu(sigte, kraft); },
+  /** En swipe som tal: dx/dy i pixels, ms hvor længe den tog. */
+  svirp(dx, dy, ms) { return svirp(dx, dy, ms); },
+  /** Spoler sek sekunder frem (animation og resultat). */
+  frem(sek) {
+    const n = Math.round(sek / DT);
+    for (let i = 0; i < n; i++) uiTik(DT);
+    return this.state;
+  },
+  doedNu() { kamp.liv = 0; kamp.faerdig = true; anim = null; doed(); },
+  get state() {
+    return {
+      fase, seed: kamp.seed, maal: kamp.maal, liv: kamp.liv, niveau: kamp.niveau,
+      nr: kamp.nr, faerdig: kamp.faerdig, best,
+      keeper: keeperFor(kamp.niveau),
+      anim: anim ? { resultat: anim.e.resultat, t: anim.t, dur: anim.dur, ramt: anim.ramt } : null,
+      konst: { LIV, NIVEAU_MAKS, MAAL, AFSTAND },
+    };
+  },
+};
+</script>
+</body></html>

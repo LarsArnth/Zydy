@@ -64,14 +64,14 @@ assert.equal(await page.locator('.sg-ryd').isVisible(), false, 'krydset gemmer s
 assert.equal(await felt.inputValue(), '');
 
 /* ---------- Fandt vi intet, bliver det til et ønske ---------- */
-assert.deepEqual(await soeg('fodbold'), [], 'vi har ikke noget fodboldspil');
-assert.match(await page.locator('.sg-status').textContent(), /Vi har ikke noget, der hedder «fodbold»/);
+assert.deepEqual(await soeg('basketball'), [], 'vi har ikke noget basketballspil');
+assert.match(await page.locator('.sg-status').textContent(), /Vi har ikke noget, der hedder «basketball»/);
 await page.screenshot({ path: SHOTS + 'soeg-intet.png' });
 
 await page.click('.sg-foreslaa');
 await page.waitForSelector('.id-dlg[open]');
 assert.match(await page.locator('.id-titel').textContent(), /nyt spil/i, 'søgningen tilbyder at ønske spillet');
-assert.equal(await page.inputValue('.id-tekst'), 'fodbold', 'det man ledte efter, står klar i feltet');
+assert.equal(await page.inputValue('.id-tekst'), 'basketball', 'det man ledte efter, står klar i feltet');
 await page.click('.id-fortryd');
 await page.waitForSelector('.id-dlg[open]', { state: 'hidden' });
 

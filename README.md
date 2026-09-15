@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; tredive spil
+afhængigheder. De store apps bor i egne repoer og linkes til; enogtredive spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet tredive spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet enogtredive spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet og Pjattemaskinen, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen og Straffespark, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -55,13 +55,14 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Slanger | `public/spil/slanger/` | Lars' ønske om en Snake.io-klon i firkanter som Papirøen: en slange på en plade af 32 × 32 felter, der kun kan køre i fire retninger – og hele styringen er **to kæmpe drejeknapper** i bunden af skærmen, som 3- og 7-tasten på en gammel Nokia (venstre = mod uret, højre = med uret; trykkene lægges i kø, så to hurtige tryk giver to sving). Spis perlerne og bliv den længste; Otto, Mille og Aksel jager de samme perler, og en død slange bliver selv til perler. Score = længste længde, online topliste. **Kan også spilles sammen med en ven**, én på hver telefon — se [Spil sammen](#spil-sammen). To filer: `slange.mjs` (motor, enhedstestet) + `sammen.mjs` (den fælles plade, enhedstestet) og `index.html`. Se «Slanger – de to knapper og den fælles plade» nedenfor. |
 | Elementløbet | `public/spil/elementer/` | Sofies ønske om «et spil som handler om ild, jord, vand og vin – de der fire elementer» (vin læst som vind). Man løber automatisk fremad og **er** et af de fire elementer: fire store knapper i bunden skifter form, og hver forhindring klares af netop ét element – ild brænder tornekrattet, vand slukker bålet, vind flyver over floden, og jord står fast i hvirvelstormen. En boble over forhindringen viser, hvilket element den vil have, så det er fingrene og ikke hukommelsen, der arbejder; tager man alligevel fejl, koster det et liv (af tre), og skærmen siger hvad man skulle have trykket. Forhindringerne lægges med et fast antal **sekunders** mellemrum (aldrig under 0,7 s), så reaktionstiden er den samme, uanset hvor stærkt det går – banen bliver hurtigere og tættere, men aldrig umulig (den perfekte bot i `elementer.mjs` overlever altid, enhedstestet). Score = klarede forhindringer, online topliste og kapløb. To filer: `elementer.mjs` (banen, farten og reglerne, enhedstestet) og `index.html` (canvas, knapperne og skærmene). |
 | Pjattemaskinen | `public/spil/pjat/` | Alias ønske, der bare lød «Lav noget sjovt og randomt» – så det er en maskine, der laver noget sjovt og randomt. Tre ruller (HVEM · GØR HVAD · HVOR) snurrer og lander på en pjattet sætning: «Den fnisende flodhest danser ballet på månen!» – 24 figurer × 22 handlinger × 22 steder, og maskinen kan læse sætningen højt (speechSynthesis, fejler stumt). Hver figur, man møder, sættes i **albummet**; de fire gyldne er sjældne (vægt 1 mod 5), og efter `TOERKE_MAKS` (8) træk uden en ny figur er den næste garanteret ny, så albummet altid kan fyldes – enhedstesten sætter loftet til 24 × 9 træk. Grammatikken kan ikke gå i stykker: hver figur bærer sit eget «den/det», og enhedstesten prøver alle kombinationer. Score = figurer i albummet (`maks: 24`, `unik: true`), sendt af sig selv ved hver ny figur; navnet skrives på startskærmen som i Obby. To filer: `maskine.mjs` (ruller, lodtrækning, tørke-regel og album, enhedstestet) og `index.html`. |
+| Straffespark | `public/spil/straffe/` | Jonas' ønske: «Man sparker og skal score på målmand». Man står på straffesparkspletten og swiper bolden af sted: retningen bestemmer hvor i målet man sigter, og swipe-farten hvor hårdt der sparkes – et hårdt spark er svært at nå for målmanden, men spreder mere, så det kan ryge på stolpen eller forbi. Målmanden læser sparket og kaster sig – eller gætter forkert og springer det gale hjørne – og han bliver bedre for hvert andet mål (hurtigere reaktion, længere spring, færre fejlgæt, niveau 1-12; hans niveau står i HUD'en). Tre brændte bolde, og kampen er slut. Alt regnes i meter i målets plan (et rigtigt mål på 7,32 × 2,44 m, sparket fra 11 m), så motoren kan enhedstestes uden browser. Score = mål, online topliste og kapløb. To filer: `straffe.mjs` (bolden, målmanden og reglerne, enhedstestet) og `index.html` (canvas, swipen og skærmene). |
 | Kæmpetal | `public/spil/kaempetal/` | Selmas ønske, der lød «man kan møde sine venner man kan mindst Max 9999999999999»: et clicker-spil om at nå det største tal, **9.999.999.999.999**. Tallet selv er knappen – tryk, og det vokser – og i butikken køber man hjælpere (klikkemus, tællekat, talraket, sort hul …), der tæller videre af sig selv, også mens man er væk (dog højst 8 timer, en skoledag). Guldfingeren fordobler hvert tryk, og butikken viser kun de hjælpere, man har mødt, plus én hemmelig «???». Score = alt man har tjent – køb rører den ikke – og den ryger selv på toplisten, hver gang en tierpotens rundes. **Kan spilles sammen med en ven**, én på hver telefon: I ser hinandens tal live, og summen af jeres to tal kan nå loftet – så fejrer I det sammen. Se [Spil sammen](#spil-sammen) og «Kæmpetal – tallet, hjælperne og loftet» nedenfor. To filer: `tal.mjs` (tallet, hjælperne, priserne og loftet, enhedstestet) og `index.html`. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet og Elementløbet — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet og Straffespark — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 

@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 44,
+      "dato": "2026-09-15",
+      "spil": "straffe",
+      "titel": "Straffespark – scor på målmanden",
+      "hvad": "Jonas ønskede sig, at man sparker og skal score på målmand – og her er det! Stil dig på pletten og swipe bolden mod målet: retningen bestemmer, hvor du sigter, og en hurtig swipe giver et hårdt spark, som målmanden ikke kan nå – men som også nemmere ryger på stolpen eller forbi. Målmanden kaster sig efter bolden og bliver bedre for hvert andet mål. Tre brændte bolde, så er kampen slut – hvor mange mål når du?",
+      "oensket": "Jonas"
+    },
+    {
       "nr": 43,
       "dato": "2026-09-15",
       "spil": "pjat",
