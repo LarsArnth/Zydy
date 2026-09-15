@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet treogtredive spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet fireogtredive spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby og Fjolle-Obby, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby og Tårnforsvar, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -60,11 +60,13 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Kæmpetal | `public/spil/kaempetal/` | Selmas ønske, der lød «man kan møde sine venner man kan mindst Max 9999999999999»: et clicker-spil om at nå det største tal, **9.999.999.999.999**. Tallet selv er knappen – tryk, og det vokser – og i butikken køber man hjælpere (klikkemus, tællekat, talraket, sort hul …), der tæller videre af sig selv, også mens man er væk (dog højst 8 timer, en skoledag). Guldfingeren fordobler hvert tryk, og butikken viser kun de hjælpere, man har mødt, plus én hemmelig «???». Score = alt man har tjent – køb rører den ikke – og den ryger selv på toplisten, hver gang en tierpotens rundes. **Kan spilles sammen med en ven**, én på hver telefon: I ser hinandens tal live, og summen af jeres to tal kan nå loftet – så fejrer I det sammen. Se [Spil sammen](#spil-sammen) og «Kæmpetal – tallet, hjælperne og loftet» nedenfor. To filer: `tal.mjs` (tallet, hjælperne, priserne og loftet, enhedstestet) og `index.html`. |
 | Fjolle-Obby | `public/spil/fjolle/` | Alias ønske, der lød «En sjov obby» – den fjollede fætter til Store Obby. Ni **håndlavede** etaper man kan lære udenad, og ingenting kan slå én ihjel: man kan kun plaske i buddingen i bunden og starter så ved flaget igen. Undervejs er der bananskræl man skrider på, gelé der kaster én op af sig selv (og meget højere, hvis man trykker HOP i selve landingen), prutteskyer der skyder én til vejrs i takt, slim man går i slowmotion i, rullebånd der trækker med og imod, høns der vipper én op med et BAK BAK, fjedre og balloner der stiger, så længe man står på dem. Score = **tiden** for hele banen (`retning: 'asc'`), så den sendes først ind, når alle ni etaper er klaret; «Fortsæt» husker etape, tid og plask. To filer: `bane.mjs` (banen, fysikken og botten, enhedstestet) og `index.html`. Se «Fjolle-Obby – de ni etaper og det, der ikke slår ihjel» nedenfor. |
 
+| Tårnforsvar | `public/spil/taarnforsvar/` | SorteSlyngels ønske om «et Tower Defense-stil spil, hvor man kæmper om at komme længst». Stien snor sig fra hullet i toppen ned til porten, og på græsset ved siden af bygger man fire slags tårne: bueskytte (billig og hurtig), kanon (bomben rammer flere), isbøsse (fryser, så de andre når at skyde flere gange) og troldmand (dyr, men lynet går igennem panser). Tre niveauer pr. tårn, og man kan sælge igen. Monstrene kommer i bølger, der aldrig holder op: slim, flagermus, trolde med panser og en monsterkonge hver femte bølge. Score = **klarede bølger** – motoren er helt uden tilfældighed, så alle møder de samme bølger i den samme rækkefølge. To filer: `forsvar.mjs` (banen, tårnene, monstrene, bølgerne og en bot, enhedstestet) og `index.html`. Se «Tårnforsvar – stien, de fire tårne og bølgerne» nedenfor. |
+
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby og Fjolle-Obby — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby og Tårnforsvar — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -1719,6 +1721,56 @@ Test: `test/kaempetal.test.mjs` (klik, butik, milepæl, loftet med fest – og t
 browsere, hvor Sofie og Selma mødes og når loftet sammen) +
 `test/unit/kaempetal.test.mjs`.
 
+### Tårnforsvar – stien, de fire tårne og bølgerne
+
+Banen er et gitter på 10 × 14 felter à 10 enheder (100 × 140), som tegnes midt
+på fladen — så den er lige stor på en iPhone på højkant og en iPad på tværs.
+Stien er håndlagt i `RUTE` og er **den samme hver gang**; alt der ikke er sti,
+kan bebygges (111 felter).
+
+Fem ting er værd at huske, hvis spillet skal røres igen:
+
+1. **Der er ingen tilfældighed i motoren.** Bølgerne følger `boelgePlan(nr)` og
+   `hpFaktor(nr)`, monstrene spawner på faste tidspunkter, og tårnene rammer
+   altid. Alle møder derfor nøjagtig den samme bane og de samme bølger, og
+   toplisten sammenligner spillere frem for held. Det er også dét, der gør, at
+   en test kan spole ti bølger frem og få det samme hver gang.
+2. **Monstrene har ingen x/y af sig selv** — de har `d`, hvor langt de er nået
+   ad stien, og positionen regnes ud fra det tal ved hvert skridt. «Skyd på den,
+   der er nået længst» er derfor bare det største `d`. Vil man stille en prøve
+   op med et monster foran et tårn, skal man vælge et sted på stien og bygge
+   tårnet ved siden af — flytter man i stedet monsteret hen til tårnet, skubber
+   første skridt det tilbage på stien igen (det kostede en omgang i
+   `test/unit/taarnforsvar.test.mjs`, hvor helperen `taarnVedSti()` nu gør det
+   rigtigt).
+3. **Panser (`panser` på trolde og kongen) trækkes fra hvert enkelt træffer**,
+   dog altid mindst 1 i skade. Det er dét, der giver tårnene hver sin rolle:
+   bueskyttens mange små skud bliver ædt af panseret, mens troldmandens ene
+   store lyn knap nok mærker det, og kanonens bombe til gengæld rammer hele
+   klumpen på én gang. Uden panser ville det bedste svar altid være «flere
+   bueskytter».
+4. **`tik()` klipper med vilje ikke i sit dt.** Den deler et vilkårligt dt op i
+   faste skridt på 1/60 sekund og kører dem alle. En tidligere udgave klippede
+   til højst ét sekund, og så spillede `tik(spil, 8)` stille og roligt kun ét
+   sekund — enhedstestene troede, tårnene ikke skød. Den, der tegner, klipper
+   selv sit dt (`index.html`: højst 0,1 sek., og der springes over, når fanen
+   er skjult).
+5. **Kurven er målt med en bot, ikke gættet.** `botSpiller()` bygger og
+   opgraderer alt, hvad den har råd til, og sender hver bølge før tid; den når
+   omkring bølge 34, før monstrene vokser fra den. Tre bueskytter uden
+   opgraderinger når 5. Enhedstesten holder fast i begge ender, så en ændring i
+   priser eller skade ikke ubemærket gør spillet trivielt eller håbløst.
+
+Guldet vokser lineært (`guldFaktor`), mens monstrenes liv vokser eksponentielt
+(`hpFaktor`, 1,16 pr. bølge) — derfor **ender alle med at tabe**, og det er
+meningen: spillet handler om hvor langt man nåede. «Send nu» betaler 2 guld pr.
+sekund, man springer over af pausen, så man kan skynde sig, når man har styr på
+det.
+
+Test: `test/taarnforsvar.test.mjs` (bygger et tårn med en rigtig finger, prøver
+at bygge på stien, opgraderer og sælger, sender en bølge af sted og klarer den,
+og mister så det sidste hjerte) + `test/unit/taarnforsvar.test.mjs`.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -1743,7 +1795,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Tårnforsvars sti, tårne, bølger og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum- og besked-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om

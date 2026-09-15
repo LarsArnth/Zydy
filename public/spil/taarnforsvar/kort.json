@@ -1,0 +1,21 @@
+{
+  "navn": "Tårnforsvar",
+  "beskrivelse": "Byg bueskytter, kanoner, isbøsser og troldmænd langs stien og skyd monstrene ned, før de når porten. Bølgerne holder aldrig op – hvor langt når du?",
+  "nøgleord": [
+    "tower defense",
+    "td",
+    "tårne",
+    "monstre",
+    "forsvar",
+    "bølger",
+    "strategi",
+    "skyd"
+  ],
+  "url": "/spil/taarnforsvar/",
+  "orden": 176,
+  "kapløb": true,
+  "højscore": {
+    "maks": 200,
+    "unik": true
+  }
+}

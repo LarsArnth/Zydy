@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 49,
+      "dato": "2026-09-15",
+      "spil": "taarnforsvar",
+      "titel": "Tårnforsvar – byg tårne og hold monstrene fra porten",
+      "hvad": "SorteSlyngel ønskede sig et Tower Defense-spil, hvor man kæmper om at komme længst. Monstrene går ad stien ned mod porten, og du bygger tårne på græsset ved siden af: bueskytten skyder hurtigt, kanonens bombe rammer hele klumpen, isbøssen fryser dem så de andre tårne når flere skud, og troldmandens lyn er det eneste, der rigtig bider på troldenes panser. Hvert tårn kan opgraderes tre gange, og du kan sælge igen, hvis du fortryder. Bølgerne holder aldrig op – der kommer slim, flagermus, trolde og en monsterkonge hver femte bølge – så det gælder om at komme længst. Banen og bølgerne er de samme for alle, så toplisten er en ærlig kamp om, hvem der forsvarer bedst.",
+      "oensket": "SorteSlyngel"
+    },
+    {
       "nr": 48,
       "dato": "2026-09-15",
       "spil": "obby",
