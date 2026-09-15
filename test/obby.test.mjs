@@ -436,6 +436,124 @@ assert.ok((await page.locator('#nameBtn').textContent()).startsWith('Sofie'));
 const st1 = await page.evaluate(() => window.GAME.state);
 assert.deepEqual(st1.platforms.slice(0, 6).map(p => [p.i, p.x, p.w, p.y]), st0.platforms.slice(0, 6).map(p => [p.i, p.x, p.w, p.y]), 'samme seed giver samme bane');
 
+/* ---------- EASY · HARD · IMPOSIBOL (Sofies ønske nr. 51) ---------- */
+// «easy skal gå meget langsomt, hard hurtigere og imposibol mega fkn hurtig».
+// Graden ganges på tempoet – altså på tiden – så det er den samme bane i alle
+// tre, bare med mere eller mindre tid til hvert hop.
+const gradNavne = await page.evaluate(() => [...document.querySelectorAll('#grader .grad')].map(b => b.firstChild.textContent));
+assert.deepEqual(gradNavne, ['EASY', 'HARD', 'IMPOSIBOL'], 'de tre grader står med Sofies egne navne');
+// Startskærmen har altid været højere end en telefonskærm (toplisten fylder),
+// så valget står højt oppe – lige under «Lavet af» og over toplisten. Stod det
+// nede ved Spil-knappen, skulle man rulle for overhovedet at opdage det.
+const gradPlads = await page.evaluate(() => {
+  const g = document.getElementById('grader').getBoundingClientRect();
+  const hs = document.getElementById('hsListe').getBoundingClientRect();
+  const kort = document.querySelector('#startScreen .card').getBoundingClientRect();
+  const st = document.getElementById('startScreen').getBoundingClientRect();
+  return {
+    synlig: g.top >= st.top - 1 && g.bottom <= st.bottom + 1,
+    inde: g.left >= kort.left - 1 && g.right <= kort.right + 1,
+    overListen: g.bottom <= hs.top + 1,
+    paaEnRaekke: g.height < 90,
+    knapHoej: document.querySelector('#grader .grad').getBoundingClientRect().height >= 44,
+  };
+});
+assert.ok(gradPlads.synlig, 'knapperne kan ses uden at rulle');
+assert.ok(gradPlads.inde, 'de holder sig inden for startkortet');
+assert.ok(gradPlads.overListen, 'de står før toplisten, altså i toppen af skærmen');
+assert.ok(gradPlads.paaEnRaekke, 'de tre står på én række');
+assert.ok(gradPlads.knapHoej, 'hver knap er stor nok til en finger');
+
+let gs = await page.evaluate(() => window.GAME.state);
+assert.equal(gs.grad, 'svaer', 'HARD er standard – det er det spil, børnene kender');
+assert.equal(gs.gradTempo, 1, 'HARD er uændret');
+assert.equal(await page.locator('#grader .grad.valgt').getAttribute('data-grad'), 'svaer');
+assert.ok(await page.locator('#gradNote').isHidden(), 'HARD behøver ingen forklaring');
+await page.screenshot({ path: SHOTS + 'obby-grader.png' });
+
+/** Vælg en grad på startskærmen, start, og mål hvor stærkt det så går (enheder pr. virkeligt sekund). */
+async function maalGrad(id) {
+  await page.evaluate(() => window.GAME.tilMenu());
+  await page.locator(`#grader .grad[data-grad="${id}"]`).click();
+  const menu = await page.evaluate(() => window.GAME.state);
+  await page.getByRole('button', { name: 'Spil', exact: true }).click();
+  const m = await maalFart(0.25);
+  return { menu, spil: await page.evaluate(() => window.GAME.state), enhederPrSek: m.langt / 0.25 };
+}
+
+const let_ = await maalGrad('let');
+assert.equal(let_.menu.grad, 'let');
+assert.equal(let_.menu.checkpoint, 0, 'en ny grad begynder forfra på banen');
+assert.equal(let_.menu.best, 0, 'EASY har sin egen rekord – HARD-rekorden bliver stående');
+assert.equal(await page.locator('#gradHud').textContent(), 'EASY', 'HUD\'en siger hvad man spiller');
+assert.ok(let_.enhederPrSek < 5, `EASY går meget langsomt (${let_.enhederPrSek.toFixed(1)} enheder/sek.)`);
+
+// Banen kan stadig gennemføres – den er den samme, uret går bare langsommere
+let br = await bot(40);
+assert.ok(!br.doed, `botten klarer EASY (nåede ${br.paa})`);
+const coinsEasy = (await page.evaluate(() => window.GAME.state)).coins;
+assert.ok(coinsEasy > 0, 'der er også coins at hente på EASY');
+
+// EASY tæller ikke med på den fælles topliste: et hop dér er nemmere end et hop
+// i HARD, og listen er den samme som før sværhedsgraderne.
+const foerSendte = sendte.length;
+const easyStreak = (await page.evaluate(() => window.GAME.state)).streak;
+await page.evaluate(() => window.GAME.die());
+assert.ok(await page.locator('#nyRekord').isVisible(), 'EASY har sin egen personlige rekord');
+await page.waitForTimeout(250);
+assert.equal(sendte.length, foerSendte, 'EASY-hop ryger ikke på toplisten');
+assert.equal(await page.evaluate(() => localStorage.getItem('zydy.obby.best.let')), String(easyStreak),
+  'EASY-rekorden gemmes for sig');
+assert.equal(await page.evaluate(() => localStorage.getItem('zydy.obby.best')), String(best),
+  'HARD-rekorden er urørt');
+gs = await page.evaluate(() => window.GAME.state);
+assert.equal(gs.taellerMed, false);
+// (målt på selve elementet – startskærmen ligger jo bag TRY AGAIN lige nu)
+const noteSkjult = () => page.evaluate(() => document.getElementById('gradNote').hidden);
+assert.equal(await noteSkjult(), false, 'EASY forklarer, at hoppene ikke kommer på listen');
+assert.match(await page.locator('#gradNote').textContent(), /toplisten/i);
+
+const hard = await maalGrad('svaer');
+assert.ok(hard.enhederPrSek > let_.enhederPrSek * 1.6,
+  `HARD går markant hurtigere end EASY (${hard.enhederPrSek.toFixed(1)} mod ${let_.enhederPrSek.toFixed(1)})`);
+assert.ok(hard.enhederPrSek > 7, 'HARD er som før: over 7 enheder/sek. fra start');
+assert.equal(hard.menu.best, best, 'HARD-rekorden står der stadig');
+
+const umulig = await maalGrad('umulig');
+assert.equal(await page.locator('#gradHud').textContent(), 'IMPOSIBOL');
+assert.ok(umulig.enhederPrSek > hard.enhederPrSek * 1.35,
+  `IMPOSIBOL går mega hurtigt (${umulig.enhederPrSek.toFixed(1)} mod HARDs ${hard.enhederPrSek.toFixed(1)})`);
+assert.ok(umulig.enhederPrSek > let_.enhederPrSek * 2.5, 'og mere end dobbelt så hurtigt som EASY');
+assert.equal(await noteSkjult(), true, 'IMPOSIBOL er sværere end HARD og tæller med');
+assert.equal(umulig.spil.taellerMed, true);
+
+// Checkpointet skal være bredere, jo hurtigere uret går – ellers har man ikke tid
+// til at reagere, når man genopstår langt inde.
+const cpBredde = g => g.platforms.find(p => p.i === 0).w;   // startplatformen er også et checkpoint
+assert.ok(cpBredde(umulig.menu) > cpBredde(let_.menu),
+  'checkpoint-platformene vokser med tempoet, så der stadig er tid til at reagere');
+
+br = await bot(45);
+assert.ok(!br.doed, `botten klarer også IMPOSIBOL (nåede ${br.paa})`);
+await page.evaluate(() => window.GAME.die());
+await page.waitForTimeout(250);
+assert.equal(sendte.length, foerSendte + 1, 'IMPOSIBOL-hop kommer derimod på den fælles topliste');
+assert.equal(sendte[sendte.length - 1].navn, 'Sofie');
+
+// Valget huskes til næste gang
+await page.reload();
+await page.waitForSelector('#hsListe .hs-liste');
+gs = await page.evaluate(() => window.GAME.state);
+assert.equal(gs.grad, 'umulig', 'sværhedsgraden huskes');
+assert.equal(await page.locator('#grader .grad.valgt').getAttribute('data-grad'), 'umulig');
+await page.locator('#grader .grad[data-grad="svaer"]').click();
+assert.equal((await page.evaluate(() => window.GAME.state)).grad, 'svaer');
+
+// Midt i et løb kan man ikke skrue ned for farten
+await page.getByRole('button', { name: 'Spil', exact: true }).click();
+await page.evaluate(() => window.GAME.vaelgGrad('let'));
+assert.equal((await page.evaluate(() => window.GAME.state)).grad, 'svaer', 'graden kan kun skiftes på startskærmen');
+
 // API-fejl må ikke vælte spillet
 await page.unroute('**/api/highscore/**');
 await page.route('**/api/highscore/**', route => route.fulfill({ status: 500, json: { ok: false, fejl: 'test' } }));

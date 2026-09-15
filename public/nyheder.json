@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 46,
+      "dato": "2026-09-15",
+      "spil": "obby",
+      "titel": "Obby: vælg EASY, HARD eller IMPOSIBOL",
+      "hvad": "Sofie ønskede sig, at man selv kan vælge, hvor hurtigt det skal gå. Øverst på startskærmen står nu tre knapper: EASY går meget langsomt, HARD er som spillet plejer, og IMPOSIBOL går mega hurtigt. Det er den samme bane i alle tre – der er bare mere eller mindre tid til hvert hop. EASY har sin egen rekord og kommer ikke på toplisten, for det ville ikke være fair over for dem, der tager den hurtige.",
+      "oensket": "Sofie"
+    },
+    {
       "nr": 45,
       "dato": "2026-09-15",
       "spil": "storeobby",

@@ -37,6 +37,12 @@
     hurtigere, mens banen ser ud præcis som før. Undervejs viser HUD'en ⚡ ×1,8,
     og fartstriberne i baggrunden bliver længere, jo stærkere det går.
 
+    Sjette ønske (Sofie): «EASY HARD og IMPOSIBOL – easy skal gå meget langsomt,
+    hard hurtigere og imposibol mega hurtig». De tre knapper står på startskærmen
+    lige over Spil, og de ganger netop det TEMPO (se GRADER): banen er den samme,
+    men tiden går langsommere eller hurtigere. HARD er som spillet altid har
+    været, så ingen skal vænne sig om.
+
     Én fil, ingen afhængigheder (ud over toplistens fælles klient
     /spil/highscore.js).
 
@@ -88,6 +94,8 @@
   .hud .fart{margin-top:4px;font-size:16px;font-weight:700;color:var(--sky);font-variant-numeric:tabular-nums;
     transition:transform .12s;transform-origin:left center}
   .hud .fart.bump{transform:scale(1.25)}
+  /* Hvilken sværhedsgrad man spiller på – står under fartmåleren i sin egen farve */
+  .hud .grad-hud{margin-top:3px;font-size:15px;font-weight:800;letter-spacing:1.4px}
   /* Coins i modsatte hjørne af hop-tælleren */
   .hud.hoejre{left:auto;right:14px;text-align:right}
   #coins{display:block;font-size:40px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:var(--sun);
@@ -155,6 +163,25 @@
     -webkit-user-select:text;user-select:text}
   #nameForm .btn{width:auto;margin-top:0;padding:14px 20px}
   .hint{font-size:15px;margin:14px 0 0}
+
+  /*
+    Sværhedsgraderne (Sofies ønske). Tre knapper på én række højt oppe på
+    startskærmen – lige under «Lavet af» og over toplisten. Startskærmen har
+    altid været højere end en telefonskærm, og står valget nede ved Spil, skal
+    man rulle for overhovedet at opdage, at det er der. Den valgte knap har
+    ramme og tekst i sin egen farve (sat i JS, så knappen og HUD'en følges ad).
+  */
+  .grad-titel{display:block;font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--muted);opacity:.85;margin-bottom:6px}
+  .grader{display:flex;gap:8px;margin:0 0 14px}
+  .grad{flex:1;min-width:0;min-height:44px;padding:9px 4px;border-radius:16px;background:var(--bg2);
+    color:var(--text);font:inherit;font-size:15px;font-weight:800;letter-spacing:-.4px;line-height:1.05;
+    border:2px solid transparent;transition:transform .08s,border-color .15s}
+  .grad:active{transform:scale(.96)}
+  .grad small{display:block;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0;margin-top:3px}
+  .grad.valgt{border-color:currentColor}
+  .grad-note{font-size:14px;margin:-6px 0 12px;color:var(--muted)}
+  .grad-note[hidden]{display:none}
   .regler{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 4px}
   .regler span{font-size:13px;background:var(--bg2);border-radius:999px;padding:5px 10px;color:var(--muted)}
 
@@ -198,6 +225,7 @@
       <b id="hop">0</b>
       <div class="rek">Rekord <b id="rekHud">0</b></div>
       <div class="fart" id="fartHud">⚡ ×1,0</div>
+      <div class="grad-hud" id="gradHud">HARD</div>
     </div>
 
     <div class="hud hoejre" aria-live="polite">
@@ -220,6 +248,9 @@
           <span class="lavet-titel">Lavet af</span>
           <p><b>Sofie</b> fandt på spillet · <b>Far</b> og <b>Claude</b> byggede det</p>
         </div>
+        <span class="grad-titel">Hvor hurtigt skal det gå?</span>
+        <div class="grader" id="grader" role="group" aria-label="Hvor hurtigt skal det gå?"></div>
+        <p class="grad-note" id="gradNote" hidden>EASY er til at øve sig på – de hop kommer ikke på toplisten.</p>
         <div class="hs" id="hsListe"></div>
         <div class="regler" aria-hidden="true">
           <span>🟥 Laser = død</span><span>🌋 Lava = død</span><span>🟩 Hver 5. er checkpoint</span><span>🪙 Coins kun på checkpoints</span><span>⚡ Det går hurtigere og hurtigere</span>
@@ -282,9 +313,18 @@ const clouds = Array.from({ length: 8 }, (_, i) => ({ x: i * 7 + starRnd() * 5, 
 const striber = Array.from({ length: 16 }, () => ({ x: starRnd(), y: 0.3 + starRnd() * 0.62, fart: 0.8 + starRnd() * 1.2, l: 0.7 + starRnd() * 1.6 }));
 
 /* ---------- Lagring ---------- */
-const KEY_BEST = 'zydy.obby.best';
-const loadBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
-const saveBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+const laes = (k, fallback) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? fallback : v; } catch (e) { return fallback; } };
+const skriv = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+/*
+  Rekorden har sin egen nøgle pr. sværhedsgrad – man skal jo ikke jage en HARD-
+  rekord med EASY-hop. HARD beholder den gamle nøgle, så alle de rekorder, der
+  stod der, før der var sværhedsgrader, er i behold.
+*/
+const KEY_BEST = 'zydy.obby.best', KEY_GRAD = 'zydy.obby.grad';
+const bestNoegle = () => (grad.id === 'svaer' ? KEY_BEST : KEY_BEST + '.' + grad.id);
+const loadBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(bestNoegle()), 10) || 0); } catch (e) { return 0; } };
+const saveBest = v => { try { localStorage.setItem(bestNoegle(), String(v)); } catch (e) {} };
 
 /* ---------- DOM ---------- */
 const $ = id => document.getElementById(id);
@@ -293,6 +333,7 @@ const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
 // små forhåndsvisninger får den med (de har hver deres 2d-kontekst).
 if (!ctx.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
 const hopEl = $('hop'), rekHud = $('rekHud'), rekordVal = $('rekordVal'), fartHud = $('fartHud');
+const gradHud = $('gradHud'), graderEl = $('grader'), gradNote = $('gradNote');
 const startScreen = $('startScreen'), tryAgain = $('tryAgain'), readyHint = $('readyHint'), nyRekord = $('nyRekord');
 const readyTekst = $('readyTekst'), tryAgainTekst = $('tryAgainTekst'), shopHint = $('shopHint');
 const coinsEl = $('coins'), coinsStart = $('coinsStart'), coinsShop = $('coinsShop');
@@ -332,7 +373,38 @@ const fartVed = i => Math.min(VX_MAKS, VX0 * (1 + VX_TRIN * i));
   sekundet ved start mod 6,0 før, og 17,1 langt inde mod 9,5 før.
 */
 const TEMPO0 = 1.25, TEMPO_MAKS = 1.8, TEMPO_TRIN = 0.011;
-const tempoVed = i => Math.min(TEMPO_MAKS, TEMPO0 * (1 + TEMPO_TRIN * i));
+/*
+  «Kunne du lave sådan at man kan vælge EASY HARD og IMPOSIBOL» (Sofies ønske
+  nr. 51). Sværhedsgraden ganges på TEMPO og ikke på farten – af nøjagtig samme
+  grund som ovenfor: farten er bagt ind i banen, mens tempoet kun er, hvor
+  hurtigt uret går. Så er det den *samme* bane i alle tre grader, bare med mere
+  eller mindre tid til hvert hop.
+
+    EASY      0,55 →  4,1 enheder i sekundet ved start og 9,4 langt inde
+    HARD      1    →  7,5 og 17,1 – præcis som spillet altid har været
+    IMPOSIBOL 1,45 → 10,9 og 24,8
+
+  HARD er standard: det er dét spil, børnene kender, og dets bane og rekorder
+  skal være uændrede. Tallet 0,55 er valgt, så EASY er langsommere end Obby
+  nogensinde har været (før tempoet kom til, gik det 6,0 fra start), og 1,45 så
+  IMPOSIBOL er til at holde ud i nogle få hop – men kun nogle få.
+*/
+const GRADER = [
+  { id: 'let',    navn: 'EASY',      under: 'meget langsomt', tempo: 0.55, farve: '#5ee0a8' },
+  { id: 'svaer',  navn: 'HARD',      under: 'som det plejer', tempo: 1,    farve: '#ffd447' },
+  { id: 'umulig', navn: 'IMPOSIBOL', under: 'mega hurtigt',   tempo: 1.45, farve: '#ff5c7a' },
+];
+const gradMed = id => GRADER.find(g => g.id === id) || GRADER[1];
+let grad = gradMed(laes(KEY_GRAD, 'svaer'));
+const tempoVed = i => Math.min(TEMPO_MAKS, TEMPO0 * (1 + TEMPO_TRIN * i)) * grad.tempo;
+/*
+  Toplisten er stadig én liste for Obby – rekorderne fra før sværhedsgraderne
+  står der jo. EASY spoler verdenen langsommere, så et hop dér er nemmere end et
+  hop i HARD, og de ville skubbe alle andre af listen; derfor tæller EASY kun
+  som personlig rekord. IMPOSIBOL er omvendt sværere end HARD hele vejen, så de
+  hop kan roligt stå på den samme liste.
+*/
+const taellerMed = () => grad.tempo >= 1;
 /** Hvor meget hurtigere end grundfarten det går lige nu (fart × tempo), til ⚡-måleren. */
 const fartFaktor = () => player.vx * tempo / VX0;
 const T_UP = 0.33;           // sekunder op til toppen af et hop
@@ -597,16 +669,17 @@ function tegnSkin(ctx, s, skin) {
 
 /* ---------- Coins og ejede skins ---------- */
 const KEY_COINS = 'zydy.obby.coins', KEY_EJET = 'zydy.obby.skins', KEY_VALGT = 'zydy.obby.skin';
-const laes = (k, fallback) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? fallback : v; } catch (e) { return fallback; } };
-const skriv = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
-
 let coins = Math.max(0, parseInt(laes(KEY_COINS, 0), 10) || 0);
 let ejet = laes(KEY_EJET, ['klassisk']);
 if (!Array.isArray(ejet) || !ejet.includes('klassisk')) ejet = ['klassisk'];
 ejet = ejet.filter(id => SKINS.some(s => s.id === id));
 let valgtSkin = laes(KEY_VALGT, 'klassisk');
 if (!ejet.includes(valgtSkin)) valgtSkin = 'klassisk';
-let maksNaaet = 0;           // højeste platform man har været på – coins gives kun for nye checkpoints
+// Højeste platform man har været på – coins gives kun for nye checkpoints. Der
+// tælles pr. sværhedsgrad: skifter man til EASY, er det en ny bane at komme
+// igennem, og så skal der også være coins at hente på den.
+const maksNaaetPr = {};
+const maksNaaet = () => maksNaaetPr[grad.id] || 0;
 
 /*
   Coins gives KUN på checkpoints (Sofies ønske: "gør så det kun var der man fik
@@ -651,8 +724,8 @@ function simJump() {
 /* ---------- Tilstand ---------- */
 let phase = 'menu';          // menu | ready | run | dead
 let T = 0;                   // spiltid i sekunder
-let tempo = TEMPO0;          // spil-sekunder pr. virkeligt sekund (se TEMPO0)
-let tempoTrin = Math.round(TEMPO0 * 10);   // sidste viste ⚡-trin, så «Hurtigere!» kun popper op ved nye
+let tempo = tempoVed(0);     // spil-sekunder pr. virkeligt sekund (se TEMPO0 og GRADER)
+let tempoTrin = Math.round(tempo * 10);   // sidste viste ⚡-trin, så «Hurtigere!» kun popper op ved nye
 let streak = 0, best = loadBest();
 let camX = 0, shake = 0, deadAt = 0, squash = 0, flashT = 0;
 let particles = [], popups = [];
@@ -671,6 +744,46 @@ function updateHud() {
     fartHud.textContent = fartTekst;
     fartHud.classList.add('bump'); setTimeout(() => fartHud.classList.remove('bump'), 120);
   }
+}
+
+/* ---------- Sværhedsgrad: EASY · HARD · IMPOSIBOL ---------- */
+/** Tegner de tre knapper (én gang) – rækkefølgen og teksterne kommer fra GRADER. */
+function byggGrader() {
+  for (const g of GRADER) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'grad'; b.dataset.grad = g.id;
+    b.appendChild(document.createTextNode(g.navn));
+    const s = document.createElement('small'); s.textContent = g.under;
+    b.appendChild(s);
+    b.addEventListener('click', () => vaelgGrad(g.id));
+    graderEl.appendChild(b);
+  }
+}
+
+function visGrad() {
+  for (const b of graderEl.querySelectorAll('.grad')) {
+    const valgt = b.dataset.grad === grad.id;
+    b.classList.toggle('valgt', valgt);
+    b.setAttribute('aria-pressed', String(valgt));
+    b.style.color = valgt ? gradMed(b.dataset.grad).farve : '';
+  }
+  gradNote.hidden = taellerMed();          // kun EASY skal forklare sig
+  gradHud.textContent = grad.navn; gradHud.style.color = grad.farve;
+}
+
+/**
+ * Skifter sværhedsgrad. Banen bygges forfra: checkpoint-platformene er bredere,
+ * jo hurtigere tiden går (man skal kunne nå at reagere, når man genopstår), så
+ * de to ting hænger sammen – og man begynder forfra, når farten skifter.
+ * Kan kun gøres på startskærmen, så ingen skruer ned midt i et løb.
+ */
+function vaelgGrad(id) {
+  if (phase !== 'menu' || id === grad.id) return;
+  grad = gradMed(id); skriv(KEY_GRAD, grad.id);
+  best = loadBest(); streak = 0;
+  nyBane(); camX = -Wu * 0.3; fyldBane();
+  tempo = tempoVed(0); tempoTrin = Math.round(tempo * 10);
+  visGrad(); updateHud();
 }
 
 function spawn() {
@@ -725,8 +838,8 @@ function onLand(pl) {
   }
   // Kun firkanter man ikke har været på før tæller – ellers kunne man samle
   // coins ved at dø og hoppe de samme felter igen.
-  const nyFirkant = pl.i > maksNaaet;
-  if (nyFirkant) maksNaaet = pl.i;
+  const nyFirkant = pl.i > maksNaaet();
+  if (nyFirkant) maksNaaetPr[grad.id] = pl.i;
   if (pl.checkpoint && pl !== checkpoint) {
     checkpoint = pl; pl.active = true; flashT = 0.9;
     popups.push({ text: 'Checkpoint ' + pl.i + '!', x: pl.x + pl.w / 2, y: platTop(pl, T) + 3.0, t: 0, color: '#5ee0a8' });
@@ -748,9 +861,11 @@ function die(hvorfor) {
     }
   }
   const ny = streak > best;
-  if (ny) { best = streak; saveBest(best); sendRekord(streak); }
-  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
-  if (window.Kaploeb) Kaploeb.slut(streak, streak + ' hop');
+  if (ny) { best = streak; saveBest(best); if (taellerMed()) sendRekord(streak); }
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står
+  // øverst på skærmen. Sværhedsgraden står med, så man kan se, om vennen tog den
+  // hurtige vej udenom – serveren kender jo ikke spillets regler.
+  if (window.Kaploeb) Kaploeb.slut(streak, streak + ' hop · ' + grad.navn);
   nyRekord.hidden = !ny;
   // Fortæl hvor man lander henne, så det er til at se at checkpointet virker
   tryAgainTekst.textContent = checkpoint && checkpoint.i > 0
@@ -822,7 +937,10 @@ function draw() {
     højere tempoet er. Uden dem kan man ikke *se*, at det er blevet hurtigere –
     figuren står jo det samme sted på skærmen hele tiden.
   */
-  const fartUd = Math.max(0, Math.min(1, (tempo - TEMPO0) / (TEMPO_MAKS - TEMPO0)));
+  // … målt inden for den sværhedsgrad man spiller: 0 på den første firkant og 1,
+  // når tempoet er i top. Ellers ville EASY aldrig få striber og IMPOSIBOL have
+  // dem på fuld styrke fra første hop.
+  const fartUd = Math.max(0, Math.min(1, (tempo / grad.tempo - TEMPO0) / (TEMPO_MAKS - TEMPO0)));
   if (!reduceMotion && phase !== 'menu') {
     const span = W + 300;
     ctx.strokeStyle = '#cfe0ff'; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1, 0.045 * u);
@@ -1145,12 +1263,14 @@ nyBane();
 camX = -Wu * 0.3;
 fyldBane();
 shopHint.textContent = `Du får ${COINS_PR_CHECKPOINT} coins, hver gang du når et nyt checkpoint – det grønne flag på hver 5. firkant.`;
+byggGrader(); visGrad();
 visNavn(); updateHud(); visCoins(); hentListe();
 
 /* ---------- Test-API ---------- */
 window.GAME = {
-  start, jump, tick, frem, simJump, spawn, tilMenu, aabnButik, lukButik, seed,
+  start, jump, tick, frem, simJump, spawn, tilMenu, aabnButik, lukButik, seed, vaelgGrad,
   skins: SKINS.map(k => ({ id: k.id, navn: k.navn, pris: k.pris, hat: k.hat || null })),
+  grader: GRADER.map(g => ({ id: g.id, navn: g.navn, tempo: g.tempo })),
   pause() { paused = true; }, resume() { paused = false; lastT = 0; acc = 0; },
   die() { if (phase === 'run' || phase === 'ready') { player.alive = false; die('lava'); } },
   /** Stil spilleren på platform nr. i (tests). */
@@ -1164,7 +1284,8 @@ window.GAME = {
   get state() {
     return {
       phase, running: phase === 'run', streak, best, T, camX,
-      coins, coinsPrCheckpoint: COINS_PR_CHECKPOINT, skin: valgtSkin, ejet: [...ejet], maksNaaet, butikAaben,
+      coins, coinsPrCheckpoint: COINS_PR_CHECKPOINT, skin: valgtSkin, ejet: [...ejet], maksNaaet: maksNaaet(), butikAaben,
+      grad: grad.id, gradNavn: grad.navn, gradTempo: grad.tempo, taellerMed: taellerMed(),
       fart: player.vx, maksFart: VX_MAKS,
       // tempo = spil-sekunder pr. virkeligt sekund; fart × tempo er den fart, man ser
       tempo, maksTempo: TEMPO_MAKS, fartPrSekund: player.vx * tempo, fartFaktor: fartFaktor(),
