@@ -11,5 +11,9 @@
   "url": "https://klaver.zydy.dk/",
   "orden": 140,
   "ekstern": true,
-  "mærkat": "Virker hjemme uden login"
+  "mærkat": "Hjemme: uden login · ude: kode på mail",
+  "alternativ": {
+    "spil": "klaverregn",
+    "tekst": "🎹 Uden login og mail"
+  }
 }

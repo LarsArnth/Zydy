@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 40,
+      "dato": "2026-09-15",
+      "spil": "klaver",
+      "titel": "Klaver uden e-mail",
+      "hvad": "Liva ønskede sig, at klaveret ikke skal bruge e-mail. Det er KlaverLær, der beder om en kode på mail, når man ikke er hjemme — den er privat og skal blive ved med at være det. Men nu siger kortet det ærligt, og lige under det sidder en grøn genvej til Klaverregn: klaveret her på zydy.dk, som aldrig spørger om login eller mail. Tryk på «🎹 Dit eget klaver» derinde og spil løs — hjemme, i skolen og alle andre steder.",
+      "oensket": "Liva"
+    },
+    {
       "nr": 39,
       "dato": "2026-09-15",
       "spil": "klaverregn",

@@ -52,6 +52,23 @@ assert.deepEqual({ ...api.ideer.rows[0], id: 0, oprettet: 0 }, {
 await page.click('.id-send');                       // "Luk"
 await page.waitForSelector('.id-dlg[open]', { state: 'hidden' });
 
+/* ---------- KlaverLær skal ikke bruge e-mail (Livas ønske #45) ---------- */
+// KlaverLær beder om en kode på mail, når man ikke er hjemme, og det kan et
+// barn ikke komme videre fra. Kortet siger det nu ærligt i mærkatet, og lige
+// under sidder en grøn genvej til Klaverregn — klaveret her på sitet, som
+// aldrig spørger om login eller mail.
+{
+  const klaver = page.locator('li[data-spil="klaver"]');
+  assert.match(await klaver.locator('.tag').textContent(), /kode på mail/i,
+    'mærkatet fortæller, at der skal en kode på mail til, når man er ude');
+  const genvej = klaver.locator('a.alt');
+  assert.equal(await genvej.count(), 1, 'KlaverLær-kortet har en genvej uden login');
+  assert.match(await genvej.textContent(), /Uden login og mail.*Klaverregn/,
+    'genvejen siger, hvad den er, og hvor den fører hen');
+  assert.equal(await genvej.getAttribute('href'), '/spil/klaverregn/');
+  assert.ok(await genvej.isVisible(), 'genvejen kan ses');
+}
+
 /* ---------- Idé til et helt nyt spil ---------- */
 const nyt = page.locator('#nytSpilKort');
 assert.equal(await nyt.isVisible(), true, '"Nyt spil?"-kortet står nederst');

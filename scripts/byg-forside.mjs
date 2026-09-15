@@ -48,10 +48,15 @@ const undvig = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g,
 
 /** Ét <li> som det står i index.html. Formen skal blive: /ideer.js hænger sine
  *  knapper på li[data-spil] og læser titlen i <h2>, og /soeg.js søger i <h2>,
- *  <p> og data-noegleord. */
-function liFor(k) {
+ *  <p> og data-noegleord. Genvejslinket fra "alternativ" skal stå EFTER
+ *  <a class="app">, for flere scripts tager kortets link med querySelector('a')
+ *  og regner med at få det første. */
+function liFor(k, efterId) {
   const ikon = k.ikon.split('\n').map(l => (l ? '        ' + l : l)).join('\n');
   const noegleord = (k.nøgleord || []).join(', ');
+  const mål = k.alternativ && efterId.get(k.alternativ.spil);
+  const alt = k.alternativ
+    ? `\n    <a class="alt" href="${mål.url}">${undvig(k.alternativ.tekst)}: <b>${undvig(mål.navn)}</b> ›</a>` : '';
   return `    <li data-spil="${k.id}"${k.ekstern ? ' data-ekstern' : ''}${k.sammen ? ' data-sammen' : ''}${k.kapløb ? ' data-kaploeb' : ''}${noegleord ? ` data-noegleord="${undvig(noegleord).replace(/"/g, '&quot;')}"` : ''}><a class="app" href="${k.url}">
       <span class="icon" aria-hidden="true">
 ${ikon}
@@ -62,18 +67,27 @@ ${ikon}
         <span class="meta"></span>
       </span>
       <span class="go" aria-hidden="true">›</span>
-    </a></li>`;
+    </a>${alt}</li>`;
 }
 
 /** index.html med kort-listen skiftet ud. */
 export function byggetForside(kort) {
+  const efterId = new Map(kort.map(k => [k.id, k]));
+  // "alternativ" er et genvejslink under kortet til et spil her på sitet, der
+  // kan det samme uden login — fx Klaverregn under KlaverLær, som beder om en
+  // kode på mail, når man ikke er hjemme (Livas ønske #45).
+  for (const k of kort) {
+    if (!k.alternativ) continue;
+    if (!k.alternativ.tekst) throw new Error(`${k.id}: "alternativ" mangler "tekst"`);
+    if (!efterId.has(k.alternativ.spil)) throw new Error(`${k.id}: "alternativ" peger på "${k.alternativ.spil}", som ikke findes`);
+  }
   const html = readFileSync(path.join(rod, 'public/index.html'), 'utf8');
   const start = html.indexOf('<ul class="apps" id="apps">');
   if (start < 0) throw new Error('public/index.html: fandt ikke <ul class="apps" id="apps">');
   const fra = html.indexOf('\n', start) + 1;
   const til = html.indexOf('  </ul>', fra);
   if (til < 0) throw new Error('public/index.html: fandt ikke </ul> efter kort-listen');
-  return html.slice(0, fra) + MARKØR + '\n\n' + kort.map(liFor).join('\n\n') + '\n' + html.slice(til);
+  return html.slice(0, fra) + MARKØR + '\n\n' + kort.map(k => liFor(k, efterId)).join('\n\n') + '\n' + html.slice(til);
 }
 
 /** src/spil-data.mjs — det Workeren har brug for. */

@@ -59,6 +59,30 @@ test('toplisternes regler kommer med over i SPIL', () => {
   }
 });
 
+test('"alternativ" peger på et kort der findes, og genvejen står på forsiden', () => {
+  const html = readFileSync(path.join(rod, 'public/index.html'), 'utf8');
+  for (const k of kort.filter(k => k.alternativ)) {
+    const mål = kort.find(m => m.id === k.alternativ.spil);
+    assert.ok(mål, `${k.id}: "alternativ" peger på "${k.alternativ.spil}", som ikke findes`);
+    assert.ok(k.alternativ.tekst, `${k.id}: "alternativ" mangler "tekst"`);
+    assert.match(html, new RegExp(`data-spil="${k.id}"[\\s\\S]{0,8000}?<a class="alt" href="${mål.url}">`),
+      `${k.id}: genvejslinket til ${mål.id} står ikke på kortet`);
+  }
+  // KlaverLær beder om en kode på mail, når man ikke er hjemme — kortet skal
+  // pege på Klaverregn, klaveret uden login (Livas ønske #45).
+  const klaver = kort.find(k => k.id === 'klaver');
+  assert.equal(klaver?.alternativ?.spil, 'klaverregn', 'KlaverLær-kortet skal pege på Klaverregn');
+});
+
+test('generatoren siger fra, hvis "alternativ" peger på et spil der ikke findes', () => {
+  const fusk = { id: 'fusk', navn: 'Fusk', beskrivelse: 'Et kort der peger forkert i testen her.',
+    url: '/spil/fusk/', orden: 1, ikon: '<svg viewBox="0 0 512 512"></svg>' };
+  assert.throws(() => byggetForside([{ ...fusk, alternativ: { spil: 'findesikke', tekst: 'Uden login' } }]),
+    /peger på "findesikke"/);
+  assert.throws(() => byggetForside([{ ...fusk, alternativ: { spil: 'fusk' } }]),
+    /mangler "tekst"/);
+});
+
 test('KORT og forsidens markup viser de samme spil i samme rækkefølge', () => {
   const html = readFileSync(path.join(rod, 'public/index.html'), 'utf8');
   const iHtml = [...html.matchAll(/<li data-spil="([^"]+)"/g)].map(m => m[1]);

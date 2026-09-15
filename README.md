@@ -1594,6 +1594,17 @@ node scripts/byg-forside.mjs    # skriver kortene ind i public/index.html og src
 }
 ```
 
+To valgfrie felter mere: `"mærkat"` er en lille gul pille under beskrivelsen
+(fx «Hjemme: uden login · ude: kode på mail» på KlaverLær), og `"alternativ"`
+er en grøn genvej under kortet til et spil her på sitet, der kan det samme uden
+login: `{ "spil": "klaverregn", "tekst": "🎹 Uden login og mail" }`. Den findes,
+fordi KlaverLær bor bag Cloudflare Access og beder om en kode på mail, når man
+ikke er hjemme — det kan et barn ikke komme videre fra, så kortet peger på
+Klaverregn i stedet (Livas ønske #45). Generatoren fejler, hvis genvejen peger
+på et spil, der ikke findes, og linket lægges *efter* `<a class="app">`, fordi
+flere scripts tager kortets link med `querySelector('a')` og regner med det
+første.
+
 Generatoren skriver to filer, som **ikke må rettes i hånden**:
 
 | Genereret | Bruges til |
