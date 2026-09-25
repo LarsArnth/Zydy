@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#14161f">
-<meta name="description" content="Baseforsvar: byg mure, tårne, farme med bønder og en kaserne med soldater, og hold zombierne væk fra rådhuset. De kommer tilfældigt hele døgnet – og flest om natten.">
+<meta name="description" content="Baseforsvar: byg mure, tårne, ballister, farme med bønder, en kaserne med soldater og bueskyttere og en kirke med præster, hyr tre helte – og hold zombierne væk fra rådhuset. De kommer tilfældigt hele døgnet – og flest om natten.">
 <title>Baseforsvar – zydy.dk</title>
 <!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
@@ -15,18 +15,23 @@
     skal forsvare den fra fjender … mure, tårne og tropper … farms med bønder
     … fjenderne skal komme tilfældigt over tid»).
 
-    Banen er 110 × 150 enheder (base.mjs) og tegnes i midten af fladen med en
+    Banen er 130 × 170 enheder (base.mjs) og tegnes i midten af fladen med en
     smal rand udenom, så man kan se zombierne komme, før de er inde på gitteret.
     Byggeknapperne ligger nedenunder — uden for fladen, så fingeren ikke skygger
-    for det felt, man er ved at bygge på.
+    for det felt, man er ved at bygge på. Heltene (ønske #59) står som tre små
+    knapper til højre i linjen over byggeknapperne, så de ikke koster højde.
 
-    Fire greb er værd at huske:
+    Fem greb er værd at huske:
       1) Man vælger en bygning i bunden og trykker så på et grønt felt. Mens en
          bygning er valgt, lyser rækkevidden op under fingeren.
       2) Trykker man på noget, man har bygget, kommer kassen op med «Træn»,
          «Opgradér» og «Sælg». Den ligger oven på fladen i to små rækker, så
-         resten af skærmen ikke hopper, når den kommer og går — og så der er
-         plads til tre knapper på en iPhone.
+         resten af skærmen ikke hopper, når den kommer og går. Knapperne bygges
+         kun om, når der kommer andre knapper — ellers skiftes kun teksten, så
+         et tryk ikke forsvinder under fingeren, mens nedtællingen tikker.
+      2b) Trykker man på en tropp eller en helt, viser kassen hans liv og tal
+         og en knap til at opgradere hele slagsen. Er det en helt, sender det
+         næste tryk på banen ham derhen.
       3) Natten tegnes som et blåt slør, der lægger sig hen over fladen. Det er
          den eneste besked om, at der nu kommer over dobbelt så mange zombier.
       4) Selve spillet kører i base.mjs; her tegnes det bare. Derfor kan testen
@@ -90,12 +95,27 @@
   .panelinfo .ikon{width:26px;height:26px;flex:none}
   .panelinfo .om{flex:1;min-width:0;font-size:12.5px;color:var(--muted);line-height:1.25}
   .panelinfo .om b{display:block;color:var(--text);font-size:15px}
+  .panelinfo .luk{flex:none;width:34px;height:34px;border-radius:50%;background:var(--bg3);color:var(--text);
+    font-size:16px;font-weight:800;align-self:flex-start}
+  .xp{height:5px;border-radius:3px;background:var(--bg3);margin-top:4px;overflow:hidden}
+  .xp i{display:block;height:100%;background:var(--sun)}
   .panelknapper{display:flex;gap:6px;margin-top:7px}
-  .panelknapper button{flex:1;border-radius:12px;padding:8px 4px;font-size:13px;font-weight:800;
+  .panelknapper button{flex:1;min-width:0;border-radius:12px;padding:8px 3px;font-size:13px;font-weight:800;
     background:var(--mint);line-height:1.15}
   .panelknapper button.traen{background:var(--sun)}
+  .panelknapper button.trylle{background:#c28bff}
   .panelknapper button.sael{background:var(--bg3);color:var(--text)}
   .panelknapper button:disabled{opacity:.4}
+
+  /* Heltene – tre små knapper til højre i linjen over byggeknapperne */
+  .helte{display:flex;gap:5px;flex:none}
+  .heltknap{position:relative;min-width:44px;height:36px;border-radius:12px;background:var(--bg2);color:var(--text);
+    font-size:15px;font-weight:800;padding:0 6px;border:2px solid transparent;line-height:1}
+  .heltknap small{display:block;font-size:10px;font-weight:800;color:var(--sun);margin-top:1px}
+  .heltknap.ude{opacity:.55}
+  .heltknap.klar{border-color:#c28bff}
+  .heltknap.valgt{border-color:var(--sun);background:var(--bg3)}
+  .heltknap.doed{opacity:.35}
 
   /* Linjen og byggeknapperne under fladen */
   .doegn{display:flex;align-items:center;gap:8px;margin-top:8px;min-height:30px}
@@ -176,13 +196,10 @@
     <div id="panel" hidden>
       <div class="panelinfo">
         <canvas class="ikon" id="panelTegn" width="52" height="52"></canvas>
-        <div class="om"><b id="panelNavn">Mur</b><span id="panelTal">Niveau 1</span></div>
+        <div class="om"><b id="panelNavn">Mur</b><span id="panelTal">Niveau 1</span><div class="xp" id="panelXp" hidden><i></i></div></div>
+        <button class="luk" id="lukBtn" aria-label="Luk">✕</button>
       </div>
-      <div class="panelknapper">
-        <button class="traen" id="traenBtn" hidden>Træn bonde<br>35 🪙</button>
-        <button id="opgraderBtn">Opgradér<br>25 🪙</button>
-        <button class="sael" id="saelgBtn">Sælg<br>10 🪙</button>
-      </div>
+      <div class="panelknapper" id="panelKnapper"></div>
     </div>
 
     <div class="screen on" id="startScreen">
@@ -200,7 +217,8 @@
         <button class="btn" id="startBtn">Spil</button>
         <p class="hint">Zombierne kommer fra alle sider og går efter rådhuset i midten – flest om natten,
           og stærkere for hver dag. Vælg noget i bunden, og tryk på et felt for at bygge det.
-          Tryk på din egen bygning for at træne folk eller opgradere den.</p>
+          Tryk på din bygning for at træne folk, og på dine tropper for at se deres liv og opgradere dem.
+          Heltene hyrer du med knapperne til højre. Banen er ny hver gang.</p>
         <div class="bygliste" id="bygliste"></div>
       </div>
     </div>
@@ -221,6 +239,7 @@
   <div id="bund" hidden>
     <div class="doegn">
       <div class="tekst" id="doegnTekst">Byg dit forsvar</div>
+      <div class="helte" id="helteRow"></div>
     </div>
     <div class="byggerække" id="byggeRow"></div>
   </div>
@@ -233,18 +252,20 @@
 <script type="module" src="/spil/kaploeb.js"></script>
 <script type="module">
 import {
-  FELT, KOLONNER, RAEKKER, BREDDE, HOEJDE, RAADHUS_FELT, midte, paaBanen,
-  BYGNINGER, BYGGES, BYGNING_VED, MAKS_NIVEAU, bygData, FJENDER,
-  DAG_LAENGDE, NAT_START, BONDE_PRIS, SOLDAT_PRIS,
+  FELT, KOLONNER, RAEKKER, BREDDE, HOEJDE, RAADHUS_FELT, midte, paaBanen, feltVed,
+  BYGNINGER, BYGGES, BYGNING_VED, MAKS_NIVEAU, bygData, FJENDER, TERRAEN, terraenPaa,
+  TROPPER, TROP_MAKS, tropTal, tropOpgradering, opgraderTropper, KOE_MAKS,
+  HELTE, HELT_IDER, HELT_MAKS, heltTal, heltAf, hyrHelt, sendHelt, kast, trylleVenter, xpTil, auraFaktor,
+  DAG_LAENGDE, NAT_START,
   nytSpil, byg, opgrader, saelg, salgspris, bygningPaa, traen, traening, bemanding,
-  boenderIAlt, farmIndtaegt, tik, dagVarsel, botTraek,
+  boenderIAlt, farmIndtaegt, tik, dagVarsel, botTraek, sendFjende, ledigeFelter,
 } from './base.mjs';
 
 const params = new URLSearchParams(location.search);
 const $ = id => document.getElementById(id);
 const stage = $('stage'), canvas = $('c'), g = canvas.getContext('2d');
 if (!g.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
-const bund = $('bund'), byggeRow = $('byggeRow'), panel = $('panel');
+const bund = $('bund'), byggeRow = $('byggeRow'), panel = $('panel'), helteRow = $('helteRow');
 const startScreen = $('startScreen'), slutScreen = $('slutScreen'), besked = $('besked'), varsel = $('varsel');
 const nameBtn = $('nameBtn'), nameForm = $('nameForm'), nameInput = $('nameInput');
 const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -256,9 +277,9 @@ const gem = (n, v) => { try { localStorage.setItem(n, String(v)); } catch (e) {}
 let bedste = tal(KEY_BEST);
 
 /* ---------- Fladen ---------- */
-/* Der tegnes med en rand på 7 enheder hele vejen rundt om gitteret, så man kan
+/* Der tegnes med en rand på 5 enheder hele vejen rundt om gitteret, så man kan
    se zombierne komme, før de er inde på banen. */
-const MARGEN = 7;
+const MARGEN = 5;
 let W = 1, H = 1, dpr = 1, skala = 1, ox = 0, oy = 0;
 function maalOp() {
   const r = stage.getBoundingClientRect();
@@ -285,14 +306,14 @@ if ('ResizeObserver' in window) new ResizeObserver(maalOp).observe(stage);
 
 /* ---------- Spillet ---------- */
 const nytFroe = () => {
-  // ?froe=1 (eller ?seed=1, som de andre spil bruger) giver den samme uge hver gang – det er sådan testene kører
+  // ?froe=1 (eller ?seed=1, som de andre spil bruger) giver det samme terræn og den samme uge hver gang – det er sådan testene kører
   const fast = parseInt(params.get('froe') ?? params.get('seed'), 10);
   return Number.isFinite(fast) ? fast : (Date.now() % 100000) + 1;
 };
 let spil = nytSpil(nytFroe());
 let fase = 'menu';            // menu | spil | slut
 let valgtSlags = null;        // bygningen, man er ved at rejse
-let valgtBygning = null;      // bygningen, man har trykket på
+let valgt = null;             // det, man har trykket på: { art: 'bygning'|'tropp'|'helt'|'hyr', ting }
 let sigte = null;             // feltet under fingeren, mens man bygger
 let sidsteT = 0, beskedUr = 0, varselUr = 0, pauseret = false, sidsteHusHp = 0, rystTil = 0;
 let sidsteDag = 1, daggryUr = 0;
@@ -310,9 +331,11 @@ function visVarsel(dag) {
   varselUr = 1.8;
 }
 
+function nulstilValg() { valgtSlags = null; valgt = null; sigte = null; }
+
 function start() {
   spil = nytSpil(nytFroe());
-  fase = 'spil'; valgtSlags = null; valgtBygning = null; sigte = null;
+  fase = 'spil'; nulstilValg();
   sidsteHusHp = spil.raadhus.hp; sidsteDag = 1; daggryUr = 0;
   startScreen.classList.remove('on');
   slutScreen.classList.remove('on');
@@ -322,7 +345,7 @@ function start() {
 }
 
 function tilMenu() {
-  fase = 'menu'; valgtSlags = null; valgtBygning = null; sigte = null;
+  fase = 'menu'; nulstilValg();
   slutScreen.classList.remove('on');
   startScreen.classList.add('on');
   bund.hidden = true;
@@ -331,7 +354,7 @@ function tilMenu() {
 
 function slut() {
   fase = 'slut';
-  valgtSlags = null; valgtBygning = null; sigte = null;
+  nulstilValg();
   bund.hidden = true;
   visPanel();
   const klarede = spil.klarede;
@@ -355,6 +378,7 @@ function visHud() {
   const hus = spil.raadhus;
   const noegle = [Math.round(hus.hp), spil.guld, spil.dag, spil.nat, spil.fjender.length,
     spil.drab, Math.ceil(daggryUr)].join('|');
+  tegnHelteknapper();
   if (noegle === sidsteHud) return;
   sidsteHud = noegle;
   $('husVal').textContent = String(Math.max(0, Math.round(hus.hp)));
@@ -409,97 +433,234 @@ byggeRow.addEventListener('pointerdown', e => {
   if (!knap || fase !== 'spil') return;
   const id = knap.dataset.slags;
   valgtSlags = valgtSlags === id ? null : id;
-  valgtBygning = null; sigte = null;
+  valgt = null; sigte = null;
   visPanel(); tegnKnapper();
 });
 
-/* ---------- Kassen med Træn/Opgradér/Sælg ---------- */
+/* ---------- Heltene: tre små knapper ---------- */
+let sidsteHelte = '';
+function tegnHelteknapper() {
+  const noegle = HELT_IDER.map(id => {
+    const h = heltAf(spil, id);
+    if (!h) return id + (spil.guld >= HELTE[id].pris ? '+' : '-');
+    return [id, h.niv, h.doed, trylleVenter(spil, h) === 0, valgt && valgt.ting === h].join(':');
+  }).join('|') + (valgt && valgt.art === 'hyr' ? valgt.ting : '');
+  if (noegle === sidsteHelte) return;
+  sidsteHelte = noegle;
+  if (helteRow.children.length !== HELT_IDER.length) {
+    helteRow.innerHTML = HELT_IDER.map(id =>
+      `<button class="heltknap" data-helt="${id}" aria-label="${HELTE[id].navn}"></button>`).join('');
+  }
+  HELT_IDER.forEach((id, nr) => {
+    const knap = helteRow.children[nr], h = heltAf(spil, id), type = HELTE[id];
+    knap.innerHTML = `${type.tegn}<small>${h ? 'niv ' + h.niv : type.pris + '🪙'}</small>`;
+    knap.classList.toggle('ude', !h);
+    knap.classList.toggle('doed', !!(h && h.doed));
+    knap.classList.toggle('klar', !!(h && !h.doed && trylleVenter(spil, h) === 0));
+    knap.classList.toggle('valgt', !!(valgt && (valgt.ting === h && h || (valgt.art === 'hyr' && valgt.ting === id))));
+  });
+}
+
+helteRow.addEventListener('click', e => {
+  const knap = e.target.closest('.heltknap');
+  if (!knap || fase !== 'spil') return;
+  vaelgHelt(knap.dataset.helt);
+});
+
+/** Trykker på en helteknap: vælger helten – eller viser, hvad han koster, hvis han ikke er hyret. */
+function vaelgHelt(id) {
+  const h = heltAf(spil, id);
+  valgtSlags = null; sigte = null;
+  if (h) valgt = valgt && valgt.ting === h ? null : { art: 'helt', ting: h };
+  else valgt = valgt && valgt.art === 'hyr' && valgt.ting === id ? null : { art: 'hyr', ting: id };
+  visPanel(); tegnKnapper(); tegnHelteknapper();
+}
+
+/* ---------- Kassen ---------- */
+const felterTekst = r => String(Math.round(r / FELT * 10) / 10).replace('.', ',');
+
 /** Én linje om, hvad bygningen kan på det niveau. */
 function niveauTekst(b) {
   const n = bygData(b);
-  const liv = `${Math.round(b.hp)}/${b.maksHp} liv`;
+  const liv = `❤️ ${Math.round(b.hp)}/${b.maksHp}`;
   if (b.slags === 'farm') {
     const m = bemanding(spil, b);
     return `${m.har}/${m.plads} bønder · ${n.indtaegt} 🪙 pr. bonde ved daggry · ${liv}`;
   }
-  if (b.slags === 'kaserne') {
-    const m = bemanding(spil, b);
-    return `${m.har}/${m.plads} soldater · ${n.soldatSkade} i hug · ${liv}`;
+  if (traening(b).length) {
+    const ude = traening(b).map(t => {
+      const antal = spil.soldater.filter(s => s.fra === b.id && s.slags === t.slags).length;
+      return `${antal} ${antal === 1 ? TROPPER[t.slags].navn.toLowerCase() : TROPPER[t.slags].flertal}`;
+    }).join(' · ');
+    const undervejs = b.igang.length + b.koe.length;
+    return `${ude} · træner ${n.samtidig} ad gangen${undervejs ? ` · ${undervejs} undervejs` : ''} · ${liv}`;
   }
   if (b.slags === 'mur') return `Står i vejen for zombierne · ${liv}`;
-  if (b.slags === 'raadhus') return `Falder det, er spillet slut · ${liv}`;
-  const felter = Math.round(n.raekkevidde / FELT * 10) / 10;
-  return `${n.skade} i skade${n.splash ? ' · rammer flere' : ''} · rækker ${felter} felter · ${liv}`;
+  if (b.slags === 'raadhus') return `Falder det, er spillet slut · hyr helte med knapperne forneden · ${liv}`;
+  return `${n.skade} i skade${n.splash ? ' · rammer flere' : ''}${BYGNING_VED[b.slags].foretraekker ? ' · sigter efter belejrere' : ''} · rækker ${felterTekst(n.raekkevidde)} felter · ${liv}`;
 }
 
-let sidstePanel = '';
+/** Troppens tal som én linje. */
+function troppeTekst(s) {
+  const niv = spil.tropNiv[s.slags], n = tropTal(s.slags, niv);
+  const antal = spil.soldater.filter(x => x.slags === s.slags).length;
+  const hvad = s.slags === 'praest' ? `✨ heler ${n.heling}`
+    : s.slags === 'bueskytte' ? `🏹 ${n.skade} · rækker ${felterTekst(n.raekkevidde)} felter` : `⚔️ ${n.skade} i hug`;
+  return `❤️ ${Math.max(0, Math.round(s.hp))}/${s.maksHp} · ${hvad} · 👟 ${String(n.fart).replace('.', ',')} · du har ${antal} ${antal === 1 ? TROPPER[s.slags].navn.toLowerCase() : TROPPER[s.slags].flertal}`;
+}
+
+function heltTekst(h) {
+  const type = HELTE[h.slags], n = heltTal(h.slags, h.niv);
+  if (h.doed) return `Faldet – rejser sig ved rådhuset om ${Math.ceil(h.genopstaar - spil.tid)} sek.`;
+  const hug = h.slags === 'ridder' ? `⚔️ ${n.skade}` : `${type.tegn} ${n.skade} · rækker ${felterTekst(n.raekkevidde)} felter`;
+  const pct = Math.round(Object.values(type.aura).find(v => typeof v === 'number' && v < 1) * auraFaktor(h.niv) * 100);
+  return `❤️ ${Math.round(h.hp)}/${h.maksHp} · ${hug} · aura «${type.aura.navn}»: ${type.aura.om.replace(/\d+ %/, pct + ' %')}. Tryk på banen for at sende ham derhen.`;
+}
+
+/**
+ * Knapperne i kassen. Svaret er en liste af { id, klasse, html, af (disabled), goer }.
+ * Det, der skal stå, afhænger af hvad der er valgt – se visPanel().
+ */
+function panelKnapper() {
+  const k = [];
+  if (!valgt) return k;
+  if (valgt.art === 'bygning') {
+    const b = valgt.ting, n = bygData(b);
+    const m = bemanding(spil, b);
+    for (const t of traening(b)) {
+      const fuld = b.slags === 'farm' && m.har + m.undervejs >= m.plads;
+      const koeFuld = m.undervejs >= KOE_MAKS;
+      k.push({
+        id: 'traen-' + t.slags, klasse: 'traen', af: fuld || koeFuld || spil.guld < t.pris,
+        html: fuld ? `Fuldt hus<br>${m.har}/${m.plads}` : koeFuld ? 'Køen er<br>fuld' : `Træn ${t.navn}<br>${t.pris} 🪙`,
+        goer: () => traen(spil, b, t.slags),
+      });
+    }
+    k.push(b.niveau >= MAKS_NIVEAU
+      ? { id: 'opgraderBtn', klasse: '', af: true, html: 'Færdig-<br>bygget', goer: () => ({ ok: false }) }
+      : { id: 'opgraderBtn', klasse: '', af: spil.guld < n.opgradering, html: `Opgradér<br>${n.opgradering} 🪙`, goer: () => opgrader(spil, b) });
+    if (b.slags !== 'raadhus') {
+      k.push({ id: 'saelgBtn', klasse: 'sael', af: false, html: `Sælg<br>${salgspris(b)} 🪙`,
+        goer: () => { const s = saelg(spil, b); if (s.ok) valgt = null; return s; } });
+    }
+  } else if (valgt.art === 'tropp') {
+    const s = valgt.ting, niv = spil.tropNiv[s.slags], pris = tropOpgradering(s.slags, niv);
+    k.push(niv >= TROP_MAKS
+      ? { id: 'tropOpBtn', klasse: '', af: true, html: `Alle ${TROPPER[s.slags].flertal}<br>færdigtrænet`, goer: () => ({ ok: false }) }
+      : { id: 'tropOpBtn', klasse: '', af: spil.guld < pris, html: `Opgradér alle ${TROPPER[s.slags].flertal}<br>${pris} 🪙`, goer: () => opgraderTropper(spil, s.slags) });
+  } else if (valgt.art === 'helt') {
+    const h = valgt.ting, tr = HELTE[h.slags].trylle, vent = trylleVenter(spil, h);
+    k.push({
+      id: 'trylleBtn', klasse: 'trylle', af: h.doed || vent > 0,
+      html: `${tr.navn}<br>${h.doed ? '–' : vent > 0 ? Math.ceil(vent) + ' sek.' : 'klar!'}`,
+      goer: () => kast(spil, h),
+    });
+    k.push({ id: 'hjemBtn', klasse: 'sael', af: h.doed, html: 'Hjem til<br>rådhuset',
+      goer: () => sendHelt(spil, h, spil.raadhus.x, spil.raadhus.y) });
+  } else if (valgt.art === 'hyr') {
+    const type = HELTE[valgt.ting];
+    k.push({ id: 'hyrBtn', klasse: 'traen', af: spil.guld < type.pris, html: `Hyr ${type.navn.toLowerCase()}<br>${type.pris} 🪙`,
+      goer: () => { const s = hyrHelt(spil, valgt.ting); if (s.ok) valgt = { art: 'helt', ting: s.helt }; return s; } });
+  }
+  return k;
+}
+
+let panelStruktur = '', panelKnapListe = [];
 function visPanel() {
-  if (!valgtBygning || fase !== 'spil' || !spil.bygninger.includes(valgtBygning)) {
-    panel.hidden = true; sidstePanel = ''; valgtBygning = spil.bygninger.includes(valgtBygning) ? valgtBygning : null;
+  const findes = valgt && (
+    valgt.art === 'bygning' ? spil.bygninger.includes(valgt.ting)
+      : valgt.art === 'tropp' ? spil.soldater.includes(valgt.ting)
+        : valgt.art === 'helt' ? spil.helte.includes(valgt.ting) : !heltAf(spil, valgt.ting));
+  if (!findes || fase !== 'spil') {
+    // En tropp, der faldt, mens kassen stod: vis en anden af samme slags, hvis der er en
+    if (valgt && valgt.art === 'tropp' && fase === 'spil') {
+      const anden = spil.soldater.find(s => s.slags === valgt.ting.slags);
+      if (anden) { valgt = { art: 'tropp', ting: anden }; return visPanel(); }
+    }
+    valgt = null;
+    panel.hidden = true; panelStruktur = '';
     return;
   }
-  const b = valgtBygning, type = BYGNING_VED[b.slags], n = bygData(b);
   panel.hidden = false;
-  const t = traening(b);
-  const m = t ? bemanding(spil, b) : null;
-  // Kassen står, mens man spiller videre – rør kun DOM'en, når der er sket noget
-  const noegle = [b.id, b.niveau, Math.round(b.hp), spil.guld >= (n.opgradering || 0),
-    t && spil.guld >= t.pris, m && m.har, !!b.traener].join('|');
-  if (noegle === sidstePanel) return;
-  sidstePanel = noegle;
-  tegnMaerke($('panelTegn'), b.slags, b);
-  $('panelNavn').textContent = `${type.navn} · niveau ${b.niveau}/${MAKS_NIVEAU}`;
-  $('panelTal').textContent = b.traener
-    ? `Træner ${b.traener.slags}… ${Math.max(0, Math.ceil(b.traener.til - spil.tid))} sek.`
-    : niveauTekst(b);
-
-  const traenBtn = $('traenBtn');
-  traenBtn.hidden = !t;
-  if (t) {
-    const fuldt = m.har >= m.plads;
-    traenBtn.disabled = !!b.traener || fuldt || spil.guld < t.pris;
-    traenBtn.innerHTML = fuldt ? `Fuldt hus<br>${m.har}/${m.plads}` : `Træn ${t.navn}<br>${t.pris} 🪙`;
-  }
-  const op = $('opgraderBtn');
-  if (b.niveau >= MAKS_NIVEAU) {
-    op.disabled = true; op.innerHTML = 'Færdig-<br>bygget';
+  const xp = $('panelXp');
+  xp.hidden = valgt.art !== 'helt';
+  if (valgt.art === 'bygning') {
+    const b = valgt.ting, type = BYGNING_VED[b.slags];
+    tegnMaerke($('panelTegn'), b.slags, b);
+    $('panelNavn').textContent = `${type.navn} · niveau ${b.niveau}/${MAKS_NIVEAU}`;
+    $('panelTal').textContent = niveauTekst(b);
+  } else if (valgt.art === 'tropp') {
+    const s = valgt.ting;
+    tegnMaerkeEnhed($('panelTegn'), s.slags);
+    $('panelNavn').textContent = `${TROPPER[s.slags].navn} · niveau ${spil.tropNiv[s.slags]}/${TROP_MAKS}`;
+    $('panelTal').textContent = troppeTekst(s);
+  } else if (valgt.art === 'helt') {
+    const h = valgt.ting, type = HELTE[h.slags];
+    tegnMaerkeEnhed($('panelTegn'), h.slags);
+    $('panelNavn').textContent = `${type.navn} · niveau ${h.niv}/${HELT_MAKS}`;
+    $('panelTal').textContent = heltTekst(h);
+    xp.firstChild.style.width = (h.niv >= HELT_MAKS ? 100 : Math.min(100, h.xp / xpTil(h.niv) * 100)) + '%';
   } else {
-    op.disabled = spil.guld < n.opgradering;
-    op.innerHTML = `Opgradér<br>${n.opgradering} 🪙`;
+    const type = HELTE[valgt.ting];
+    tegnMaerkeEnhed($('panelTegn'), valgt.ting);
+    $('panelNavn').textContent = `${type.navn} ${type.tegn}`;
+    $('panelTal').textContent = `${type.om} Aura «${type.aura.navn}»: ${type.aura.om}. Trylleformular «${type.trylle.navn}»: ${type.trylle.om}.`;
   }
-  const sael = $('saelgBtn');
-  sael.hidden = b.slags === 'raadhus';
-  sael.innerHTML = `Sælg<br>${salgspris(b)} 🪙`;
+  // Knapperne: byg kun om, når der er kommet andre knapper – ellers skift bare tekst
+  panelKnapListe = panelKnapper();
+  const struktur = panelKnapListe.map(k => k.id).join('|');
+  const rod = $('panelKnapper');
+  if (struktur !== panelStruktur) {
+    panelStruktur = struktur;
+    rod.innerHTML = panelKnapListe.map(k => `<button id="${k.id}" class="${k.klasse}"></button>`).join('');
+  }
+  panelKnapListe.forEach((k, nr) => {
+    const el = rod.children[nr];
+    if (el.innerHTML !== k.html) el.innerHTML = k.html;
+    el.disabled = !!k.af;
+  });
 }
 
-$('traenBtn').addEventListener('click', () => {
-  if (!valgtBygning) return;
-  const svar = traen(spil, valgtBygning);
-  if (!svar.ok) return visBesked(svar.fejl);
+$('panelKnapper').addEventListener('click', e => {
+  const el = e.target.closest('button');
+  if (!el) return;
+  const k = panelKnapListe.find(x => x.id === el.id);
+  if (!k) return;
+  const svar = k.goer();
+  if (svar && !svar.ok && svar.fejl) visBesked(svar.fejl);
   visPanel(); visHud();
 });
-$('opgraderBtn').addEventListener('click', () => {
-  if (!valgtBygning) return;
-  const svar = opgrader(spil, valgtBygning);
-  if (!svar.ok) return visBesked(svar.fejl);
-  visPanel(); visHud();
-});
-$('saelgBtn').addEventListener('click', () => {
-  if (!valgtBygning) return;
-  const svar = saelg(spil, valgtBygning);
-  if (!svar.ok) return visBesked(svar.fejl);
-  valgtBygning = null;
-  visPanel(); visHud();
-});
+$('lukBtn').addEventListener('click', () => { valgt = null; visPanel(); tegnHelteknapper(); });
 
 /* ---------- Fingeren på banen ---------- */
 function feltUnder(clientX, clientY) {
   const p = tilBane(clientX, clientY);
-  return { kx: Math.floor(p.x / FELT), ky: Math.floor(p.y / FELT) };
+  return feltVed(p.x, p.y);
+}
+
+/**
+ * Hvilken tropp eller helt står under fingeren? Står der en bygning på feltet,
+ * skal man ramme tættere på, ellers kan man ikke trykke på sin egen kaserne,
+ * mens soldaterne står vagt omkring den.
+ */
+function enhedVed(x, y) {
+  const { kx, ky } = feltVed(x, y);
+  const r = paaBanen(kx, ky) && bygningPaa(spil, kx, ky) ? 2.6 : 5;
+  let bedst = null, bedstD = r;
+  for (const h of spil.helte) {
+    if (h.doed) continue;
+    const d = Math.hypot(h.x - x, h.y - y) - 0.8;               // heltene er lidt større
+    if (d < bedstD) { bedstD = d; bedst = { art: 'helt', ting: h }; }
+  }
+  for (const s of spil.soldater) {
+    const d = Math.hypot(s.x - x, s.y - y);
+    if (d < bedstD) { bedstD = d; bedst = { art: 'tropp', ting: s }; }
+  }
+  return bedst;
 }
 
 /** Bygger (eller vælger) på et felt. Bruges både af fingeren og af testen. */
-function trykPaaFelt(kx, ky) {
+function trykPaaFelt(kx, ky, punkt = null) {
   if (fase !== 'spil') return false;
   if (valgtSlags) {
     const svar = byg(spil, valgtSlags, kx, ky);
@@ -509,10 +670,23 @@ function trykPaaFelt(kx, ky) {
     visHud(); tegnKnapper();
     return true;
   }
-  const b = paaBanen(kx, ky) ? bygningPaa(spil, kx, ky) : null;
-  valgtBygning = b && b === valgtBygning ? null : b;
-  visPanel();
-  return !!b;
+  const p = punkt || midte(kx, ky);
+  const enhed = enhedVed(p.x, p.y);
+  if (enhed && !(valgt && valgt.art === 'helt' && enhed.ting === valgt.ting)) {
+    valgt = enhed;
+  } else if (valgt && valgt.art === 'helt') {
+    // En valgt helt sendes derhen, man trykker
+    const svar = sendHelt(spil, valgt.ting, p.x, p.y);
+    if (!svar.ok) visBesked(svar.fejl);
+    else spil.smaeld.push({ x: p.x, y: p.y, r: 3, liv: 0.5, alder: 0, slags: 'hug' });
+  } else {
+    const b = paaBanen(kx, ky) ? bygningPaa(spil, kx, ky) : null;
+    const t = terraenPaa(spil, kx, ky);
+    if (!b && t) visBesked(TERRAEN[t].navn + ' – her kan ingen gå', 1);
+    valgt = b && !(valgt && valgt.ting === b) ? { art: 'bygning', ting: b } : null;
+  }
+  visPanel(); tegnHelteknapper();
+  return !!valgt;
 }
 
 canvas.addEventListener('pointerdown', e => {
@@ -520,7 +694,7 @@ canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
   const f = feltUnder(e.clientX, e.clientY);
   if (valgtSlags) { sigte = f; canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId); }
-  else trykPaaFelt(f.kx, f.ky);
+  else trykPaaFelt(f.kx, f.ky, tilBane(e.clientX, e.clientY));
 });
 canvas.addEventListener('pointermove', e => {
   if (!sigte || !valgtSlags) return;
@@ -546,12 +720,61 @@ function moerke() {
   return Math.min(1, (del - NAT_START) / 0.06);
 }
 
+/** Et fast «tilfældigt» tal pr. felt, så sten og træer står det samme sted hvert billede. */
+const pynt = (kx, ky, n) => ((kx * 73856093) ^ (ky * 19349663) ^ (n * 83492791)) >>> 0;
+
+function tegnTerraen(kx, ky, t) {
+  const x = px(kx * FELT), y = py(ky * FELT), s = FELT * skala;
+  if (t === 'vand') {
+    g.fillStyle = '#24588a';
+    g.fillRect(x, y, s + 1, s + 1);
+    g.strokeStyle = 'rgba(160,210,255,.35)'; g.lineWidth = Math.max(1, s * 0.05); g.lineCap = 'round';
+    const boelge = Math.sin(spil.tid * 1.5 + kx + ky) * s * 0.05;
+    for (const dy of [0.35, 0.68]) {
+      g.beginPath();
+      g.moveTo(x + s * 0.2, y + s * dy + boelge);
+      g.quadraticCurveTo(x + s * 0.35, y + s * (dy - 0.08) + boelge, x + s * 0.5, y + s * dy + boelge);
+      g.quadraticCurveTo(x + s * 0.65, y + s * (dy + 0.08) + boelge, x + s * 0.8, y + s * dy + boelge);
+      g.stroke();
+    }
+    return;
+  }
+  if (t === 'sten') {
+    g.fillStyle = '#3d3b44';
+    g.fillRect(x, y, s + 1, s + 1);
+    for (let i = 0; i < 3; i++) {
+      const h = pynt(kx, ky, i);
+      const cx = x + s * (0.25 + (h % 50) / 100), cy = y + s * (0.25 + ((h >> 8) % 50) / 100);
+      const r = s * (0.18 + ((h >> 16) % 12) / 100);
+      g.fillStyle = '#6d6a72';
+      g.beginPath(); g.ellipse(cx, cy, r, r * 0.8, 0, 0, 7); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.12)';
+      g.beginPath(); g.ellipse(cx - r * 0.3, cy - r * 0.3, r * 0.4, r * 0.3, 0, 0, 7); g.fill();
+    }
+    return;
+  }
+  // Skov
+  g.fillStyle = '#1d3322';
+  g.fillRect(x, y, s + 1, s + 1);
+  for (let i = 0; i < 3; i++) {
+    const h = pynt(kx, ky, i + 5);
+    const cx = x + s * (0.22 + (h % 56) / 100), cy = y + s * (0.22 + ((h >> 8) % 56) / 100);
+    const r = s * (0.2 + ((h >> 16) % 10) / 100);
+    g.fillStyle = '#2c6b3f';
+    g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+    g.fillStyle = '#3b8a52';
+    g.beginPath(); g.arc(cx - r * 0.25, cy - r * 0.25, r * 0.55, 0, 7); g.fill();
+  }
+}
+
 function tegnBane() {
   // Ødemarken udenom – det er der, zombierne kommer fra
   g.fillStyle = OEDEMARK;
   g.fillRect(0, 0, W, H);
   // Græsset som et ternet tæppe, så felterne kan ses uden streger
   for (let ky = 0; ky < RAEKKER; ky++) for (let kx = 0; kx < KOLONNER; kx++) {
+    const t = terraenPaa(spil, kx, ky);
+    if (t) { tegnTerraen(kx, ky, t); continue; }
     g.fillStyle = GRAES[(kx + ky) % 2];
     g.fillRect(px(kx * FELT), py(ky * FELT), FELT * skala + 1, FELT * skala + 1);
   }
@@ -565,6 +788,7 @@ function tegnGitter() {
   if (!valgtSlags || fase !== 'spil') return;
   const s = FELT * skala;
   for (let ky = 0; ky < RAEKKER; ky++) for (let kx = 0; kx < KOLONNER; kx++) {
+    if (terraenPaa(spil, kx, ky)) continue;
     const optaget = !!bygningPaa(spil, kx, ky);
     g.strokeStyle = optaget ? 'rgba(255,77,94,.3)' : 'rgba(61,220,132,.4)';
     g.lineWidth = 1.5;
@@ -572,7 +796,7 @@ function tegnGitter() {
   }
   if (!sigte) return;
   const { kx, ky } = sigte;
-  const kan = paaBanen(kx, ky) && !bygningPaa(spil, kx, ky) && spil.guld >= BYGNING_VED[valgtSlags].pris;
+  const kan = paaBanen(kx, ky) && !terraenPaa(spil, kx, ky) && !bygningPaa(spil, kx, ky) && spil.guld >= BYGNING_VED[valgtSlags].pris;
   const p = midte(kx, ky);
   g.fillStyle = kan ? 'rgba(61,220,132,.3)' : 'rgba(255,77,94,.3)';
   g.fillRect(px(kx * FELT), py(ky * FELT), s, s);
@@ -580,18 +804,18 @@ function tegnGitter() {
   if (rk) tegnRaekkevidde(p.x, p.y, rk, kan);
 }
 
-function tegnRaekkevidde(x, y, r, god = true) {
+function tegnRaekkevidde(x, y, r, god = true, farve = '255,255,255') {
   g.beginPath(); g.arc(px(x), py(y), r * skala, 0, Math.PI * 2);
-  g.fillStyle = god ? 'rgba(255,255,255,.07)' : 'rgba(255,77,94,.07)';
+  g.fillStyle = god ? `rgba(${farve},.07)` : 'rgba(255,77,94,.07)';
   g.fill();
-  g.strokeStyle = god ? 'rgba(255,255,255,.3)' : 'rgba(255,77,94,.4)';
+  g.strokeStyle = god ? `rgba(${farve},.3)` : 'rgba(255,77,94,.4)';
   g.lineWidth = 1.5; g.stroke();
 }
 
 /**
  * Selve bygningen, tegnet omkring (x,y) i en kasse på `s`. Den bruges både på
- * banen, i kassen med knapperne og på de fem knapper i bunden — derfor tager
- * den en tegnestok med, i stedet for at bruge `g` direkte.
+ * banen, i kassen med knapperne og på knapperne i bunden — derfor tager den en
+ * tegnestok med, i stedet for at bruge `g` direkte.
  */
 function tegnBygning(gg, slags, x, y, s, niveau = 1, vinkel = -Math.PI / 2) {
   const type = BYGNING_VED[slags];
@@ -658,6 +882,24 @@ function tegnBygning(gg, slags, x, y, s, niveau = 1, vinkel = -Math.PI / 2) {
     gg.moveTo(x + s * 0.3, y + s * 0.24); gg.lineTo(x + s * 0.02, y - s * 0.32); gg.stroke();
     return;
   }
+  if (slags === 'kirke') {
+    gg.fillStyle = '#d9dde6';                                  // kirkeskibet
+    gg.beginPath(); gg.roundRect(x - s * 0.36, y - s * 0.06, s * 0.72, s * 0.38, s * 0.04); gg.fill();
+    gg.fillStyle = '#b84a4a';                                  // taget
+    gg.beginPath();
+    gg.moveTo(x - s * 0.4, y - s * 0.04); gg.lineTo(x - s * 0.1, y - s * 0.26); gg.lineTo(x + s * 0.4, y - s * 0.26); gg.lineTo(x + s * 0.4, y - s * 0.04);
+    gg.closePath(); gg.fill();
+    gg.fillStyle = '#eef1f6';                                  // tårnet
+    gg.fillRect(x - s * 0.34, y - s * 0.36, s * 0.2, s * 0.4);
+    gg.fillStyle = '#b84a4a';
+    gg.beginPath(); gg.moveTo(x - s * 0.37, y - s * 0.36); gg.lineTo(x - s * 0.24, y - s * 0.56); gg.lineTo(x - s * 0.11, y - s * 0.36); gg.closePath(); gg.fill();
+    gg.fillStyle = '#ffd447';                                  // korset
+    gg.fillRect(x - s * 0.255, y - s * 0.7, s * 0.03, s * 0.16);
+    gg.fillRect(x - s * 0.3, y - s * 0.65, s * 0.12, s * 0.03);
+    gg.fillStyle = '#6b4a2a';
+    gg.beginPath(); gg.roundRect(x + s * 0.08, y + s * 0.08, s * 0.14, s * 0.24, [s * 0.07, s * 0.07, 0, 0]); gg.fill();
+    return;
+  }
   // Tårnene: sokkel og et hoved, der drejer efter målet
   gg.fillStyle = '#414b5c';
   gg.beginPath(); gg.roundRect(x - s * 0.34, y - s * 0.28, s * 0.68, s * 0.6, s * 0.12); gg.fill();
@@ -675,6 +917,12 @@ function tegnBygning(gg, slags, x, y, s, niveau = 1, vinkel = -Math.PI / 2) {
     gg.beginPath(); gg.roundRect(-s * 0.06, -s * 0.11, s * 0.42, s * 0.22, s * 0.07); gg.fill();
     gg.fillStyle = '#2b3242';
     gg.beginPath(); gg.arc(0, 0, s * 0.15, 0, 7); gg.fill();
+  } else if (slags === 'ballista') {
+    gg.strokeStyle = type.farve; gg.lineWidth = s * 0.07; gg.lineCap = 'round';
+    gg.beginPath(); gg.moveTo(-s * 0.16, 0); gg.lineTo(s * 0.4, 0); gg.stroke();       // skaftet
+    gg.beginPath(); gg.moveTo(s * 0.12, -s * 0.28); gg.quadraticCurveTo(s * 0.32, 0, s * 0.12, s * 0.28); gg.stroke();   // buen
+    gg.strokeStyle = '#fff'; gg.lineWidth = Math.max(1, s * 0.025);
+    gg.beginPath(); gg.moveTo(s * 0.12, -s * 0.28); gg.lineTo(-s * 0.1, 0); gg.lineTo(s * 0.12, s * 0.28); gg.stroke();
   } else {
     gg.strokeStyle = type.farve; gg.lineWidth = s * 0.08; gg.lineCap = 'round';
     gg.beginPath(); gg.arc(0, 0, s * 0.2, -1.1, 1.1); gg.stroke();
@@ -691,6 +939,14 @@ function tegnMaerke(el, slags, b = null) {
   tegnBygning(gg, slags, el.width / 2, el.height / 2, el.width, b ? b.niveau : 1);
 }
 
+/** Troppen eller helten i kassen – samme tegning som på banen, bare større. */
+function tegnMaerkeEnhed(el, slags) {
+  const gg = el.getContext('2d');
+  gg.setTransform(1, 0, 0, 1, 0, 0);
+  gg.clearRect(0, 0, el.width, el.height);
+  tegnFigur(gg, slags, el.width / 2, el.height * 0.6, el.width * 0.3, 0);
+}
+
 function tegnPaaBanen(b) {
   const x = px(b.x), y = py(b.y), s = FELT * skala;
   g.save();
@@ -704,21 +960,28 @@ function tegnPaaBanen(b) {
     const fx = x + (i - (b.niveau - 1) / 2) * spring;
     g.beginPath(); g.arc(fx, y + s * 0.4, s * 0.045, 0, 7); g.fill();
   }
-  // Bønder og soldater som små hoveder over bygningen
-  const m = traening(b) ? bemanding(spil, b) : null;
-  if (m && m.har) {
-    g.fillStyle = b.slags === 'farm' ? '#ffe9a8' : '#9cc4ff';
-    for (let i = 0; i < m.har; i++) {
+  // Bønderne som små hoveder over farmen
+  if (b.slags === 'farm' && b.boender) {
+    g.fillStyle = '#ffe9a8';
+    for (let i = 0; i < b.boender; i++) {
       g.beginPath(); g.arc(x - s * 0.3 + i * s * 0.15, y - s * 0.42, s * 0.055, 0, 7); g.fill();
     }
   }
-  // Træningen som en lille bjælke
-  if (b.traener) {
-    const del = 1 - Math.max(0, (b.traener.til - spil.tid) / b.traener.laengde);
+  // Træningen som en lille bjælke – og et tal for dem, der står i kø
+  if (b.igang.length) {
+    const o = b.igang[0];
+    const del = 1 - Math.max(0, (o.til - spil.tid) / o.laengde);
     g.fillStyle = 'rgba(0,0,0,.45)';
     g.fillRect(x - s * 0.32, y + s * 0.3, s * 0.64, s * 0.08);
     g.fillStyle = '#ffd447';
     g.fillRect(x - s * 0.32, y + s * 0.3, s * 0.64 * del, s * 0.08);
+    const flere = b.igang.length - 1 + b.koe.length;
+    if (flere > 0) {
+      g.fillStyle = '#ffd447';
+      g.font = `800 ${Math.max(8, s * 0.3)}px -apple-system,system-ui,sans-serif`;
+      g.textAlign = 'right'; g.textBaseline = 'top';
+      g.fillText('+' + flere, x + s * 0.5, y - s * 0.5);
+    }
   }
   // Livbjælken, når der er bidt i den
   if (b.hp < b.maksHp) {
@@ -728,7 +991,7 @@ function tegnPaaBanen(b) {
     g.fillStyle = del > 0.5 ? '#3ddc84' : del > 0.25 ? '#ffd447' : '#ff4d5e';
     g.fillRect(x - s * 0.4, y - s * 0.5, s * 0.8 * del, s * 0.09);
   }
-  if (valgtBygning === b) {
+  if (valgt && valgt.ting === b) {
     g.strokeStyle = '#ffd447'; g.lineWidth = 2;
     g.strokeRect(px(b.kx * FELT) + 1, py(b.ky * FELT) + 1, s - 2, s - 2);
     const n = bygData(b);
@@ -739,7 +1002,7 @@ function tegnPaaBanen(b) {
 function tegnZombie(f) {
   const x = px(f.x), y = py(f.y), r = f.r * skala;
   const art = FJENDER[f.slags];
-  const vip = Math.sin(f.gang * 7) * r * 0.12;
+  const vip = f.lammet > spil.tid ? 0 : Math.sin(f.gang * 7) * r * 0.12;
   g.save();
   if (f.blink > 0) g.globalAlpha = 0.65;
   g.fillStyle = art.farve;
@@ -752,6 +1015,14 @@ function tegnZombie(f) {
     g.beginPath(); g.roundRect(x - r, y - r * 0.9 + vip, r * 2, r * 1.9, r * 0.4); g.fill();
     g.fillStyle = 'rgba(0,0,0,.22)';                           // panserpladen
     g.beginPath(); g.roundRect(x - r * 0.75, y - r * 0.25 + vip, r * 1.5, r * 0.45, r * 0.15); g.fill();
+  } else if (f.slags === 'belejrer') {
+    // En tyk fyr med en kastearm og en sten over hovedet
+    g.beginPath(); g.ellipse(x, y + vip, r, r * 0.85, 0, 0, 7); g.fill();
+    g.strokeStyle = '#6b4a2a'; g.lineWidth = Math.max(1, r * 0.22); g.lineCap = 'round';
+    const arm = -Math.PI / 2 + Math.sin(f.ladt / f.angrebFart * Math.PI) * 0.9;
+    g.beginPath(); g.moveTo(x, y + vip); g.lineTo(x + Math.cos(arm) * r * 1.5, y + vip + Math.sin(arm) * r * 1.5); g.stroke();
+    g.fillStyle = '#8a8792';
+    g.beginPath(); g.arc(x + Math.cos(arm) * r * 1.6, y + vip + Math.sin(arm) * r * 1.6, r * 0.42, 0, 7); g.fill();
   } else if (f.slags === 'loeber') {
     g.beginPath(); g.ellipse(x, y + vip, r * 0.85, r * 1.15, 0, 0, 7); g.fill();
   } else {
@@ -768,6 +1039,13 @@ function tegnZombie(f) {
   const bx = Math.cos(ret) * r * 0.1, by = Math.sin(ret) * r * 0.1;
   g.beginPath(); g.arc(x - kig + bx, y - r * 0.15 + vip + by, r * 0.14, 0, 7); g.fill();
   g.beginPath(); g.arc(x + kig + bx, y - r * 0.15 + vip + by, r * 0.14, 0, 7); g.fill();
+  if (f.lammet > spil.tid) {                                   // stjerner om hovedet, når den er lammet
+    g.fillStyle = '#ffd447';
+    for (let i = 0; i < 3; i++) {
+      const a = spil.tid * 5 + i * 2.1;
+      g.beginPath(); g.arc(x + Math.cos(a) * r, y - r * 1.2 + Math.sin(a) * r * 0.3, r * 0.18, 0, 7); g.fill();
+    }
+  }
   g.restore();
   // Livbjælken
   if (f.hp < f.maksHp) {
@@ -779,25 +1057,108 @@ function tegnZombie(f) {
   }
 }
 
+/**
+ * En tropp eller en helt, tegnet omkring fødderne (x,y) med størrelsen r.
+ * Kroppen er en afrundet kasse og hovedet en cirkel; resten er det, man har i
+ * hænderne, så man kan kende dem fra hinanden, også når de er små.
+ */
+function tegnFigur(gg, slags, x, y, r, vip) {
+  const krop = { soldat: '#4d8dff', bueskytte: '#3c9a5a', praest: '#eef1f6', ridder: '#9fb4d9', troldkvinde: '#8e5bd6', jaeger: '#5d7a3a' }[slags];
+  gg.fillStyle = krop;
+  gg.beginPath(); gg.roundRect(x - r * 0.55, y - r * 0.4 + vip, r * 1.1, r * 1.3, r * 0.3); gg.fill();
+  gg.fillStyle = '#ffe1c4';                                     // hovedet
+  gg.beginPath(); gg.arc(x, y - r * 0.75 + vip, r * 0.45, 0, 7); gg.fill();
+  gg.lineCap = 'round';
+  if (slags === 'soldat' || slags === 'ridder') {
+    gg.strokeStyle = '#d9e3f5'; gg.lineWidth = Math.max(1, r * 0.2);
+    gg.beginPath(); gg.moveTo(x + r * 0.5, y + r * 0.4 + vip); gg.lineTo(x + r * 0.95, y - r * 0.7 + vip); gg.stroke();
+  }
+  if (slags === 'ridder') {
+    gg.fillStyle = '#ffd447';                                   // skjoldet og hjelmen
+    gg.beginPath(); gg.roundRect(x - r * 0.95, y - r * 0.3 + vip, r * 0.6, r * 0.85, r * 0.2); gg.fill();
+    gg.fillStyle = '#c7d2e6';
+    gg.beginPath(); gg.arc(x, y - r * 0.85 + vip, r * 0.45, Math.PI, 0); gg.fill();
+  }
+  if (slags === 'bueskytte' || slags === 'jaeger') {
+    gg.strokeStyle = '#c99a5b'; gg.lineWidth = Math.max(1, r * 0.16);
+    gg.beginPath(); gg.arc(x + r * 0.55, y + vip, r * 0.7, -1.2, 1.2); gg.stroke();
+    gg.fillStyle = slags === 'jaeger' ? '#3f5a24' : '#2a6b3e';  // hætten
+    gg.beginPath(); gg.arc(x, y - r * 0.8 + vip, r * 0.5, Math.PI * 1.05, -0.05); gg.fill();
+  }
+  if (slags === 'jaeger') {
+    gg.fillStyle = '#b8342d';                                   // fjeren i hatten
+    gg.beginPath(); gg.ellipse(x + r * 0.35, y - r * 1.3 + vip, r * 0.12, r * 0.35, 0.5, 0, 7); gg.fill();
+  }
+  if (slags === 'praest') {
+    gg.fillStyle = '#ffd447';                                   // glorien og korset
+    gg.strokeStyle = '#ffd447'; gg.lineWidth = Math.max(1, r * 0.12);
+    gg.beginPath(); gg.ellipse(x, y - r * 1.3 + vip, r * 0.4, r * 0.14, 0, 0, 7); gg.stroke();
+    gg.fillRect(x - r * 0.06, y - r * 0.2 + vip, r * 0.12, r * 0.6);
+    gg.fillRect(x - r * 0.22, y - r * 0.05 + vip, r * 0.44, r * 0.12);
+  }
+  if (slags === 'troldkvinde') {
+    gg.fillStyle = '#5b2ea6';                                   // den spidse hat
+    gg.beginPath(); gg.moveTo(x - r * 0.7, y - r * 0.95 + vip); gg.lineTo(x + r * 0.15, y - r * 2.0 + vip); gg.lineTo(x + r * 0.7, y - r * 0.95 + vip); gg.closePath(); gg.fill();
+    gg.strokeStyle = '#6b4a2a'; gg.lineWidth = Math.max(1, r * 0.14);
+    gg.beginPath(); gg.moveTo(x + r * 0.7, y + r * 0.8 + vip); gg.lineTo(x + r * 0.8, y - r * 0.8 + vip); gg.stroke();
+    gg.fillStyle = '#ff9f43';
+    gg.beginPath(); gg.arc(x + r * 0.8, y - r * 0.9 + vip, r * 0.22, 0, 7); gg.fill();
+  }
+}
+
+/** Livbjælken står der altid over tropper og helte – så man kan se, hvem der har det skidt. */
+function livBjaelke(x, y, r, hp, maksHp, farve = '#3ddc84') {
+  const del = Math.max(0, hp / maksHp), b = r * 1.8;
+  g.fillStyle = 'rgba(0,0,0,.5)';
+  g.fillRect(x - b / 2, y - r * 1.55, b, Math.max(1.5, r * 0.24));
+  g.fillStyle = del > 0.5 ? farve : del > 0.25 ? '#ffd447' : '#ff4d5e';
+  g.fillRect(x - b / 2, y - r * 1.55, b * del, Math.max(1.5, r * 0.24));
+}
+
 function tegnSoldat(s) {
   const x = px(s.x), y = py(s.y), r = 2.6 * skala;
   const vip = Math.sin(s.gang * 9) * r * 0.16;
   g.save();
   if (s.blink > 0) g.globalAlpha = 0.6;
-  g.fillStyle = '#4d8dff';
-  g.beginPath(); g.roundRect(x - r * 0.55, y - r * 0.4 + vip, r * 1.1, r * 1.3, r * 0.3); g.fill();
-  g.fillStyle = '#ffe1c4';                                     // hovedet
-  g.beginPath(); g.arc(x, y - r * 0.75 + vip, r * 0.45, 0, 7); g.fill();
-  g.strokeStyle = '#d9e3f5'; g.lineWidth = Math.max(1, r * 0.2); g.lineCap = 'round';
-  g.beginPath(); g.moveTo(x + r * 0.5, y + r * 0.4 + vip); g.lineTo(x + r * 0.95, y - r * 0.7 + vip); g.stroke();
+  tegnFigur(g, s.slags, x, y, r, vip);
   g.restore();
-  if (s.hp < s.maksHp) {
-    const del = Math.max(0, s.hp / s.maksHp), b = r * 1.8;
-    g.fillStyle = 'rgba(0,0,0,.5)';
-    g.fillRect(x - b / 2, y - r * 1.5, b, r * 0.26);
-    g.fillStyle = '#3ddc84';
-    g.fillRect(x - b / 2, y - r * 1.5, b * del, r * 0.26);
+  livBjaelke(x, y, r, s.hp, s.maksHp);
+  if (valgt && valgt.ting === s) {
+    g.strokeStyle = '#ffd447'; g.lineWidth = 2;
+    g.beginPath(); g.arc(x, y - r * 0.2, r * 1.5, 0, 7); g.stroke();
   }
+}
+
+function tegnHelt(h) {
+  if (h.doed) return;
+  const x = px(h.x), y = py(h.y), r = 3.4 * skala, type = HELTE[h.slags];
+  const erValgt = valgt && valgt.ting === h;
+  // Auraen som en svag ring om fødderne – tydelig, når helten er valgt
+  g.beginPath(); g.arc(x, y, type.aura.r * skala, 0, 7);
+  g.fillStyle = erValgt ? 'rgba(255,212,71,.08)' : 'rgba(255,212,71,.03)'; g.fill();
+  if (erValgt) {
+    g.strokeStyle = 'rgba(255,212,71,.45)'; g.lineWidth = 1.5; g.stroke();
+    // Vagtposten, han går tilbage til
+    g.strokeStyle = '#ffd447'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(px(h.vagt.x), py(h.vagt.y)); g.lineTo(px(h.vagt.x), py(h.vagt.y) - 3 * skala); g.stroke();
+    g.fillStyle = '#ffd447';
+    g.beginPath(); g.moveTo(px(h.vagt.x), py(h.vagt.y) - 3 * skala); g.lineTo(px(h.vagt.x) + 2 * skala, py(h.vagt.y) - 2.3 * skala); g.lineTo(px(h.vagt.x), py(h.vagt.y) - 1.6 * skala); g.fill();
+  }
+  const vip = Math.sin((h.gang || 0) * 8) * r * 0.12;
+  g.save();
+  if (h.blink > 0) g.globalAlpha = 0.6;
+  if (h.opNiveau > 0) {                                        // lysglimt ved et nyt niveau
+    g.fillStyle = `rgba(255,212,71,${Math.min(0.6, h.opNiveau / 2)})`;
+    g.beginPath(); g.arc(x, y - r * 0.3, r * (2.6 - h.opNiveau), 0, 7); g.fill();
+  }
+  tegnFigur(g, h.slags, x, y, r, vip);
+  g.restore();
+  livBjaelke(x, y - r * 0.35, r, h.hp, h.maksHp, '#ffd447');
+  g.fillStyle = '#fff';
+  g.font = `800 ${Math.max(8, r * 0.8)}px -apple-system,system-ui,sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'bottom';
+  g.fillText(String(h.niv), x, y - r * 1.95);
+  if (erValgt) { g.strokeStyle = '#ffd447'; g.lineWidth = 2; g.beginPath(); g.arc(x, y - r * 0.2, r * 1.5, 0, 7); g.stroke(); }
 }
 
 function tegnSkud(s) {
@@ -805,9 +1166,24 @@ function tegnSkud(s) {
   if (s.slags === 'kanon') {
     g.fillStyle = '#ffd447';
     g.beginPath(); g.arc(x, y, 1.6 * skala, 0, 7); g.fill();
+  } else if (s.slags === 'sten') {
+    // Stenen flyver i en bue – højere midt på turen
+    const hel = Math.hypot(s.mx - s.sx, s.my - s.sy) || 1, del = 1 - Math.hypot(s.mx - s.x, s.my - s.y) / hel;
+    const loeft = Math.sin(Math.max(0, Math.min(1, del)) * Math.PI) * hel * 0.25;
+    g.fillStyle = 'rgba(0,0,0,.25)';
+    g.beginPath(); g.arc(x, y, 1.3 * skala, 0, 7); g.fill();
+    g.fillStyle = '#8a8792';
+    g.beginPath(); g.arc(x, py(s.y - loeft), 1.8 * skala, 0, 7); g.fill();
+  } else if (s.slags === 'magi') {
+    g.fillStyle = '#ff9f43';
+    g.beginPath(); g.arc(x, y, 1.5 * skala, 0, 7); g.fill();
+    g.fillStyle = '#ffe9a8';
+    g.beginPath(); g.arc(x, y, 0.7 * skala, 0, 7); g.fill();
   } else {
-    g.strokeStyle = '#eafff2'; g.lineWidth = Math.max(1, 0.5 * skala); g.lineCap = 'round';
-    g.beginPath(); g.moveTo(x, y); g.lineTo(px(s.x - (s.mx - s.x) * 0.06), py(s.y - (s.my - s.y) * 0.06)); g.stroke();
+    const hale = s.slags === 'ballista' ? 0.14 : 0.06;
+    g.strokeStyle = s.slags === 'ballista' ? '#ff7ac6' : s.slags === 'pil' ? '#e8d3a8' : '#eafff2';
+    g.lineWidth = Math.max(1, (s.slags === 'ballista' ? 0.9 : 0.5) * skala); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x, y); g.lineTo(px(s.x - (s.mx - s.x) * hale), py(s.y - (s.my - s.y) * hale)); g.stroke();
   }
 }
 
@@ -818,6 +1194,23 @@ function tegnSmaeld(s) {
   if (s.slags === 'bomb') {
     g.fillStyle = '#ffd447';
     g.beginPath(); g.arc(x, y, s.r * skala * (0.4 + del), 0, 7); g.fill();
+  } else if (s.slags === 'ild') {
+    g.fillStyle = '#ff6a2b';
+    g.beginPath(); g.arc(x, y, s.r * skala * (0.5 + del * 0.6), 0, 7); g.fill();
+    g.fillStyle = '#ffd447';
+    g.beginPath(); g.arc(x, y, s.r * skala * (0.25 + del * 0.4), 0, 7); g.fill();
+  } else if (s.slags === 'skjold') {
+    g.strokeStyle = '#9fb4d9'; g.lineWidth = Math.max(2, 1.2 * skala);
+    g.beginPath(); g.arc(x, y, s.r * skala * (0.3 + del * 0.7), 0, 7); g.stroke();
+  } else if (s.slags === 'pilregn' || s.slags === 'heling') {
+    g.strokeStyle = s.slags === 'heling' ? '#7dffb0' : '#e8d3a8';
+    g.lineWidth = Math.max(1, 0.6 * skala); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(px(s.fx), py(s.fy)); g.lineTo(x, y); g.stroke();
+    if (s.slags === 'heling') {
+      g.fillStyle = '#7dffb0';
+      g.fillRect(x - 0.3 * skala, y - (2.5 + del * 2) * skala, 0.6 * skala, 1.8 * skala);
+      g.fillRect(x - 0.9 * skala, y - (1.9 + del * 2) * skala, 1.8 * skala, 0.6 * skala);
+    }
   } else if (s.slags === 'hug') {
     g.strokeStyle = '#fff'; g.lineWidth = Math.max(1, 0.6 * skala);
     g.beginPath(); g.arc(x, y, s.r * skala * (0.6 + del), 0, 7); g.stroke();
@@ -842,6 +1235,7 @@ function tegn() {
   tegnGitter();
   for (const b of spil.bygninger) tegnPaaBanen(b);
   for (const s of spil.soldater) tegnSoldat(s);
+  for (const h of spil.helte) tegnHelt(h);
   for (const f of spil.fjender) tegnZombie(f);
   for (const s of spil.skud) tegnSkud(s);
   for (const s of spil.smaeld) tegnSmaeld(s);
@@ -961,11 +1355,13 @@ nameForm.addEventListener('submit', e => {
   if (n && foer && n !== foer) omdoebMigSelv(n);
 });
 
-/* ---------- Bygningerne forklaret på startskærmen ---------- */
+/* ---------- Bygningerne, tropperne og heltene forklaret på startskærmen ---------- */
 $('bygliste').innerHTML = BYGNINGER.map(t => {
   const pris = t.kanBygges === false ? 'står der' : `${t.pris} 🪙`;
   return `<div><b>${t.navn}</b> <i>${pris}</i><br>${t.om}</div>`;
-}).join('');
+}).join('') + Object.values(TROPPER).map(t => `<div><b>${t.navn}</b> <i>${t.pris} 🪙</i><br>${t.om}</div>`).join('')
+  + Object.values(HELTE).map(h => `<div><b>${h.tegn} ${h.navn}</b> <i>${h.pris} 🪙</i><br>${h.om} Aura: ${h.aura.om.toLowerCase()}.</div>`).join('')
+  + `<div><b>Belejrer</b> <i>fra dag 6</i><br>Kaster sten længere end tårnene rækker. Byg en ballista, send tropper ud – eller en helt.</div>`;
 
 /* ---------- Start ---------- */
 visNavn(); visStart(); visHud(); hentListe();
@@ -973,7 +1369,7 @@ if (params.get('spil') === '1') start();
 
 /* ---------- Test-API ---------- */
 window.GAME = {
-  BYGNINGER, BYGGES, FJENDER, RAADHUS_FELT, start, tilMenu,
+  BYGNINGER, BYGGES, FJENDER, RAADHUS_FELT, TROPPER, HELTE, start, tilMenu,
   pause() { pauseret = true; },
   fortsaet() { pauseret = false; },
   /** Spoler spillet frem i faste skridt – en hel dag på et øjeblik. */
@@ -989,19 +1385,41 @@ window.GAME = {
     return this.state;
   },
   /** Vælger en bygning i bunden (som at trykke på knappen). */
-  vaelg(slags) { valgtSlags = valgtSlags === slags ? null : slags; valgtBygning = null; visPanel(); tegnKnapper(); return valgtSlags; },
-  /** Trykker på et felt: bygger det valgte, eller vælger det, der står. */
-  tryk: trykPaaFelt,
+  vaelg(slags) { valgtSlags = valgtSlags === slags ? null : slags; valgt = null; visPanel(); tegnKnapper(); return valgtSlags; },
+  /** Trykker på et felt: bygger det valgte, vælger det, der står – eller sender den valgte helt derhen. */
+  tryk: (kx, ky) => trykPaaFelt(kx, ky),
+  /** Trykker på et punkt på banen (i enheder), fx lige oven på en soldat. */
+  trykPunkt: (x, y) => { const f = feltVed(x, y); return trykPaaFelt(f.kx, f.ky, { x, y }); },
+  vaelgHelt,
   byg: (slags, kx, ky) => { const s = byg(spil, slags, kx, ky); visHud(); tegnKnapper(); return s; },
-  opgraderValgte: () => { const s = opgrader(spil, valgtBygning); visPanel(); visHud(); return s; },
-  saelgValgte: () => { const s = saelg(spil, valgtBygning); if (s.ok) valgtBygning = null; visPanel(); visHud(); return s; },
-  traenValgte: () => { const s = traen(spil, valgtBygning); visPanel(); visHud(); return s; },
-  /** Lader botten bygge, så testen kan komme langt ned i dagene. */
+  /** Det ledige felt (uden terræn og bygning), der ligger nærmest (kx,ky). */
+  ledigtFelt(kx, ky) {
+    let bedst = null, d0 = Infinity;
+    for (const f of ledigeFelter(spil)) {
+      const d = Math.hypot(f.kx - kx, f.ky - ky);
+      if (d < d0) { d0 = d; bedst = f; }
+    }
+    return bedst;
+  },
+  /** Første terrænfelt på banen – så en prøve kan trykke på det. */
+  terraenFelt() {
+    for (let ky = 0; ky < RAEKKER; ky++) for (let kx = 0; kx < KOLONNER; kx++) {
+      const t = terraenPaa(spil, kx, ky);
+      if (t) return { kx, ky, t };
+    }
+    return null;
+  },
+  /** Botten bygger, så testen kan komme langt ned i dagene. */
   bot: () => botTraek(spil),
   /** Feltets midte på skærmen, så testen kan trykke rigtigt. */
   feltPx(kx, ky) {
     const r = canvas.getBoundingClientRect(), p = midte(kx, ky);
     return { x: r.left + px(p.x), y: r.top + py(p.y) };
+  },
+  /** Et punkt på banen (i enheder) på skærmen. */
+  punktPx(x, y) {
+    const r = canvas.getBoundingClientRect();
+    return { x: r.left + px(x), y: r.top + py(y) };
   },
   knapPx(slags) {
     const b = byggeRow.querySelector(`[data-slags="${slags}"]`).getBoundingClientRect();
@@ -1013,19 +1431,14 @@ window.GAME = {
     if (opt.husHp != null) { spil.raadhus.hp = opt.husHp; sidsteHusHp = opt.husHp; }
     if (opt.tid != null) { spil.tid = opt.tid; spil.dag = Math.floor(opt.tid / DAG_LAENGDE) + 1; sidsteDag = spil.dag; }
     if (opt.roligt) spil.rng = () => 0.999;          // ingen nye zombier af sig selv
+    if (opt.udenHaer) { spil.soldater.length = 0; spil.helte.length = 0; valgt = null; }   // ingen til at forsvare huset
     visHud(); tegnKnapper(); visPanel();             // også kassen, så en test ikke skal vente på næste billede
     return this.state;
   },
   /** Sætter en zombie et bestemt sted, så en prøve kan stilles op. */
   sendZombie(slags, kx, ky) {
-    const p = midte(kx, ky);
-    const art = FJENDER[slags];
-    spil.fjender.push({
-      id: spil.naesteId++, slags, kx, ky, x: p.x, y: p.y, mx: p.x, my: p.y,
-      hp: art.hp, maksHp: art.hp, fart: art.fart, skade: art.skade, angrebFart: art.angrebFart,
-      panser: art.panser, r: art.r, guld: art.guld, ladt: 0, blink: 0, gang: 0, slaar: null,
-    });
-    return this.state;
+    const f = sendFjende(spil, slags, { kx, ky });
+    return f.id;
   },
   /** Hvor og hvor stort der tegnes – så testen kan se, at banen er inde i billedet. */
   geo() {
@@ -1035,12 +1448,20 @@ window.GAME = {
   get state() {
     return {
       fase, dag: spil.dag, nat: spil.nat, klarede: spil.klarede, guld: spil.guld, drab: spil.drab,
-      tid: spil.tid, bedste, valgtSlags, valgtBygning: valgtBygning ? valgtBygning.id : null,
+      tid: spil.tid, bedste, valgtSlags,
+      valgt: valgt ? { art: valgt.art, id: typeof valgt.ting === 'string' ? valgt.ting : valgt.ting.id } : null,
+      valgtBygning: valgt && valgt.art === 'bygning' ? valgt.ting.id : null,
       husHp: spil.raadhus.hp, husMaksHp: spil.raadhus.maksHp, indtaegt: farmIndtaegt(spil),
       boender: boenderIAlt(spil), soldater: spil.soldater.length, zombier: spil.fjender.length,
+      terraen: spil.terraen.filter(Boolean).length, tropNiv: { ...spil.tropNiv },
+      tropper: spil.soldater.map(s => ({ id: s.id, slags: s.slags, x: s.x, y: s.y, hp: s.hp, maksHp: s.maksHp, fra: s.fra })),
+      helte: spil.helte.map(h => ({ id: h.id, slags: h.slags, niv: h.niv, xp: h.xp, x: h.x, y: h.y, hp: h.hp, maksHp: h.maksHp,
+        doed: h.doed, vagt: { ...h.vagt }, venter: trylleVenter(spil, h) })),
+      fjender: spil.fjender.map(f => ({ id: f.id, slags: f.slags, x: f.x, y: f.y, hp: f.hp })),
       bygninger: spil.bygninger.map(b => ({
         id: b.id, slags: b.slags, kx: b.kx, ky: b.ky, niveau: b.niveau,
-        hp: b.hp, maksHp: b.maksHp, boender: b.boender, traener: b.traener ? b.traener.slags : null,
+        hp: b.hp, maksHp: b.maksHp, boender: b.boender, igang: b.igang.length, koe: b.koe.length,
+        traener: b.igang.length ? b.igang[0].slags : null,
       })),
       slut: spil.slut,
     };
