@@ -277,6 +277,8 @@ async function tjekBillede(p, hvem) {
     `${hvem}: lærredets pixels passer med pladsen`);
   assert.ok(g.skala >= 2.4, `${hvem}: banen er tegnet stort nok til at ses (skala=${g.skala.toFixed(2)})`);
   assert.ok(g.ox >= -1 && g.oy >= -1, `${hvem}: hele banen er inde i billedet`);
+  // Og den er faktisk tegnet i fuld størrelse: hjørnet er græs eller terræn, ikke den mørke ødemark udenom
+  assert.notEqual(g.hjoerne, '#1b1e28', `${hvem}: banens nederste hjørne er tegnet (${g.hjoerne})`);
   return g;
 }
 await tjekBillede(page, 'iPhone');
@@ -312,6 +314,7 @@ await tjekBillede(page, 'iPhone');
   const id = await page.evaluate(() => window.GAME.sendZombie('belejrer', window.GAME.RAADHUS_FELT.kx + 1, -1));
   await page.evaluate(() => window.GAME.frem(8));
   await page.screenshot({ path: SHOTS + 'baseforsvar-belejrer.png' });
+  await tjekBillede(page, 'iPhone med belejrer');
   await page.evaluate(() => window.GAME.frem(30));
   assert.equal((await state()).fjender.some(f => f.id === id), false, 'belejreren blev skudt ned');
 }

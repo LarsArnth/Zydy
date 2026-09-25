@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 54,
+      "dato": "2026-09-25",
+      "spil": "baseforsvar",
+      "titel": "Baseforsvar – helte, nye tropper og belejrere",
+      "hvad": "SorteSlyngel ville have meget mere i Baseforsvar, og nu er det der. Banen er større, og der ligger klipper, søer og skov på den, som hverken zombier eller tropper kan gå igennem – og den ser anderledes ud hver gang, du spiller. I kasernen kan du træne både soldater og bueskyttere, og i den nye kirke træner du præster, der heler dine folk. Du kan trykke så mange gange, du vil: de stiller sig i kø, og der er ingen grænse for, hvor mange der kan komme fra samme bygning – opgraderer du kasernen, træner den flere ad gangen. Tryk på en af dine tropper, så kan du se hans liv og tal og opgradere alle af hans slags på én gang. Fra dag 6 kommer der belejrere, som kaster sten længere end noget tårn kan skyde, så du skal bygge noget mod dem: den nye ballista skyder længst af alt og sigter efter belejrerne først. Og så er der tre helte, du kan hyre på rådhuset: Ridderen (aura: dine tropper slår hårdere; skjoldslag lammer zombierne), Troldkvinden (aura: tårnene skyder hurtigere; ildregn) og Jægeren (aura: tårnene skyder længere; pileregn). Heltene får erfaring for hver zombie, der falder tæt på dem, og stiger i niveau helt op til 10. Tryk på en helt og så på banen for at sende ham derhen.",
+      "oensket": "SorteSlyngel"
+    },
+    {
       "nr": 53,
       "dato": "2026-09-15",
       "spil": "baseforsvar",

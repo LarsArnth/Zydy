@@ -61,7 +61,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Fjolle-Obby | `public/spil/fjolle/` | Alias ønske, der lød «En sjov obby» – den fjollede fætter til Store Obby. Ni **håndlavede** etaper man kan lære udenad, og ingenting kan slå én ihjel: man kan kun plaske i buddingen i bunden og starter så ved flaget igen. Undervejs er der bananskræl man skrider på, gelé der kaster én op af sig selv (og meget højere, hvis man trykker HOP i selve landingen), prutteskyer der skyder én til vejrs i takt, slim man går i slowmotion i, rullebånd der trækker med og imod, høns der vipper én op med et BAK BAK, fjedre og balloner der stiger, så længe man står på dem. Score = **tiden** for hele banen (`retning: 'asc'`), så den sendes først ind, når alle ni etaper er klaret; «Fortsæt» husker etape, tid og plask. To filer: `bane.mjs` (banen, fysikken og botten, enhedstestet) og `index.html`. Se «Fjolle-Obby – de ni etaper og det, der ikke slår ihjel» nedenfor. |
 
 | Tårnforsvar | `public/spil/taarnforsvar/` | SorteSlyngels ønske om «et Tower Defense-stil spil, hvor man kæmper om at komme længst». Stien snor sig fra hullet i toppen ned til porten, og på græsset ved siden af bygger man otte slags tårne: bueskytte (billig og hurtig), isbøsse (fryser, så de andre når at skyde flere gange), giftsky (skade pr. sekund, som panser ikke stopper), kanon (bomben rammer flere), guldmine (skyder ikke – betaler efter hver bølge), lynspole (lynet hopper videre til flere), troldmand (dyr, men lynet går igennem panser) og snigskytte (rammer hele banen og går efter det stærkeste monster). Fem niveauer pr. tårn, og man kan sælge igen. Monstrene kommer i bølger, der aldrig holder op: slim, flagermus, trolde med panser og en monsterkonge hver femte bølge. Score = **klarede bølger** – motoren er helt uden tilfældighed, så alle møder de samme bølger i den samme rækkefølge. To filer: `forsvar.mjs` (banen, tårnene, monstrene, bølgerne og en bot, enhedstestet) og `index.html`. Se «Tårnforsvar – stien, de otte tårne og bølgerne» nedenfor. |
-| Baseforsvar | `public/spil/baseforsvar/` | SorteSlyngels ønske om «et spil hvor man bygger en base og skal forsvare den fra fjender», med Warcraft 3-banen «Zombie Defense» som forbillede. Rådhuset står midt på et gitter på 11 × 15 felter, og resten må bebygges: **mure** (står i vejen), **skydetårn** og **kanontårn** (skyder), **farm** (her træner man bønder — hver bonde giver guld ved daggry) og **kaserne** (her træner man soldater, der selv går ud og slås). Alt kan opgraderes fire niveauer op, og opgraderer man kasernen, bliver de soldater, der allerede står på banen, stærkere med det samme. Zombierne kommer **ikke** i bølger: de dukker tilfældigt op hen over tiden fra alle fire kanter, over dobbelt så tit om natten, og bliver stærkere for hver dag. Score = **overlevede dage**. To filer: `base.mjs` (basen, zombiernes vej, økonomien og en bot, enhedstestet) og `index.html`. Se «Baseforsvar – basen, zombiernes vej og døgnet» nedenfor. |
+| Baseforsvar | `public/spil/baseforsvar/` | SorteSlyngels ønske om «et spil hvor man bygger en base og skal forsvare den fra fjender», med Warcraft 3-banen «Zombie Defense» som forbillede. Rådhuset står midt på et gitter på 13 × 17 felter med **tilfældigt terræn** (klipper, sø, skov) hver runde. Man bygger **mure**, **skydetårn**, **kanontårn**, **ballista** (skyder længst, sigter efter belejrere), **farm** (bønder giver guld ved daggry), **kaserne** (soldater og bueskyttere) og **kirke** (præster, der heler). Tropper trænes i kø uden loft, kan trykkes på for at se liv og tal, og opgraderes pr. slags. Tre **helte** hyres på rådhuset — hver med aura, trylleformular og erfaring op til niveau 10. Zombierne kommer tilfældigt hen over døgnet fra alle kanter, flest om natten; fra dag 6 kommer **belejrere**, der kaster længere end alle tårne. Score = **overlevede dage**. To filer: `base.mjs` (motoren, vejkortet, terrænet og en bot, enhedstestet) og `index.html`. Se «Baseforsvar – basen, zombiernes vej og døgnet» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -1909,63 +1909,91 @@ SorteSlyngels ønske #58: «et spil hvor man bygger en base og skal forsvare den
 fra fjender … mure, tårne som kan skyde og tropper til at angribe … farms, hvor
 man skal træne bønder … fjenderne skal ikke komme i faste bølger som i et Tower
 Defense-spil, men mere tilfældigt over tid», med Warcraft 3-banen «Zombie
-Defense» som forbillede.
+Defense» som forbillede. Ønske #59 byggede videre: «flere upgrades, bueskytter
+og præster … se mine troppers liv og stats … opgradere dem … siege zombies som
+skyder længere end alle tårne … banen større og med terræn … genereret
+tilfældigt … træne flere tropper ad gangen og uendeligt mange … 2-3 helte med
+spells/auras, der får exp og leveler op».
 
-Banen er et gitter på 11 × 15 felter à 10 enheder (110 × 150) med rådhuset i det
-præcise midtpunkt (5,7). Alt andet må bebygges. Fem ting er værd at huske, hvis
-spillet skal røres igen:
+Banen er et gitter på 13 × 17 felter à 10 enheder (130 × 170) med rådhuset i det
+præcise midtpunkt (6,8). Ting, der er værd at huske, hvis spillet skal røres igen:
 
-1. **Der er ingen sti og ingen pathfinding.** En zombie ser på sine fire naboer
-   og går til det ledige felt, der kommer tættest på rådhuset; er alle de felter,
-   der kommer tættere på, spærret af bygninger, bider den sig igennem den
-   nærmeste af dem. Derfor går den, der kommer skråt ind, udenom en enkelt mur,
-   mens den, der kommer lige imod, bider sig igennem — et skridt til siden
-   kommer jo ikke tættere på. Det gør mure til noget værd uden at nogen skal
-   regne ruter ud, og det er umuligt at lukke zombierne ude for evigt.
+1. **Zombierne følger et vejkort.** `vejKort()` er en Dijkstra fra rådhuset:
+   et frit felt koster 1, et felt med en bygning 1 + bygningens maks-liv /
+   `BIDE_PRIS` (30), og terræn kan ikke betrædes. En zombie går til den nabo,
+   der er billigst; står der en bygning, bider den sig igennem. Derfor går den
+   udenom en enkelt mur, men æder sig gennem en lang. Kortet regnes kun om, når
+   der bygges, opgraderes, sælges eller falder noget (`spil.vejSnavs`). De fire
+   felter lige op ad rådhuset er stadig de eneste, man kan nå huset fra — fire
+   mure dér er det billigste forsvar, der findes, og botten åbner med det.
 
-   Det giver også spillets vigtigste greb: **de fire felter lige nord, syd, øst
-   og vest for rådhuset er de eneste, en zombie kan stå på og nå huset fra.** En
-   mur på hver af dem koster 80 guld og køber en masse tid — og holder tårnene
-   fri, så de ikke selv bliver ædt. Botten åbner med netop det.
+2. **Terrænet må aldrig lukke nogen inde.** `lavTerraen()` lægger 6-9 klatter
+   ud med frøet, holder 5 × 5 felter om rådhuset fri, fylder lommer, der ikke
+   hænger sammen med huset, og prøver forfra, hvis ringen uden om banen ikke kan
+   nå det. Enhedstesten går hjem fra hvert felt på 60 baner. Tropper og helte
+   går i lige linje, når der er frit, og ellers mod næste felt på den korteste
+   vej rundt (`gaaMod`); de kan aldrig træde ind i terrænet.
 
-2. **Tiden går i dage, ikke i bølger.** En dag er 36 sekunder, og `spawnPrSek()`
-   er en sandsynlighed pr. sekund, ikke en liste: zombierne dukker op hen over
-   døgnet, 2,4 gange så tit om natten (som tegnes med et blåt slør over fladen).
-   Score = hele dage, basen holdt. Slags og styrke følger dagen: løbere fra dag
-   3, bæster med panser fra dag 5, kæmper fra dag 8, og alle får 15 % mere liv
-   pr. dag, mens guldet kun vokser 6 % — derfor ender alle med at tabe.
+3. **Tiden går i dage, ikke i bølger.** En dag er 36 sekunder, og `spawnPrSek()`
+   er en sandsynlighed pr. sekund: 2,4 gange så tit om natten. Løbere fra dag 3,
+   bæster fra dag 5, **belejrere** fra dag 6, kæmper fra dag 9. Liv vokser 15 %
+   pr. dag og 6 % ekstra efter dag 10 (ellers kunne en stor base med fulde farme
+   holde evigt), guldet kun 6 %.
 
-3. **Tilfældigheden ligger i ét frø.** `nytSpil(froeTal)` laver sin egen terning,
-   så motoren aldrig rører `Math.random()`. En test kan derfor spille den samme
-   uge to gange og få nøjagtig det samme; `?froe=1` i adressen gør det samme i
-   browseren (det er sådan `test/baseforsvar.test.mjs` kører).
+4. **Tilfældigheden ligger i ét frø.** `nytSpil(froeTal)` laver sin egen terning,
+   så samme frø giver samme terræn og samme uge. `?froe=1` i adressen gør det
+   samme i browseren; `nytSpil(n, { terraen: false })` giver en fri bane til prøver.
 
-4. **Bønderne bor i farmen.** Man træner dem dér — det koster guld og tager fem
-   sekunder — og hver bonde giver `indtaegt` guld ved daggry. Falder farmen,
-   ryger bønderne med, og det er dét, der gør, at man også skal passe på sit
-   bagland og ikke kun på rådhuset. Soldaterne trænes på samme måde i kasernen.
+5. **Tropperne henter deres tal fra `spil.tropNiv`.** Man opgraderer en *slags*
+   (soldater, bueskyttere, præster — fem niveauer, ×1,4 pr. niveau), og alle af
+   den slags på banen bliver stærkere med det samme og får fyldt livet op.
+   Bygningens eget niveau bestemmer i stedet, hvor mange den træner ad gangen
+   (`samtidig` 1-4). Man sætter i kø ved at trykke flere gange (højst
+   `KOE_MAKS` = 12 pr. bygning); der er intet loft pr. bygning, men højst
+   `MAKS_TROPPER` = 80 i alt, så telefonen kan følge med. Farmen har stadig et
+   loft over bønder. Sælger man en bygning, får man køen fuldt retur.
 
-5. **Soldaterne henter deres tal fra kasernen, hver gang de bruges.** Derfor
-   bliver de, der allerede står på banen, stærkere i samme øjeblik kasernen
-   opgraderes (og får fyldt liv op). «Opgraderinger til tropper» er altså én
-   pris ét sted i stedet for et opgraderingstræ pr. soldat.
+6. **Belejrerne kaster længere end alle tårne** (48 mod skydetårnets 38 på
+   øverste niveau). De stiller sig, så snart en bygning er inden for 48, og
+   smadrer den med sten. Modtrækkene er ballisten (58-70, sigter efter
+   belejrere først), tropper, heltene — eller et tårn i Jægerens aura
+   (+30 % rækkevidde, så 38 bliver 49).
+
+7. **Heltene** hyres én gang hver med knapperne til højre over byggeknapperne:
+   Ridderen (aura: tropper slår 30 % hårdere; skjoldslag lammer i 2 sek.),
+   Troldkvinden (aura: tårne skyder 25 % hurtigere; ildregn) og Jægeren (aura:
+   +30 % rækkevidde; pileregn i de otte nærmeste). De får erfaring = guldet for
+   hver zombie, der falder inden for 50, skal bruge 60 · niveau² for næste
+   niveau og bliver 10 % stærkere pr. niveau (til 10). En faldet helt rejser sig
+   ved rådhuset efter 20 sek. med niveauet i behold. Trykker man på en helt og
+   så på banen, flytter man hans vagtpost.
+
+8. **Kassen bygger kun knapperne om, når der kommer andre knapper**; ellers
+   skiftes bare teksten. Ellers kunne et tryk forsvinde under fingeren, fordi en
+   nedtælling tikkede. Står der en bygning på feltet, skal man ramme en tropp
+   tættere (2,6 mod 5 enheder), ellers kan man ikke trykke på sin egen kaserne.
+
+9. **Skaleringen sættes i hvert billede** (`g.setTransform` i `tegn()`). Mister
+   Chromium lærredet under pres, kommer det tilbage uden — og så blev banen
+   tegnet i en tredjedel størrelse oppe i hjørnet, mens alle tests var grønne.
+   Browsertesten læser derfor en pixel i banens hjørne (`GAME.geo().hjoerne`).
 
 Bygninger repareres langsomt af sig selv om dagen, når der er gået tre sekunder,
-siden nogen sidst bed i dem — om natten står håndværkerne stille.
+siden nogen sidst bed i dem.
 
-Kurven er målt med en bot, ikke gættet. `botSpiller()` bygger mure om huset,
-tårne, farme med bønder og en kaserne, og opgraderer, når der er råd; den når
-dag 10-17. To tårne og ellers ingenting når 6, og gør man slet ingenting, falder
-huset på dag 2. Det vigtigste ved botten er, at den **sparer op**: den køber
-ét ønske ad gangen i en fast rækkefølge og venter, hvis den ikke har råd. En
-tidligere udgave brugte bare pengene på det billigste, den kunne betale lige nu,
-og endte med tyve mure, ét tårn og ingen bønder — spillet så håbløst ud, men det
-var botten, der var dum.
+Kurven er målt med en bot, ikke gættet. `botSpiller(dage, frø, brug)` bygger
+efter en fast ønskeliste og **sparer op** til det næste i stedet for at købe det
+billigste; `brug` slår tropper, helte og ballista til og fra, så man kan måle
+hvad hver ting er værd. På otte frø (2026-09-25): uden de nye ting median 14
+dage, kun ballista 16, kun tropper 13, kun helte 27, det hele 23 (10-30). Gør
+man ingenting, falder huset på dag 2; to tårne holder 6. Botten stiller kaserne
+og kirke skråt ud fra huset (`hjoerneFelt`) — lige ved siden af blev de ædt
+igen og igen, og så lignede tropperne spild af penge.
 
-Test: `test/baseforsvar.test.mjs` (bygger en mur med en rigtig finger, prøver at
-bygge oven på rådhuset, opgraderer hele vejen op og sælger, træner en bonde og
-en soldat, henter guld ved daggry, skyder zombier ned, ser natten falde på og
-mister til sidst rådhuset) + `test/unit/baseforsvar.test.mjs`.
+Test: `test/baseforsvar.test.mjs` (mur med en rigtig finger, ingen bygning på
+terræn, bønder og tropper i kø, en soldat trykket på og opgraderet, Ridderen
+hyret, sendt ud og skjoldslaget kastet, en ballista mod en belejrer, natten,
+rådhuset falder) + `test/unit/baseforsvar.test.mjs`.
 
 ### Stenalder – regelvalg
 

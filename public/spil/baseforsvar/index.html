@@ -418,7 +418,9 @@ function tegnKnapper() {
       b.innerHTML = `<canvas width="44" height="44"></canvas><span class="p">${type.pris}</span><span class="n">${type.navn}</span>`;
       b.setAttribute('aria-label', `${type.navn}, ${type.pris} guld`);
       byggeRow.appendChild(b);
-      tegnMaerke(b.querySelector('canvas'), type.id);
+      const maerke = b.querySelector('canvas');
+      tegnMaerke(maerke, type.id);
+      maerke.addEventListener('contextrestored', () => tegnMaerke(maerke, type.id));
     }
   }
   BYGGES.forEach((type, nr) => {
@@ -1231,6 +1233,10 @@ function tegnSmaeld(s) {
 }
 
 function tegn() {
+  // Skaleringen sættes i hvert billede: mister browseren lærredet (det sker, når
+  // der er pres på hukommelsen), kommer det tilbage uden – og så blev hele banen
+  // tegnet i en tredjedel størrelse oppe i hjørnet.
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
   tegnBane();
   tegnGitter();
   for (const b of spil.bygninger) tegnPaaBanen(b);
@@ -1443,7 +1449,11 @@ window.GAME = {
   /** Hvor og hvor stort der tegnes – så testen kan se, at banen er inde i billedet. */
   geo() {
     const r = canvas.getBoundingClientRect();
-    return { W, H, dpr, skala, ox, oy, bredde: r.width, hoejde: r.height, lw: canvas.width, lh: canvas.height };
+    // Farven lige inden for banens nederste højre hjørne – er banen tegnet i fuld størrelse, er det ikke ødemarken
+    tegn();
+    const d = g.getImageData(Math.floor((ox + (BREDDE - 3) * skala) * dpr), Math.floor((oy + (HOEJDE - 3) * skala) * dpr), 1, 1).data;
+    const hjoerne = '#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+    return { W, H, dpr, skala, ox, oy, bredde: r.width, hoejde: r.height, lw: canvas.width, lh: canvas.height, hjoerne };
   },
   get state() {
     return {
