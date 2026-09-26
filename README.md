@@ -19,7 +19,7 @@ og [venner](#venner).
 
 Ud over links til de andre apps huser repoet otteogtredive spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, ZydyTube, Pass or Die, Fodbold, Kyllingejagt, Galgespil og Skråningen, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, ZydyTube, Pass or Die, Fodbold, Kyllingejagt, Galgespil, Skråningen og Rutsjebanen, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -68,12 +68,13 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Kyllingejagt | `public/spil/kylling/` | Joannas ønske: «Lav et spil hvor man skal fange så mange kyllinger som muligt». En gårdsplads set skråt oppefra med hønsehuset øverst: man løber rundt med et flydende joystick (sæt fingeren hvor som helst og træk – så dækker fingeren aldrig kyllingen, man jagter), og løber man ind i en kylling, er den fanget og flyver hjem i hønsehuset. Kyllingerne flygter, men er langsommere end en selv – til gengæld **slår de smut** til siden, når man er helt tæt på, og skal så hvile lidt, før de kan igen. Hegnet får dem til at dreje, så det gælder om at jage dem op i et hjørne. **Guldkyllingen** med kronen kommer ud et øjeblik, tæller for tre og løber hjem igen, hvis man ikke når den. Ét minut pr. runde. Score = fangede kyllinger, online topliste og kapløb. To filer: `kylling.mjs` (gårdspladsen, flugten, smuttene og en bot, enhedstestet) og `index.html`. Se «Kyllingejagt – smuttet, hegnet og døren» nedenfor. |
 | Galgespil | `public/spil/galge/` | Megithebegi1s ønske: «Et spil hvor en mand hænger i, og så skal man gætte nogle ord». Klassisk hangman: ordet står som streger, kategorien ovenover (Dyr, Mad, Derhjemme, Naturen, Sport og leg, Ting der kører, Tøj, Kroppen – 388 håndplukkede børneord), og man trykker på bogstaverne på et alfabetisk tastatur med ÆØÅ. Et forkert bogstav tegner næste del af galgen og manden (ti dele, hjerterne viser hvor mange forsøg der er tilbage), og han bliver bange, når der er to tilbage. Finder man ordet, er han **reddet**: rebet forsvinder, og han hopper ned på bakken og jubler. Score = **ord i træk**, online topliste og kapløb; jo længere stimen er, jo længere ord og jo mere af galgen står der fra starten. «👫 Find på et ord til en ven»: skriv et hemmeligt ord (og et lille hint), og giv telefonen videre – det kommer ikke på toplisten. To filer: `galge.mjs` (ordene, reglerne, niveauerne og en bot, enhedstestet) og `index.html`. Se «Galgespil – niveauerne og målestokken» nedenfor. |
 | Skråningen | `public/spil/skraaning/` | Lykkes ønske: «Et spil der minder lidt om slope måske». Som i Slope ruller en kugle af sig selv ned ad en neonbane, der hænger ude i mørket, set bagfra i 3D (almindelig canvas 2D med et lille perspektiv skrevet i hånden – ingen WebGL). Man styrer ved at holde på **venstre eller højre halvdel** af skærmen (eller piletasterne), og farten stiger hele tiden (40 km/t ved start, ~100 km/t efter 3 km). Man må hverken ramme de **røde klodser** – der er altid et hul i rækken – eller falde ud over kanten, og banen har **huller** man springer over, stykker der går **skråt** til siden, stykker der **hælder** og skubber kuglen ud mod kanten, og klodser der **glider** frem og tilbage. Banen bliver smallere, jo længere man kommer, skifter farve for hver 600 m, og en guldstreg viser, hvor langt man nåede sidst. Score = meter, online topliste og kapløb. To filer: `skraaning.mjs` (banegeneratoren, fysikken og en bot, enhedstestet) og `index.html`. Se «Skråningen – de tre løfter» nedenfor. |
+| Rutsjebanen | `public/spil/rutsjebane/` | Joannas ønske: «en lang lang rutsjebane, hvor man kører hurtigere og hurtigere … og til sidst skal man prøve at ramme badebassinet uden at flyve ud over verden». Et kapløb mod tre robotter – Bip, Bop og Bolt – ned ad en kilometerlang vandrutsjebane, set bagfra i 3D (canvas 2D med perspektiv i hånden, som Skråningen). Man sidder på en badering og styrer ved at holde på **venstre eller højre halvdel** af skærmen; renden er et halvrør, så man glider tilbage mod midten, og i svingene skubber farten én op ad den ydre væg – inderst i svinget er vejen kortest. Banen bliver stejlere hele vejen (fra ~45 til ~90 km/t). Undervejs ligger **mønter** (også oppe ad væggene, hvor det koster lidt fart at hente dem), og midtvejs er der **en zone med forhindringer** – gummiænder, badebolde og badedyr – med et hul i hver række; rammer man en, mister man næsten halvdelen af farten. Til sidst letter man fra en hopkant og skal **styre i luften** ned i bassinet på en svævende ø; bassinet ligger aldrig lige ud for hoppet, og uden om øen er der ingenting. Score = point: mønter + plads (50/30/20/10) + 20 for plasket + 10, hvis man rammer skiven i midten – men kun dem, der lander i vandet, får en plads. Online topliste og kapløb. To filer: `rutsjebane.mjs` (banen, rytterne, robotterne og hoppet, enhedstestet) og `index.html`. Se «Rutsjebanen – de fire løfter og robotterne» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, Pass or Die, Fodbold, Kyllingejagt og Galgespil — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, Pass or Die, Fodbold, Kyllingejagt, Galgespil, Skråningen og Rutsjebanen — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -2237,6 +2238,35 @@ kugle, der bare ruller ligeud, dør inden 400 m. Med en reaktionstid på 0,25-0,
 sek. (den ser, hvad der sker, men handler først lidt senere) klarer den stadig
 banen – det svære er at se det i tide, ikke umulige spring.
 
+### Rutsjebanen – de fire løfter og robotterne
+
+Banen, rytterne, robotterne og hoppet ligger i `public/spil/rutsjebane/rutsjebane.mjs`
+(enhedstestet i `test/unit/rutsjebane.test.mjs`). Banen er 1.100 m lang og bygges
+ud fra et frø: sving og lige stykker, én zone med forhindringer midtvejs, og et
+langt lige stykke til sidst, så man kan sigte. Fire løfter holder den fair:
+
+1. **Farten følger hvor stejlt det er.** Hvert sted har en topfart
+   (`topfart(s)`, hvor tyngdekraft og luftmodstand står lige), og ingen kører
+   hurtigere – så generatoren ved, hvor hurtigt det højst går ved hver række.
+2. **Der er altid et hul i en forhindringsrække**, inde i renden (−1,6 · 0 ·
+   1,6 m), og man kan nå fra det ene hul til det næste med halv kraft (`NAA`)
+   plus en reaktionstid (`REAKT`). Den første række kan nås, uanset hvor man
+   kom ind.
+3. **Bassinet kan altid rammes** med styring i luften, både med topfart og 14 %
+   under – det er hvad bassinets længde er valgt efter (`hopLaengde`).
+4. **Bassinet ligger aldrig lige ud for hoppet** (mindst `POOL_HB` + 3 m til
+   siden), så den, der ikke styrer, rammer fliserne eller flyver ud over verden.
+
+Robotterne styrer med samme fysik som spilleren (`botStyr`), men ser kortere
+frem, overser af og til en række og sigter lidt skævt i luften, alt efter
+`skill`; de har desuden lidt mere modstand (`traek`). Styringen følger fingeren
+blødt (`STYR_FOELG`), ellers svupper en tænd/sluk-finger fra side til side, og
+ryttere, der støder sammen, skubber kun blødt (`SKUB` < `STYR`), så man kan
+mase sig forbi. Enhedstesten måler balancen med en bot, der styrer som en
+finger (helt til venstre, helt til højre eller slet ikke): en dygtig spiller
+skal vinde mindst 40 % af løbene, men ikke alle, og en sjusket skal vinde
+sjældnere. Kører man efter pengene, får man flere point – men kommer senere i mål.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -2261,7 +2291,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Obbys skins, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, ZydyTubes seere, titler, udstyr og balance, Pass or Dies bombe, butik og robotter, Fodbolds bold, træning, liga og balance, Kyllingejagts flugt, smut og balance, Galgespillets ord, regler og niveauer, Skråningens bane, fysik og bot, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Obbys skins, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, ZydyTubes seere, titler, udstyr og balance, Pass or Dies bombe, butik og robotter, Fodbolds bold, træning, liga og balance, Kyllingejagts flugt, smut og balance, Galgespillets ord, regler og niveauer, Skråningens bane, fysik og bot, Rutsjebanens bane, forhindringer, bassin og robotter, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om

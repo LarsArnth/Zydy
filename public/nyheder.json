@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 64,
+      "dato": "2026-09-26",
+      "spil": "rutsjebane",
+      "titel": "Nyt spil: Rutsjebanen",
+      "hvad": "Kapløb ned ad en lang, lang vandrutsjebane mod tre robotter: Bip, Bop og Bolt! Hold fingeren på venstre eller højre side af skærmen for at styre, og det går hurtigere og hurtigere. Saml pengene på vejen, og styr uden om gummiænderne og badeboldene, når forhindringerne kommer. Til sidst flyver du ud over en hopkant – styr ned i badebassinet, ellers flyver du ud over verden! Rammer du skiven midt i bassinet, får du ekstra point.",
+      "oensket": "📸Joanna🏙️✨"
+    },
+    {
       "nr": 63,
       "dato": "2026-09-26",
       "spil": "skraaning",

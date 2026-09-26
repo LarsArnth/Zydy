@@ -1,0 +1,23 @@
+{
+  "navn": "Rutsjebanen",
+  "beskrivelse": "Kapløb mod tre robotter ned ad en lang, lang vandrutsjebane – det går hurtigere og hurtigere! Saml penge, styr uden om forhindringerne, og ram bassinet til sidst uden at flyve ud over verden.",
+  "nøgleord": [
+    "rutsjebane",
+    "rutschebane",
+    "vandrutsjebane",
+    "vandland",
+    "badeland",
+    "bassin",
+    "svømmehal",
+    "kapløb",
+    "robotter",
+    "waterslide",
+    "slide"
+  ],
+  "url": "/spil/rutsjebane/",
+  "orden": 192,
+  "kapløb": true,
+  "højscore": {
+    "maks": 400
+  }
+}

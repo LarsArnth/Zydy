@@ -48,6 +48,7 @@ export const KORT = [
   { id: 'kylling', navn: 'Kyllingejagt', url: '/spil/kylling/' },
   { id: 'galge', navn: 'Galgespil', url: '/spil/galge/' },
   { id: 'skraaning', navn: 'Skråningen', url: '/spil/skraaning/' },
+  { id: 'rutsjebane', navn: 'Rutsjebanen', url: '/spil/rutsjebane/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -95,6 +96,7 @@ export const SPIL = {
   kylling: { maks: 500 },
   galge: { maks: 1000 },
   skraaning: { maks: 100000 },
+  rutsjebane: { maks: 400 },
 };
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).
@@ -104,4 +106,4 @@ export const SAMMEN = ['dybet', 'kryds', 'papir', 'slanger', 'kaempetal'];
 /** Spil to venner kan tage et kapløb i: samme spil, hver sin telefon, bedste
  *  runde vinder ("kapløb": true i kort.json). Forsiden kender dem på
  *  data-kaploeb, og de må inviteres til gennem /api/rum ligesom SAMMEN. */
-export const KAPLOEB = ['taarn', 'saet', 'farvesortering', 'duel', 'obby', 'storeobby', 'lava', 'klodser', 'miskmask', 'blokblast', 'slotskamp', 'weee', 'klaverregn', 'sejl', 'flaske', 'elementer', 'straffe', 'fjolle', 'taarnforsvar', 'baseforsvar', 'bombe', 'fodbold', 'kylling', 'galge', 'skraaning'];
+export const KAPLOEB = ['taarn', 'saet', 'farvesortering', 'duel', 'obby', 'storeobby', 'lava', 'klodser', 'miskmask', 'blokblast', 'slotskamp', 'weee', 'klaverregn', 'sejl', 'flaske', 'elementer', 'straffe', 'fjolle', 'taarnforsvar', 'baseforsvar', 'bombe', 'fodbold', 'kylling', 'galge', 'skraaning', 'rutsjebane'];

@@ -1,0 +1,1020 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1c7fd6">
+<meta name="description" content="Rutsjebanen: kapløb mod tre robotter ned ad en lang, lang vandrutsjebane – saml penge, styr uden om forhindringerne, og ram badebassinet til sidst uden at flyve ud over verden!">
+<title>Rutsjebanen – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2356c2ff'/%3E%3Cpath d='M10 8c30 4 36 22 24 34s-4 16 20 16' fill='none' stroke='%23ff8a3d' stroke-width='9' stroke-linecap='round'/%3E%3Ccircle cx='24' cy='20' r='6' fill='%23ffd23f'/%3E%3C/svg%3E">
+<style>
+  /*
+    «Rutsjebanen» – Joannas ønske: en lang, lang rutsjebane, hvor det går
+    hurtigere og hurtigere, og man styrer personen, der kører. Til sidst skal
+    man ramme badebassinet uden at flyve ud over verden. Man kører mod tre
+    robotter, ser det hele bagfra, samler små penge og styrer uden om
+    forhindringerne et sted på banen.
+
+    Banen, rytterne, robotterne og hoppet bor i rutsjebane.mjs, så de kan
+    enhedstestes. Tegningen er almindelig canvas 2D med et lille perspektiv
+    skrevet i hånden (ingen WebGL).
+  */
+  :root{
+    --bg:#0f4f8c; --bg2:#12355e; --bg3:#1b4a7c; --text:#fff; --muted:#cfe6ff;
+    --gul:#ffd23f; --orange:#ff8a3d; --ink:#1b1200; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 10px;letter-spacing:-1.5px;font-weight:800;
+    color:var(--gul);text-shadow:0 3px 0 #b3560f,0 6px 18px rgba(0,0,0,.35)}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--gul);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink);
+    box-shadow:0 5px 0 #c79a12}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text);box-shadow:none}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  button.pill{color:var(--text);font-weight:700;min-height:36px}
+
+  .wrap{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.4px}
+  #menuBtn[hidden]{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#56c2ff}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Plads i venstre hjørne, penge og fart i højre */
+  .hud{position:absolute;left:10px;top:34px;pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,.45);
+    background:rgba(8,40,80,.5);border-radius:16px;padding:6px 12px;opacity:0;transition:opacity .25s}
+  .stage.igang .hud,.stage.igang .fremdrift{opacity:1}
+  .hud .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  #pladsEl{display:block;font-size:40px;font-weight:900;line-height:1;letter-spacing:-1.5px;font-variant-numeric:tabular-nums}
+  #pladsEl small{font-size:16px;font-weight:700;color:var(--muted);letter-spacing:0}
+  .hud.hoejre{left:auto;right:10px;text-align:right}
+  #moentEl{display:block;font-size:28px;font-weight:900;line-height:1.1;color:var(--gul);font-variant-numeric:tabular-nums}
+  #fartEl{display:block;font-size:15px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+
+  /* Hvor langt alle fire er nået – prikkerne kører mod bassinet */
+  .fremdrift{position:absolute;left:14px;right:14px;top:10px;height:16px;pointer-events:none;opacity:0;transition:opacity .25s}
+  .fremdrift .spor{position:absolute;left:0;right:26px;top:6px;height:5px;border-radius:3px;background:rgba(8,40,80,.45)}
+  .fremdrift .zone{position:absolute;top:0;height:100%;background:rgba(255,90,79,.7);border-radius:3px}
+  .fremdrift .prik{position:absolute;top:-4px;width:13px;height:13px;margin-left:-6px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .fremdrift .prik.mig{width:17px;height:17px;top:-6px;margin-left:-8px;z-index:2}
+  .fremdrift .pool{position:absolute;right:0;top:-5px;font-size:16px;line-height:1}
+
+  /* De to halvdele af skærmen er knapper – pilene viser det */
+  .pil{position:absolute;bottom:14px;width:64px;height:64px;border-radius:50%;pointer-events:none;
+    display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#fff;
+    background:rgba(8,40,80,.25);border:2px solid rgba(255,255,255,.5);opacity:0;transition:opacity .3s,background .1s}
+  .stage.igang .pil{opacity:.85}
+  .pil.v{left:14px} .pil.h{right:14px}
+  .pil.tryk{background:rgba(255,210,63,.6);border-color:var(--gul)}
+
+  /* Beskeder midt på fladen */
+  .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .3s}
+  .msg.on{opacity:1}
+  #raab .big{font-size:clamp(30px,10vw,60px);font-weight:900;letter-spacing:-1.5px;line-height:1.05;color:#fff;
+    text-shadow:0 5px 0 #0d5aa8,0 10px 30px rgba(0,0,0,.45)}
+  #raab.on .big{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+  #raab .sub{margin-top:14px;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(8,40,80,.65);border-radius:999px;padding:8px 16px}
+  #raab .sub:empty{display:none}
+  @keyframes pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+
+  /* Start- og slutskærm */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:18px 20px 24px;background:rgba(10,50,95,.72);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .regler{display:flex;flex-direction:column;gap:7px;margin:0 0 4px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:9px 13px;color:var(--text)}
+  .regler b{color:var(--gul)}
+  .hs{margin-top:12px}
+  .hs .hs-liste{max-height:30vh}
+  .stor{font-size:64px;font-weight:900;line-height:1;letter-spacing:-2px;color:var(--gul);
+    font-variant-numeric:tabular-nums;margin:2px 0 6px;text-shadow:0 4px 0 #b3560f}
+  .stor small{font-size:24px;color:var(--muted);letter-spacing:0;text-shadow:none}
+  .dele{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:0 0 8px}
+  .dele span{background:var(--bg2);border-radius:999px;padding:5px 11px;font-size:14px;font-weight:700}
+  .dele span.nul{opacity:.5;text-decoration:line-through}
+  .raekke{list-style:none;margin:0 0 4px;padding:0;text-align:left}
+  .raekke li{display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:12px;font-size:15px}
+  .raekke li.mig{background:rgba(255,210,63,.2);font-weight:800}
+  .raekke .nr{width:24px;font-weight:900;text-align:center}
+  .raekke .ring{width:14px;height:14px;border-radius:50%;border:3px solid;flex:none}
+  .raekke .navn{flex:1}
+  .raekke .tid{color:var(--muted);font-variant-numeric:tabular-nums;font-size:14px}
+  .under{font-size:15px;color:var(--muted);margin:0 0 8px}
+  .hint{font-size:15px;margin:10px 0 0}
+
+  @media (max-height:700px){
+    h1{font-size:30px} #pladsEl{font-size:32px} .stor{font-size:46px} .hs .hs-liste{max-height:22vh}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+    .raekke li{padding:3px 10px;font-size:14px}
+  }
+  @media (max-width:380px){ .top .name{display:none} }
+  @media (prefers-reduced-motion:reduce){ .btn{transition:none} #raab.on .big{animation:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Rutsjebanen</div>
+    <button class="pill" id="menuBtn" hidden>Menu</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Rutsjebanen set bagfra"></canvas>
+
+    <div class="fremdrift" id="fremdrift" aria-hidden="true">
+      <div class="spor" id="fremSpor"><div class="zone" id="fremZone"></div></div>
+      <span class="pool">🏊</span>
+    </div>
+    <div class="hud" aria-live="polite">
+      <span class="lbl">Plads</span>
+      <b id="pladsEl">1.<small> af 4</small></b>
+    </div>
+    <div class="hud hoejre">
+      <b id="moentEl">🪙 0</b>
+      <span id="fartEl">0 km/t</span>
+    </div>
+    <div class="pil v" id="pilV" aria-hidden="true">‹</div>
+    <div class="pil h" id="pilH" aria-hidden="true">›</div>
+
+    <div class="msg" id="raab">
+      <div class="big" id="raabTekst">3</div>
+      <div class="sub" id="raabUnder"></div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Rutsjebanen</h1>
+        <div class="regler" aria-hidden="true">
+          <span>🤖 <b>Kapløb mod tre robotter</b> ned ad en lang, lang rutsjebane</span>
+          <span>👆 <b>Hold på venstre eller højre side</b> af skærmen – så styrer du</span>
+          <span>🪙 <b>Saml penge</b> og styr uden om 🦆 <b>forhindringerne</b></span>
+          <span>🏊 <b>Ram bassinet</b> til sidst – og flyv ikke ud over verden!</span>
+        </div>
+        <button class="btn" id="startBtn">Kør!</button>
+        <p class="hint">På computer: piletasterne eller A og D.</p>
+        <div class="hs" id="hsStart"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Plask!</h1>
+        <div class="stor" id="slutPoint">0<small> point</small></div>
+        <div class="dele" id="slutDele"></div>
+        <ol class="raekke" id="slutRaekke"></ol>
+        <p class="under" id="slutUnder">Din rekord er 0 point</p>
+        <button class="btn" id="igenBtn">Kør igen</button>
+        <button class="btn ghost" id="tilbageBtn">Menu</button>
+        <div class="hs" id="hsSlut"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="rutsjebane"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+<script type="module">
+import {
+  G, LAENGDE, SLUT, HALV, VAEG_H, MIDT_R, DAEK,
+  topfart, sporPunkt, vaeg, lokal, verden, nytLoeb, tik as motorTik, iMaal,
+  placering, resultat, koerFaerdig, botStyr, giveBot,
+} from './rutsjebane.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const harFastSeed = Number.isFinite(fastSeed);
+let seed = harFastSeed ? fastSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
+const pladsEl = $('pladsEl'), moentEl = $('moentEl'), fartEl = $('fartEl');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen');
+const raab = $('raab'), raabTekst = $('raabTekst'), raabUnder = $('raabUnder'), menuBtn = $('menuBtn');
+const pilV = $('pilV'), pilH = $('pilH');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY_BEST = 'zydy.rutsjebane.best';
+const hentBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const gemBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+const pointTekst = v => v + ' point';
+const tidTekst = t => { const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1).replace('.', ','); };
+
+const DT = 1 / 120;                 // fast fysik-trin
+const SIGT = 140;                   // så langt frem tegnes banen (meter)
+const BAAND = 3;                    // tværbånd på banen for hver 3 m – det er dem, man ser farten i
+const EFTER = 2.4;                  // sekunder fra man lander, til resultatet kommer
+const K = 8;                        // renden er delt i 8 strimler på tværs
+const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1, dpr = 1, F = 300, HOR = 200;
+let skyer = [];
+function maal() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(2.5, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Brændvidden følger den korteste side, så renden fylder det samme på en telefon og en iPad
+  F = Math.min(W * 1.1, H * 0.95);
+  HOR = klem(H * 0.62 - F * 0.3, H * 0.22, H * 0.46);
+}
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';                  // menu | spil | efter | slut
+let l = null, mig = null;
+let T = 0, best = hentBest();
+let paused = false, acc = 0, sidst = 0, raabTil = 0, efterT = 0;
+let styrNu = 0, sagt = {}, dumpT = 0, bonk = 0, sidsteRes = null;
+let draaber = [], glimt = [];
+const cam = { x: 0, y: 3, z: -6, yaw: 0, pitch: 0.3 };
+const fingre = new Map();           // pointerId → −1 (venstre) eller 1 (højre)
+const taster = new Set();
+
+function nulstil() {
+  if (!harFastSeed) seed = (Math.random() * 4294967296) >>> 0;
+  l = nytLoeb(seed); mig = l.rytter[0];
+  T = 0; draaber = []; glimt = []; sagt = {}; efterT = 0; bonk = 0;
+  raabTil = 0; styrNu = 0; sidsteRes = null;
+  fingre.clear();
+  kameraTil(true);
+  lavFremdrift();
+  visHud();
+}
+
+maal();
+addEventListener('resize', maal);
+addEventListener('orientationchange', () => setTimeout(maal, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
+
+/* ---------- Skyerne (langt væk – de flytter sig kun, når man drejer) ---------- */
+{
+  let a = 777;
+  const r = () => ((a = (a * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 16; i++) skyer.push({ vinkel: r() * Math.PI * 2, hoejde: 0.05 + r() * 0.3, st: 0.6 + r() * 0.9, n: 3 + Math.floor(r() * 3) });
+}
+
+/* ---------- Fremdriften øverst ---------- */
+let prikker = [];
+function lavFremdrift() {
+  const spor = $('fremSpor');
+  for (const p of prikker) p.remove();
+  prikker = l.rytter.map((r, i) => {
+    const d = document.createElement('span');
+    d.className = 'prik' + (i === 0 ? ' mig' : '');
+    d.style.background = r.farve;
+    spor.appendChild(d);
+    return d;
+  });
+  const z = $('fremZone');
+  z.style.left = (l.spor.zone.fra / SLUT * 100) + '%';
+  z.style.width = ((l.spor.zone.til - l.spor.zone.fra) / SLUT * 100) + '%';
+}
+
+/* ---------- Skærmene ---------- */
+let visteMoent = -1, visteFart = -1, vistePlads = -1;
+function visHud() {
+  const p = placering(l);
+  if (p !== vistePlads) { vistePlads = p; pladsEl.innerHTML = p + '.<small> af 4</small>'; }
+  if (mig.moenter !== visteMoent) { visteMoent = mig.moenter; moentEl.textContent = '🪙 ' + mig.moenter; }
+  const v = mig.fase === 'luft' ? Math.hypot(mig.vx, mig.vy, mig.vz) : mig.fase === 'bane' ? mig.v : 0;
+  const kmt = Math.round(v * 3.6);
+  if (kmt !== visteFart) { visteFart = kmt; fartEl.textContent = kmt + ' km/t'; }
+  l.rytter.forEach((r, i) => {
+    const s = r.fase === 'bane' ? r.s : SLUT;
+    prikker[i].style.left = (s / SLUT * 100) + '%';
+  });
+}
+function sigTil(stor, lille, sek) {
+  raabTekst.textContent = stor; raabUnder.textContent = lille || '';
+  raab.classList.remove('on'); void raab.offsetWidth;
+  raab.classList.add('on'); raabTil = T + sek;
+}
+
+function start() {
+  nulstil();
+  fase = 'spil';
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  menuBtn.hidden = false; stage.classList.add('igang');
+  sigTil('3', 'Hold venstre eller højre side for at styre', 1);
+  visHud();
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+/** Resultatet: plads, point og hvordan det gik for robotterne. */
+function slut() {
+  fase = 'slut';
+  koerFaerdig(l);
+  const res = resultat(l);
+  sidsteRes = res;
+  const ny = res.point > best;
+  if (ny) { best = res.point; gemBest(best); }
+  stage.classList.remove('igang');
+  raab.classList.remove('on');
+  $('slutTitel').textContent =
+    res.fase === 'ude' ? 'Ud over verden!' :
+    res.fase === 'fliser' ? 'Av – lige på fliserne!' :
+    res.plads === 1 ? '🏆 Du vandt!' : res.plads + '. plads!';
+  $('slutPoint').innerHTML = res.point + '<small> point</small>';
+  const d = res.dele;
+  const dele = [
+    ['🪙 Penge ' + d.moenter, d.moenter],
+    [res.plads ? `🏁 ${res.plads}. plads +${d.plads}` : '🏁 Ingen plads', d.plads],
+    ['💦 Plask +' + (d.plask || 20), d.plask],
+  ];
+  if (d.midt) dele.push(['🎯 Lige i midten +' + d.midt, d.midt]);
+  $('slutDele').innerHTML = '';
+  for (const [t, v] of dele) {
+    const s = document.createElement('span'); s.textContent = t; if (!v) s.className = 'nul';
+    $('slutDele').appendChild(s);
+  }
+  const ol = $('slutRaekke'); ol.innerHTML = '';
+  let nr = 0;
+  for (const r of res.raekke) {
+    const li = document.createElement('li');
+    if (!r.robot) li.className = 'mig';
+    const plask = r.fase === 'plask';
+    if (plask) nr++;
+    li.innerHTML = `<span class="nr"></span><span class="ring"></span><span class="navn"></span><span class="tid"></span>`;
+    li.querySelector('.nr').textContent = plask ? nr + '.' : '–';
+    li.querySelector('.ring').style.borderColor = r.farve;
+    li.querySelector('.navn').textContent = r.robot ? '🤖 ' + r.navn : 'Dig';
+    li.querySelector('.tid').textContent = plask ? tidTekst(r.tid) : r.fase === 'fliser' ? 'landede på fliserne' : 'fløj ud over verden';
+    ol.appendChild(li);
+  }
+  $('slutUnder').textContent = ny && res.point > 0
+    ? 'Ny rekord! Så mange point har du aldrig fået før.'
+    : 'Din rekord er ' + pointTekst(best);
+  slutScreen.classList.add('on');
+  slutScreen.scrollTop = 0;
+  visHud();
+  Highscore.panel($('hsSlut'), { spil: 'rutsjebane', score: res.point, format: pointTekst });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(res.point, pointTekst(res.point));
+}
+
+function tilMenu() {
+  fase = 'menu';
+  nulstil();
+  slutScreen.classList.remove('on'); startScreen.classList.add('on');
+  menuBtn.hidden = true; raab.classList.remove('on'); stage.classList.remove('igang');
+  Highscore.panel($('hsStart'), { spil: 'rutsjebane', format: pointTekst });
+}
+
+/* ---------- Styringen: −1 … 1 ---------- */
+function styring() {
+  let v = 0;
+  for (const side of fingre.values()) v += side;
+  if (taster.has('ArrowLeft') || taster.has('KeyA')) v -= 1;
+  if (taster.has('ArrowRight') || taster.has('KeyD')) v += 1;
+  return klem(v, -1, 1);                               // begge sider på én gang = ligeud
+}
+
+/* ---------- Kameraet ---------- */
+/**
+ * Kameraet hænger bag og over dig og kigger ned ad renden. På banen følger det
+ * rendens retning; i luften hænger det bag dig og kigger ned mod bassinet.
+ */
+function kameraTil(straks, dt = DT) {
+  let mx, my, mz, myaw, mp;
+  if (mig.fase === 'bane') {
+    const sc = Math.max(-2, mig.s - 6.5);
+    const p = l.spor.ved(sc), frem = l.spor.ved(mig.s + 10);
+    const c = sporPunkt(l.spor, sc, mig.u * 0.55);
+    mx = c.x; my = p.y + 3.4; mz = c.z;
+    myaw = p.psi * 0.4 + frem.psi * 0.6;
+    mp = 0.2 + Math.atan(-p.sl) * 0.9;
+  } else {
+    // Bag dig – men aldrig ind over øen, for så ryger dens forkant bag kameraet, og øen forsvinder
+    const P = l.pool;
+    const { a, b } = lokal(P, mig.x, mig.z);
+    const bc = Math.min(b - 7, P.zc - P.hl - DAEK - 3);
+    my = Math.max(mig.y + 3.6, P.daek + 6);
+    const c = verden(P, a, bc, my);
+    mx = c.x; mz = c.z;
+    myaw = Math.atan2(P.F.x, P.F.z);
+    mp = Math.atan2(my - mig.y, Math.max(3, b - bc)) - 0.05;
+  }
+  if (straks) { cam.x = mx; cam.y = my; cam.z = mz; cam.yaw = myaw; cam.pitch = mp; return; }
+  const a = Math.min(1, dt * 9), b = Math.min(1, dt * 4);
+  cam.x += (mx - cam.x) * a; cam.z += (mz - cam.z) * a;
+  cam.y += (my - cam.y) * Math.min(1, dt * 8);
+  cam.yaw += (myaw - cam.yaw) * b;
+  cam.pitch += (mp - cam.pitch) * b;
+}
+
+/* ---------- Løkken ---------- */
+function uiTik(dt, styrTving) {
+  T += dt;
+  if (fase === 'spil' || fase === 'efter') {
+    const foer = l.nedtael;
+    styrNu = fase === 'spil' && styrTving !== undefined ? styrTving : fase === 'spil' ? styring() : 0;
+    if (mig.fase !== 'bane' && mig.fase !== 'luft') styrNu = 0;
+    const e = motorTik(l, dt, styrNu);
+    if (foer > 0) {
+      const n = Math.ceil(l.nedtael);
+      if (l.nedtael > 0 && n !== Math.ceil(foer)) sigTil(String(n), '', 0.9);
+      if (e.start) sigTil('KØR!', '', 0.8);
+    }
+    if (e.moent) { for (let i = 0; i < e.moent; i++) glimtVed(mig.x, mig.y + 0.6, mig.z); navigator.vibrate && navigator.vibrate(8); }
+    if (e.ramt) { bonk = 0.8; navigator.vibrate && navigator.vibrate(70); sigTil('BONK!', 'Styr uden om forhindringerne', 0.8); }
+    if (e.skrab) dumpT = 0.12;
+    if (fase === 'spil') meldinger(e);
+    kameraTil(false, dt);
+    if (fase === 'spil' && iMaal(mig)) { fase = 'efter'; efterT = 0; }
+    if (fase === 'efter') { efterT += dt; if (efterT >= EFTER) slut(); }
+  }
+  if (raabTil && T > raabTil) { raab.classList.remove('on'); raabTil = 0; }
+  bonk = Math.max(0, bonk - dt); dumpT = Math.max(0, dumpT - dt);
+  for (const q of draaber) { q.t += dt; q.vy -= G * 0.8 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; }
+  draaber = draaber.filter(q => q.t < q.liv);
+  for (const q of glimt) q.t += dt;
+  glimt = glimt.filter(q => q.t < 0.5);
+}
+
+/** Det, der råbes undervejs: forhindringerne, bassinet, hoppet og landingen. */
+function meldinger(e) {
+  const s = mig.s;
+  if (!sagt.zone && mig.fase === 'bane' && s > l.spor.zone.fra - topfart(s) * 2.2) {
+    sagt.zone = true; sigTil('⚠️ Forhindringer!', 'Find hullet mellem dem', 1.6);
+  }
+  if (!sagt.fri && s > l.spor.zone.til) { sagt.fri = true; sigTil('Fri bane!', 'Hurtigere og hurtigere…', 1.2); }
+  if (!sagt.sigt && s > LAENGDE - 150) {
+    sagt.sigt = true;
+    sigTil('Sigt efter bassinet!', l.pool.ox < 0 ? '⬅️ Det ligger til venstre' : 'Det ligger til højre ➡️', 2);
+  }
+  if (e.hop) sigTil('HOP!', 'Styr mod bassinet', 1.1);
+  if (e.plask) {
+    plask(mig.x, l.pool.vand, mig.z, 70);
+    const midt = Math.hypot(mig.land.a - l.pool.ox, mig.land.b - l.pool.zc) <= MIDT_R;
+    const p = placering(l);
+    sigTil('PLASK!', (midt ? '🎯 Lige i midten! · ' : '') + p + '. plads', EFTER);
+    navigator.vibrate && navigator.vibrate([20, 40, 60]);
+  }
+  if (e.fliser) { sigTil('AV!', 'Lige på fliserne', EFTER); navigator.vibrate && navigator.vibrate(120); }
+  if (e.ude) { sigTil('UD OVER VERDEN!', 'Du ramte ikke bassinet', EFTER); navigator.vibrate && navigator.vibrate([40, 40, 40]); }
+}
+
+function plask(x, y, z, n) {
+  if (roligt) n = Math.round(n / 4);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, f = 1 + Math.random() * 4;
+    draaber.push({ x, y, z, vx: Math.cos(a) * f, vy: 5 + Math.random() * 9, vz: Math.sin(a) * f, t: 0, liv: 0.8 + Math.random() * 0.7 });
+  }
+}
+function glimtVed(x, y, z) { glimt.push({ x, y, z, t: 0 }); }
+
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!sidst) sidst = nu;
+  const dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  if (!paused) {
+    acc += dt;
+    while (acc >= DT) { uiTik(DT); acc -= DT; }
+    if (fase === 'menu') menuKoer(dt);
+  }
+  if (fase !== 'menu') visHud();
+  pilV.classList.toggle('tryk', styrNu < 0 && fase === 'spil');
+  pilH.classList.toggle('tryk', styrNu > 0 && fase === 'spil');
+  tegn();
+}
+/** På startskærmen kører en bot for dig bag menuen, så man kan se, hvad det går ud på. */
+function menuKoer(dt) {
+  if (roligt) return;
+  if (!mig.bot) { giveBot(mig, 0.9, seed, true); l.nedtael = 0; }
+  const n = Math.max(1, Math.round(Math.min(dt, 0.05) / DT));
+  for (let i = 0; i < n; i++) motorTik(l, DT, botStyr(l, mig, DT));
+  if (iMaal(mig)) {
+    efterT += dt;
+    if (efterT > 3) { l = nytLoeb(seed + 1 + Math.floor(T)); mig = l.rytter[0]; efterT = 0; lavFremdrift(); kameraTil(true); return; }
+  }
+  kameraTil(false, dt);
+}
+requestAnimationFrame(billede);
+
+/* ---------- Perspektivet ---------- */
+/** Et punkt i verden → skærmen. null, hvis det er bag kameraet. */
+function proj(X, Y, Z) {
+  const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const dx = X - cam.x, dy = Y - cam.y, dz = Z - cam.z;
+  const xr = dx * cy - dz * sy, zr = dx * sy + dz * cy;
+  const d = zr * cp - dy * sp;
+  if (d < 0.3) return null;
+  const op = dy * cp + zr * sp;
+  return { x: W / 2 + xr * F / d, y: HOR - op * F / d, d };
+}
+const taage = d => klem(1 - (d - SIGT * 0.6) / (SIGT * 0.4), 0, 1);   // langt væk forsvinder banen i disen
+
+function polygon(pts) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+}
+/** Fortegnet areal på skærmen – negativt, når fladen vender mod os. */
+const areal = (a, b, c, d) => ((a.x * b.y - b.x * a.y) + (b.x * c.y - c.x * b.y) + (c.x * d.y - d.x * c.y) + (d.x * a.y - a.x * d.y));
+
+/* ---------- Tegning ---------- */
+function himmel() {
+  const hy = HOR - F * Math.tan(cam.pitch);           // horisonten
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  const u = klem(hy / H, 0.02, 0.98);
+  g.addColorStop(0, '#2b8fe8'); g.addColorStop(u * 0.9, '#8fd3ff'); g.addColorStop(u, '#dff3ff');
+  g.addColorStop(Math.min(1, u + 0.02), '#f4fbff'); g.addColorStop(1, '#bfe4ff');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // Solen
+  const sv = 0.9 - cam.yaw;
+  const sx = W / 2 + Math.tan(((sv + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI) * F;
+  if (sx > -80 && sx < W + 80) {
+    const sy = hy - H * 0.32;
+    const sg = ctx.createRadialGradient(sx, sy, 4, sx, sy, 70);
+    sg.addColorStop(0, 'rgba(255,255,230,1)'); sg.addColorStop(0.25, 'rgba(255,245,180,.9)'); sg.addColorStop(1, 'rgba(255,245,180,0)');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sx, sy, 70, 0, Math.PI * 2); ctx.fill();
+  }
+  // Skyer højt oppe og et skyhav under verden
+  for (const sk of skyer) {
+    let dv = sk.vinkel - cam.yaw;
+    dv = ((dv + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+    if (Math.abs(dv) > 1.1) continue;
+    const x = W / 2 + Math.tan(dv) * F, y = hy - sk.hoejde * H;
+    sky(x, y, sk.st * F * 0.09, sk.n, 'rgba(255,255,255,.9)');
+  }
+  ctx.fillStyle = 'rgba(255,255,255,.55)';
+  for (let i = 0; i < 9; i++) {
+    const x = ((i * 173 - cam.yaw * F * 1.3) % (W + 300) + W + 300) % (W + 300) - 150;
+    sky(x, hy + 14 + (i % 3) * 16, F * 0.08, 4, 'rgba(255,255,255,.75)');
+  }
+}
+function sky(x, y, r, n, farve) {
+  ctx.fillStyle = farve;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) { const dx = (i - (n - 1) / 2) * r * 0.9; ctx.moveTo(x + dx + r, y); ctx.arc(x + dx, y - (i % 2) * r * 0.35, r * (0.75 + 0.25 * (i % 2)), 0, Math.PI * 2); }
+  ctx.fill();
+}
+
+function tegn() {
+  himmel();
+  const opg = [];
+  const sp = l.spor;
+  const sNaer = mig.fase === 'bane' ? Math.max(-2, mig.s - 7.5) : SLUT - 40;
+  const sFjern = Math.min(SLUT, (mig.fase === 'bane' ? mig.s : SLUT) + SIGT);
+  // Renden i stykker – korte tæt på, længere langt væk
+  let s = sNaer;
+  while (s < sFjern) {
+    const trin = s - sNaer < 30 ? 1.5 : s - sNaer < 70 ? 2.5 : 4;
+    const s2 = Math.min(sFjern, s + trin);
+    opg.push({ n: s2, rende: [s, s2] });
+    s = s2;
+  }
+  // Øen med bassinet ligger bag hoppet – den tegnes først
+  opg.push({ n: SLUT + 1e4, oe: true });
+  for (const [sb, tekst, farve] of [[0.5, 'START', '#ff8a3d'], [sp.zone.fra, '⚠️ FORHINDRINGER', '#ff5a4f'], [LAENGDE - 4, 'HOP!', '#2fbf71']]) {
+    if (sb > sNaer + 2 && sb < sFjern) opg.push({ n: sb - 0.05, bue: { s: sb, tekst, farve } });
+  }
+  for (const rk of l.raekker) if (rk.s > sNaer && rk.s < sFjern) for (const tg of rk.ting) opg.push({ n: rk.s - 1.2, ting: tg, s: rk.s });
+  for (const m of l.moenter) if (!m.taget && m.s > sNaer && m.s < sFjern) opg.push({ n: m.s - 1.2, moent: m });
+  for (const r of l.rytter) {
+    if (r.fase === 'bane') { if (r.s > sNaer - 1 && r.s < sFjern) opg.push({ n: r.s - 1.2, rytter: r }); }
+    else opg.push({ n: SLUT + lokal(l.pool, r.x, r.z).b, rytter: r });
+  }
+  opg.sort((a, b) => b.n - a.n);
+  for (const o of opg) {
+    if (o.rende) tegnRende(o.rende[0], o.rende[1]);
+    else if (o.oe) tegnOe();
+    else if (o.bue) tegnBue(o.bue);
+    else if (o.ting) tegnTing(o.ting, o.s);
+    else if (o.moent) tegnMoent(o.moent);
+    else if (o.rytter) tegnRytter(o.rytter);
+  }
+  tegnDraaber();
+}
+
+/** Et stykke af renden: indersiden i strimler, kanterne, og ydersiden, hvis man kan se den. */
+function tegnRende(s0, s1) {
+  const sp = l.spor;
+  const pn = [], pf = [];
+  for (let k = 0; k <= K; k++) {
+    const u = -HALV + 2 * HALV * k / K;
+    const a = sporPunkt(sp, s0, u), b = sporPunkt(sp, s1, u);
+    pn.push(proj(a.x, a.y, a.z)); pf.push(proj(b.x, b.y, b.z));
+  }
+  if (pn.some(p => !p) || pf.some(p => !p)) return;
+  const a = taage(pf[K >> 1].d);
+  if (a <= 0) return;
+  ctx.globalAlpha = a;
+  const lys = Math.floor((s0 + 1e-6) / BAAND) % 2 === 0;
+  for (let k = 0; k < K; k++) {
+    const A = pn[k], B = pn[k + 1], C = pf[k + 1], D = pf[k];
+    if (areal(A, B, C, D) > 0) continue;              // vender væk (indersiden set udefra)
+    const midt = k === K / 2 - 1 || k === K / 2;
+    const kant = k === 0 || k === K - 1;
+    ctx.fillStyle = midt ? (lys ? '#c9f1ff' : '#a9e6ff') : kant ? (lys ? '#2a9be0' : '#228bd0') : (lys ? '#6fd0ff' : '#58c0f5');
+    polygon([A, B, C, D]); ctx.fill();
+    if (!lys && midt) {
+      // Vandet glimter i bunden
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = Math.max(1, F / C.d * 0.05);
+      ctx.beginPath(); ctx.moveTo((A.x + B.x) / 2, (A.y + B.y) / 2); ctx.lineTo((C.x + D.x) / 2, (C.y + D.y) / 2); ctx.stroke();
+    }
+  }
+  // Ydersiden: orange skal fra kanten og ned under renden
+  for (const side of [-1, 1]) {
+    const top0 = sporPunkt(sp, s0, side * HALV), top1 = sporPunkt(sp, s1, side * HALV);
+    const bund0 = sporPunkt(sp, s0, side * HALV * 0.45, -0.9), bund1 = sporPunkt(sp, s1, side * HALV * 0.45, -0.9);
+    const A = proj(top0.x, top0.y + 0.12, top0.z), B = proj(bund0.x, bund0.y, bund0.z);
+    const C = proj(bund1.x, bund1.y, bund1.z), D = proj(top1.x, top1.y + 0.12, top1.z);
+    if (!A || !B || !C || !D) continue;
+    const ar = areal(A, B, C, D) * side;
+    if (ar < 0) { ctx.fillStyle = lys ? '#ff9a4d' : '#f07e2e'; polygon([A, B, C, D]); ctx.fill(); }
+  }
+  // Kanterne: en tyk hvid rulle hele vejen
+  ctx.strokeStyle = '#ffffff'; ctx.lineCap = 'round';
+  for (const k of [0, K]) {
+    const A = pn[k], D = pf[k];
+    ctx.lineWidth = Math.max(1.2, F / D.d * 0.24);
+    ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(D.x, D.y); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Portene over renden: START, FORHINDRINGER og HOP!. */
+function tegnBue({ s, tekst, farve }) {
+  const sp = l.spor;
+  const hoej = VAEG_H + 3;
+  const pv = sporPunkt(sp, s, -HALV - 0.3), ph = sporPunkt(sp, s, HALV + 0.3);
+  const bund = VAEG_H;
+  const v0 = proj(pv.x, pv.y - VAEG_H + bund - 0.2, pv.z), v1 = proj(pv.x, pv.y - VAEG_H + hoej + 1.2, pv.z);
+  const h0 = proj(ph.x, ph.y - VAEG_H + bund - 0.2, ph.z), h1 = proj(ph.x, ph.y - VAEG_H + hoej + 1.2, ph.z);
+  const bv = proj(pv.x, pv.y - VAEG_H + hoej, pv.z), bh = proj(ph.x, ph.y - VAEG_H + hoej, ph.z);
+  if (!v0 || !v1 || !h0 || !h1 || !bv || !bh) return;
+  const a = taage(v0.d);
+  if (a <= 0) return;
+  ctx.globalAlpha = a;
+  const st = F / v0.d;
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.5, st * 0.25); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(v0.x, v0.y); ctx.lineTo(v1.x, v1.y); ctx.moveTo(h0.x, h0.y); ctx.lineTo(h1.x, h1.y); ctx.stroke();
+  ctx.fillStyle = farve;
+  polygon([bv, bh, h1, v1]); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = Math.max(1, st * 0.1);
+  polygon([bv, bh, h1, v1]); ctx.stroke();
+  const fs = Math.min(Math.abs(bv.y - v1.y) * 0.72, Math.abs(bh.x - bv.x) / (tekst.length * 0.62));
+  if (fs > 4) {
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `900 ${fs}px -apple-system,sans-serif`;
+    ctx.fillText(tekst, (bv.x + bh.x + v1.x + h1.x) / 4, (bv.y + bh.y + v1.y + h1.y) / 4);
+    ctx.textBaseline = 'alphabetic';
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Vinklen på renden lige dér, hvor man er – så figurerne læner sig op ad væggen. */
+function haeldning(s, u) {
+  const a = sporPunkt(l.spor, s, u - 0.4), b = sporPunkt(l.spor, s, u + 0.4);
+  const pa = proj(a.x, a.y, a.z), pb = proj(b.x, b.y, b.z);
+  return pa && pb ? Math.atan2(pb.y - pa.y, pb.x - pa.x) : 0;
+}
+
+/** Forhindringerne: gummiænder, badebolde og badedyr. */
+function tegnTing(tg, s) {
+  const p = sporPunkt(l.spor, s, tg.u);
+  const c = proj(p.x, p.y, p.z);
+  if (!c) return;
+  const st = F / c.d;
+  if (st < 0.8) return;
+  const a = taage(c.d);
+  if (a <= 0) return;
+  ctx.globalAlpha = a;
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.rotate(haeldning(s, tg.u));
+  ctx.scale(st, st);
+  // Skygge
+  ctx.fillStyle = 'rgba(0,40,90,.25)';
+  ctx.beginPath(); ctx.ellipse(0, 0, 0.7, 0.18, 0, 0, Math.PI * 2); ctx.fill();
+  if (tg.type === 'and') {
+    ctx.fillStyle = '#ffd400';
+    ctx.beginPath(); ctx.ellipse(0, -0.42, 0.62, 0.42, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -1.02, 0.32, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ff8a00';
+    ctx.beginPath(); ctx.ellipse(0, -0.93, 0.2, 0.09, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1b1b1b';
+    ctx.beginPath(); ctx.arc(-0.12, -1.1, 0.05, 0, Math.PI * 2); ctx.arc(0.12, -1.1, 0.05, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.beginPath(); ctx.ellipse(-0.25, -0.55, 0.14, 0.08, -0.5, 0, Math.PI * 2); ctx.fill();
+  } else if (tg.type === 'bold') {
+    const r = 0.58, cy = -r;
+    const farver = ['#ff4d4d', '#ffffff', '#2f7bff', '#ffffff', '#ffd400', '#ffffff'];
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = farver[i];
+      ctx.beginPath(); ctx.moveTo(0, cy);
+      ctx.arc(0, cy, r, i * Math.PI / 3 + T * 2, (i + 1) * Math.PI / 3 + T * 2); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.45)';
+    ctx.beginPath(); ctx.arc(-0.18, cy - 0.2, 0.14, 0, Math.PI * 2); ctx.fill();
+  } else {
+    // En oppustet badering, der står på højkant
+    ctx.lineWidth = 0.32; ctx.strokeStyle = '#ff5fa2';
+    ctx.beginPath(); ctx.arc(0, -0.62, 0.44, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.1;
+    for (let i = 0; i < 4; i++) {
+      const v = i * Math.PI / 2 + 0.4;
+      ctx.beginPath(); ctx.arc(0, -0.62, 0.44, v, v + 0.35); ctx.stroke();
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+/** En mønt, der snurrer. */
+function tegnMoent(m) {
+  const p = sporPunkt(l.spor, m.s, m.u, 0.55);
+  const c = proj(p.x, p.y, p.z);
+  if (!c) return;
+  const st = F / c.d;
+  if (st < 0.8) return;
+  const a = taage(c.d);
+  if (a <= 0) return;
+  ctx.globalAlpha = a;
+  const r = 0.3 * st, b = Math.max(0.12, Math.abs(Math.cos(T * 4 + m.s))) * r;
+  ctx.fillStyle = '#b8860b';
+  ctx.beginPath(); ctx.ellipse(c.x, c.y, b + st * 0.03, r + st * 0.03, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffd23f';
+  ctx.beginPath(); ctx.ellipse(c.x, c.y, b, r, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff3b0';
+  ctx.beginPath(); ctx.ellipse(c.x - b * 0.3, c.y - r * 0.3, b * 0.25, r * 0.25, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+/** En rytter på sin badering, set bagfra – dig som et barn, robotterne som robotter. */
+function tegnRytter(r) {
+  const P = l.pool;
+  let x, y, z, vinkel = 0, arme = 0;
+  if (r.fase === 'bane') {
+    const p = sporPunkt(l.spor, r.s, r.u);
+    x = p.x; y = p.y; z = p.z;
+  } else { x = r.x; y = r.y; z = r.z; arme = 1; }
+  const c = proj(x, y, z);
+  if (!c) return;
+  const st = F / c.d;
+  if (st < 0.6) return;
+  if (r.fase === 'bane') vinkel = haeldning(r.s, r.u);
+  const a = r.fase === 'bane' ? taage(c.d) : 1;
+  if (a <= 0) return;
+  ctx.globalAlpha = a;
+  // Skygge på vandet under én i luften
+  if (r.fase === 'luft') {
+    const { a: la, b: lb } = lokal(P, x, z);
+    const overOe = Math.abs(la - P.ox) <= P.hb + DAEK && Math.abs(lb - P.zc) <= P.hl + DAEK;
+    if (overOe) {
+      const sk = proj(x, P.vand + 0.05, z);
+      if (sk) { const sr = F / sk.d; ctx.fillStyle = 'rgba(0,40,90,.3)'; ctx.beginPath(); ctx.ellipse(sk.x, sk.y, sr * 0.7, sr * 0.22, 0, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.rotate(vinkel);
+  ctx.scale(st, st);
+  const iVand = r.fase === 'plask';
+  if (iVand) ctx.translate(0, 0.3 + Math.sin(T * 3 + r.nr) * 0.05);
+  // Beringen (bagerste halvdel)
+  ctx.fillStyle = r.farve;
+  ctx.beginPath(); ctx.ellipse(0, -0.25, 0.68, 0.26, 0, Math.PI, Math.PI * 2); ctx.fill();
+  if (r.robot) {
+    ctx.fillStyle = '#aab6c4';
+    rundRekt(-0.28, -0.95, 0.56, 0.72, 0.1); ctx.fill();
+    ctx.fillStyle = '#8894a3'; rundRekt(-0.2, -0.85, 0.4, 0.22, 0.05); ctx.fill();
+    ctx.fillStyle = '#c9d3de';
+    rundRekt(-0.24, -1.42, 0.48, 0.42, 0.1); ctx.fill();
+    ctx.strokeStyle = '#6b7684'; ctx.lineWidth = 0.05;
+    ctx.beginPath(); ctx.moveTo(0, -1.42); ctx.lineTo(0, -1.65); ctx.stroke();
+    ctx.fillStyle = Math.sin(T * 8 + r.nr) > 0 ? '#ff3b3b' : '#ffb3b3';
+    ctx.beginPath(); ctx.arc(0, -1.68, 0.07, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#aab6c4'; ctx.lineWidth = 0.12; ctx.lineCap = 'round';
+  } else {
+    ctx.fillStyle = '#ff4f8b';                         // badedragten
+    rundRekt(-0.25, -0.95, 0.5, 0.72, 0.18); ctx.fill();
+    ctx.fillStyle = '#f2c29b';
+    ctx.beginPath(); ctx.arc(0, -1.18, 0.23, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6b3a1e';                         // håret bagfra
+    ctx.beginPath(); ctx.arc(0, -1.22, 0.23, Math.PI * 0.85, Math.PI * 2.15); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -1.02, 0.18, 0.12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#f2c29b'; ctx.lineWidth = 0.12; ctx.lineCap = 'round';
+  }
+  // Armene: ned på ringen på banen, op i luften, når man flyver («WEEE!»)
+  ctx.beginPath();
+  if (arme) { ctx.moveTo(-0.22, -0.85); ctx.lineTo(-0.5, -1.45); ctx.moveTo(0.22, -0.85); ctx.lineTo(0.5, -1.45); }
+  else { ctx.moveTo(-0.22, -0.85); ctx.lineTo(-0.5, -0.35); ctx.moveTo(0.22, -0.85); ctx.lineTo(0.5, -0.35); }
+  ctx.stroke();
+  // Beringen (forreste halvdel)
+  ctx.fillStyle = r.farve;
+  ctx.beginPath(); ctx.ellipse(0, -0.25, 0.68, 0.26, 0, 0, Math.PI); ctx.lineTo(-0.68, -0.25); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.4)';
+  ctx.beginPath(); ctx.ellipse(-0.35, -0.2, 0.16, 0.06, 0, 0, Math.PI * 2); ctx.fill();
+  if (!r.robot && bonk > 0) {
+    ctx.fillStyle = '#ffd23f'; ctx.font = '900 0.5px -apple-system,sans-serif'; ctx.textAlign = 'center';
+    for (let i = 0; i < 3; i++) { const v = T * 6 + i * 2.1; ctx.fillText('★', Math.cos(v) * 0.45, -1.55 + Math.sin(v) * 0.12); }
+  }
+  ctx.restore();
+  // Navneskilt over robotterne
+  if (r.robot && st > 6) {
+    const ty = c.y - st * 1.95;
+    ctx.font = `800 ${Math.min(15, Math.max(10, st * 0.32))}px -apple-system,sans-serif`;
+    ctx.textAlign = 'center';
+    const w = ctx.measureText(r.navn).width + 12;
+    ctx.fillStyle = 'rgba(8,40,80,.7)'; rundRektPx(c.x - w / 2, ty - 12, w, 17, 8); ctx.fill();
+    ctx.fillStyle = r.farve; ctx.fillText(r.navn, c.x, ty + 1);
+  }
+  if (!r.robot && dumpT > 0 && r.fase === 'bane') {
+    // Skraber man kanten, sprøjter det
+    for (let i = 0; i < 3; i++) glimt.push({ x: x + (Math.random() - 0.5), y: y + 0.4, z, t: 0.25, vand: true });
+  }
+  ctx.globalAlpha = 1;
+}
+function rundRekt(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+const rundRektPx = rundRekt;
+
+/** Øen for enden: fliser, bassinet med en skive i midten – og ingenting uden om. */
+function tegnOe() {
+  const P = l.pool;
+  const a0 = P.ox - P.hb - DAEK, a1 = P.ox + P.hb + DAEK, b0 = P.zc - P.hl - DAEK, b1 = P.zc + P.hl + DAEK;
+  const pt = (a, b, y) => { const w = verden(P, a, b, y); return proj(w.x, w.y, w.z); };
+  // Klippen under øen – en omvendt top, der hænger ude i luften
+  const bund = pt((a0 + a1) / 2, (b0 + b1) / 2, P.daek - 16);
+  const hj = [pt(a0 - 0.8, b0 - 0.8, P.daek - 0.6), pt(a1 + 0.8, b0 - 0.8, P.daek - 0.6), pt(a1 + 0.8, b1 + 0.8, P.daek - 0.6), pt(a0 - 0.8, b1 + 0.8, P.daek - 0.6)];
+  if (bund && hj.every(Boolean)) {
+    ctx.fillStyle = '#7a5134';
+    for (let i = 0; i < 4; i++) { polygon([hj[i], hj[(i + 1) % 4], bund]); ctx.fill(); }
+    ctx.fillStyle = 'rgba(0,0,0,.15)';
+    polygon([hj[1], hj[2], bund]); ctx.fill();
+  }
+  // Græs og fliser
+  const g = [pt(a0 - 0.8, b0 - 0.8, P.daek), pt(a1 + 0.8, b0 - 0.8, P.daek), pt(a1 + 0.8, b1 + 0.8, P.daek), pt(a0 - 0.8, b1 + 0.8, P.daek)];
+  if (g.some(p => !p)) return;
+  ctx.fillStyle = '#4cc35a'; polygon(g); ctx.fill();
+  const f = [pt(a0, b0, P.daek), pt(a1, b0, P.daek), pt(a1, b1, P.daek), pt(a0, b1, P.daek)];
+  if (f.some(p => !p)) return;
+  ctx.fillStyle = '#f3e2c0'; polygon(f); ctx.fill();
+  ctx.strokeStyle = 'rgba(160,130,90,.35)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let a = a0 + 1; a < a1; a += 1) { const p1 = pt(a, b0, P.daek), p2 = pt(a, b1, P.daek); if (p1 && p2) { ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); } }
+  for (let b = b0 + 1; b < b1; b += 1) { const p1 = pt(a0, b, P.daek), p2 = pt(a1, b, P.daek); if (p1 && p2) { ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); } }
+  ctx.stroke();
+  // Bassinet: den fjerne væg og vandet
+  const pa0 = P.ox - P.hb, pa1 = P.ox + P.hb, pb0 = P.zc - P.hl, pb1 = P.zc + P.hl;
+  const kant = [pt(pa0, pb0, P.daek), pt(pa1, pb0, P.daek), pt(pa1, pb1, P.daek), pt(pa0, pb1, P.daek)];
+  const vand = [pt(pa0, pb0, P.vand), pt(pa1, pb0, P.vand), pt(pa1, pb1, P.vand), pt(pa0, pb1, P.vand)];
+  if (kant.some(p => !p) || vand.some(p => !p)) return;
+  ctx.fillStyle = '#e8f7ff'; polygon(kant); ctx.fill();
+  const vg = ctx.createLinearGradient(0, vand[2].y, 0, vand[0].y);
+  vg.addColorStop(0, '#1fa3ec'); vg.addColorStop(1, '#46c8ff');
+  ctx.fillStyle = vg; polygon(vand); ctx.fill();
+  // Banetov på langs
+  ctx.lineWidth = Math.max(1, F / vand[0].d * 0.1);
+  for (let i = 1; i < 4; i++) {
+    const a = pa0 + (pa1 - pa0) * i / 4;
+    const p1 = pt(a, pb0, P.vand), p2 = pt(a, pb1, P.vand);
+    if (!p1 || !p2) continue;
+    ctx.strokeStyle = i === 2 ? 'rgba(255,90,79,.8)' : 'rgba(255,255,255,.7)';
+    ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  // Skiven i midten – lander man inden for den, er der ekstra point
+  for (const [r, farve] of [[MIDT_R, 'rgba(255,255,255,.85)'], [MIDT_R * 0.5, 'rgba(255,90,79,.9)']]) {
+    ctx.strokeStyle = farve; ctx.lineWidth = Math.max(1.5, F / vand[0].d * 0.2);
+    ctx.beginPath();
+    for (let i = 0; i <= 28; i++) {
+      const v = i / 28 * Math.PI * 2;
+      const p = pt(P.ox + Math.cos(v) * r, P.zc + Math.sin(v) * r, P.vand);
+      if (!p) continue;
+      i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+    }
+    ctx.stroke();
+  }
+  // Parasoller i hjørnerne
+  for (const [a, b, farve] of [[a0 + 0.9, b1 - 0.9, '#ff5a4f'], [a1 - 0.9, b1 - 0.9, '#ffd23f'], [a1 - 0.9, b0 + 0.9, '#3ddc84']]) {
+    const fod = pt(a, b, P.daek), top = pt(a, b, P.daek + 2.4);
+    if (!fod || !top) continue;
+    const st = F / fod.d;
+    ctx.strokeStyle = '#eee'; ctx.lineWidth = Math.max(1, st * 0.08);
+    ctx.beginPath(); ctx.moveTo(fod.x, fod.y); ctx.lineTo(top.x, top.y); ctx.stroke();
+    ctx.fillStyle = farve;
+    ctx.beginPath(); ctx.ellipse(top.x, top.y, st * 1.1, st * 0.45, 0, Math.PI, Math.PI * 2); ctx.fill();
+  }
+}
+
+function tegnDraaber() {
+  for (const q of draaber) {
+    const c = proj(q.x, q.y, q.z);
+    if (!c) continue;
+    const st = Math.max(1.5, 0.14 * F / c.d);
+    ctx.globalAlpha = Math.max(0, 1 - q.t / q.liv);
+    ctx.fillStyle = q.t < 0.3 ? '#ffffff' : '#bfe9ff';
+    ctx.beginPath(); ctx.arc(c.x, c.y, st, 0, Math.PI * 2); ctx.fill();
+  }
+  for (const q of glimt) {
+    const c = proj(q.x, q.y + q.t * 1.5, q.z);
+    if (!c) continue;
+    const st = (q.vand ? 0.12 : 0.35) * F / c.d * (1 - q.t / 0.5);
+    ctx.globalAlpha = Math.max(0, 1 - q.t / 0.5);
+    ctx.fillStyle = q.vand ? '#ffffff' : '#ffe98a';
+    ctx.beginPath(); ctx.arc(c.x, c.y, Math.max(1, st), 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- Fingrene: venstre og højre halvdel ---------- */
+function sideFor(e) {
+  const r = canvas.getBoundingClientRect();
+  return e.clientX - r.left < r.width / 2 ? -1 : 1;
+}
+canvas.addEventListener('pointerdown', e => {
+  if (fase !== 'spil') return;
+  e.preventDefault();
+  canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+  fingre.set(e.pointerId, sideFor(e));
+});
+canvas.addEventListener('pointermove', e => {
+  if (fingre.has(e.pointerId)) fingre.set(e.pointerId, sideFor(e));   // glider fingeren over midten, skifter man side
+});
+for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  canvas.addEventListener(t, e => { fingre.delete(e.pointerId); });
+}
+
+const STYRETASTER = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'];
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (STYRETASTER.includes(e.code)) { e.preventDefault(); taster.add(e.code); }
+  if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat && (fase === 'menu' || fase === 'slut')) { e.preventDefault(); start(); }
+});
+addEventListener('keyup', e => { taster.delete(e.code); });
+addEventListener('blur', () => { taster.clear(); fingre.clear(); });
+
+$('startBtn').addEventListener('click', start);
+$('igenBtn').addEventListener('click', start);
+$('tilbageBtn').addEventListener('click', tilMenu);
+menuBtn.addEventListener('click', tilMenu);
+
+/* ---------- Start ---------- */
+nulstil();
+Highscore.panel($('hsStart'), { spil: 'rutsjebane', format: pointTekst });
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  start, tilMenu,
+  tik: (dt, styr) => uiTik(dt, styr),
+  pause() { paused = true; }, resume() { paused = false; sidst = 0; acc = 0; },
+  /** Spoler sek sekunder frem. styr låser styringen (−1 … 1); udeladt bruger fingrene/tasterne. */
+  frem(sek, styr) {
+    const n = Math.round(sek / DT);
+    for (let i = 0; i < n && (fase === 'spil' || fase === 'efter'); i++) uiTik(DT, styr);
+    return this.state;
+  },
+  /** Lader en bot styre for dig, til du er nået tilS meter (eller er landet). */
+  botTur(tilS = 1e9, skill = 1) {
+    if (!mig.bot) giveBot(mig, skill, seed, true);
+    while (fase === 'spil' && !(mig.fase === 'bane' && mig.s >= tilS)) uiTik(DT, l.nedtael > 0 ? 0 : botStyr(l, mig, DT));
+    return this.state;
+  },
+  /** Hvor på skærmen et punkt i verden er (tests). */
+  skaerm(x, y, z) { return proj(x, y, z); },
+  get resultat() { return sidsteRes; },
+  /** Selve løbet (tests: fx flytte robotterne væk, så ingen skubber til én). */
+  get loeb() { return l; },
+  get state() {
+    return {
+      fase, seed, t: l.t, nedtael: l.nedtael, best,
+      s: mig.s, u: mig.u, v: mig.v, x: mig.x, y: mig.y, z: mig.z,
+      rytter: mig.fase, plads: placering(l), moenter: mig.moenter, ramt: mig.ramt,
+      styr: styrNu, fingre: fingre.size,
+      zone: { ...l.spor.zone }, raekker: l.raekker.length,
+      pool: { ox: l.pool.ox, zc: l.pool.zc },
+      robotter: l.rytter.slice(1).map(r => ({ navn: r.navn, s: r.s, fase: r.fase })),
+    };
+  },
+};
+</script>
+</body></html>
