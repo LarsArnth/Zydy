@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 55,
+      "dato": "2026-09-26",
+      "spil": "baseforsvar",
+      "titel": "Baseforsvar – hele din hær på ét sted",
+      "hvad": "SorteSlyngel ville kunne se, hvor mange tropper man har, og træne dem et sted, uden at skulle lede efter kasernen på banen. Nu er der en ⚔️-knap øverst med antallet af dine tropper. Tryk på den, så kommer din hær frem: soldater, bueskytter og præster hver på sin linje, med hvor mange der står ude, hvor mange der er på vej, og hvilket niveau de har. Derfra kan du træne én, træne fem på én gang eller opgradere hele slagsen. Har du flere kaserner, fordeler hæren selv køen, så de træner på samme tid. Og så træner en ny kaserne eller kirke nu to ad gangen fra starten, fem når den er helt opgraderet.",
+      "oensket": "SorteSlyngel"
+    },
+    {
       "nr": 54,
       "dato": "2026-09-25",
       "spil": "baseforsvar",

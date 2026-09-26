@@ -61,7 +61,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Fjolle-Obby | `public/spil/fjolle/` | Alias ønske, der lød «En sjov obby» – den fjollede fætter til Store Obby. Ni **håndlavede** etaper man kan lære udenad, og ingenting kan slå én ihjel: man kan kun plaske i buddingen i bunden og starter så ved flaget igen. Undervejs er der bananskræl man skrider på, gelé der kaster én op af sig selv (og meget højere, hvis man trykker HOP i selve landingen), prutteskyer der skyder én til vejrs i takt, slim man går i slowmotion i, rullebånd der trækker med og imod, høns der vipper én op med et BAK BAK, fjedre og balloner der stiger, så længe man står på dem. Score = **tiden** for hele banen (`retning: 'asc'`), så den sendes først ind, når alle ni etaper er klaret; «Fortsæt» husker etape, tid og plask. To filer: `bane.mjs` (banen, fysikken og botten, enhedstestet) og `index.html`. Se «Fjolle-Obby – de ni etaper og det, der ikke slår ihjel» nedenfor. |
 
 | Tårnforsvar | `public/spil/taarnforsvar/` | SorteSlyngels ønske om «et Tower Defense-stil spil, hvor man kæmper om at komme længst». Stien snor sig fra hullet i toppen ned til porten, og på græsset ved siden af bygger man otte slags tårne: bueskytte (billig og hurtig), isbøsse (fryser, så de andre når at skyde flere gange), giftsky (skade pr. sekund, som panser ikke stopper), kanon (bomben rammer flere), guldmine (skyder ikke – betaler efter hver bølge), lynspole (lynet hopper videre til flere), troldmand (dyr, men lynet går igennem panser) og snigskytte (rammer hele banen og går efter det stærkeste monster). Fem niveauer pr. tårn, og man kan sælge igen. Monstrene kommer i bølger, der aldrig holder op: slim, flagermus, trolde med panser og en monsterkonge hver femte bølge. Score = **klarede bølger** – motoren er helt uden tilfældighed, så alle møder de samme bølger i den samme rækkefølge. To filer: `forsvar.mjs` (banen, tårnene, monstrene, bølgerne og en bot, enhedstestet) og `index.html`. Se «Tårnforsvar – stien, de otte tårne og bølgerne» nedenfor. |
-| Baseforsvar | `public/spil/baseforsvar/` | SorteSlyngels ønske om «et spil hvor man bygger en base og skal forsvare den fra fjender», med Warcraft 3-banen «Zombie Defense» som forbillede. Rådhuset står midt på et gitter på 13 × 17 felter med **tilfældigt terræn** (klipper, sø, skov) hver runde. Man bygger **mure**, **skydetårn**, **kanontårn**, **ballista** (skyder længst, sigter efter belejrere), **farm** (bønder giver guld ved daggry), **kaserne** (soldater og bueskyttere) og **kirke** (præster, der heler). Tropper trænes i kø uden loft, kan trykkes på for at se liv og tal, og opgraderes pr. slags. Tre **helte** hyres på rådhuset — hver med aura, trylleformular og erfaring op til niveau 10. Zombierne kommer tilfældigt hen over døgnet fra alle kanter, flest om natten; fra dag 6 kommer **belejrere**, der kaster længere end alle tårne. Score = **overlevede dage**. To filer: `base.mjs` (motoren, vejkortet, terrænet og en bot, enhedstestet) og `index.html`. Se «Baseforsvar – basen, zombiernes vej og døgnet» nedenfor. |
+| Baseforsvar | `public/spil/baseforsvar/` | SorteSlyngels ønske om «et spil hvor man bygger en base og skal forsvare den fra fjender», med Warcraft 3-banen «Zombie Defense» som forbillede. Rådhuset står midt på et gitter på 13 × 17 felter med **tilfældigt terræn** (klipper, sø, skov) hver runde. Man bygger **mure**, **skydetårn**, **kanontårn**, **ballista** (skyder længst, sigter efter belejrere), **farm** (bønder giver guld ved daggry), **kaserne** (soldater og bueskyttere) og **kirke** (præster, der heler). Tropper trænes i kø uden loft, kan trykkes på for at se liv og tal, og opgraderes pr. slags; ⚔️-knappen i toppen åbner **hær-oversigten** med antallet af hver slags, træn 1 eller 5 og opgradér. Tre **helte** hyres på rådhuset — hver med aura, trylleformular og erfaring op til niveau 10. Zombierne kommer tilfældigt hen over døgnet fra alle kanter, flest om natten; fra dag 6 kommer **belejrere**, der kaster længere end alle tårne. Score = **overlevede dage**. To filer: `base.mjs` (motoren, vejkortet, terrænet og en bot, enhedstestet) og `index.html`. Se «Baseforsvar – basen, zombiernes vej og døgnet» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -1913,7 +1913,9 @@ Defense» som forbillede. Ønske #59 byggede videre: «flere upgrades, bueskytte
 og præster … se mine troppers liv og stats … opgradere dem … siege zombies som
 skyder længere end alle tårne … banen større og med terræn … genereret
 tilfældigt … træne flere tropper ad gangen og uendeligt mange … 2-3 helte med
-spells/auras, der får exp og leveler op».
+spells/auras, der får exp og leveler op». Ønske #60 tilføjede hær-oversigten:
+«en UI et sted hvor man kan se antallet af tropper og hvor man også kan træne
+dem fra».
 
 Banen er et gitter på 13 × 17 felter à 10 enheder (130 × 170) med rådhuset i det
 præcise midtpunkt (6,8). Ting, der er værd at huske, hvis spillet skal røres igen:
@@ -1948,7 +1950,8 @@ præcise midtpunkt (6,8). Ting, der er værd at huske, hvis spillet skal røres 
    (soldater, bueskyttere, præster — fem niveauer, ×1,4 pr. niveau), og alle af
    den slags på banen bliver stærkere med det samme og får fyldt livet op.
    Bygningens eget niveau bestemmer i stedet, hvor mange den træner ad gangen
-   (`samtidig` 1-4). Man sætter i kø ved at trykke flere gange (højst
+   (`samtidig` 2-5 — to allerede på niveau 1, for ønske #60 bad om at træne
+   flere samtidig fra den samme kaserne). Man sætter i kø ved at trykke flere gange (højst
    `KOE_MAKS` = 12 pr. bygning); der er intet loft pr. bygning, men højst
    `MAKS_TROPPER` = 80 i alt, så telefonen kan følge med. Farmen har stadig et
    loft over bønder. Sælger man en bygning, får man køen fuldt retur.
@@ -1958,6 +1961,14 @@ præcise midtpunkt (6,8). Ting, der er værd at huske, hvis spillet skal røres 
    smadrer den med sten. Modtrækkene er ballisten (58-70, sigter efter
    belejrere først), tropper, heltene — eller et tårn i Jægerens aura
    (+30 % rækkevidde, så 38 bliver 49).
+
+6b. **Hær-oversigten** (⚔️ i HUD'en, ønske #60) står forneden på fladen, hvor
+   kassen ellers står — åbner den ene, lukker den anden. Én række pr. slags med
+   antallet ude, hvad der er på vej, og knapperne «Træn», «×5» og «⬆ niv».
+   `traenHaer(spil, slags, antal)` vælger for hver ny tropp den bygning, der
+   bliver færdig først (`traeningssted`: færrest undervejs pr. `samtidig`), så
+   køen fordeler sig selv på flere kaserner; løber guldet tør halvvejs, kommer
+   der bare færre i kø. `haerOversigt(spil)` giver tallene til rækkerne.
 
 7. **Heltene** hyres én gang hver med knapperne til højre over byggeknapperne:
    Ridderen (aura: tropper slår 30 % hårdere; skjoldslag lammer i 2 sek.),
@@ -1992,7 +2003,8 @@ igen og igen, og så lignede tropperne spild af penge.
 
 Test: `test/baseforsvar.test.mjs` (mur med en rigtig finger, ingen bygning på
 terræn, bønder og tropper i kø, en soldat trykket på og opgraderet, Ridderen
-hyret, sendt ud og skjoldslaget kastet, en ballista mod en belejrer, natten,
+hyret, sendt ud og skjoldslaget kastet, hær-oversigten med fem soldater trænet
+og bueskytterne opgraderet derfra, en ballista mod en belejrer, natten,
 rådhuset falder) + `test/unit/baseforsvar.test.mjs`.
 
 ### Stenalder – regelvalg

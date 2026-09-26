@@ -207,20 +207,20 @@ export const BYGNINGER = [
     id: 'kaserne', navn: 'Kaserne', tegn: '⚔️', farve: '#4d8dff', pris: 150,
     om: 'Træn soldater og bueskyttere – så mange du vil. Opgradér for at træne flere ad gangen.',
     niveauer: [
-      { hp: 210, samtidig: 1, opgradering: 140 },
-      { hp: 340, samtidig: 2, opgradering: 280 },
-      { hp: 550, samtidig: 3, opgradering: 480 },
-      { hp: 880, samtidig: 4, opgradering: 0 },
+      { hp: 210, samtidig: 2, opgradering: 140 },
+      { hp: 340, samtidig: 3, opgradering: 280 },
+      { hp: 550, samtidig: 4, opgradering: 480 },
+      { hp: 880, samtidig: 5, opgradering: 0 },
     ],
   },
   {
     id: 'kirke', navn: 'Kirke', tegn: '⛪', farve: '#f2f4f8', pris: 130,
     om: 'Træn præster, der heler dine tropper og helte.',
     niveauer: [
-      { hp: 190, samtidig: 1, opgradering: 130 },
-      { hp: 310, samtidig: 2, opgradering: 260 },
-      { hp: 500, samtidig: 3, opgradering: 450 },
-      { hp: 800, samtidig: 4, opgradering: 0 },
+      { hp: 190, samtidig: 2, opgradering: 130 },
+      { hp: 310, samtidig: 3, opgradering: 260 },
+      { hp: 500, samtidig: 4, opgradering: 450 },
+      { hp: 800, samtidig: 5, opgradering: 0 },
     ],
   },
   {
@@ -558,6 +558,76 @@ export function opgraderTropper(spil, slags) {
     s.hp = n.hp;
   }
   return { ok: true, niveau: niv + 1 };
+}
+
+/* ---------- Hæren samlet (ønske #60) ---------- */
+/*
+  Hær-oversigten viser alle tre slags på én gang og lader én træne dem uden
+  først at finde den rigtige bygning på banen. Har man flere kaserner, vælges
+  den, der bliver færdig først: færrest undervejs i forhold til hvor mange den
+  træner ad gangen. Så fordeles køen af sig selv, og to kaserner træner dobbelt
+  så hurtigt.
+*/
+
+/** Den bygning, næste tropp af slagsen skal trænes i – eller null, hvis der ikke er nogen med plads. */
+export function traeningssted(spil, slags) {
+  const t = TROPPER[slags];
+  if (!t) return null;
+  let bedst = null, bedstVent = Infinity;
+  for (const b of spil.bygninger) {
+    if (b.slags !== t.bygning) continue;
+    const undervejs = b.igang.length + b.koe.length;
+    if (undervejs >= KOE_MAKS) continue;
+    const vent = (undervejs + 1) / bygData(b).samtidig;
+    if (vent < bedstVent) { bedstVent = vent; bedst = b; }
+  }
+  return bedst;
+}
+
+/**
+ * Træner `antal` af slagsen, fordelt på de bygninger, der kan. Svaret er
+ * `{ ok, antal, fejl }` – `antal` er hvor mange der faktisk kom i kø (løber
+ * guldet tør halvvejs, er det stadig ok, bare færre).
+ */
+export function traenHaer(spil, slags, antal = 1) {
+  const t = TROPPER[slags];
+  if (!t || spil.fase === 'slut') return { ok: false, antal: 0, fejl: 'Ikke nu' };
+  if (!spil.bygninger.some(b => b.slags === t.bygning)) {
+    return { ok: false, antal: 0, fejl: `Byg først en ${BYGNING_VED[t.bygning].navn.toLowerCase()}` };
+  }
+  let n = 0, fejl = null;
+  while (n < antal) {
+    const b = traeningssted(spil, slags);
+    if (!b) { fejl = 'Køen er fuld'; break; }
+    const svar = traen(spil, b, slags);
+    if (!svar.ok) { fejl = svar.fejl; break; }
+    n++;
+  }
+  return n ? { ok: true, antal: n, fejl } : { ok: false, antal: 0, fejl };
+}
+
+/**
+ * Tallene til hær-oversigten: pr. slags hvor mange der står på banen, hvor
+ * mange der er undervejs, niveauet og hvor mange bygningerne træner ad gangen.
+ */
+export function haerOversigt(spil) {
+  return Object.keys(TROPPER).map(slags => {
+    const t = TROPPER[slags];
+    const bygninger = spil.bygninger.filter(b => b.slags === t.bygning);
+    let undervejs = 0, naeste = Infinity;
+    for (const b of bygninger) {
+      for (const o of b.igang) if (o.slags === slags) { undervejs++; naeste = Math.min(naeste, o.til - spil.tid); }
+      for (const o of b.koe) if (o.slags === slags) undervejs++;
+    }
+    return {
+      slags, niveau: spil.tropNiv[slags],
+      paaBanen: spil.soldater.filter(s => s.slags === slags).length,
+      undervejs, naeste: Number.isFinite(naeste) ? Math.max(0, naeste) : null,
+      bygninger: bygninger.length,
+      samtidig: bygninger.reduce((s, b) => s + bygData(b).samtidig, 0),
+      kanTraenes: !!traeningssted(spil, slags),
+    };
+  });
 }
 
 /** Hvad farmene giver ved daggry. */

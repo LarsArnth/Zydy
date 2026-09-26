@@ -21,6 +21,7 @@ import {
   nytSpil, lavTerraen, terraenPaa, fremkommelig, byg, opgrader, saelg, salgspris, bygningPaa,
   traen, traening, bemanding, farmIndtaegt, boenderIAlt, vaelgSkridt, vejKort, sendFjende, tik,
   ledigeFelter, felt, ringFelt, hjoerneFelt, soldaterFra, botTraek, botSpiller,
+  traeningssted, traenHaer, haerOversigt,
 } from '../../public/spil/baseforsvar/base.mjs';
 
 const H = RAADHUS_FELT;
@@ -358,8 +359,8 @@ test('kasernen træner soldater og bueskyttere – så mange man vil, i kø', ()
   assert.deepEqual(traening(kaserne).map(t => t.slags), ['soldat', 'bueskytte']);
   for (let i = 0; i < 4; i++) assert.equal(traen(spil, kaserne, 'soldat').ok, true, 'man kan trykke flere gange');
   assert.equal(traen(spil, kaserne, 'bueskytte').ok, true);
-  assert.equal(kaserne.igang.length, 1, 'på niveau 1 trænes én ad gangen');
-  assert.equal(kaserne.koe.length, 4, 'resten står i kø');
+  assert.equal(kaserne.igang.length, 2, 'allerede på niveau 1 trænes to ad gangen (ønske #60)');
+  assert.equal(kaserne.koe.length, 3, 'resten står i kø');
   tik(spil, TROPPER.soldat.tid * 4 + TROPPER.bueskytte.tid + 0.5);
   assert.equal(soldaterFra(spil, kaserne, 'soldat'), 4);
   assert.equal(soldaterFra(spil, kaserne, 'bueskytte'), 1);
@@ -377,6 +378,59 @@ test('en opgraderet kaserne træner flere ad gangen', () => {
   assert.equal(kaserne.igang.length, bygData(kaserne).samtidig, `${bygData(kaserne).samtidig} ad gangen`);
   tik(spil, TROPPER.soldat.tid + 0.1);
   assert.equal(soldaterFra(spil, kaserne), bygData(kaserne).samtidig, 'og de blev færdige samtidig');
+});
+
+test('hæren samlet: træn fra oversigten, og køen fordeles på kasernerne (ønske #60)', () => {
+  const spil = stilleSpil(99999);
+  assert.equal(traenHaer(spil, 'soldat').fejl, 'Byg først en kaserne', 'uden kaserne ingen soldater');
+  assert.equal(traenHaer(spil, 'praest').fejl, 'Byg først en kirke');
+  const a = byg(spil, 'kaserne', 3, 3).bygning;
+  const b = byg(spil, 'kaserne', 9, 3).bygning;
+  opgrader(spil, b);                                    // b træner tre ad gangen, a to
+  const svar = traenHaer(spil, 'soldat', 5);
+  assert.deepEqual(svar, { ok: true, antal: 5, fejl: null });
+  assert.equal(a.igang.length + a.koe.length, 2, 'den lille kaserne fik to');
+  assert.equal(b.igang.length + b.koe.length, 3, 'den store fik tre');
+  assert.equal(a.koe.length + b.koe.length, 0, 'så alle fem trænes på én gang');
+  traenHaer(spil, 'bueskytte', 2);
+  let o = haerOversigt(spil);
+  const soldat = o.find(x => x.slags === 'soldat'), bue = o.find(x => x.slags === 'bueskytte');
+  assert.equal(soldat.undervejs, 5);
+  assert.equal(bue.undervejs, 2);
+  assert.equal(soldat.bygninger, 2);
+  assert.equal(soldat.samtidig, 5, 'to plus tre ad gangen');
+  assert.equal(soldat.paaBanen, 0);
+  assert.ok(Math.abs(soldat.naeste - TROPPER.soldat.tid) < 1e-9, 'næste er klar om en hel træningstid');
+  assert.equal(o.find(x => x.slags === 'praest').bygninger, 0);
+  assert.equal(o.find(x => x.slags === 'praest').kanTraenes, false);
+  tik(spil, TROPPER.soldat.tid + 0.1);
+  o = haerOversigt(spil);
+  assert.equal(o.find(x => x.slags === 'soldat').paaBanen, 5, 'alle fem kom ud samtidig');
+  assert.equal(o.find(x => x.slags === 'soldat').niveau, 1);
+  opgraderTropper(spil, 'soldat');
+  assert.equal(haerOversigt(spil).find(x => x.slags === 'soldat').niveau, 2);
+});
+
+test('hæren samlet: løber guldet tør, kommer der færre i kø – og man betaler kun for dem', () => {
+  const spil = stilleSpil(99999);
+  byg(spil, 'kaserne', 3, 3);
+  spil.guld = TROPPER.soldat.pris * 3 + 5;
+  const svar = traenHaer(spil, 'soldat', 5);
+  assert.equal(svar.ok, true);
+  assert.equal(svar.antal, 3);
+  assert.equal(svar.fejl, 'Ikke guld nok');
+  assert.equal(spil.guld, 5);
+  assert.equal(traenHaer(spil, 'soldat').ok, false, 'og så er der ikke til flere');
+});
+
+test('hæren samlet: er alle køer fulde, er der intet træningssted', () => {
+  const spil = stilleSpil(999999);
+  const k = byg(spil, 'kaserne', 3, 3).bygning;
+  assert.equal(traeningssted(spil, 'soldat'), k);
+  assert.equal(traenHaer(spil, 'soldat', KOE_MAKS + 3).antal, KOE_MAKS);
+  assert.equal(traeningssted(spil, 'soldat'), null);
+  assert.equal(traenHaer(spil, 'soldat').fejl, 'Køen er fuld');
+  assert.equal(haerOversigt(spil).find(x => x.slags === 'soldat').kanTraenes, false);
 });
 
 test('køen har en ende, og hæren har et loft, så telefonen kan følge med', () => {

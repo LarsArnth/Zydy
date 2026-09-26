@@ -32,6 +32,12 @@
       2b) Trykker man på en tropp eller en helt, viser kassen hans liv og tal
          og en knap til at opgradere hele slagsen. Er det en helt, sender det
          næste tryk på banen ham derhen.
+      2c) Hær-knappen i toppen (⚔️ med antallet af tropper, ønske #60) åbner
+         en oversigt over alle tre slags: hvor mange der står ude, hvor mange
+         der er på vej, og knapper til at træne 1 eller 5 og opgradere slagsen.
+         Den træner i den kaserne eller kirke, der bliver færdig først, så man
+         ikke skal finde bygningen på banen. Oversigten og kassen deler pladsen
+         forneden – åbner den ene, lukker den anden.
       3) Natten tegnes som et blåt slør, der lægger sig hen over fladen. Det er
          den eneste besked om, at der nu kommer over dobbelt så mange zombier.
       4) Selve spillet kører i base.mjs; her tegnes det bare. Derfor kan testen
@@ -106,6 +112,30 @@
   .panelknapper button.trylle{background:#c28bff}
   .panelknapper button.sael{background:var(--bg3);color:var(--text)}
   .panelknapper button:disabled{opacity:.4}
+
+  /* Hær-knappen i HUD'en og oversigten over tropperne (ønske #60) */
+  #haerBtn{color:var(--muted);font:inherit;font-size:14px;border:2px solid transparent;padding:4px 4px}
+  #haerBtn.aaben{border-color:var(--sun);background:var(--bg3)}
+  #haer{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(20,22,31,.95);border-radius:16px;
+    padding:6px 10px 4px;border:1px solid var(--bg3)}
+  .haerhoved{display:flex;align-items:center;gap:8px;min-height:34px}
+  .haerhoved .titel{flex:1;min-width:0;font-size:15px;font-weight:800}
+  .haerhoved .titel span{display:block;font-size:12px;font-weight:600;color:var(--muted);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .haerhoved .luk{flex:none;width:34px;height:34px;border-radius:50%;background:var(--bg3);color:var(--text);
+    font-size:16px;font-weight:800}
+  .haerraekke{display:flex;align-items:center;gap:7px;padding:5px 0;border-top:1px solid var(--bg3)}
+  .haerraekke canvas{width:30px;height:30px;flex:none}
+  .haerraekke .antal{flex:none;min-width:26px;font-size:21px;font-weight:800;text-align:center;
+    font-variant-numeric:tabular-nums}
+  .haerraekke .om{flex:1;min-width:0;font-size:11.5px;color:var(--muted);line-height:1.25}
+  .haerraekke .om b{display:block;color:var(--text);font-size:14px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .haerknapper{display:flex;gap:4px;flex:none}
+  .haerknapper button{min-width:48px;min-height:40px;border-radius:11px;padding:4px 5px;font-size:12px;
+    font-weight:800;background:var(--sun);line-height:1.15}
+  .haerknapper button.op{background:var(--mint)}
+  .haerknapper button:disabled{opacity:.4}
 
   /* Heltene – tre små knapper til højre i linjen over byggeknapperne */
   .helte{display:flex;gap:5px;flex:none}
@@ -186,6 +216,7 @@
     <div class="pill" id="husPill">🏠 <b id="husVal">1400</b></div>
     <div class="pill" id="guldPill">🪙 <b id="guldVal">260</b></div>
     <div class="pill" id="dagPill">☀️ Dag <b id="dagVal">1</b></div>
+    <button class="pill" id="haerBtn" aria-label="Din hær">⚔️ <b id="haerVal">0</b></button>
   </div>
 
   <div class="stage" id="stage">
@@ -200,6 +231,14 @@
         <button class="luk" id="lukBtn" aria-label="Luk">✕</button>
       </div>
       <div class="panelknapper" id="panelKnapper"></div>
+    </div>
+
+    <div id="haer" hidden>
+      <div class="haerhoved">
+        <div class="titel">Din hær<span id="haerTal">Ingen tropper endnu</span></div>
+        <button class="luk" id="haerLuk" aria-label="Luk hæren">✕</button>
+      </div>
+      <div id="haerRaekker"></div>
     </div>
 
     <div class="screen on" id="startScreen">
@@ -218,6 +257,7 @@
         <p class="hint">Zombierne kommer fra alle sider og går efter rådhuset i midten – flest om natten,
           og stærkere for hver dag. Vælg noget i bunden, og tryk på et felt for at bygge det.
           Tryk på din bygning for at træne folk, og på dine tropper for at se deres liv og opgradere dem.
+          ⚔️ i toppen viser hele din hær – og dér kan du også træne og opgradere.
           Heltene hyrer du med knapperne til højre. Banen er ny hver gang.</p>
         <div class="bygliste" id="bygliste"></div>
       </div>
@@ -254,7 +294,8 @@
 import {
   FELT, KOLONNER, RAEKKER, BREDDE, HOEJDE, RAADHUS_FELT, midte, paaBanen, feltVed,
   BYGNINGER, BYGGES, BYGNING_VED, MAKS_NIVEAU, bygData, FJENDER, TERRAEN, terraenPaa,
-  TROPPER, TROP_MAKS, tropTal, tropOpgradering, opgraderTropper, KOE_MAKS,
+  TROPPER, TROP_MAKS, tropTal, tropOpgradering, opgraderTropper, KOE_MAKS, MAKS_TROPPER,
+  traenHaer, haerOversigt, haerStoerrelse,
   HELTE, HELT_IDER, HELT_MAKS, heltTal, heltAf, hyrHelt, sendHelt, kast, trylleVenter, xpTil, auraFaktor,
   DAG_LAENGDE, NAT_START,
   nytSpil, byg, opgrader, saelg, salgspris, bygningPaa, traen, traening, bemanding,
@@ -317,6 +358,7 @@ let valgt = null;             // det, man har trykket på: { art: 'bygning'|'tro
 let sigte = null;             // feltet under fingeren, mens man bygger
 let sidsteT = 0, beskedUr = 0, varselUr = 0, pauseret = false, sidsteHusHp = 0, rystTil = 0;
 let sidsteDag = 1, daggryUr = 0;
+let haerAaben = false;        // hær-oversigten (ønske #60)
 
 function visBesked(tekst, sek = 1.3) {
   besked.textContent = tekst;
@@ -331,7 +373,7 @@ function visVarsel(dag) {
   varselUr = 1.8;
 }
 
-function nulstilValg() { valgtSlags = null; valgt = null; sigte = null; }
+function nulstilValg() { valgtSlags = null; valgt = null; sigte = null; haerAaben = false; }
 
 function start() {
   spil = nytSpil(nytFroe());
@@ -341,7 +383,7 @@ function start() {
   slutScreen.classList.remove('on');
   bund.hidden = false;
   $('nyRekord').hidden = true;
-  visPanel(); tegnKnapper(); visHud();
+  visPanel(); visHaer(); tegnKnapper(); visHud();
 }
 
 function tilMenu() {
@@ -349,14 +391,14 @@ function tilMenu() {
   slutScreen.classList.remove('on');
   startScreen.classList.add('on');
   bund.hidden = true;
-  visPanel(); visHud(); visStart(); hentListe();
+  visPanel(); visHaer(); visHud(); visStart(); hentListe();
 }
 
 function slut() {
   fase = 'slut';
   nulstilValg();
   bund.hidden = true;
-  visPanel();
+  visPanel(); visHaer();
   const klarede = spil.klarede;
   const rekord = klarede > bedste;
   if (rekord) { bedste = klarede; gem(KEY_BEST, bedste); }
@@ -377,7 +419,7 @@ let sidsteHud = '';
 function visHud() {
   const hus = spil.raadhus;
   const noegle = [Math.round(hus.hp), spil.guld, spil.dag, spil.nat, spil.fjender.length,
-    spil.drab, Math.ceil(daggryUr)].join('|');
+    spil.drab, Math.ceil(daggryUr), spil.soldater.length].join('|');
   tegnHelteknapper();
   if (noegle === sidsteHud) return;
   sidsteHud = noegle;
@@ -387,6 +429,7 @@ function visHud() {
   $('dagVal').textContent = String(spil.dag);
   $('dagPill').firstChild.textContent = spil.nat ? '🌙 Dag ' : '☀️ Dag ';
   $('drabVal').textContent = String(spil.drab);
+  $('haerVal').textContent = String(spil.soldater.length);
   const zombier = spil.fjender.length;
   if (daggryUr > 0 && spil.sidsteIndtaegt > 0) {
     $('doegnTekst').innerHTML = `Ny dag! Farmene gav <b>${spil.sidsteIndtaegt} 🪙</b>`;
@@ -435,8 +478,8 @@ byggeRow.addEventListener('pointerdown', e => {
   if (!knap || fase !== 'spil') return;
   const id = knap.dataset.slags;
   valgtSlags = valgtSlags === id ? null : id;
-  valgt = null; sigte = null;
-  visPanel(); tegnKnapper();
+  valgt = null; sigte = null; haerAaben = false;
+  visPanel(); visHaer(); tegnKnapper();
 });
 
 /* ---------- Heltene: tre små knapper ---------- */
@@ -584,6 +627,7 @@ function visPanel() {
     return;
   }
   panel.hidden = false;
+  if (haerAaben) { haerAaben = false; visHaer(); }
   const xp = $('panelXp');
   xp.hidden = valgt.art !== 'helt';
   if (valgt.art === 'bygning') {
@@ -633,6 +677,107 @@ $('panelKnapper').addEventListener('click', e => {
   visPanel(); visHud();
 });
 $('lukBtn').addEventListener('click', () => { valgt = null; visPanel(); tegnHelteknapper(); });
+
+/* ---------- Hær-oversigten (ønske #60) ---------- */
+/*
+  Tre rækker – soldater, bueskyttere, præster – med antallet ude, hvad der er
+  på vej, og tre knapper: træn 1, træn 5 og opgradér hele slagsen. Rækkerne og
+  knapperne bygges én gang; bagefter skiftes kun tekst, så et tryk ikke glider
+  væk under fingeren, mens nedtællingen tikker (samme greb som kassen).
+*/
+const haer = $('haer'), haerRaekker = $('haerRaekker');
+const flertal = (n, slags) => `${n} ${n === 1 ? TROPPER[slags].navn.toLowerCase() : TROPPER[slags].flertal}`;
+
+function byggHaer() {
+  haerRaekker.innerHTML = Object.keys(TROPPER).map(slags => `
+    <div class="haerraekke" data-slags="${slags}">
+      <canvas width="60" height="60"></canvas>
+      <div class="antal"></div>
+      <div class="om"><b></b><span></span></div>
+      <div class="haerknapper">
+        <button data-goer="1" data-slags="${slags}"></button>
+        <button data-goer="5" data-slags="${slags}"></button>
+        <button data-goer="op" data-slags="${slags}" class="op"></button>
+      </div>
+    </div>`).join('');
+  for (const r of haerRaekker.children) tegnMaerkeEnhed(r.querySelector('canvas'), r.dataset.slags);
+}
+
+/** Hvad der skal stå i én række – ren tekst ud fra motorens tal. */
+function haerRaekkeTekst(o) {
+  const t = TROPPER[o.slags], byg = BYGNING_VED[t.bygning];
+  const op = tropOpgradering(o.slags, o.niveau);
+  let linje;
+  if (!o.bygninger) linje = `Byg en ${byg.navn.toLowerCase()} for at træne ${t.flertal}`;
+  else {
+    linje = o.undervejs ? `${o.undervejs} på vej` + (o.naeste != null ? ` · næste om ${Math.ceil(o.naeste)} sek.` : '')
+      : `${byg.navn}${o.bygninger > 1 ? 'r: ' + o.bygninger : ''} træner ${o.samtidig} ad gangen`;
+  }
+  return {
+    antal: String(o.paaBanen),
+    navn: `${t.flertal[0].toUpperCase() + t.flertal.slice(1)} · niv ${o.niveau}/${TROP_MAKS}`,
+    linje,
+    en: { html: `Træn<br>${t.pris} 🪙`, af: !o.kanTraenes || spil.guld < t.pris },
+    fem: { html: `×5<br>${t.pris * 5} 🪙`, af: !o.kanTraenes || spil.guld < t.pris },
+    op: o.niveau >= TROP_MAKS ? { html: 'Maks<br>niveau', af: true }
+      : { html: `⬆ niv ${o.niveau + 1}<br>${op} 🪙`, af: spil.guld < op },
+  };
+}
+
+function visHaer() {
+  $('haerBtn').classList.toggle('aaben', haerAaben && fase === 'spil');
+  if (!haerAaben || fase !== 'spil') { haer.hidden = true; return; }
+  haer.hidden = false;
+  if (!haerRaekker.children.length) byggHaer();
+  const alle = haerOversigt(spil);
+  const ude = spil.soldater.length, paaVej = alle.reduce((s, o) => s + o.undervejs, 0);
+  const helte = spil.helte.length, boender = boenderIAlt(spil);
+  const dele = [`${ude} ude`];
+  if (paaVej) dele.push(`${paaVej} på vej`);
+  if (haerStoerrelse(spil) >= MAKS_TROPPER) dele.push(`fuld (${MAKS_TROPPER})`);
+  if (helte) dele.push(`${helte} ${helte === 1 ? 'helt' : 'helte'}`);
+  if (boender) dele.push(`${boender} ${boender === 1 ? 'bonde' : 'bønder'}`);
+  const hoved = dele.join(' · ');
+  if ($('haerTal').textContent !== hoved) $('haerTal').textContent = hoved;
+  alle.forEach((o, nr) => {
+    const r = haerRaekker.children[nr], tx = haerRaekkeTekst(o);
+    const saet = (el, v) => { if (el.textContent !== v) el.textContent = v; };
+    saet(r.querySelector('.antal'), tx.antal);
+    saet(r.querySelector('.om b'), tx.navn);
+    saet(r.querySelector('.om span'), tx.linje);
+    const [en, fem, op] = r.querySelectorAll('button');
+    for (const [el, k] of [[en, tx.en], [fem, tx.fem], [op, tx.op]]) {
+      if (el.innerHTML !== k.html) el.innerHTML = k.html;
+      el.disabled = !!k.af;
+    }
+  });
+}
+
+function aabnHaer(aaben = !haerAaben) {
+  if (fase !== 'spil') return false;
+  haerAaben = aaben;
+  if (aaben) { valgt = null; valgtSlags = null; sigte = null; }
+  visPanel(); visHaer(); tegnKnapper(); tegnHelteknapper();
+  return haerAaben;
+}
+
+/** Et tryk i oversigten: '1', '5' eller 'op'. Bruges både af knapperne og af testen. */
+function haerTryk(slags, goer) {
+  const svar = goer === 'op' ? opgraderTropper(spil, slags) : traenHaer(spil, slags, goer === '5' ? 5 : 1);
+  if (!svar.ok && svar.fejl) visBesked(svar.fejl);
+  else if (goer === '5' && svar.antal < 5) visBesked(`${svar.antal} kom i kø – ${(svar.fejl || '').toLowerCase()}`);
+  else if (goer === 'op') visBesked(`Alle ${TROPPER[slags].flertal} er nu niveau ${svar.niveau}`);
+  visHud(); visHaer();
+  return svar;
+}
+
+$('haerBtn').addEventListener('click', () => aabnHaer());
+$('haerLuk').addEventListener('click', () => aabnHaer(false));
+haerRaekker.addEventListener('click', e => {
+  const el = e.target.closest('button');
+  if (!el || el.disabled || fase !== 'spil') return;
+  haerTryk(el.dataset.slags, el.dataset.goer);
+});
 
 /* ---------- Fingeren på banen ---------- */
 function feltUnder(clientX, clientY) {
@@ -1268,6 +1413,7 @@ function opdater(dt) {
   } else sidsteHusHp = spil.raadhus.hp;
   visHud();
   visPanel();
+  visHaer();
   if (spil.fase === 'slut' && fase === 'spil') slut();
 }
 
@@ -1397,6 +1543,10 @@ window.GAME = {
   /** Trykker på et punkt på banen (i enheder), fx lige oven på en soldat. */
   trykPunkt: (x, y) => { const f = feltVed(x, y); return trykPaaFelt(f.kx, f.ky, { x, y }); },
   vaelgHelt,
+  /** Hær-oversigten: åbn/luk og tryk på en knap i den ('1', '5' eller 'op'). */
+  haer: aabnHaer,
+  haerTryk,
+  haerOversigt: () => haerOversigt(spil),
   byg: (slags, kx, ky) => { const s = byg(spil, slags, kx, ky); visHud(); tegnKnapper(); return s; },
   /** Det ledige felt (uden terræn og bygning), der ligger nærmest (kx,ky). */
   ledigtFelt(kx, ky) {
@@ -1458,7 +1608,7 @@ window.GAME = {
   get state() {
     return {
       fase, dag: spil.dag, nat: spil.nat, klarede: spil.klarede, guld: spil.guld, drab: spil.drab,
-      tid: spil.tid, bedste, valgtSlags,
+      tid: spil.tid, bedste, valgtSlags, haerAaben,
       valgt: valgt ? { art: valgt.art, id: typeof valgt.ting === 'string' ? valgt.ting : valgt.ting.id } : null,
       valgtBygning: valgt && valgt.art === 'bygning' ? valgt.ting.id : null,
       husHp: spil.raadhus.hp, husMaksHp: spil.raadhus.maksHp, indtaegt: farmIndtaegt(spil),

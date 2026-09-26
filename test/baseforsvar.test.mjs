@@ -5,7 +5,8 @@
 // finger → man kan hverken bygge oven på rådhuset eller på terrænet → kassen
 // med Opgradér/Sælg → bønder i kø og guld ved daggry → soldater og bueskyttere
 // fra kasernen → en tropp trykket på, hans tal og en opgradering af hele
-// slagsen → en helt hyret, sendt ud og hans trylleformular kastet → et tårn
+// slagsen → hær-oversigten: antallet, træn 5 på én gang og opgradér derfra
+// (ønske #60) → en helt hyret, sendt ud og hans trylleformular kastet → et tårn
 // skyder zombier → en belejrer og en ballista → natten falder på → rådhuset
 // æder sit sidste liv, slutskærm og topliste.
 // Spillet hentes med ?froe=1, så terræn og terning er de samme hver gang.
@@ -230,6 +231,65 @@ const KAS = await ledigt(HUS.kx + 3, HUS.ky + 3);
   assert.match(await page.locator('#panelNavn').textContent(), /niveau 2\/5/);
   await page.click('#lukBtn');
   await page.evaluate(() => window.GAME.fortsaet());
+}
+
+/* ---------- Hær-oversigten: se tropperne, og træn og opgradér dem derfra (ønske #60) ---------- */
+{
+  await page.evaluate(() => window.GAME.saetOp({ guld: 900 }));
+  assert.equal(await page.locator('#haerVal').textContent(), '3', 'hær-knappen i toppen tæller tropperne');
+  await page.click('#haerBtn');
+  assert.equal((await state()).haerAaben, true, 'et tryk åbner hæren');
+  assert.equal(await page.locator('#haer').isVisible(), true);
+  assert.equal(await page.locator('#panel').isVisible(), false, 'og kassen er væk, så de ikke ligger oven i hinanden');
+  const raekke = slags => page.locator(`.haerraekke[data-slags="${slags}"]`);
+  assert.equal(await page.locator('.haerraekke').count(), 3, 'én række pr. slags');
+  assert.equal(await raekke('soldat').locator('.antal').textContent(), '2', 'to soldater ude');
+  assert.equal(await raekke('bueskytte').locator('.antal').textContent(), '1', 'og en bueskytte');
+  assert.match(await raekke('soldat').textContent(), /Soldater · niv 2\/5/, 'soldaterne er allerede opgraderet');
+  assert.match(await raekke('soldat').textContent(), /Kasernen træner 2 ad gangen/, 'og der står, hvor mange kasernen træner ad gangen');
+  assert.match(await raekke('praest').textContent(), /Byg en kirke/, 'uden kirke står der, hvad man skal');
+  assert.equal(await raekke('praest').locator('[data-goer="1"]').isDisabled(), true, 'og man kan ikke træne præster');
+  assert.match(await page.locator('#haerTal').textContent(), /3 ude/);
+
+  // Træn fem soldater med ét tryk – med en rigtig finger
+  const guld = (await state()).guld;
+  const fem = await raekke('soldat').locator('[data-goer="5"]').boundingBox();
+  await klik({ x: fem.x + fem.width / 2, y: fem.y + fem.height / 2 });
+  let s = await state();
+  assert.equal(s.guld, guld - 5 * 40, 'fem soldater betalt');
+  assert.match(await raekke('soldat').textContent(), /5 på vej/, 'og de står i kø');
+  assert.equal(s.bygninger.find(b => b.slags === 'kaserne').igang, 2, 'to trænes lige nu');
+
+  // Opgradér bueskytterne herfra
+  await raekke('bueskytte').locator('[data-goer="op"]').click();
+  s = await state();
+  assert.equal(s.tropNiv.bueskytte, 2, 'bueskytterne er opgraderet fra hæren');
+  assert.match(await raekke('bueskytte').textContent(), /niv 2\/5/);
+
+  // Alt skal være inde på en iPhone-skærm
+  const w = await page.evaluate(() => innerWidth);
+  const scene = await page.locator('#stage').boundingBox(), haer = await page.locator('#haer').boundingBox();
+  assert.ok(haer.y >= scene.y && haer.y + haer.height <= scene.y + scene.height + 1, 'hæren ligger inde på fladen');
+  for (const k of await page.locator('.haerknapper button').all()) {
+    const b = await k.boundingBox();
+    assert.ok(b.x + b.width <= w, 'hver knap i hæren kan nås');
+    assert.ok(b.height >= 38, 'og er stor nok til en finger');
+  }
+  await page.evaluate(() => window.GAME.frem(1));
+  await page.screenshot({ path: SHOTS + 'baseforsvar-haer.png' });
+
+  await page.evaluate(() => window.GAME.frem(20));
+  assert.equal(await page.locator('#haerVal').textContent(), '8', 'de fem kom ud, og tallet i toppen fulgte med');
+  assert.equal(await raekke('soldat').locator('.antal').textContent(), '7');
+
+  // Trykker man på en bygning, kommer kassen, og hæren går væk
+  await page.evaluate(({ kx, ky }) => window.GAME.tryk(kx, ky), KAS);
+  assert.equal(await page.locator('#panel').isVisible(), true);
+  assert.equal(await page.locator('#haer').isVisible(), false, 'kassen og hæren deler pladsen');
+  await page.click('#haerBtn');
+  assert.equal(await page.locator('#panel').isVisible(), false);
+  await page.click('#haerLuk');
+  assert.equal(await page.locator('#haer').isVisible(), false, '✕ lukker hæren');
 }
 
 /* ---------- En helt: hyret, sendt ud og en trylleformular ---------- */
