@@ -92,6 +92,7 @@ test('spillene kan findes på det, de også hedder', () => {
     'block blast': 'blokblast',
     'paper io': 'papir',            // Selma skrev «Papir io 2», og det blev Papirøen
     'clash royale': 'slotskamp',
+    'hot potato': 'bombe',            // Alia skrev «pass or die», og det blev Pass or Die
     'my cat': 'kat',
     'toca boca': 'legebyen',       // Selma skrev «Toca boga», og det blev Legebyen
     'dukkehus': 'legebyen',

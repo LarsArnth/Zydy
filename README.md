@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; seksogtredive spil
+afhængigheder. De store apps bor i egne repoer og linkes til; syvogtredive spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet seksogtredive spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet syvogtredive spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar og ZydyTube, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, ZydyTube og Pass or Die, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -63,12 +63,13 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Tårnforsvar | `public/spil/taarnforsvar/` | SorteSlyngels ønske om «et Tower Defense-stil spil, hvor man kæmper om at komme længst». Stien snor sig fra hullet i toppen ned til porten, og på græsset ved siden af bygger man otte slags tårne: bueskytte (billig og hurtig), isbøsse (fryser, så de andre når at skyde flere gange), giftsky (skade pr. sekund, som panser ikke stopper), kanon (bomben rammer flere), guldmine (skyder ikke – betaler efter hver bølge), lynspole (lynet hopper videre til flere), troldmand (dyr, men lynet går igennem panser) og snigskytte (rammer hele banen og går efter det stærkeste monster). Fem niveauer pr. tårn, og man kan sælge igen. Monstrene kommer i bølger, der aldrig holder op: slim, flagermus, trolde med panser og en monsterkonge hver femte bølge. Score = **klarede bølger** – motoren er helt uden tilfældighed, så alle møder de samme bølger i den samme rækkefølge. To filer: `forsvar.mjs` (banen, tårnene, monstrene, bølgerne og en bot, enhedstestet) og `index.html`. Se «Tårnforsvar – stien, de otte tårne og bølgerne» nedenfor. |
 | Baseforsvar | `public/spil/baseforsvar/` | SorteSlyngels ønske om «et spil hvor man bygger en base og skal forsvare den fra fjender», med Warcraft 3-banen «Zombie Defense» som forbillede. Rådhuset står midt på et gitter på 13 × 17 felter med **tilfældigt terræn** (klipper, sø, skov) hver runde. Man bygger **mure**, **skydetårn**, **kanontårn**, **ballista** (skyder længst, sigter efter belejrere), **farm** (bønder giver guld ved daggry), **kaserne** (soldater og bueskyttere) og **kirke** (præster, der heler). Tropper trænes i kø uden loft, kan trykkes på for at se liv og tal, og opgraderes pr. slags; ⚔️-knappen i toppen åbner **hær-oversigten** med antallet af hver slags, træn 1 eller 5 og opgradér. Tre **helte** hyres på rådhuset — hver med aura, trylleformular og erfaring op til niveau 10. Zombierne kommer tilfældigt hen over døgnet fra alle kanter, flest om natten; fra dag 6 kommer **belejrere**, der kaster længere end alle tårne. Score = **overlevede dage**. To filer: `base.mjs` (motoren, vejkortet, terrænet og en bot, enhedstestet) og `index.html`. Se «Baseforsvar – basen, zombiernes vej og døgnet» nedenfor. |
 | ZydyTube | `public/spil/tube/` | Selmas ønske «YouTube»: ens egen videokanal. Man opretter en kanal (navn, kanalbillede, farve), vælger et af otte emner (gaming, kattevideo, bagning, dans, slim, tegning, udfordring, pakkeleg), **optager** i ti sekunder ved at trykke på de sjove øjeblikke, der popper op (men ikke på 🐝 🔔 🕷️), vælger titel og miniature og uploader. Så tikker visninger, likes, kommentarer og abonnenter ind i rigtig tid. Pengene køber bedre kamera, mikrofon, lys og computer, og ved 10.000, 100.000, 1 mio. og 10 mio. abonnenter kommer bronze-, sølv-, guld- og diamantknappen. Score = **abonnenter**, online topliste. To filer: `kanal.mjs` (visninger, abonnenter, udstyr og kommentarer, enhedstestet) og `index.html`. Se «ZydyTube – seerne, titlen og udstyret» nedenfor. |
+| Pass or Die | `public/spil/bombe/` | Alias ønske: «et spil der hedder pass or die, hvor der er en bombe, der bliver rødere og rødere, og til sidst springer den – man må ikke have den, når den springer». 2-4 om et bord: den, der har bomben, trykker på den, der skal have den, og den skal gribes, før den kan gives videre. Bomben pulserer, tikker hurtigere og bliver rød, og den, der har den, når lunten er brændt ned, er ude. Sidste mand vinder runden. Mønter for hver gang en anden springer og for at vinde, og de kan bruges midt i runden: ❄️ Frys (en anden i 6 sek.), 🛡️ Skjold og ⚡ Lyn. Mod robotter i Easy/Medium/Hard eller med venner om den samme iPad, hver med sit panel ved sin egen kant. Online topliste: sejre i træk mod robotterne. Se [Pass or Die](#pass-or-die). |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar og Baseforsvar — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar og Pass or Die — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -2054,6 +2055,53 @@ Test: `test/tube.test.mjs` (optager med en rigtig finger, uploader, spoler tiden
 med `GAME.spol(sek)`, som rykker videoerne tilbage i tiden, køber udstyr, får
 sølvknappen og kommer tilbage efter ti minutter) + `test/unit/tube.test.mjs`.
 
+<a id="pass-or-die"></a>
+
+### Pass or Die – bomben, mønterne og robotterne
+
+Alias ønske (#64): en bombe, der bliver rødere og rødere og til sidst springer,
+og man må ikke have den, når den gør. Mønter for at vinde, som kan bruges til
+fx at fryse en af de andre i 6 sekunder, mod venner eller robotter, i Easy,
+Medium eller Hard. To filer: `bombe.mjs` (regler, butik og robotter, ren JS,
+enhedstestet i `test/unit/bombe.test.mjs`) og `index.html` (bordet, panelerne
+og lyden).
+
+| | Hvad |
+|---|---|
+| Bomben | Lander hos en tilfældig («Klar…», 1,2 sek.), og så går lunten: 14-22 sek. på Easy, 10-16 på Medium, 7-12 på Hard. `varme()` går fra 0 til 1, og det er den, der gør bomben rød, får den til at pulsere og ryste og gør tikkene hurtigere. |
+| At give den videre | `giv(kamp, fra, til)`. Den flyver i 0,3 sek. og skal så gribes i 0,45 sek., før den kan gives videre igen — ellers kunne to hurtige fingre bare slå den frem og tilbage. |
+| Brag | Den, der har bomben, er ude, og alle andre får 1 mønt. Sidste mand vinder runden og får 3/4/5 mønter (Easy/Medium/Hard). Mod robotter er runden slut, så snart det sidste menneske er ude. |
+| Butikken | ❄️ **Frys** (4 🪙): en anden kan hverken give bomben videre eller købe noget i 6 sek. · 🛡️ **Skjold** (5 🪙): i 6 sek. kan ingen give dig bomben eller fryse dig · ⚡ **Lyn** (3 🪙): i 8 sek. er bomben grebet i samme nu, den lander hos dig. |
+| Mønterne | Menneskernes mønter gemmes pr. navn (`zydy.bombe.penge`), så de bliver liggende til næste gang; robotterne begynder på nul i hver kamp. |
+
+Fire ting er værd at huske:
+
+1. **Robotterne bruger de samme to funktioner som fingrene** — `giv()` og
+   `koeb()` — så de kan ikke snyde. Sværhedsgraden er kun, hvor længe de
+   tøver (`robot`), hvor tit de glemmer bomben (`nøl`), hvor tit de bruger
+   mønter (`køb`), og om de er luskede (`klog`): på Hard fryser de den, der har
+   bomben, når den er ved at springe, og giver helst bomben til en frossen.
+2. **Sværhedsgraderne er målt, ikke gættet.** Enhedstesten spiller en hurtig
+   finger (0,35 sek.), der også bruger sine mønter, mod tre robotter og kræver,
+   at man vinder oftest på Easy og sjældnest på Hard (målt: ~58 %, ~36 %,
+   ~20 %; 25 % ville være rent held med fire om bordet). Da Hard-robotterne
+   frøs den, man gav bomben til, hver gang de kunne, døde man frossen i
+   næsten halvdelen af runderne — det føltes ikke som et spil, man kunne vinde.
+3. **Hvert menneske har sit eget panel ved sin egen kant**, drejet så det vender
+   mod den, der sidder dér (0 = nederst, 1 = øverst drejet 180°, 2 = venstre
+   drejet 90°, 3 = højre drejet −90°). Så kan fire spille om en iPad, og ingen
+   kan give en andens bombe videre. Knapperne reagerer på `pointerdown`, fordi
+   flere fingre på én gang skal virke. Spiller man alene, kan man også bare
+   trykke på den robot, der skal have bomben.
+4. **Toplisten og kapløbet tæller kun alene mod robotterne** (sejre i træk,
+   uanset sværhedsgrad) — med venner om den samme skærm er der ikke én, hvis
+   stime det er.
+
+Test: `test/bombe.test.mjs` (giv med knap og med tryk på robotten, frys en
+robot, der har bomben, skjold, vind og tab en runde, to venner om én telefon og
+fire om en iPad, hvor panelerne ikke må ligge oven i hinanden) +
+`test/unit/bombe.test.mjs`.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -2078,7 +2126,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, ZydyTubes seere, titler, udstyr og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, ZydyTubes seere, titler, udstyr og balance, Pass or Dies bombe, butik og robotter, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om

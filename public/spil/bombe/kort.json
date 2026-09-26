@@ -1,0 +1,21 @@
+{
+  "navn": "Pass or Die",
+  "beskrivelse": "Bomben bliver rødere og rødere – giv den videre, før den springer! Mod robotter eller venner, med mønter til at fryse de andre.",
+  "nøgleord": [
+    "bombe",
+    "pass the bomb",
+    "hot potato",
+    "varm kartoffel",
+    "frys",
+    "robotter",
+    "venner",
+    "partyspil"
+  ],
+  "url": "/spil/bombe/",
+  "orden": 182,
+  "kapløb": true,
+  "højscore": {
+    "maks": 500,
+    "unik": true
+  }
+}

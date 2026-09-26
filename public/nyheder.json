@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 58,
+      "dato": "2026-09-26",
+      "spil": "bombe",
+      "titel": "Pass or Die – giv bomben videre!",
+      "hvad": "Alia ønskede sig et spil med en bombe, der bliver rødere og rødere, og til sidst springer den – og man må ikke have den, når den springer. Nu er det her! I sidder om et bord, og den, der har bomben, trykker på den, der skal have den. Men pas på: bomben skal gribes, før du kan give den videre, og den tikker hurtigere og hurtigere, jo rødere den bliver. Har du den, når den springer, er du ude, og den sidste, der er tilbage, vinder runden. Hver gang en anden springer, får du en mønt, og vinder du, får du flere. Mønterne kan du bruge midt i runden: ❄️ Frys en af de andre i 6 sekunder (har hen bomben, kan hen ikke komme af med den!), 🛡️ Skjold, så ingen kan give dig bomben, og ⚡ Lyn, så du kan kaste den videre i samme nu, du får den. Spil mod robotter i Easy, Medium eller Hard – på Hard er de luskede – eller med dine venner om den samme iPad, hvor I hver har jeres egen kant af skærmen.",
+      "oensket": "Alia"
+    },
+    {
       "nr": 57,
       "dato": "2026-09-26",
       "spil": "elementer",
