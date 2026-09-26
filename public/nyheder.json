@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 63,
+      "dato": "2026-09-26",
+      "spil": "skraaning",
+      "titel": "Nyt spil: Skråningen",
+      "hvad": "Ligesom Slope! En kugle ruller ned ad en lysende neonbane, der hænger ude i mørket. Hold fingeren på venstre eller højre side af skærmen for at styre. Ram ikke de røde klodser – find hullet imellem dem – og pas på, at du ikke falder ud over kanten. Banen har huller, du skal springe over, stykker der går skråt, og stykker der hælder og skubber dig ud mod kanten. Og det går hurtigere og hurtigere! Hvor mange meter når du? Banen skifter farve for hver 600 meter, og en guldstreg viser, hvor langt du nåede sidst.",
+      "oensket": "🥑Lykke"
+    },
+    {
       "nr": 62,
       "dato": "2026-09-26",
       "spil": "galge",

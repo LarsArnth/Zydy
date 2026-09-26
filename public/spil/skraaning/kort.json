@@ -1,0 +1,22 @@
+{
+  "navn": "Skråningen",
+  "beskrivelse": "Styr kuglen ned ad neonbanen – den ruller hurtigere og hurtigere. Ram ikke de røde klodser, spring over hullerne, og fald ikke ud over kanten!",
+  "nøgleord": [
+    "slope",
+    "skråning",
+    "kugle",
+    "bold",
+    "rul",
+    "neon",
+    "bane",
+    "fart",
+    "ball",
+    "3d"
+  ],
+  "url": "/spil/skraaning/",
+  "orden": 190,
+  "kapløb": true,
+  "højscore": {
+    "maks": 100000
+  }
+}

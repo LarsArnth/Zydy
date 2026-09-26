@@ -1,0 +1,728 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#07051a">
+<meta name="description" content="Skråningen: styr kuglen ned ad neonbanen – den går hurtigere og hurtigere. Ram ikke de røde klodser, og fald ikke ud over kanten!">
+<title>Skråningen – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307051a'/%3E%3Cpath d='M22 20h20l14 40H8z' fill='%230b1f14' stroke='%2339ff7a' stroke-width='3'/%3E%3Ccircle cx='32' cy='44' r='9' fill='%2339ff7a'/%3E%3C/svg%3E">
+<style>
+  /*
+    «Skråningen» – Lykkes ønske: «Et spil der minder lidt om slope måske».
+
+    En kugle ruller af sig selv ned ad en neonbane, der hænger i mørket. Man
+    styrer med venstre og højre halvdel af skærmen (eller piletasterne), farten
+    stiger hele tiden, og man må hverken ramme de røde klodser eller falde ud
+    over kanten. Banen har huller, man springer over, stykker der går skråt, og
+    stykker der hælder til siden og skubber kuglen. Score = meter.
+
+    Banen, fysikken og en bot bor i skraaning.mjs, så de kan enhedstestes.
+    Tegningen er almindelig canvas 2D med et lille perspektiv skrevet i hånden.
+  */
+  :root{
+    --bg:#07051a; --bg2:#17123a; --bg3:#241c52; --text:#f4f2ff; --muted:#aaa6d6;
+    --neon:#39ff7a; --roed:#ff3b5c; --ink:#07140c; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 10px;letter-spacing:-1.5px;font-weight:800;
+    color:var(--neon);text-shadow:0 0 18px rgba(57,255,122,.55)}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--neon);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink);
+    box-shadow:0 0 22px rgba(57,255,122,.35)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text);box-shadow:none}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  button.pill{color:var(--text);font-weight:700;min-height:36px}
+
+  .wrap{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.4px}
+  #menuBtn[hidden]{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#07051a}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Meter i venstre hjørne, fart i højre */
+  .hud{position:absolute;left:12px;top:10px;pointer-events:none;text-shadow:0 2px 10px rgba(0,0,0,.6);
+    background:rgba(7,5,26,.55);border-radius:16px;padding:6px 12px;
+    opacity:0;transition:opacity .25s}
+  .stage.igang .hud{opacity:1}
+  .hud .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  #meterEl{display:block;font-size:40px;font-weight:800;line-height:1;letter-spacing:-1.5px;font-variant-numeric:tabular-nums}
+  .hud.hoejre{left:auto;right:12px;text-align:right}
+  #fartEl{display:block;font-size:26px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--neon)}
+  #rekHud{display:block;font-size:13px;font-weight:700;color:#ffd447;margin-top:2px}
+
+  /* De to halvdele af skærmen er knapper – pilene viser det */
+  .pil{position:absolute;bottom:14px;width:64px;height:64px;border-radius:50%;pointer-events:none;
+    display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:#fff;
+    background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.28);opacity:0;transition:opacity .3s,background .1s}
+  .stage.igang .pil{opacity:.85}
+  .pil.v{left:14px} .pil.h{right:14px}
+  .pil.tryk{background:rgba(57,255,122,.45);border-color:var(--neon)}
+
+  /* Beskeder midt på fladen */
+  .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .3s}
+  .msg.on{opacity:1}
+  #raab .big{font-size:clamp(30px,10vw,58px);font-weight:900;letter-spacing:-1.5px;line-height:1.05;color:#fff;
+    text-shadow:0 0 24px var(--neon),0 6px 0 #0a5a2a,0 10px 30px rgba(0,0,0,.6)}
+  #raab.on .big{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+  #raab .sub{margin-top:16px;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(7,5,26,.7);border-radius:999px;padding:8px 16px}
+  @keyframes pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+
+  /* Start- og slutskærm */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:18px 20px 24px;background:rgba(7,5,26,.78);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .regler{display:flex;flex-direction:column;gap:7px;margin:0 0 4px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:9px 13px;color:var(--text)}
+  .regler b{color:var(--neon)}
+  .hs{margin-top:12px}
+  .hs .hs-liste{max-height:30vh}
+  .stor{font-size:64px;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--neon);
+    font-variant-numeric:tabular-nums;margin:2px 0 2px;text-shadow:0 0 20px rgba(57,255,122,.45)}
+  .stor small{font-size:26px;color:var(--muted);letter-spacing:0;text-shadow:none}
+  .under{font-size:15px;color:var(--muted);margin:0 0 8px}
+  .hint{font-size:15px;margin:10px 0 0}
+
+  @media (max-height:660px){
+    h1{font-size:30px} #meterEl{font-size:32px} .stor{font-size:48px} .hs .hs-liste{max-height:24vh}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+  }
+  @media (max-width:380px){ .top .name{display:none} }
+  @media (prefers-reduced-motion:reduce){ .btn{transition:none} #raab.on .big{animation:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Skråningen</div>
+    <button class="pill" id="menuBtn" hidden>Menu</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Neonbanen med kuglen"></canvas>
+
+    <div class="hud" aria-live="polite">
+      <span class="lbl">Meter</span>
+      <b id="meterEl">0</b>
+    </div>
+    <div class="hud hoejre">
+      <span class="lbl">Fart</span>
+      <b id="fartEl">40 km/t</b>
+      <span id="rekHud">Rekord 0 m</span>
+    </div>
+    <div class="pil v" id="pilV" aria-hidden="true">‹</div>
+    <div class="pil h" id="pilH" aria-hidden="true">›</div>
+
+    <div class="msg" id="raab">
+      <div class="big" id="raabTekst">RUL!</div>
+      <div class="sub" id="raabUnder">Hold venstre eller højre side</div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Skråningen</h1>
+        <div class="regler" aria-hidden="true">
+          <span>👆 <b>Hold på venstre eller højre side</b> af skærmen – så styrer du</span>
+          <span>🟥 <b>Ram ikke de røde klodser</b> – find hullet</span>
+          <span>🕳️ <b>Fald ikke ud over kanten</b> – og spring over hullerne</span>
+          <span>🚀 Det går <b>hurtigere og hurtigere</b> – hvor langt når du?</span>
+        </div>
+        <button class="btn" id="startBtn">Rul!</button>
+        <p class="hint">På computer: piletasterne eller A og D.</p>
+        <div class="hs" id="hsStart"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Av!</h1>
+        <div class="stor" id="slutMeter">0<small> m</small></div>
+        <p class="under" id="slutUnder">Din rekord er 0 m</p>
+        <button class="btn" id="igenBtn">Rul igen</button>
+        <button class="btn ghost" id="tilbageBtn">Menu</button>
+        <div class="hs" id="hsSlut"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="skraaning"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+<script type="module">
+import {
+  R, G, TYK, START_Z, fart, midtX, midtY, kVed, blokX, gulv, banehoejde,
+  nyTur, tik as motorTik, bot,
+} from './skraaning.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const harFastSeed = Number.isFinite(fastSeed);
+let seed = harFastSeed ? fastSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
+const meterEl = $('meterEl'), fartEl = $('fartEl'), rekHud = $('rekHud');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen');
+const raab = $('raab'), raabTekst = $('raabTekst'), raabUnder = $('raabUnder'), menuBtn = $('menuBtn');
+const pilV = $('pilV'), pilH = $('pilH');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY_BEST = 'zydy.skraaning.best';
+const hentBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const gemBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+const meterTekst = v => v + ' m';
+
+const DT = 1 / 120;                 // fast fysik-trin
+const SIGT = 115;                   // så langt frem tegnes banen (meter)
+const STRIBE = 2.5;                 // tværstreger på banen for hver 2,5 m – det er dem, man ser farten i
+const EFTER_DOED = 1.3;             // sekunder fra man dør, til slutskærmen kommer
+const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/** Banens farve skifter for hver 600 m, så man kan se, at man er kommet langt. */
+const ZONER = [
+  { linje: '57,255,122',  flade: '#0a1d12', side: '#051009' },
+  { linje: '53,224,255',  flade: '#091a27', side: '#040e17' },
+  { linje: '255,79,216',  flade: '#1d0b22', side: '#110514' },
+  { linje: '255,176,46',  flade: '#211407', side: '#130b03' },
+];
+const zoneFor = z => ZONER[Math.floor(Math.max(0, z) / 600) % ZONER.length];
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1, dpr = 1, F = 300, HOR = 200;
+let stjerner = [];
+function maal() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(2.5, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Brændvidden følger den korteste side, så banen fylder det samme på en telefon og en iPad
+  F = Math.min(W * 1.25, H * 0.95);
+  // Horisonten så højt, at kuglen havner knap to tredjedele nede – også på en smal telefon.
+  // 0,34 er hvor langt under horisonten kuglen står (i brændvidder) på en almindelig bakke.
+  HOR = klem(H * 0.64 - F * 0.34, H * 0.2, H * 0.45);
+  lavStjerner();
+}
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';                  // menu | spil | doed | slut
+let s = null;
+let T = 0, best = hentBest();
+let paused = false, acc = 0, sidst = 0, raabTil = 0, doedT = 0, sidstMilepael = 0;
+let styrNu = 0;
+let stumper = [], gnister = [], efter = null;
+const cam = { x: 0, y: 3, z: -4, pitch: 0.34, fald: -0.2 };
+const fingre = new Map();           // pointerId → −1 (venstre) eller 1 (højre)
+const taster = new Set();
+
+function nulstil() {
+  if (!harFastSeed) seed = (Math.random() * 4294967296) >>> 0;
+  s = nyTur(seed);
+  T = 0; stumper = []; gnister = []; efter = null;
+  raabTil = 0; doedT = 0; sidstMilepael = 0; styrNu = 0;
+  fingre.clear();
+  kameraTil(true);
+  visHud();
+}
+
+maal();
+addEventListener('resize', maal);
+addEventListener('orientationchange', () => setTimeout(maal, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
+
+/* ---------- Skærmene ---------- */
+let visteMeter = -1, visteFart = -1;
+function visHud() {
+  if (s.meter !== visteMeter) { visteMeter = s.meter; meterEl.textContent = s.meter; }
+  const kmt = Math.round(fart(s.z) * 3.6);
+  if (kmt !== visteFart) { visteFart = kmt; fartEl.textContent = kmt + ' km/t'; }
+  rekHud.textContent = 'Rekord ' + meterTekst(best);
+}
+function sigTil(stor, lille, sek) {
+  raabTekst.textContent = stor; raabUnder.textContent = lille;
+  raab.classList.add('on'); raabTil = T + sek;
+}
+
+function start() {
+  nulstil();
+  fase = 'spil';
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  menuBtn.hidden = false; stage.classList.add('igang');
+  sigTil('RUL!', 'Hold venstre eller højre side for at styre', 1.8);
+  visHud();
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+/** Kuglen er død: lad den falde eller splintre et øjeblik, før slutskærmen kommer. */
+function doer() {
+  fase = 'doed'; doedT = 0;
+  fingre.clear(); taster.clear();
+  navigator.vibrate && navigator.vibrate(s.aarsag === 'fald' ? [30, 40, 30] : 60);
+  const vz = fart(s.z);
+  if (s.aarsag === 'fald') {
+    efter = { x: s.x, y: s.y, z: s.z, vx: s.vx, vy: s.vy, vz };
+  } else {
+    // Ind i en klods eller kanten: kuglen splintres
+    efter = null;
+    if (!roligt) for (let i = 0; i < 26; i++) {
+      const a = Math.random() * Math.PI * 2, f = 2 + Math.random() * 6;
+      stumper.push({ x: s.x, y: s.y + R, z: s.z, vx: Math.cos(a) * f, vy: 3 + Math.random() * 7, vz: -vz * 0.15 + Math.sin(a) * f,
+        t: 0, liv: 0.9 + Math.random() * 0.5, st: 0.08 + Math.random() * 0.14 });
+    }
+  }
+  raab.classList.remove('on');
+  sigTil(s.aarsag === 'fald' ? 'FALDT AF!' : 'BANG!', meterTekst(s.meter), 1.2);
+}
+
+function slut() {
+  fase = 'slut';
+  const ny = s.meter > best;
+  if (ny) { best = s.meter; gemBest(best); }
+  stage.classList.remove('igang');
+  raab.classList.remove('on');
+  $('slutTitel').textContent = s.aarsag === 'fald' ? 'Faldt af!' : s.aarsag === 'blok' ? 'Bang – en rød klods!' : 'Av – lige ind i kanten!';
+  $('slutMeter').innerHTML = s.meter + '<small> m</small>';
+  $('slutUnder').textContent = ny && s.meter > 0
+    ? 'Ny rekord! Så langt er du aldrig nået før.'
+    : 'Din rekord er ' + meterTekst(best);
+  slutScreen.classList.add('on');
+  visHud();
+  Highscore.panel($('hsSlut'), { spil: 'skraaning', score: s.meter, format: meterTekst });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(s.meter, meterTekst(s.meter));
+}
+
+function tilMenu() {
+  fase = 'menu';
+  nulstil();
+  slutScreen.classList.remove('on'); startScreen.classList.add('on');
+  menuBtn.hidden = true; raab.classList.remove('on'); stage.classList.remove('igang');
+  Highscore.panel($('hsStart'), { spil: 'skraaning', format: meterTekst });
+}
+
+/* ---------- Styringen: −1 … 1 ---------- */
+function styring() {
+  let v = 0;
+  for (const side of fingre.values()) v += side;
+  if (taster.has('ArrowLeft') || taster.has('KeyA')) v -= 1;
+  if (taster.has('ArrowRight') || taster.has('KeyD')) v += 1;
+  return klem(v, -1, 1);                               // begge sider på én gang = ligeud
+}
+
+/* ---------- Kameraet ---------- */
+/**
+ * Kameraet hænger bag og over kuglen og kigger ned ad bakken. Det følger
+ * kuglen til siden, men ikke når den falder – så ser man den forsvinde.
+ */
+function kameraTil(straks, dt = DT) {
+  const bh = banehoejde(s.bane, s.z);
+  const fremme = banehoejde(s.bane, s.z + 30);
+  const hael = Math.atan(Math.max(0, (bh - fremme) / 30));
+  const mx = s.x, my = Math.max(bh, Math.min(s.y, bh + 3)) + 4.0, mz = s.z - 4.8;
+  const mp = 0.1 + hael;
+  if (straks) { cam.x = mx; cam.y = my; cam.z = mz; cam.pitch = mp; return; }
+  const a = Math.min(1, dt * 7), b = Math.min(1, dt * 3);
+  cam.x += (mx - cam.x) * a;
+  cam.y += (my - cam.y) * Math.min(1, dt * 10);
+  cam.z = mz;
+  cam.pitch += (mp - cam.pitch) * b;
+}
+
+/* ---------- Løkken ---------- */
+function uiTik(dt, styrTving) {
+  T += dt;
+  if (fase === 'spil') {
+    styrNu = styrTving !== undefined ? styrTving : styring();
+    const e = motorTik(s, dt, styrNu);
+    if (e.land > 6 && !roligt) gnistVed(s.x, s.y, s.z, Math.min(14, e.land));
+    kameraTil(false, dt);
+    if (s.meter >= sidstMilepael + 500) {
+      sidstMilepael = Math.floor(s.meter / 500) * 500;
+      sigTil(sidstMilepael + ' m!', 'Hurtigere og hurtigere…', 1.2);
+    }
+    if (best > 0 && s.meter === best + 1 && !s.rekordSagt) {
+      s.rekordSagt = true;
+      sigTil('NY REKORD!', 'Bliv ved!', 1.2);
+    }
+    if (e.doed) doer();
+  } else if (fase === 'doed') {
+    doedT += dt;
+    if (efter) {
+      efter.vy -= G * dt;
+      efter.x += efter.vx * dt; efter.y += efter.vy * dt; efter.z += efter.vz * dt;
+      efter.vz *= 0.995;
+    }
+    if (doedT >= EFTER_DOED) slut();
+  }
+
+  if (raabTil && T > raabTil) { raab.classList.remove('on'); raabTil = 0; }
+  for (const q of stumper) { q.t += dt; q.vy -= G * 0.6 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; }
+  stumper = stumper.filter(q => q.t < q.liv);
+  for (const q of gnister) { q.t += dt; q.vy -= G * 0.5 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; }
+  gnister = gnister.filter(q => q.t < q.liv);
+}
+
+function gnistVed(x, y, z, n) {
+  const vz = fart(z);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    gnister.push({ x, y: y + 0.05, z, vx: Math.cos(a) * 3, vy: 1 + Math.random() * 3, vz: vz * (0.6 + Math.random() * 0.3),
+      t: 0, liv: 0.35 + Math.random() * 0.25 });
+  }
+}
+
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!sidst) sidst = nu;
+  let dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  if (!paused) {
+    acc += dt;
+    while (acc >= DT) { uiTik(DT); acc -= DT; }
+    if (fase === 'menu') { menuRul(dt); }
+  }
+  if (fase === 'spil' || fase === 'doed') visHud();
+  pilV.classList.toggle('tryk', styrNu < 0 && fase === 'spil');
+  pilH.classList.toggle('tryk', styrNu > 0 && fase === 'spil');
+  tegn();
+}
+/** På startskærmen kører botten en tur bag menuen, så man kan se, hvad det går ud på. */
+let menuStyr = 0, menuSiden = 1;
+function menuRul(dt) {
+  if (roligt) return;
+  menuSiden += dt;
+  if (menuSiden > 0.12) { menuStyr = bot(s, 0.8, menuStyr); menuSiden = 0; }
+  motorTik(s, Math.min(dt, 1 / 30), menuStyr);
+  if (s.doed || s.meter > 1500) { s = nyTur(seed + 1); kameraTil(true); }
+  kameraTil(false, dt);
+}
+requestAnimationFrame(billede);
+
+/* ---------- Perspektivet ---------- */
+/** Et punkt i verden → skærmen. null, hvis det er bag kameraet. */
+function proj(X, Y, Z) {
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const dx = X - cam.x, dy = Y - cam.y, dz = Z - cam.z;
+  const d = dz * cp - dy * sp;
+  if (d < 0.3) return null;
+  const op = dy * cp + dz * sp;
+  return { x: W / 2 + dx * F / d, y: HOR - op * F / d, d };
+}
+const taage = d => klem(1 - (d - SIGT * 0.55) / (SIGT * 0.45), 0, 1);   // langt væk forsvinder banen i mørket
+
+function polygon(pts) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+}
+
+/* ---------- Tegning ---------- */
+function lavStjerner() {
+  stjerner = [];
+  let a = 12345;
+  const r = () => ((a = (a * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 90; i++) stjerner.push({ x: r(), y: r() * 0.8, st: 0.5 + r() * 1.4, f: r() * 6 });
+}
+
+function tegn() {
+  // Himlen: dybblå med et lilla skær nede ved horisonten
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#04030f'); g.addColorStop(0.45, '#130a36'); g.addColorStop(0.75, '#2a0f4a'); g.addColorStop(1, '#07051a');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#fff';
+  for (const st of stjerner) {
+    const px = ((st.x * W * 1.4 - cam.x * 2) % (W * 1.4) + W * 1.4) % (W * 1.4) - W * 0.2;
+    ctx.globalAlpha = 0.35 + 0.35 * Math.sin(T * 1.5 + st.f);
+    ctx.fillRect(px, st.y * H, st.st, st.st);
+  }
+  ctx.globalAlpha = 1;
+
+  // Alt, der skal tegnes, med en afstand – så tegnes det langt væk først
+  const opg = [];
+  const zNaer = cam.z + 0.8, zFjern = s.z + SIGT;
+  const b = s.bane;
+  b.udvid(zFjern + 5);
+  let p = b.stykVed(zNaer);
+  for (let i = p.nr; i < b.stykker.length; i++) {
+    p = b.stykker[i];
+    if (p.z0 > zFjern) break;
+    if (p.z1 < zNaer || p.hul) continue;
+    const zone = zoneFor(p.z0);
+    // Striber i faste meter, så de glider forbi, når man ruller
+    let za = Math.max(p.z0, zNaer);
+    while (za < Math.min(p.z1, zFjern) - 1e-6) {
+      const zb = Math.min(p.z1, zFjern, (Math.floor(za / STRIBE + 1e-6) + 1) * STRIBE);
+      opg.push({ z: zb, stribe: true, p, za, zb, zone });
+      za = zb;
+    }
+    // Forkanten kan kun ses efter et hul – ellers ligger den skjult under stykket før
+    if (p.z0 >= zNaer && (p.nr === 0 || b.stykker[p.nr - 1].hul)) opg.push({ z: p.z0 - 0.01, forside: true, p, zone });
+    for (const bl of p.blokke) if (bl.z1 > zNaer && bl.z0 < zFjern) opg.push({ z: bl.z0, blok: bl });
+  }
+  if (best > 0) {
+    const zr = best + START_Z;
+    if (zr > zNaer && zr < zFjern) opg.push({ z: zr + 0.02, rekord: zr });
+  }
+  const kz = efter ? efter.z : s.z;
+  if (fase !== 'doed' || efter) opg.push({ z: kz, kugle: true });
+  opg.sort((a, b2) => b2.z - a.z);
+
+  for (const o of opg) {
+    if (o.stribe) tegnStribe(o);
+    else if (o.forside) tegnForside(o);
+    else if (o.blok) tegnBlok(o.blok);
+    else if (o.rekord) tegnRekord(o.rekord);
+    else if (o.kugle) tegnKugle();
+  }
+  tegnStumper();
+}
+
+/** Et hjørne af banens overflade (side = −1 venstre, 1 højre). */
+function hjoerne(p, z, side, ned = 0) {
+  const c = midtX(p, z), x = c + side * p.w / 2;
+  return proj(x, midtY(p, z) + side * p.w / 2 * kVed(p, z) - ned, z);
+}
+
+function tegnStribe({ p, za, zb, zone }) {
+  const vn = hjoerne(p, za, -1), hn = hjoerne(p, za, 1), vf = hjoerne(p, zb, -1), hf = hjoerne(p, zb, 1);
+  if (!vn || !hn || !vf || !hf) return;
+  const a = taage(vf.d);
+  if (a <= 0) return;
+  ctx.globalAlpha = a;
+  // Siderne (kun den, man kan se)
+  const cx = midtX(p, za);
+  ctx.fillStyle = zone.side;
+  if (cam.x < cx - p.w / 2) {
+    const vnn = hjoerne(p, za, -1, TYK), vfn = hjoerne(p, zb, -1, TYK);
+    if (vnn && vfn) { polygon([vf, vn, vnn, vfn]); ctx.fill(); }
+  }
+  if (cam.x > cx + p.w / 2) {
+    const hnn = hjoerne(p, za, 1, TYK), hfn = hjoerne(p, zb, 1, TYK);
+    if (hnn && hfn) { polygon([hf, hn, hnn, hfn]); ctx.fill(); }
+  }
+  // Overfladen
+  ctx.fillStyle = zone.flade;
+  polygon([vf, hf, hn, vn]); ctx.fill();
+  // Gitteret: tværstregen langt væk, og streger på langs
+  const tykkelse = Math.max(0.8, 1.6 * F / vf.d * 0.06);
+  ctx.strokeStyle = `rgba(${zone.linje},.55)`; ctx.lineWidth = tykkelse;
+  ctx.beginPath();
+  ctx.moveTo(vf.x, vf.y); ctx.lineTo(hf.x, hf.y);
+  const n = Math.max(2, Math.round(p.w / 1.2));
+  for (let i = 1; i < n; i++) {
+    const u = i / n;
+    ctx.moveTo(vf.x + (hf.x - vf.x) * u, vf.y + (hf.y - vf.y) * u);
+    ctx.lineTo(vn.x + (hn.x - vn.x) * u, vn.y + (hn.y - vn.y) * u);
+  }
+  ctx.stroke();
+  // Kanterne lyser
+  ctx.strokeStyle = `rgba(${zone.linje},.95)`; ctx.lineWidth = tykkelse * 1.8;
+  ctx.beginPath();
+  ctx.moveTo(vf.x, vf.y); ctx.lineTo(vn.x, vn.y);
+  ctx.moveTo(hf.x, hf.y); ctx.lineTo(hn.x, hn.y);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/** Forkanten af et stykke – den man ser efter et hul. */
+function tegnForside({ p, zone }) {
+  const v = hjoerne(p, p.z0, -1), h = hjoerne(p, p.z0, 1), vn = hjoerne(p, p.z0, -1, TYK), hn = hjoerne(p, p.z0, 1, TYK);
+  if (!v || !h || !vn || !hn) return;
+  const a = taage(v.d);
+  if (a <= 0) return;
+  ctx.globalAlpha = a;
+  ctx.fillStyle = zone.side;
+  polygon([v, h, hn, vn]); ctx.fill();
+  ctx.strokeStyle = `rgba(${zone.linje},.95)`; ctx.lineWidth = Math.max(1, 2.4 * F / v.d * 0.06);
+  ctx.beginPath(); ctx.moveTo(v.x, v.y); ctx.lineTo(h.x, h.y); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/** En rød klods – en kasse med de sider, man kan se. */
+function tegnBlok(bl) {
+  const bx = blokX(bl, s.t);
+  const x0 = bx - bl.b / 2, x1 = bx + bl.b / 2, y0 = bl.y - 0.2, y1 = bl.y + bl.h;
+  const z0 = Math.max(bl.z0, cam.z + 0.8), z1 = bl.z1;
+  if (z1 <= z0) return;
+  const P = (x, y, z) => proj(x, y, z);
+  const fvn = P(x0, y0, z0), fhn = P(x1, y0, z0), fvo = P(x0, y1, z0), fho = P(x1, y1, z0);
+  const bvo = P(x0, y1, z1), bho = P(x1, y1, z1), bvn = P(x0, y0, z1), bhn = P(x1, y0, z1);
+  if (!fvn || !fhn || !fvo || !fho || !bvo || !bho || !bvn || !bhn) return;
+  const a = taage(fvn.d);
+  if (a <= 0) return;
+  ctx.globalAlpha = a;
+  const glid = !!bl.glid;
+  if (cam.x < x0) { ctx.fillStyle = glid ? '#8a1d4a' : '#7a0f22'; polygon([fvn, fvo, bvo, bvn]); ctx.fill(); }
+  if (cam.x > x1) { ctx.fillStyle = glid ? '#8a1d4a' : '#7a0f22'; polygon([fhn, fho, bho, bhn]); ctx.fill(); }
+  if (cam.y > y1) { ctx.fillStyle = glid ? '#ff7ab0' : '#ff6b80'; polygon([fvo, fho, bho, bvo]); ctx.fill(); }
+  const fg = ctx.createLinearGradient(0, fvo.y, 0, fvn.y);
+  fg.addColorStop(0, glid ? '#ff3d8f' : '#ff2d4d'); fg.addColorStop(1, glid ? '#b0105a' : '#b3001f');
+  ctx.fillStyle = fg; polygon([fvn, fhn, fho, fvo]); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,200,210,.9)'; ctx.lineWidth = Math.max(1, 1.8 * F / fvn.d * 0.06);
+  polygon([fvn, fhn, fho, fvo]); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+/** Rekordstregen: en guldstreg på tværs af banen dér, hvor man nåede sidst. */
+function tegnRekord(z) {
+  const p = s.bane.stykVed(z);
+  if (p.hul) return;
+  const v = hjoerne(p, z, -1), h = hjoerne(p, z, 1);
+  if (!v || !h) return;
+  const a = taage(v.d);
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = '#ffd447'; ctx.lineWidth = Math.max(2, 5 * F / v.d * 0.06);
+  ctx.beginPath(); ctx.moveTo(v.x, v.y); ctx.lineTo(h.x, h.y); ctx.stroke();
+  ctx.fillStyle = '#ffd447'; ctx.textAlign = 'center';
+  ctx.font = `900 ${Math.max(10, Math.min(28, 0.9 * F / v.d))}px -apple-system,sans-serif`;
+  ctx.fillText('REKORD', (v.x + h.x) / 2, (v.y + h.y) / 2 - 0.5 * F / v.d);
+  ctx.globalAlpha = 1;
+}
+
+/** Kuglen – med to striber, der ruller, så man kan se farten. */
+function tegnKugle() {
+  const k = efter || s;
+  const zone = zoneFor(k.z);
+  // Skyggen på banen
+  const fy = efter ? null : gulv(s.bane, k.x, k.z);
+  if (fy !== null) {
+    const sk = proj(k.x, fy + 0.01, k.z);
+    if (sk) {
+      const r = R * F / sk.d;
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.beginPath(); ctx.ellipse(sk.x, sk.y, r * 1.1, r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  const c = proj(k.x, k.y + R, k.z);
+  if (!c) return;
+  const r = R * F / c.d;
+  if (r < 0.5) return;
+  // Glød
+  ctx.fillStyle = `rgba(${zone.linje},.16)`;
+  ctx.beginPath(); ctx.arc(c.x, c.y, r * 1.3, 0, Math.PI * 2); ctx.fill();
+  const g = ctx.createRadialGradient(c.x - r * 0.35, c.y - r * 0.4, r * 0.1, c.x, c.y, r);
+  g.addColorStop(0, '#ffffff'); g.addColorStop(0.35, `rgb(${zone.linje})`); g.addColorStop(1, '#0a3a22');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.fill();
+  // Striberne ruller mod én
+  ctx.save();
+  ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = Math.max(1, r * 0.14);
+  for (let i = 0; i < 3; i++) {
+    const a = (s.rul || 0) + i * Math.PI * 2 / 3;
+    if (Math.cos(a) <= 0) continue;
+    const yy = c.y - Math.sin(a) * r;
+    const bred = Math.sqrt(Math.max(0, 1 - Math.sin(a) ** 2)) * r;
+    ctx.beginPath(); ctx.ellipse(c.x, yy, bred, Math.max(0.5, bred * 0.25 * Math.cos(a)), 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function tegnStumper() {
+  for (const q of [...stumper, ...gnister]) {
+    const c = proj(q.x, q.y, q.z);
+    if (!c) continue;
+    const st = (q.st || 0.06) * F / c.d;
+    ctx.globalAlpha = Math.max(0, 1 - q.t / q.liv);
+    ctx.fillStyle = q.st ? `rgb(${zoneFor(q.z).linje})` : '#fff7c0';
+    ctx.fillRect(c.x - st / 2, c.y - st / 2, st, st);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- Fingrene: venstre og højre halvdel ---------- */
+function sideFor(e) {
+  const r = canvas.getBoundingClientRect();
+  return e.clientX - r.left < r.width / 2 ? -1 : 1;
+}
+canvas.addEventListener('pointerdown', e => {
+  if (fase !== 'spil') return;
+  e.preventDefault();
+  canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+  fingre.set(e.pointerId, sideFor(e));
+});
+canvas.addEventListener('pointermove', e => {
+  if (fingre.has(e.pointerId)) fingre.set(e.pointerId, sideFor(e));   // glider fingeren over midten, skifter man side
+});
+for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  canvas.addEventListener(t, e => { fingre.delete(e.pointerId); });
+}
+
+const STYRETASTER = ['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'];
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (STYRETASTER.includes(e.code)) { e.preventDefault(); taster.add(e.code); }
+  if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat && (fase === 'menu' || fase === 'slut')) { e.preventDefault(); start(); }
+});
+addEventListener('keyup', e => { taster.delete(e.code); });
+addEventListener('blur', () => { taster.clear(); fingre.clear(); });
+
+$('startBtn').addEventListener('click', start);
+$('igenBtn').addEventListener('click', start);
+$('tilbageBtn').addEventListener('click', tilMenu);
+menuBtn.addEventListener('click', tilMenu);
+
+/* ---------- Start ---------- */
+nulstil();
+Highscore.panel($('hsStart'), { spil: 'skraaning', format: meterTekst });
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  start, tilMenu,
+  tik: (dt, styr) => uiTik(dt, styr),
+  pause() { paused = true; }, resume() { paused = false; sidst = 0; acc = 0; },
+  /** Spoler sek sekunder frem. styr låser styringen (−1 … 1); udeladt bruger fingrene/tasterne. */
+  frem(sek, styr) {
+    const n = Math.round(sek / DT);
+    for (let i = 0; i < n && (fase === 'spil' || fase === 'doed'); i++) uiTik(DT, styr);
+    return this.state;
+  },
+  /** Lader botten køre, til den dør eller når maksMeter – som i enhedstestene. */
+  botTur(maksMeter = 1e9) {
+    let styr = 0, siden = 1;
+    while (fase === 'spil' && s.meter < maksMeter) {
+      siden += DT;
+      if (siden >= 0.1) { styr = bot(s, 0.8, styr); siden = 0; }
+      uiTik(DT, styr);
+    }
+    return this.state;
+  },
+  /** Hvor på skærmen et punkt i verden er (tests). */
+  skaerm(x, y, z) { return proj(x, y, z); },
+  get state() {
+    const p = s.bane.stykVed(s.z);
+    return {
+      fase, seed: s.seed, meter: s.meter, best, t: s.t,
+      x: s.x, y: s.y, z: s.z, vx: s.vx, paa: s.paa, doed: s.doed, aarsag: s.aarsag,
+      fart: fart(s.z), styr: styrNu, fingre: fingre.size,
+      stykke: { type: p.type, midt: p.hul ? null : midtX(p, s.z), w: p.w },
+    };
+  },
+};
+</script>
+</body></html>

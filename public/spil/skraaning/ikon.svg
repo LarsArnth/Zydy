@@ -1,0 +1,23 @@
+<svg viewBox="0 0 512 512"><defs>
+  <linearGradient id="sk-himmel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#04030f"/><stop offset=".6" stop-color="#1c0c42"/><stop offset="1" stop-color="#2a0f4a"/></linearGradient>
+  <radialGradient id="sk-kugle" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#39ff7a"/><stop offset="1" stop-color="#0a3a22"/></radialGradient>
+</defs>
+  <rect width="512" height="512" fill="url(#sk-himmel)"/>
+  <!-- stjerner -->
+  <g fill="#fff" opacity=".7"><rect x="60" y="50" width="5" height="5"/><rect x="400" y="80" width="4" height="4"/><rect x="300" y="36" width="5" height="5"/><rect x="140" y="120" width="3" height="3"/><rect x="460" y="150" width="4" height="4"/></g>
+  <!-- banen, der forsvinder ned ad bakken -->
+  <path d="M206 170 H 306 L 470 512 H 42 Z" fill="#0a1d12"/>
+  <path d="M206 170 L 42 512 M 306 170 L 470 512" stroke="#39ff7a" stroke-width="10"/>
+  <g stroke="#39ff7a" stroke-opacity=".55" stroke-width="5">
+    <path d="M190 204 H 322 M 168 250 H 344 M 140 310 H 372 M 102 390 H 410"/>
+    <path d="M239 170 L 180 512 M 273 170 L 332 512"/>
+  </g>
+  <!-- en rød klods -->
+  <path d="M292 214 h 44 v 30 h -44 z" fill="#ff2d4d" stroke="#ffc8d2" stroke-width="3"/>
+  <path d="M292 214 l 6 -8 h 44 l -6 8 z" fill="#ff6b80"/>
+  <!-- kuglen -->
+  <ellipse cx="236" cy="432" rx="70" ry="18" fill="#000" fill-opacity=".45"/>
+  <circle cx="236" cy="372" r="64" fill="#39ff7a" fill-opacity=".18"/>
+  <circle cx="236" cy="372" r="54" fill="url(#sk-kugle)"/>
+  <path d="M190 360 Q 236 376 282 360" stroke="#000" stroke-opacity=".3" stroke-width="7" fill="none"/>
+</svg>
