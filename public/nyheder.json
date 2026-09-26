@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 62,
+      "dato": "2026-09-26",
+      "spil": "galge",
+      "titel": "Nyt spil: Galgespil",
+      "hvad": "En mand hænger i galgen, og du skal gætte ordet! Tryk på et bogstav – er det med i ordet, kommer det frem, og er det ikke, bliver galgen og manden tegnet lidt mere. Finder du ordet, før manden er færdig, redder du ham, og så hopper han ned og jubler. Over ordet står der, om det er et dyr, noget mad, tøj eller noget helt fjerde. Hvor mange ord kan du klare i træk? De bliver sværere undervejs. Du kan også selv finde på et hemmeligt ord og give telefonen til en ven.",
+      "oensket": "Megithebegi1"
+    },
+    {
       "nr": 61,
       "dato": "2026-09-26",
       "spil": "kylling",

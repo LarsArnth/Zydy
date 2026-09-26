@@ -1,0 +1,20 @@
+{
+  "navn": "Galgespil",
+  "beskrivelse": "Gæt ordet ét bogstav ad gangen, før manden bliver hængt – find ordet, og du redder ham! Hvor mange ord i træk kan du? Eller find selv på et ord til en ven.",
+  "nøgleord": [
+    "hangman",
+    "galge",
+    "hængemand",
+    "gæt ordet",
+    "ord",
+    "bogstaver",
+    "ordspil",
+    "gætte"
+  ],
+  "url": "/spil/galge/",
+  "orden": 188,
+  "kapløb": true,
+  "højscore": {
+    "maks": 1000
+  }
+}

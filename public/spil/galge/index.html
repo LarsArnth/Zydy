@@ -1,0 +1,572 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1f2c44">
+<meta name="description" content="Galgespil: gæt ordet ét bogstav ad gangen, før manden bliver hængt – eller find selv på et ord til en ven.">
+<title>Galgespil – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f2c44'/%3E%3Cpath d='M14 56h36M20 56V8h24v8' stroke='%23d9a066' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='44' cy='24' r='7' fill='%23fbf3e0'/%3E%3Cpath d='M44 31v12M44 35l-6 6M44 35l6 6' stroke='%23fbf3e0' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  /*
+    «Galgespil» – Megithebegis ønske: «Et spil hvor en mand hænger i, og så skal
+    man gætte nogle ord».
+
+    Et ord står skjult bag streger, og kategorien står ovenover (Dyr, Mad …).
+    Man trykker på bogstaverne; er det med i ordet, kommer det frem, og er det
+    ikke, tegnes en ny del af galgen og manden. Finder man ordet, før manden er
+    færdig, er han reddet – han hopper ned og jubler. Score = ord i træk, og jo
+    længere stimen er, jo længere er ordene, og jo mere af galgen står der fra
+    starten. Man kan også finde på et ord selv og give telefonen til en ven.
+
+    Reglerne, ordene og en bot bor i galge.mjs, så de kan enhedstestes.
+  */
+  :root{
+    --bg:#1f2c44; --bg2:#2d3d5c; --bg3:#3d5078; --text:#fbf3e0; --muted:#b8c3da;
+    --sun:#ffc94a; --groen:#5fd07a; --roed:#ff6b6b; --ink:#1b2233; --trae:#d9a066; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 14px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 10px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  [hidden]{display:none!important}
+  .btn{display:block;width:100%;padding:17px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg3);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:7px 13px;font-size:15px;color:var(--muted);white-space:nowrap}
+  button.pill{color:var(--text);font-weight:700;min-height:36px}
+
+  .wrap{width:100%;max-width:760px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:8px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.4px}
+
+  .stage{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;border-radius:var(--r);
+    background:linear-gradient(#26375a,#1a2438);overflow:hidden;padding:10px 8px}
+
+  /* Kategorien til venstre, stimen til højre */
+  .hud{display:flex;align-items:center;gap:8px;min-height:34px}
+  #katEl{font-weight:800;color:var(--text);background:var(--bg3);overflow:hidden;text-overflow:ellipsis;max-width:62%}
+  .hud .fyld{flex:1}
+  #stimeEl b{color:var(--sun);font-variant-numeric:tabular-nums}
+  #rekEl{font-size:13px}
+
+  /* Galgen */
+  .galge{flex:1;min-height:110px;display:flex;align-items:center;justify-content:center;position:relative}
+  #galge{height:100%;width:100%;max-height:340px;overflow:visible}
+  #galge .del{opacity:0;transition:opacity .35s}
+  #galge .del.vis{opacity:1}
+  #galge .trae{stroke:var(--trae);stroke-width:9;stroke-linecap:round;fill:none}
+  #galge .jordfyld{fill:#3f7d46}
+  #galge .rebet{stroke:#e8d4a8;stroke-width:4;stroke-linecap:round;fill:none}
+  #galge .krop{stroke:var(--text);stroke-width:6;stroke-linecap:round;fill:none}
+  #galge .hovedet{fill:#f6d3b0;stroke:var(--text);stroke-width:4}
+  #galge .ansigt{stroke:#3a2a1e;stroke-width:2.6;stroke-linecap:round;fill:none}
+  #galge .pupil{fill:#3a2a1e}
+  #galge .ansigt-del{display:none}
+  #galge[data-ansigt="glad"] .glad,
+  #galge[data-ansigt="bange"] .bange,
+  #galge[data-ansigt="tabt"] .tabt,
+  #galge[data-ansigt="fri"] .fri{display:inline}
+  /* Manden (og rebet) svinger blidt, mens han hænger */
+  #haenger{transform-box:view-box;transform-origin:130px 20px;transition:transform .5s}
+  #galge.spil #haenger{animation:sving 2.6s ease-in-out infinite alternate}
+  @keyframes sving{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+  /* Reddet: rebet er væk, manden står på jorden og jubler */
+  #mand{transform-box:view-box;transition:transform .5s cubic-bezier(.3,1.4,.5,1)}
+  #galge.fri #mand{transform:translateY(18px)}
+  #galge.fri #mand .del{opacity:1}
+  #galge.fri .reb-del{opacity:0}
+  #galge.fri [data-del=jord]{opacity:1}
+  #galge.fri #hop{animation:hop .55s ease-in-out .45s infinite alternate}
+  #hop{transform-box:view-box}
+  @keyframes hop{from{transform:translateY(0)}to{transform:translateY(-14px)}}
+  .arm{transform-box:view-box;transform-origin:130px 98px;transition:transform .45s}
+  #galge.fri .arm.v{transform:rotate(95deg)}
+  #galge.fri .arm.h{transform:rotate(-95deg)}
+
+  /* Ordet */
+  .ord{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin:6px 0 4px;min-height:52px;align-items:flex-end}
+  .felt{display:flex;align-items:flex-end;justify-content:center;border-bottom:4px solid var(--muted);
+    font-weight:900;color:var(--text);line-height:1;padding-bottom:3px}
+  .felt.mellemrum{border-bottom-color:transparent}
+  .felt.ny{animation:ind .35s cubic-bezier(.2,1.6,.4,1)}
+  .felt.mangler{color:var(--roed)}
+  .ord.vundet .felt{border-bottom-color:var(--groen);color:var(--groen)}
+  @keyframes ind{from{transform:scale(.2) translateY(10px);opacity:0}to{transform:scale(1);opacity:1}}
+
+  /* Hjerterne = forkerte gæt tilbage */
+  .info{display:flex;justify-content:center;align-items:center;gap:8px;min-height:26px;font-size:15px;color:var(--muted)}
+  #hjerter{letter-spacing:1px;font-size:18px;line-height:1}
+  #hjerter .h{color:var(--roed)}
+  #hjerter .t{color:#55617d}
+
+  /* Tastaturet – alfabetisk, som børnene har lært det */
+  .taster{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:6px;position:relative}
+  .tast{min-height:46px;border-radius:12px;background:var(--text);color:var(--ink);font-size:21px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;transition:transform .06s,background .2s}
+  .tast:active{transform:scale(.92)}
+  .tast.rigtig{background:var(--groen);color:#0f3319}
+  .tast.forkert{background:#44506b;color:#8a94ab}
+  .tast:disabled{cursor:default}
+  @media (min-width:600px){ .taster{grid-template-columns:repeat(10,1fr)} .tast{min-height:52px;font-size:24px} }
+
+  /* Bjælken, der dækker tastaturet, når ordet er fundet */
+  .bjaelke{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    background:rgba(26,36,56,.94);border-radius:16px;padding:10px;text-align:center}
+  .bjaelke .overskrift{font-size:24px;font-weight:900;letter-spacing:-.5px}
+  .bjaelke .undertekst{font-size:15px;color:var(--muted)}
+  .bjaelke .knapper{display:flex;gap:10px;width:100%;max-width:420px}
+  .bjaelke .btn{margin-top:4px}
+  .bjaelke.on{animation:op .3s ease-out}
+  @keyframes op{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+
+  /* Start-, ven- og slutskærm */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;z-index:5;
+    padding:18px 20px 24px;background:rgba(22,31,50,.86);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .regler{display:flex;flex-direction:column;gap:7px;margin:0 0 4px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:9px 13px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .hs{margin-top:12px}
+  .hs .hs-liste{max-height:30vh}
+  .stor{font-size:60px;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--sun);
+    font-variant-numeric:tabular-nums;margin:2px 0 2px}
+  .stor small{font-size:24px;color:var(--muted);letter-spacing:0}
+  .under{font-size:15px;color:var(--muted);margin:0 0 8px}
+  #slutOrd{font-size:17px;color:var(--text);margin:0 0 10px}
+  #slutOrd b{color:var(--sun);letter-spacing:2px}
+  .felt-tekst{display:block;width:100%;padding:15px 16px;border-radius:16px;border:2px solid var(--bg3);background:#fff;
+    color:var(--ink);font:inherit;font-size:20px;font-weight:700;margin-top:10px;-webkit-user-select:text;user-select:text;text-align:center}
+  #venOrd{-webkit-text-security:disc;letter-spacing:3px}
+  #venOrd.vis{-webkit-text-security:none}
+  .lille{font-size:15px;background:none;color:var(--muted);text-decoration:underline;margin-top:8px;padding:6px}
+  #venFejl{color:var(--roed);font-weight:700;margin:8px 0 0;min-height:1.4em;font-size:15px}
+
+  @media (max-height:700px){
+    h1{font-size:30px} .stor{font-size:46px} .hs .hs-liste{max-height:24vh}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+    .tast{min-height:44px;font-size:19px} .taster{gap:5px}
+  }
+  @media (max-width:380px){ .top .name{display:none} }
+  @media (prefers-reduced-motion:reduce){
+    #galge.spil #haenger,#galge.fri #hop,.felt.ny,.bjaelke.on{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Galgespil</div>
+    <button class="pill" id="menuBtn" hidden>Menu</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="hud">
+      <span class="pill" id="katEl">🐾 Dyr</span>
+      <span class="fyld"></span>
+      <span class="pill" id="stimeEl">I træk <b id="stimeTal">0</b></span>
+      <span class="pill" id="rekEl">Rekord 0</span>
+    </div>
+
+    <div class="galge">
+      <!-- Galgen og manden. Hver del har data-del som i DELE i galge.mjs og kommer frem ved et forkert gæt. -->
+      <svg id="galge" viewBox="0 0 200 220" aria-label="Galgen" role="img" data-ansigt="glad">
+        <g class="del" data-del="jord">
+          <path class="jordfyld" d="M8 214 Q100 184 192 214 Z"/>
+        </g>
+        <g class="del" data-del="stolpe"><path class="trae" d="M52 204 V18"/></g>
+        <g class="del" data-del="bjaelke"><path class="trae" d="M46 18 H138 M52 52 L86 18"/></g>
+        <g id="haenger">
+          <g class="del reb-del" data-del="reb"><path class="rebet" d="M130 18 V54"/></g>
+          <g id="mand"><g id="hop">
+            <g class="del" data-del="krop"><path class="krop" d="M130 84 V140"/></g>
+            <g class="del arm v" data-del="armV"><path class="krop" d="M130 98 L108 124"/></g>
+            <g class="del arm h" data-del="armH"><path class="krop" d="M130 98 L152 124"/></g>
+            <g class="del" data-del="benV"><path class="krop" d="M130 138 L113 178"/></g>
+            <g class="del" data-del="benH"><path class="krop" d="M130 138 L147 178"/></g>
+            <g class="del" data-del="hoved">
+              <circle class="hovedet" cx="130" cy="69" r="16"/>
+              <!-- Ansigterne: glad → bange (få forsøg tilbage) → tabt eller fri -->
+              <g class="ansigt-del glad bange fri"><circle class="pupil" cx="124" cy="66" r="2.2"/><circle class="pupil" cx="136" cy="66" r="2.2"/></g>
+              <path class="ansigt ansigt-del glad" d="M124 74 Q130 79 136 74"/>
+              <g class="ansigt-del bange"><path class="ansigt" d="M120 60 L127 62 M140 60 L133 62"/><ellipse class="pupil" cx="130" cy="76" rx="3" ry="3.6"/></g>
+              <path class="ansigt ansigt-del fri" d="M122 73 Q130 83 138 73 Z" fill="#3a2a1e"/>
+              <g class="ansigt-del tabt"><path class="ansigt" d="M121 63 l6 6 M127 63 l-6 6 M133 63 l6 6 M139 63 l-6 6 M124 78 Q130 73 136 78"/></g>
+            </g>
+          </g></g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="ord" id="ordEl" aria-live="polite"></div>
+    <div class="info"><span id="hjerter" aria-label="Forsøg tilbage"></span></div>
+
+    <div class="taster" id="taster">
+      <div class="bjaelke" id="bjaelke" hidden>
+        <div class="overskrift" id="bjTitel">🎉 Du reddede ham!</div>
+        <div class="undertekst" id="bjUnder">4 ord i træk</div>
+        <div class="knapper">
+          <button class="btn ghost" id="bjMenu" hidden>Menu</button>
+          <button class="btn" id="bjVidere">Næste ord ›</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Galgespil</h1>
+        <div class="regler" aria-hidden="true">
+          <span>🔤 <b>Gæt ordet</b> – ét bogstav ad gangen</span>
+          <span>🪢 Et forkert bogstav, og <b>galgen og manden</b> bliver tegnet lidt mere</span>
+          <span>🎉 Find ordet, før manden er færdig – så <b>redder du ham</b></span>
+          <span>🔥 Hvor mange ord <b>i træk</b> kan du? De bliver sværere undervejs</span>
+        </div>
+        <button class="btn" id="startBtn">Gæt ordet!</button>
+        <button class="btn ghost" id="venBtn">👫 Find på et ord til en ven</button>
+        <div class="hs" id="hsStart"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="venScreen">
+      <div class="card">
+        <h1>Dit hemmelige ord</h1>
+        <p>Skriv et ord, som din ven skal gætte – og lad være med at vise det! Giv så telefonen videre.</p>
+        <input class="felt-tekst" id="venOrd" type="text" maxlength="40" placeholder="Hemmeligt ord"
+          autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next">
+        <button class="lille" id="venVis" type="button">Vis ordet</button>
+        <input class="felt-tekst" id="venHjaelp" type="text" maxlength="30" placeholder="Et lille hint (kan springes over)"
+          autocomplete="off" spellcheck="false" enterkeyhint="go">
+        <p id="venFejl" role="alert"></p>
+        <button class="btn" id="venStart">Giv telefonen videre</button>
+        <button class="btn ghost" id="venTilbage">Tilbage</button>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Åh nej!</h1>
+        <p id="slutOrd">Ordet var <b>PINGVIN</b></p>
+        <div class="stor" id="slutStime">0<small> ord i træk</small></div>
+        <p class="under" id="slutUnder">Din rekord er 0 ord</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Prøv igen</button>
+        <button class="btn ghost" id="tilbageBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="galge"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+<script type="module">
+import {
+  BOGSTAVER, DELE, VEN_LIV, kategori, rng, niveauFraStime, vaelgOrd, rensOrd,
+  nytSpil, maske, forkerteTilbage, synligeDele, gaet as motorGaet, botGaet,
+} from './galge.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+let rand = rng(Number.isFinite(fastSeed) ? fastSeed : (Math.random() * 4294967296) >>> 0);
+
+const $ = id => document.getElementById(id);
+const svg = $('galge'), ordEl = $('ordEl'), hjerter = $('hjerter'), taster = $('taster');
+const katEl = $('katEl'), stimeEl = $('stimeEl'), stimeTal = $('stimeTal'), rekEl = $('rekEl');
+const bjaelke = $('bjaelke'), menuBtn = $('menuBtn');
+const skaerme = { start: $('startScreen'), ven: $('venScreen'), slut: $('slutScreen') };
+
+const KEY_BEST = 'zydy.galge.best', KEY_BRUGT = 'zydy.galge.brugt';
+const BRUGT_MAKS = 150;             // så mange ord huskes, før de må komme igen
+const TABT_MS = 1600;               // så længe man ser manden og ordet, før slutskærmen kommer
+const hent = (k, f) => { try { const v = localStorage.getItem(k); return v === null ? f : JSON.parse(v); } catch (e) { return f; } };
+const gem = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const ordTekst = n => n + ' ord';
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';                  // menu | spil | vundet | tabt | slut | ven
+let tilstand = 'solo';              // solo = ordene kommer fra listen · ven = en ven har fundet på ordet
+let spil = nytSpil('KAT', { liv: 10, kategori: 'dyr' });
+let stime = 0, best = Math.max(0, parseInt(hent(KEY_BEST, 0), 10) || 0);
+let brugte = new Set(hent(KEY_BRUGT, []));
+let hint = '', slutTimer = 0, nyRekord = false;
+
+/* ---------- Tastaturet ---------- */
+const tastEl = {};
+for (const b of BOGSTAVER) {
+  const t = document.createElement('button');
+  t.className = 'tast'; t.textContent = b; t.dataset.b = b; t.setAttribute('aria-label', 'Bogstavet ' + b);
+  t.addEventListener('click', () => gaet(b));
+  taster.insertBefore(t, bjaelke);
+  tastEl[b] = t;
+}
+
+/* ---------- Tegning ---------- */
+function tegn(nyeBogstav) {
+  // Galgen og manden
+  const vis = new Set(synligeDele(spil));
+  for (const g of svg.querySelectorAll('[data-del]')) g.classList.toggle('vis', vis.has(g.dataset.del));
+  const tilbage = forkerteTilbage(spil);
+  svg.classList.toggle('spil', spil.status === 'spil' && vis.has('hoved'));
+  svg.classList.toggle('fri', spil.status === 'vundet');
+  svg.dataset.ansigt = spil.status === 'vundet' ? 'fri' : spil.status === 'tabt' ? 'tabt' : tilbage <= 2 ? 'bange' : 'glad';
+
+  // Ordet – feltstørrelsen følger ordets længde, så lange ord også kan være på en telefon
+  const m = maske(spil);
+  const bred = ordEl.clientWidth || 340;
+  const str = Math.max(20, Math.min(46, Math.floor((bred - (m.length - 1) * 6) / m.length)));
+  ordEl.innerHTML = '';
+  ordEl.classList.toggle('vundet', spil.status === 'vundet');
+  m.forEach((b, i) => {
+    const f = document.createElement('span');
+    f.className = 'felt' + (b === ' ' ? ' mellemrum' : '');
+    f.style.width = str + 'px'; f.style.height = Math.round(str * 1.15) + 'px';
+    f.style.fontSize = Math.round(str * 0.78) + 'px';
+    if (b && b !== ' ') {
+      f.textContent = b;
+      if (b === nyeBogstav) f.classList.add('ny');
+      if (spil.status === 'tabt' && !spil.gaettet.includes(b)) f.classList.add('mangler');
+    }
+    ordEl.appendChild(f);
+  });
+  ordEl.setAttribute('aria-label', m.map(b => b || 'streg').join(' '));
+
+  // Hjerterne
+  hjerter.innerHTML = '<span class="h">' + '♥'.repeat(Math.max(0, tilbage)) + '</span><span class="t">' + '♥'.repeat(spil.forkerte.length) + '</span>';
+  hjerter.setAttribute('aria-label', tilbage + ' forkerte gæt tilbage');
+
+  // Tasterne
+  for (const b of BOGSTAVER) {
+    const t = tastEl[b];
+    const r = spil.gaettet.includes(b), f = spil.forkerte.includes(b);
+    t.classList.toggle('rigtig', r); t.classList.toggle('forkert', f);
+    t.disabled = r || f || spil.status !== 'spil';
+  }
+
+  // Toppen
+  if (tilstand === 'ven') {
+    katEl.textContent = hint ? '💡 ' + hint : '🤫 Et hemmeligt ord';
+  } else {
+    const k = kategori(spil.kategori);
+    katEl.textContent = k ? k.emoji + ' ' + k.navn : '';
+  }
+  stimeEl.hidden = rekEl.hidden = tilstand === 'ven';
+  stimeTal.textContent = stime;
+  rekEl.textContent = 'Rekord ' + best;
+}
+
+function visSkaerm(navn) {
+  for (const [k, el] of Object.entries(skaerme)) el.classList.toggle('on', k === navn);
+  menuBtn.hidden = navn === 'start';
+}
+
+/* ---------- Et nyt ord ---------- */
+function nytOrd() {
+  const n = niveauFraStime(stime);
+  const o = vaelgOrd(rand, n, brugte);
+  brugte.add(o.ord);
+  const liste = [...brugte];
+  if (liste.length > BRUGT_MAKS) brugte = new Set(liste.slice(-BRUGT_MAKS));
+  gem(KEY_BRUGT, [...brugte]);
+  spil = nytSpil(o.ord, { liv: n.liv, kategori: o.kategori });
+}
+
+function start() {
+  clearTimeout(slutTimer);
+  tilstand = 'solo'; stime = 0; hint = ''; nyRekord = false;
+  nytOrd();
+  fase = 'spil';
+  bjaelke.hidden = true;
+  visSkaerm(null);
+  tegn();
+  blur();
+}
+
+function naeste() {
+  if (tilstand === 'ven') return visVen();
+  nytOrd();
+  fase = 'spil';
+  bjaelke.hidden = true;
+  tegn();
+}
+
+function startVen(ord, hjaelp) {
+  clearTimeout(slutTimer);
+  tilstand = 'ven'; stime = 0;
+  hint = String(hjaelp || '').replace(/\s+/g, ' ').trim().slice(0, 30);
+  spil = nytSpil(ord, { liv: VEN_LIV });
+  fase = 'spil';
+  bjaelke.hidden = true;
+  visSkaerm(null);
+  tegn();
+  blur();
+}
+
+function blur() { document.activeElement && document.activeElement.blur && document.activeElement.blur(); }
+
+/* ---------- Et gæt ---------- */
+function gaet(b) {
+  if (fase !== 'spil') return;
+  const r = motorGaet(spil, b);
+  if (!r.gyldig) return;
+  navigator.vibrate && navigator.vibrate(r.rigtig ? 12 : [30, 40, 30]);
+  tegn(r.rigtig ? b.toUpperCase() : null);
+  if (spil.status === 'vundet') vundet();
+  else if (spil.status === 'tabt') tabt();
+}
+
+function vundet() {
+  fase = 'vundet';
+  navigator.vibrate && navigator.vibrate([20, 30, 20, 30, 40]);
+  let under;
+  if (tilstand === 'ven') {
+    under = spil.forkerte.length === 0 ? 'Uden et eneste forkert bogstav!' : 'Ordet var ' + spil.ord;
+  } else {
+    const foer = niveauFraStime(stime).niveau;
+    stime++;
+    const slog = stime > best;
+    if (slog) { best = stime; gem(KEY_BEST, best); nyRekord = true; }
+    under = ordTekst(stime) + ' i træk' + (slog && stime > 1 ? ' – ny rekord!' : '');
+    if (niveauFraStime(stime).niveau > foer) under += ' · nu bliver ordene sværere';
+  }
+  visBjaelke('🎉 Du reddede ham!', under, tilstand === 'ven' ? 'Nyt ord' : 'Næste ord ›');
+  tegn();
+}
+
+function tabt() {
+  fase = 'tabt';
+  if (tilstand === 'ven') {
+    visBjaelke('Åh nej, han blev hængt!', 'Ordet var ' + spil.ord, 'Nyt ord');
+    return;
+  }
+  slutTimer = setTimeout(visSlut, TABT_MS);
+}
+
+function visBjaelke(titel, under, videre) {
+  $('bjTitel').textContent = titel;
+  $('bjUnder').textContent = under;
+  $('bjVidere').textContent = videre;
+  $('bjMenu').hidden = tilstand !== 'ven';
+  bjaelke.hidden = false;
+  bjaelke.classList.remove('on'); void bjaelke.offsetWidth; bjaelke.classList.add('on');
+  setTimeout(() => $('bjVidere').focus({ preventScroll: true }), 50);
+}
+
+function visSlut() {
+  if (fase !== 'tabt' || tilstand !== 'solo') return;
+  fase = 'slut';
+  const ny = nyRekord && stime > 0;
+  $('slutTitel').textContent = stime ? 'Åh nej!' : 'Åh nej, han blev hængt!';
+  $('slutOrd').innerHTML = 'Ordet var <b></b>';
+  $('slutOrd').querySelector('b').textContent = spil.ord;
+  $('slutStime').innerHTML = stime + '<small> ord i træk</small>';
+  $('slutUnder').textContent = ny ? 'Ny rekord! Så mange har du aldrig klaret før.' : 'Din rekord er ' + ordTekst(best);
+  visSkaerm('slut');
+  if (stime > 0) Highscore.panel($('hsSlut'), { spil: 'galge', score: stime, format: ordTekst });
+  else Highscore.panel($('hsSlut'), { spil: 'galge', format: ordTekst });
+  // Kapløb mod en ven (?rum=<kode>): min stime op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(stime, ordTekst(stime) + ' i træk');
+}
+
+function tilMenu() {
+  clearTimeout(slutTimer);
+  fase = 'menu'; tilstand = 'solo'; stime = 0; hint = '';
+  bjaelke.hidden = true;
+  spil = nytSpil('KAT', { liv: 10, kategori: 'dyr' });
+  visSkaerm('start');
+  tegn();
+  Highscore.panel($('hsStart'), { spil: 'galge', format: ordTekst });
+}
+
+/* ---------- Find på et ord til en ven ---------- */
+function visVen() {
+  clearTimeout(slutTimer);
+  fase = 'ven'; tilstand = 'ven';
+  bjaelke.hidden = true;
+  $('venOrd').value = ''; $('venHjaelp').value = ''; $('venFejl').textContent = '';
+  $('venOrd').classList.remove('vis'); $('venVis').textContent = 'Vis ordet';
+  spil = nytSpil('KAT', { liv: VEN_LIV }); hint = '';
+  visSkaerm('ven');
+  tegn();
+}
+function venStart() {
+  const ord = rensOrd($('venOrd').value);
+  if (!ord) { $('venFejl').textContent = 'Skriv et ord med mindst to bogstaver.'; $('venOrd').focus(); return; }
+  if (/(.)\1\1\1/.test(ord.replace(/ /g, ''))) { $('venFejl').textContent = 'Det ligner ikke et rigtigt ord – prøv et andet.'; return; }
+  startVen(ord, $('venHjaelp').value);
+}
+$('venVis').addEventListener('click', () => {
+  const vis = $('venOrd').classList.toggle('vis');
+  $('venVis').textContent = vis ? 'Skjul ordet' : 'Vis ordet';
+});
+$('venOrd').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('venHjaelp').focus(); } });
+$('venHjaelp').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); venStart(); } });
+$('venStart').addEventListener('click', venStart);
+$('venTilbage').addEventListener('click', tilMenu);
+
+/* ---------- Knapper og tastatur ---------- */
+$('startBtn').addEventListener('click', start);
+$('venBtn').addEventListener('click', visVen);
+$('igenBtn').addEventListener('click', start);
+$('tilbageBtn').addEventListener('click', tilMenu);
+$('bjVidere').addEventListener('click', naeste);
+$('bjMenu').addEventListener('click', tilMenu);
+menuBtn.addEventListener('click', tilMenu);
+
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (fase === 'spil' && e.key && e.key.length === 1 && BOGSTAVER.includes(e.key.toUpperCase())) {
+    e.preventDefault(); gaet(e.key);
+  } else if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
+    if (fase === 'menu') { e.preventDefault(); start(); }
+    else if (fase === 'vundet' || (fase === 'tabt' && tilstand === 'ven')) { e.preventDefault(); naeste(); }
+  }
+});
+addEventListener('resize', () => tegn());
+
+/* ---------- Start ---------- */
+tegn();
+Highscore.panel($('hsStart'), { spil: 'galge', format: ordTekst });
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  start, naeste, tilMenu, visVen, gaet,
+  ven: startVen,
+  /** Skifter det nuværende ord ud med et bestemt (tests). */
+  saetOrd(ord, kat = null) {
+    const n = niveauFraStime(stime);
+    spil = nytSpil(ord, { liv: tilstand === 'ven' ? VEN_LIV : n.liv, kategori: kat });
+    fase = 'spil'; bjaelke.hidden = true; tegn();
+  },
+  /** Sætter stimen, så niveauerne kan prøves uden at gætte ti ord (tests). */
+  saetStime(n) { stime = n; tegn(); },
+  /** Lader botten gætte, til ordet er afgjort. */
+  bot() { while (fase === 'spil') gaet(botGaet(spil)); return this.state; },
+  get state() {
+    return {
+      fase, tilstand, ord: spil.ord, kategori: spil.kategori, maske: maske(spil), status: spil.status,
+      gaettet: [...spil.gaettet], forkerte: [...spil.forkerte], liv: spil.liv, tilbage: forkerteTilbage(spil),
+      dele: synligeDele(spil), stime, best, niveau: niveauFraStime(stime).niveau, hint,
+      konst: { DELE: [...DELE], VEN_LIV, TABT_MS },
+    };
+  },
+};
+</script>
+</body></html>

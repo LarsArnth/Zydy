@@ -1,0 +1,16 @@
+<svg viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1f2c44"/>
+  <!-- bakken og galgen -->
+  <path d="M20 500 Q256 410 492 500 Z" fill="#3f7d46"/>
+  <path d="M130 470 V70 H356 M130 150 L210 70" stroke="#d9a066" stroke-width="26" stroke-linecap="round" fill="none"/>
+  <path d="M340 70 V150" stroke="#e8d4a8" stroke-width="12" stroke-linecap="round"/>
+  <!-- manden -->
+  <circle cx="340" cy="190" r="42" fill="#f6d3b0" stroke="#fbf3e0" stroke-width="10"/>
+  <circle cx="325" cy="184" r="6" fill="#3a2a1e"/><circle cx="355" cy="184" r="6" fill="#3a2a1e"/>
+  <path d="M322 204 Q340 218 358 204" stroke="#3a2a1e" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <path d="M340 232 V350 M340 262 L290 318 M340 262 L390 318 M340 346 L302 426 M340 346 L378 426" stroke="#fbf3e0" stroke-width="16" stroke-linecap="round" fill="none"/>
+  <!-- ordet, der skal gættes -->
+  <g font-family="-apple-system,Helvetica,Arial,sans-serif" font-weight="900" font-size="70" fill="#ffc94a" text-anchor="middle">
+    <text x="452" y="300">?</text>
+  </g>
+</svg>
