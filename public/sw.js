@@ -129,8 +129,11 @@ async function opdater({ ogsaaSpil = false } = {}) {
   const alle = skal.concat(spil);
 
   if (alle.length) {
-    besked({ type: 'henter', hentet: 0, ialt: alle.length });
-    await hentNed(cache, alle, (hentet, ialt) => besked({ type: 'henter', hentet, ialt }));
+    // `spil` fortæller siden, om det er spillene der hentes, eller bare skallen
+    // i baggrunden ved første besøg – det sidste skal ikke stå på skærmen som
+    // «Henter spillene ned», for det er ikke det, der sker.
+    besked({ type: 'henter', hentet: 0, ialt: alle.length, spil: spilMed });
+    await hentNed(cache, alle, (hentet, ialt) => besked({ type: 'henter', hentet, ialt, spil: spilMed }));
   }
   if (spilMed) await cache.put(ALT_MAERKE, new Response('ja'));
   await ryd(navn);

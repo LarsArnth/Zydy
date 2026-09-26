@@ -135,6 +135,9 @@ function visNyt() {
 navigator.serviceWorker.addEventListener('message', e => {
   const d = e.data || {};
   if (d.type === 'henter') {
+    // Skallen hentes stille i baggrunden ved første besøg. Tælleren vises kun,
+    // når det er spillene, der hentes (knappen, eller en ny version af dem).
+    if (!d.spil && !henter) return;
     henter = { hentet: d.hentet, ialt: d.ialt };
     tegn();
   } else if (d.type === 'status') {
