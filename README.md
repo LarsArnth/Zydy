@@ -19,7 +19,7 @@ og [venner](#venner).
 
 Ud over links til de andre apps huser repoet otteogtredive spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, ZydyTube, Pass or Die og Fodbold, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, ZydyTube, Pass or Die, Fodbold og Kyllingejagt, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -65,12 +65,13 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | ZydyTube | `public/spil/tube/` | Selmas ønske «YouTube»: ens egen videokanal. Man opretter en kanal (navn, kanalbillede, farve), vælger et af otte emner (gaming, kattevideo, bagning, dans, slim, tegning, udfordring, pakkeleg), **optager** i ti sekunder ved at trykke på de sjove øjeblikke, der popper op (men ikke på 🐝 🔔 🕷️), vælger titel og miniature og uploader. Så tikker visninger, likes, kommentarer og abonnenter ind i rigtig tid. Pengene køber bedre kamera, mikrofon, lys og computer, og ved 10.000, 100.000, 1 mio. og 10 mio. abonnenter kommer bronze-, sølv-, guld- og diamantknappen. Score = **abonnenter**, online topliste. To filer: `kanal.mjs` (visninger, abonnenter, udstyr og kommentarer, enhedstestet) og `index.html`. Se «ZydyTube – seerne, titlen og udstyret» nedenfor. |
 | Pass or Die | `public/spil/bombe/` | Alias ønske: «et spil der hedder pass or die, hvor der er en bombe, der bliver rødere og rødere, og til sidst springer den – man må ikke have den, når den springer». 2-4 om et bord: den, der har bomben, trykker på den, der skal have den, og den skal gribes, før den kan gives videre. Bomben pulserer, tikker hurtigere og bliver rød, og den, der har den, når lunten er brændt ned, er ude. Sidste mand vinder runden. Mønter for hver gang en anden springer og for at vinde, og de kan bruges midt i runden: ❄️ Frys (en anden i 6 sek.), 🛡️ Skjold og ⚡ Lyn. Mod robotter i Easy/Medium/Hard eller med venner om den samme iPad, hver med sit panel ved sin egen kant. Online topliste: sejre i træk mod robotterne. Se [Pass or Die](#pass-or-die). |
 | Fodbold | `public/spil/fodbold/` | Alias ønske: «Lav et fodbold spil hvor man kan spille kamp og træne fodbold, man kan spille med både venner og mod robotter. Man kan blive bedre og tjene penge. Fx hvis man vinder mange kampe kommer man mod nogen svære.» Kamp 4 mod 4 (målmand + tre) set oppefra på en bane med bander, 2 minutter (uret viser 90), og står det lige, forlænget, hvor næste mål vinder. Flydende joystick + «Skyd» og «Aflever»; man styrer altid den, der har bolden eller er nærmest. En liga på ti robothold – hver sejr sender én videre til et sværere, helt op til Verdensholdet. Tre træningsøvelser (skud, kegleløb, afleveringer) giver erfaring i hver sin evne (niveau 1-10), kampene giver penge til trøjer og støvler i butikken. «Mod ven»: to om den samme skærm, med hvert sit panel ved sin kant. Online topliste og kapløb: sejre i træk i ligaen. Se [Fodbold](#fodbold). |
+| Kyllingejagt | `public/spil/kylling/` | Joannas ønske: «Lav et spil hvor man skal fange så mange kyllinger som muligt». En gårdsplads set skråt oppefra med hønsehuset øverst: man løber rundt med et flydende joystick (sæt fingeren hvor som helst og træk – så dækker fingeren aldrig kyllingen, man jagter), og løber man ind i en kylling, er den fanget og flyver hjem i hønsehuset. Kyllingerne flygter, men er langsommere end en selv – til gengæld **slår de smut** til siden, når man er helt tæt på, og skal så hvile lidt, før de kan igen. Hegnet får dem til at dreje, så det gælder om at jage dem op i et hjørne. **Guldkyllingen** med kronen kommer ud et øjeblik, tæller for tre og løber hjem igen, hvis man ikke når den. Ét minut pr. runde. Score = fangede kyllinger, online topliste og kapløb. To filer: `kylling.mjs` (gårdspladsen, flugten, smuttene og en bot, enhedstestet) og `index.html`. Se «Kyllingejagt – smuttet, hegnet og døren» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, Pass or Die og Fodbold — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, Pass or Die, Fodbold og Kyllingejagt — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -2160,6 +2161,30 @@ og en rekord på toplisten, butikken, to venner om den samme telefon, hvor den
 øverstes joystick styrer det øverste hold, og iPad på tværs) +
 `test/unit/fodbold.test.mjs`.
 
+### Kyllingejagt – smuttet, hegnet og døren
+
+Reglerne ligger i `public/spil/kylling/kylling.mjs` (ren JS, enhedstestet i
+`test/unit/kylling.test.mjs`). Alt regnes i meter, og fire valg er værd at kende:
+
+1. **Kyllingerne er langsommere end bonden** (`flugtFart` når aldrig
+   `BONDE_FART`), så i fri bane kan man altid indhente en. Det svære er
+   **smuttet**: kommer man inden for `SMUT_AFSTAND`, springer kyllingen til
+   siden med `SMUT_FART` – mod den side, hvor der er mest plads, ikke ind i
+   hegnet – og skal så hvile `SMUT_PAUSE` sekunder. Det er i pausen, man skal
+   slå til. Guldkyllingen hviler kortere og løber hurtigere.
+2. **Hegnet skubber** (`HEGN_SKY`): en kylling på flugt mod hegnet drejer langs
+   med det, og i et hjørne er der kun smuttet tilbage. Det er dét, der gør
+   «jag dem op i et hjørne» til en strategi.
+3. **Står man ved døren, bliver kyllingerne inde** (`DOER_SKY`). Nye kyllinger
+   kommer ud af hønsehuset, og uden den regel kunne man bare stå dér og tage
+   dem, efterhånden som de kom.
+4. **Gårdspladsen har samme areal på alle skærme** (`gaardMaal`, `AREAL` =
+   300 m²); kun formen følger skærmen. Ellers var kyllingerne tættere på
+   hinanden på én skærm end en anden, og toplisten var ikke fair.
+
+Botten i `bot()` er en målestok, ikke en del af spillet: den fanger 20-25 på et
+minut, og enhedstesten kræver, at iPhone og iPad er omtrent lige svære for den.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -2184,7 +2209,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Obbys skins, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, ZydyTubes seere, titler, udstyr og balance, Pass or Dies bombe, butik og robotter, Fodbolds bold, træning, liga og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Obbys skins, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, ZydyTubes seere, titler, udstyr og balance, Pass or Dies bombe, butik og robotter, Fodbolds bold, træning, liga og balance, Kyllingejagts flugt, smut og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om

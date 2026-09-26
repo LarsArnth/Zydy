@@ -341,6 +341,7 @@ function uiTik(dt, joyTving) {
       if (guld) sigTil('GULDKYLLING!', 'Den tæller for tre', 1.2);
       else if (s.antal % 10 === 0) sigTil(s.antal + ' KYLLINGER!', 'Bliv ved!', 1.1);
     }
+    if (e.fanget.length) visHud();
     for (const u2 of e.ud) if (u2.slags === 'guld') sigTil('EN GULDKYLLING!', 'Fang den, før den løber hjem', 1.4);
     for (const h of e.hjem) pops.push({ x: h.x, y: h.y + 0.6, tekst: 'Smuttede hjem…', guld: true, t: 0, liv: 1.2 });
     if (!roligt) for (const id of e.smut) {
@@ -515,7 +516,7 @@ function tegnHus() {
  * og vifter med vingerne, når den er bange.
  */
 function tegnKylling(k) {
-  const px = sx(k.x), py = sy(k.y), r = KYLLING_R * u * 1.25;
+  const px = sx(k.x), py = sy(k.y), r = KYLLING_R * u * 1.45;
   const fart = Math.hypot(k.vx, k.vy);
   const vendt = k.vx < -0.05 ? -1 : k.vx > 0.05 ? 1 : (k.vendt || 1);
   k.vendt = vendt;
