@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; syvogtredive spil
+afhængigheder. De store apps bor i egne repoer og linkes til; otteogtredive spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet syvogtredive spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet otteogtredive spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, ZydyTube og Pass or Die, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, ZydyTube, Pass or Die og Fodbold, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -64,12 +64,13 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 | Baseforsvar | `public/spil/baseforsvar/` | SorteSlyngels ønske om «et spil hvor man bygger en base og skal forsvare den fra fjender», med Warcraft 3-banen «Zombie Defense» som forbillede. Rådhuset står midt på et gitter på 13 × 17 felter med **tilfældigt terræn** (klipper, sø, skov) hver runde. Man bygger **mure**, **skydetårn**, **kanontårn**, **ballista** (skyder længst, sigter efter belejrere), **farm** (bønder giver guld ved daggry), **kaserne** (soldater og bueskyttere) og **kirke** (præster, der heler). Tropper trænes i kø uden loft, kan trykkes på for at se liv og tal, og opgraderes pr. slags; ⚔️-knappen i toppen åbner **hær-oversigten** med antallet af hver slags, træn 1 eller 5 og opgradér. Tre **helte** hyres på rådhuset — hver med aura, trylleformular og erfaring op til niveau 10. Zombierne kommer tilfældigt hen over døgnet fra alle kanter, flest om natten; fra dag 6 kommer **belejrere**, der kaster længere end alle tårne. Score = **overlevede dage**. To filer: `base.mjs` (motoren, vejkortet, terrænet og en bot, enhedstestet) og `index.html`. Se «Baseforsvar – basen, zombiernes vej og døgnet» nedenfor. |
 | ZydyTube | `public/spil/tube/` | Selmas ønske «YouTube»: ens egen videokanal. Man opretter en kanal (navn, kanalbillede, farve), vælger et af otte emner (gaming, kattevideo, bagning, dans, slim, tegning, udfordring, pakkeleg), **optager** i ti sekunder ved at trykke på de sjove øjeblikke, der popper op (men ikke på 🐝 🔔 🕷️), vælger titel og miniature og uploader. Så tikker visninger, likes, kommentarer og abonnenter ind i rigtig tid. Pengene køber bedre kamera, mikrofon, lys og computer, og ved 10.000, 100.000, 1 mio. og 10 mio. abonnenter kommer bronze-, sølv-, guld- og diamantknappen. Score = **abonnenter**, online topliste. To filer: `kanal.mjs` (visninger, abonnenter, udstyr og kommentarer, enhedstestet) og `index.html`. Se «ZydyTube – seerne, titlen og udstyret» nedenfor. |
 | Pass or Die | `public/spil/bombe/` | Alias ønske: «et spil der hedder pass or die, hvor der er en bombe, der bliver rødere og rødere, og til sidst springer den – man må ikke have den, når den springer». 2-4 om et bord: den, der har bomben, trykker på den, der skal have den, og den skal gribes, før den kan gives videre. Bomben pulserer, tikker hurtigere og bliver rød, og den, der har den, når lunten er brændt ned, er ude. Sidste mand vinder runden. Mønter for hver gang en anden springer og for at vinde, og de kan bruges midt i runden: ❄️ Frys (en anden i 6 sek.), 🛡️ Skjold og ⚡ Lyn. Mod robotter i Easy/Medium/Hard eller med venner om den samme iPad, hver med sit panel ved sin egen kant. Online topliste: sejre i træk mod robotterne. Se [Pass or Die](#pass-or-die). |
+| Fodbold | `public/spil/fodbold/` | Alias ønske: «Lav et fodbold spil hvor man kan spille kamp og træne fodbold, man kan spille med både venner og mod robotter. Man kan blive bedre og tjene penge. Fx hvis man vinder mange kampe kommer man mod nogen svære.» Kamp 4 mod 4 (målmand + tre) set oppefra på en bane med bander, 2 minutter (uret viser 90), og står det lige, forlænget, hvor næste mål vinder. Flydende joystick + «Skyd» og «Aflever»; man styrer altid den, der har bolden eller er nærmest. En liga på ti robothold – hver sejr sender én videre til et sværere, helt op til Verdensholdet. Tre træningsøvelser (skud, kegleløb, afleveringer) giver erfaring i hver sin evne (niveau 1-10), kampene giver penge til trøjer og støvler i butikken. «Mod ven»: to om den samme skærm, med hvert sit panel ved sin kant. Online topliste og kapløb: sejre i træk i ligaen. Se [Fodbold](#fodbold). |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
 
 Alle spillene med en score — Tårn, Sæt, Farvesortering, Duel, Obby, Gulvet er
-lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar og Pass or Die — kan desuden spilles som
+lava, Klodser, Miskmask, Blokblast, Slotskamp, Weeee!, Klaverregn, Til søs!, Flaskehavet, Elementløbet, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar, Pass or Die og Fodbold — kan desuden spilles som
 et **kapløb** mod en ven: samme spil, hver sin telefon, og stillingen står øverst
 på skærmen hele tiden. Se [Kapløb](#kaploeb).
 
@@ -2102,6 +2103,63 @@ robot, der har bomben, skjold, vind og tab en runde, to venner om én telefon og
 fire om en iPad, hvor panelerne ikke må ligge oven i hinanden) +
 `test/unit/bombe.test.mjs`.
 
+<a id="fodbold"></a>
+
+### Fodbold – bolden, ligaen og træningen
+
+Alias ønske (#66) havde fem dele – kamp, træning, venner og robotter, blive
+bedre og tjene penge, og sværere modstandere, når man vinder – og spillet har
+dem alle fem uden at blive til et FIFA. To filer: `fodbold.mjs` (bane, bold,
+spillere, robotter, træning, liga, butik og profil – ren JS, enhedstestet i
+`test/unit/fodbold.test.mjs`) og `index.html` (banen på canvas, panelerne,
+skærmene og lyden).
+
+| | Hvad |
+|---|---|
+| Banen | 60 × 100 enheder på højkant, mål på 16 i begge ender og bander hele vejen rundt, så bolden aldrig går ud (ingen indkast, ingen hjørnespark). Hold 0 spiller nedefra og op. |
+| Kampen | Målmand + tre markspillere på hvert hold. 2 minutter, uret viser 0-90'. Står det lige, spilles der 45 sek. forlænget, hvor næste mål vinder; ellers uafgjort. |
+| At styre | Man styrer altid den markspiller, der har bolden – eller er tættest på den (med lidt tøven, så man ikke skifter hvert øjeblik). **Skyd** skyder mod målet (joysticket til siden sigter til siden, ellers væk fra målmanden); uden bold er det en tackling. **Aflever** går til den makker, joysticket peger på (ellers den bedste); uden bold skifter man spiller. En modstander, man rører, tackles også af sig selv. |
+| Ligaen | Ti robothold fra Mormors Mopser til Verdensholdet (`LIGA`, `robotHold(trin)`). Sejr = næste hold og flere penge, jo højere oppe; uafgjort = samme hold, stimen står stille; nederlag = samme hold, stimen forfra. Slår man Verdensholdet, er man mester (+200 🪙 én gang) og bliver dér. |
+| Evnerne | Fart, skud og aflevering, niveau 1-10. De gælder for hele ens hold: fart ganger løbefarten (+3,5 % pr. niveau), skud giver hårdere og mere præcise skud, aflevering mere præcise afleveringer. Robotholdene bruger de samme formler med deres egne tal. |
+| Træning | Tre øvelser på 40 sek., én pr. evne: 🎯 skudtræning (scor på en målmand), ⚡ kegleløb (drible hen til keglerne) og 🤝 afleveringer (aflever til den makker, der lyser – han spiller den tilbage). Hvert point er ét point erfaring; der skal `4 + 2 × niveau` til for at stige. |
+| Penge og butik | Sejr 40 + 12 pr. trin + 5 pr. mål, uafgjort 15 + …, nederlag 5 + 5 pr. mål, og en mønt for hvert andet point i træningen. Butikken har syv trøjer (pynt) og fire par støvler, der giver +1 til en evne (Guldstøvler: +1 til alt). |
+| Mod en ven | To menneskehold om den samme skærm: det nederste panel er det ene, det øverste er vendt på hovedet. Lige hold (evne 3 i alt) – ens egen træning tæller ikke, så det kun er fingrene, der afgør det. Rører ikke ligaen. |
+
+Fire ting er værd at huske:
+
+1. **Robotter og mennesker går gennem de samme funktioner** – `spark()`,
+   tacklingen og opsamlingen – så robotterne kan ikke snyde, og to robothold
+   kan spille mod hinanden. Et robothold har `ai`-tal (hvor tit det tænker,
+   hvor tit det tackler, hvor god målmanden er, hvor mange der presser, hvor tit
+   det sjusker), og sværhedsgraden er kun de tal plus evnerne.
+2. **Sværhedsgraderne er målt, ikke gættet.** `AUTOPILOT` er en robot, der
+   spiller menneskets plads omtrent som et barn med styr på knapperne.
+   Enhedstesten kræver, at den uden træning slår Mopserne (8 af 10) men ikke
+   Verdensholdet (højst 1 af 10), og at den trænet helt op (evne 11 med
+   støvler) kan slå Verdensholdet mindst 2 af 10 gange. Målt: utrænet vinder den
+   over de første 3-4 hold, evne 4 kommer til hold 6-7, evne 7 til hold 8-9, og
+   kun fuldt trænet slår man Verdensholdet omkring halvdelen af gangene. Med en
+   lige skala var sidste skridt for stort (fuldt trænet vandt 1 af 10), så
+   Verdensholdet regnes som «8,4» og ikke «9».
+3. **Den, man styrer, går selv en aflevering i møde**, når joysticket ikke
+   bruges. Ellers står han stille, mens en lidt skæv aflevering ruller forbi,
+   og det føles som om «Aflever» ikke virker.
+4. **`tik()` går i faste skridt på 1/60 sek.**, så `GAME.frem(sek)` kan spole en
+   hel kamp frem i en test, og kampen forløber ens uanset billedhastighed.
+   `GAME.bot()` lader autopiloten spille menneskets hold. Spillere og bold
+   tegnes 1,4 gange større, end de fylder i fysikken – ellers er de for små på
+   en telefon, hvor hele banen skal være på skærmen.
+
+Profilen (penge, evner, butik, ligaen, stimen) gemmes i `zydy.fodbold.profil`
+og køres gennem `rensProfil()`, så en gammel eller ødelagt profil ikke vælter
+spillet. Stopper man midt i en kamp eller træning (✕ Stop), tæller den ikke.
+
+Test: `test/fodbold.test.mjs` (kegleløb med en rigtig finger på joysticket,
+afleveringstræning, en hel ligakamp med autopiloten, der giver penge, næste hold
+og en rekord på toplisten, butikken, to venner om den samme telefon, hvor den
+øverstes joystick styrer det øverste hold, og iPad på tværs) +
+`test/unit/fodbold.test.mjs`.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -2126,7 +2184,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Obbys skins, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, ZydyTubes seere, titler, udstyr og balance, Pass or Dies bombe, butik og robotter, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Obbys skins, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, ZydyTubes seere, titler, udstyr og balance, Pass or Dies bombe, butik og robotter, Fodbolds bold, træning, liga og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om

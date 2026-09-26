@@ -95,7 +95,6 @@
   .knap.aflever{background:var(--sky);color:#fff}
   .styr.lille .knap{font-size:13px}
   .styr.lille .knap i{font-size:18px}
-  #stopBtn{position:absolute;right:8px;top:8px;z-index:3;min-height:36px;background:rgba(9,26,15,.8)}
 
   /* ---------- Skærmene oven på banen ---------- */
   .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
@@ -171,6 +170,7 @@
   <div class="top">
     <a class="back" href="/">‹ zydy.dk</a>
     <div class="brand">Fodbold</div>
+    <button class="pill" id="stopBtn" hidden aria-label="Stop kampen">✕ Stop</button>
     <button class="pill" id="lydBtn" aria-label="Lyd til eller fra">🔊</button>
     <div class="pill" id="pengePill">🪙 <b id="pengeVal">0</b></div>
   </div>
@@ -179,8 +179,6 @@
     <canvas id="c"></canvas>
     <div id="midt"><div id="midtTekst"></div></div>
     <div id="paneler"></div>
-    <button class="pill" id="stopBtn" hidden aria-label="Stop kampen">✕ Stop</button>
-
     <!-- Menuen -->
     <div class="screen on" id="startScreen">
       <div class="card">
@@ -345,7 +343,9 @@ let bot = false;              // testene kan lade autopiloten spille menneskets 
 
 function visSkærm(id) {
   for (const s of skærme) s.classList.toggle('on', s.id === id);
+  // Under kampen står «✕ Stop» i toppen i stedet for pengene (de kan ikke bruges midt i en kamp).
   $('stopBtn').hidden = !!id || !kamp;
+  $('pengePill').hidden = !$('stopBtn').hidden;
 }
 
 /* ---------- Opsætning: banen og panelerne ---------- */
@@ -364,7 +364,7 @@ function resize() {
 /** Hvor panelerne og banen skal være. */
 function lægUd() {
   const to = mennesker.length === 2;
-  T = Math.round(Math.max(112, Math.min(158, H * (to ? 0.19 : 0.21))));
+  T = Math.round(Math.max(112, Math.min(158, H * (to ? 0.175 : 0.21))));
   const bund = mennesker.length ? T : 0, top = to ? T : 0;
   omr = { x0: 0, y0: top, x1: W, y1: H - bund };
   const bw = omr.x1 - omr.x0, bh = omr.y1 - omr.y0;
@@ -835,9 +835,12 @@ function tegnBane(nu) {
   }
 }
 
+// Spillere og bold tegnes lidt større, end de fylder i fysikken – ellers er de
+// for små at se på en telefon, hvor hele banen skal være på skærmen.
+const VIS = 1.4;
 function tegnSpiller(p, nu) {
   const hold = kamp.hold[p.h];
-  const [x, y] = px(p.x, p.y), r = R * s;
+  const [x, y] = px(p.x, p.y), r = R * s * VIS;
   const styres = styret(kamp, p.h) === p && !bot;
   // Ring under den, man styrer
   if (styres) {
@@ -888,7 +891,7 @@ function tegnSpiller(p, nu) {
 
 function tegnBold(nu) {
   const b = kamp.bold;
-  const [x, y] = px(b.x, b.y), r = Math.max(4, RB * s * 1.15);
+  const [x, y] = px(b.x, b.y), r = Math.max(4, RB * s * VIS);
   const fart = Math.hypot(b.vx, b.vy);
   if (!b.hos && fart > 18 && !roligt) {
     g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = r * 1.2; g.lineCap = 'round';
