@@ -346,10 +346,16 @@ function lægUd() {
   bord = { x0: har(2) ? T : 0, x1: W - (har(3) ? T : 0), y0: har(1) ? T : 0, y1: H - (har(0) ? T : 0) };
   const bw = bord.x1 - bord.x0, bh = bord.y1 - bord.y0;
   radius = Math.max(20, Math.min(54, Math.min(bw, bh) * 0.12));
-  const cx = (bord.x0 + bord.x1) / 2, cy = (bord.y0 + bord.y1) / 2, luft = radius + 26;
+  const cx = (bord.x0 + bord.x1) / 2, cy = (bord.y0 + bord.y1) / 2;
+  // Navn og mønter står under figuren – ud mod kanten hos dem, hvis figur er drejet
+  // mod deres egen kant – så de skal have plads, før panelet begynder.
+  const tekst = radius * 0.12 + Math.max(14, radius * 0.42) + Math.max(11, radius * 0.3) + 8;
+  const drejet = i => kamp && !alene() && har(i);
   sæder = [
-    { x: cx, y: bord.y1 - luft }, { x: cx, y: bord.y0 + luft },
-    { x: bord.x0 + radius + 14, y: cy }, { x: bord.x1 - radius - 14, y: cy },
+    { x: cx, y: bord.y1 - radius - tekst },
+    { x: cx, y: bord.y0 + radius + (drejet(1) ? tekst : 26) },
+    { x: bord.x0 + radius + (drejet(2) ? tekst : 14), y: cy },
+    { x: bord.x1 - radius - (drejet(3) ? tekst : 14), y: cy },
   ];
   midt.style.left = cx + 'px'; midt.style.top = cy + 'px';
 
