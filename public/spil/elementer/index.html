@@ -280,18 +280,22 @@ function sigTil(stor, lille, sek) {
   raab.classList.add('on'); raabTil = T + sek;
 }
 function rumler(styrke) { if (!roligt) ryst = Math.max(ryst, styrke / 30); }
-function drys(x, y, farve, n, opad = true) {
+// Hvad der sprøjter ud, når en forhindring klares: gnister fra krattet, damp
+// fra bålet, vanddråber fra floden og støv og småsten fra stormen.
+const DRYS = { krat: 'gnist', baal: 'damp', flod: 'draabe', storm: 'stoev' };
+function drys(x, y, slags, n) {
   if (roligt) return;
   for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI * (opad ? -1 : 2);
+    const a = Math.random() * Math.PI * -1;
+    const damp = slags === 'damp';
     partikler.push({
       x: x + (Math.random() - 0.5) * 0.8, y: y + (Math.random() - 0.5) * 0.6,
-      vx: Math.cos(a) * (1 + Math.random() * 3), vy: Math.sin(a) * (2 + Math.random() * 4),
-      r: 0.06 + Math.random() * 0.12, farve, t: 0, liv: 0.5 + Math.random() * 0.7,
+      vx: Math.cos(a) * (1 + Math.random() * 3) * (damp ? 0.4 : 1), vy: Math.sin(a) * (2 + Math.random() * 4) * (damp ? 0.4 : 1),
+      r: damp ? 0.2 + Math.random() * 0.2 : 0.05 + Math.random() * 0.1,
+      farve: Math.random() < 0.5 ? '#8a7355' : '#a89274', slags, t: 0, liv: 0.5 + Math.random() * 0.7 + (damp ? 0.5 : 0),
     });
   }
 }
-const DRYS_FARVE = { krat: '#ff8a2a', baal: '#e9f6ff', flod: '#8fd0ff', storm: '#c8b494' };
 
 /* ---------- Skærmene ---------- */
 function visHud() {
@@ -352,7 +356,7 @@ function uiTik(dt, valgTving = null) {
     if (e.klaret) {
       const f = e.klaret, o = FORHINDRINGER[f.slags];
       pops.push({ x: f.x, y: GRUND - 2.2, tekst: o.raab, t: 0, liv: 0.9 });
-      drys(f.x, GRUND - 0.8, DRYS_FARVE[f.slags], 10);
+      drys(f.x, GRUND - 0.8, DRYS[f.slags], 12);
       navigator.vibrate && navigator.vibrate(10);
       visHud();
       if (s.klaret % 10 === 0) sigTil(s.klaret + ' KLARET!', s.stime >= 10 ? s.stime + ' i træk – sikke et element!' : 'Godt løbet', 1.3);
@@ -375,7 +379,11 @@ function uiTik(dt, valgTving = null) {
   ryst = Math.max(0, ryst - dt * 1.5);
   for (const q of pops) q.t += dt;
   pops = pops.filter(q => q.t < q.liv);
-  for (const p of partikler) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 7 * dt; }
+  for (const p of partikler) {
+    p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.slags === 'damp') { p.vy -= 1.5 * dt; p.r += 0.5 * dt; }   // damp stiger og breder sig
+    else p.vy += 7 * dt;
+  }
   partikler = partikler.filter(p => p.t < p.liv && p.y < GRUND + 0.4);
 }
 
@@ -389,10 +397,24 @@ function billede(nu) {
 requestAnimationFrame(billede);
 
 /* ---------- Tegning ---------- */
+/*
+  Sofies ønske #63: «Kan du gøre det mere realistisk – det ser for dumt ud».
+  Alt er stadig tegnet i hånden på canvas (ingen billeder), men med lys og
+  skygge i stedet for flade farver: solen står oppe til højre, og alt er lyst
+  på den side og mørkt på den anden. Baggrunden er lag på lag – bjerge med
+  sne, en granskov, bakker med løvtræer – der glider forbi med hver sin fart,
+  så man kan mærke dybden. Løberen har ingen smiley længere: ilden blafrer og
+  gnistrer, klippen ruller (men lyset bliver, hvor det er), vandet glimter og
+  vugger, og vinden er en hvirvel af luft med blade i. Kun øjnene er tilbage,
+  så man stadig kan se, at det er den samme, der løber.
+*/
 let camX = 0;
+let spillerPaa = { x: 0, y: 0 };    // hvor løberen sidst blev tegnet (til tests)
+const TAU = Math.PI * 2;
 const sx = wx => (wx - camX) * u;
 const sy = wy => wy * u + (H - VH * u) * 0.5;
 const hash = (a, b) => { const t = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return t - Math.floor(t); };
+const cirkel = (x, y, r) => { ctx.beginPath(); ctx.arc(x, y, Math.max(0.1, r), 0, TAU); ctx.fill(); };
 
 function tegn() {
   camX = s.x - (W / u) * 0.28;
@@ -400,6 +422,8 @@ function tegn() {
   if (ryst > 0) ctx.translate((Math.random() - 0.5) * ryst * 22, (Math.random() - 0.5) * ryst * 22);
 
   tegnHimmel();
+  tegnBjerge();
+  tegnSkov();
   tegnBakker();
   tegnJord();
 
@@ -407,7 +431,7 @@ function tegn() {
   const fraN = Math.max(0, s.naeste - 6);
   for (const f of forhindringerFrem(s.seed, fraN, camX + W / u + 6)) {
     const px = sx(f.x);
-    if (px < -80 || px > W + 80) continue;
+    if (px < -3 * u || px > W + 3 * u) continue;
     ctx.save(); ctx.translate(px, sy(GRUND));
     tegnForhindring(f, s.loest[f.n]);
     ctx.restore();
@@ -418,74 +442,282 @@ function tegn() {
   if (fase !== 'menu' && !s.doed) tegnSpiller();
   tegnPartikler();
   tegnPops();
+  tegnVignet();
   ctx.restore();
 }
 
+/* ---------- Himlen, bjergene, skoven og bakkerne ---------- */
+const solPaa = () => ({ x: W * 0.8, y: Math.max(46, H * 0.12) });
+
 function tegnHimmel() {
-  const g = ctx.createLinearGradient(0, 0, 0, sy(GRUND));
-  g.addColorStop(0, '#7cc4f0'); g.addColorStop(1, '#dcf1fb');
-  ctx.fillStyle = g; ctx.fillRect(-30, -30, W + 60, sy(GRUND) + 30);
-  // Solen
-  ctx.fillStyle = '#ffd447';
-  ctx.beginPath(); ctx.arc(W - 70, 60, 26, 0, 6.283); ctx.fill();
-  // Skyer, der driver forbi (lidt hurtigere, jo hurtigere man løber)
-  ctx.fillStyle = 'rgba(255,255,255,.9)';
-  for (let i = 0; i < 3; i++) {
-    const cx2 = ((i * 340 + 90 - camX * u * 0.12 - T * 4) % (W + 260) + W + 260) % (W + 260) - 130;
-    const cy = 50 + i * 34;
-    ctx.beginPath();
-    ctx.arc(cx2, cy, 15, 0, 6.283); ctx.arc(cx2 + 17, cy + 4, 11, 0, 6.283); ctx.arc(cx2 - 16, cy + 5, 10, 0, 6.283);
+  const gy = sy(GRUND);
+  const g = ctx.createLinearGradient(0, 0, 0, gy);
+  g.addColorStop(0, '#2f78c4'); g.addColorStop(0.55, '#8cc6ec'); g.addColorStop(1, '#f2ead6');
+  ctx.fillStyle = g; ctx.fillRect(-30, -30, W + 60, gy + 30);
+  // Solen – med et varmt skær om sig
+  const sol = solPaa(), r = Math.max(16, u * 0.42);
+  const glans = ctx.createRadialGradient(sol.x, sol.y, r * 0.5, sol.x, sol.y, r * 7);
+  glans.addColorStop(0, 'rgba(255,246,220,.8)'); glans.addColorStop(0.22, 'rgba(255,238,196,.28)'); glans.addColorStop(1, 'rgba(255,238,196,0)');
+  ctx.fillStyle = glans; ctx.fillRect(sol.x - r * 7, sol.y - r * 7, r * 14, r * 14);
+  ctx.fillStyle = '#fffbef'; cirkel(sol.x, sol.y, r);
+  for (let i = 0; i < 4; i++) tegnSky(i);
+}
+
+/** En bunket sky: hvid i toppen, grålig i bunden, hvor solen ikke når. */
+function tegnSky(i) {
+  const bane = W + 420;
+  const x = ((i * 0.27 * bane + 120 - camX * u * 0.05 - T * (4 + i)) % bane + bane) % bane - 210;
+  const y = H * 0.07 + hash(i, 3) * H * 0.2;
+  const k = Math.max(0.65, u / 48) * (0.75 + hash(i, 5) * 0.6);
+  const PUF = [[0, 0, 32], [-36, 10, 23], [35, 8, 25], [-13, -15, 23], [17, -13, 21], [60, 16, 15], [-60, 16, 14]];
+  const g = ctx.createLinearGradient(0, y - 40 * k, 0, y + 32 * k);
+  g.addColorStop(0, 'rgba(255,255,255,.97)'); g.addColorStop(0.55, 'rgba(243,246,251,.93)'); g.addColorStop(1, 'rgba(188,201,219,.88)');
+  ctx.fillStyle = g; ctx.beginPath();
+  for (const [dx, dy, r] of PUF) { ctx.moveTo(x + dx * k + r * k, y + dy * k); ctx.arc(x + dx * k, y + dy * k, r * k, 0, TAU); }
+  ctx.fill();
+}
+
+/** Omridset af et baggrundslag: hoejde(wx) meter over jorden, dybde = hvor langsomt det glider. */
+function lagSti(dybde, hoejde, trin) {
+  ctx.beginPath(); ctx.moveTo(-30, sy(GRUND) + 2);
+  for (let px = -30; px <= W + 30 + trin; px += trin) ctx.lineTo(px, sy(GRUND - hoejde(camX * dybde + px / u)));
+  ctx.lineTo(W + 30 + trin, sy(GRUND) + 2); ctx.closePath();
+}
+
+// Tinderne: en takket kam, hvor hver top har sin egen højde og sit eget
+// knæk – ikke en bølge. tinde() er 0 i dalene og op til 1 på toppen.
+const TINDE_AFST = 1 / 0.3;
+function tindeData(i) { return { top: 0.35 + hash(i, 61) * 0.65, spids: 0.3 + hash(i, 62) * 0.4 }; }
+function tinde(wx) {
+  const t = wx / TINDE_AFST, i = Math.floor(t), p = t - i, { top, spids } = tindeData(i);
+  return (p < spids ? p / spids : (1 - p) / (1 - spids)) * top;
+}
+const bjergH = wx => 2.3 + tinde(wx) * 3.2 + tinde(wx * 1.9 + 7) * 0.55 + Math.abs(Math.sin(wx * 2.1)) * 0.08;
+function tegnBjerge() {
+  const d = 0.05;
+  const g = ctx.createLinearGradient(0, sy(GRUND - 5.8), 0, sy(GRUND));
+  g.addColorStop(0, '#7f9dbd'); g.addColorStop(1, '#c6d4dd');
+  lagSti(d, bjergH, 6);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.save(); ctx.clip();
+  // Sne på toppene – kun det, der ligger over snegrænsen
+  ctx.fillStyle = 'rgba(250,252,255,.92)';
+  ctx.beginPath(); ctx.moveTo(-30, -30);
+  for (let px = -30; px <= W + 40; px += 6) {
+    const wx = camX * d + px / u;
+    ctx.lineTo(px, sy(GRUND - 4.4 - Math.sin(wx * 2.7) * 0.2 - Math.sin(wx * 6.1) * 0.08));
+  }
+  ctx.lineTo(W + 40, -30); ctx.closePath(); ctx.fill();
+  // Skyggesiden: solen står til højre, så den venstre flanke af hver tinde
+  // ligger i skygge – fra dalen op ad ryggen til toppen og skråt ned igen.
+  ctx.fillStyle = 'rgba(40,62,95,.2)';
+  const tilPx = wx => (wx - camX * d) * u;
+  const fra = Math.floor((camX * d - 30 / u) / TINDE_AFST) - 1, til = Math.ceil((camX * d + (W + 30) / u) / TINDE_AFST);
+  for (let i = fra; i <= til; i++) {
+    const x0 = i * TINDE_AFST, xt = (i + tindeData(i).spids) * TINDE_AFST;
+    ctx.beginPath(); ctx.moveTo(tilPx(x0), sy(GRUND) + 2);
+    for (let wx = x0; wx < xt; wx += 6 / u) ctx.lineTo(tilPx(wx), sy(GRUND - bjergH(wx)));
+    ctx.lineTo(tilPx(xt), sy(GRUND - bjergH(xt)));
+    ctx.lineTo(tilPx(xt - (xt - x0) * 0.3), sy(GRUND) + 2);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+const skovH = wx => 1.35 + Math.sin(wx * 0.23) * 0.45 + Math.sin(wx * 0.071 + 2) * 0.55;
+function tegnSkov() {
+  const d = 0.2;
+  const g = ctx.createLinearGradient(0, sy(GRUND - 2.4), 0, sy(GRUND));
+  g.addColorStop(0, '#5f8f7a'); g.addColorStop(1, '#86a98d');
+  lagSti(d, skovH, 10); ctx.fillStyle = g; ctx.fill();
+  // Grantræer på ryggen – faste i verden, så de glider forbi
+  const afst = 0.62;
+  const fra = Math.floor((camX * d - 1) / afst), til = Math.ceil((camX * d + W / u + 1) / afst);
+  for (const [farve, lys] of [['#44705d', 0], ['#5a8a6f', 1]]) {
+    ctx.fillStyle = farve; ctx.beginPath();
+    for (let i = fra; i <= til; i++) {
+      const h1 = hash(i, 11); if (h1 < 0.2) continue;
+      const wx = i * afst + h1 * 0.4;
+      const px = (wx - camX * d) * u;
+      const fod = sy(GRUND - skovH(wx)) + u * 0.12;
+      const hoej = u * (0.65 + hash(i, 13) * 0.6), br = hoej * 0.3;
+      for (let t = 0; t < 3; t++) {
+        const ty = fod - hoej * t * 0.27, tb = br * (1 - t * 0.24);
+        // Den lyse halvdel er kun den højre side af hvert lag – der hvor solen rammer
+        if (lys) { ctx.moveTo(px, ty); ctx.lineTo(px, ty - hoej * 0.48); ctx.lineTo(px + tb, ty); ctx.closePath(); }
+        else { ctx.moveTo(px - tb, ty); ctx.lineTo(px, ty - hoej * 0.48); ctx.lineTo(px + tb, ty); ctx.closePath(); }
+      }
+    }
     ctx.fill();
   }
 }
 
-/** To lag bakker i baggrunden, så man kan se farten. */
+const bakkeH = wx => 0.75 + Math.sin(wx * 0.3) * 0.32 + Math.sin(wx * 0.09 + 4) * 0.42;
 function tegnBakker() {
-  for (const [dybde, farve, hoejde] of [[0.25, '#a5d6a0', 2.6], [0.5, '#7cc47e', 1.7]]) {
-    ctx.fillStyle = farve;
-    ctx.beginPath();
-    ctx.moveTo(-30, sy(GRUND));
-    for (let px = -30; px <= W + 30; px += 14) {
-      const wx = camX * dybde + px / u;
-      ctx.lineTo(px, sy(GRUND - hoejde + Math.sin(wx * 0.22) * 0.8 + Math.sin(wx * 0.061) * 1.1));
+  const d = 0.45;
+  const g = ctx.createLinearGradient(0, sy(GRUND - 1.6), 0, sy(GRUND));
+  g.addColorStop(0, '#7db75e'); g.addColorStop(1, '#5a9745');
+  lagSti(d, bakkeH, 10); ctx.fillStyle = g; ctx.fill();
+  // Løvtræer hist og her
+  const afst = 2.4;
+  const fra = Math.floor((camX * d - 2) / afst), til = Math.ceil((camX * d + W / u + 2) / afst);
+  for (let i = fra; i <= til; i++) {
+    if (hash(i, 21) < 0.45) continue;
+    const wx = i * afst + hash(i, 23) * 1.2;
+    const px = (wx - camX * d) * u;
+    const fod = sy(GRUND - bakkeH(wx)) + u * 0.08;
+    const k = 0.75 + hash(i, 25) * 0.5;
+    ctx.fillStyle = '#5b4332';
+    ctx.fillRect(px - u * 0.05 * k, fod - u * 0.7 * k, u * 0.1 * k, u * 0.7 * k);
+    const cy = fod - u * 1.05 * k, r = u * 0.42 * k;
+    const kg = ctx.createRadialGradient(px + r * 0.35, cy - r * 0.45, r * 0.1, px, cy, r * 1.5);
+    kg.addColorStop(0, '#8fcf66'); kg.addColorStop(0.55, '#4f8f3c'); kg.addColorStop(1, '#2d5e28');
+    ctx.fillStyle = kg; ctx.beginPath();
+    for (const [dx, dy, rr] of [[0, 0, 1], [-0.6, 0.3, 0.7], [0.6, 0.3, 0.72], [0.1, -0.5, 0.7]]) {
+      ctx.moveTo(px + dx * r + rr * r, cy + dy * r); ctx.arc(px + dx * r, cy + dy * r, rr * r, 0, TAU);
     }
-    ctx.lineTo(W + 30, sy(GRUND)); ctx.closePath(); ctx.fill();
+    ctx.fill();
   }
 }
 
+/* ---------- Jorden: græstørv, muld og sten ---------- */
 function tegnJord() {
   const gy = sy(GRUND);
-  // Græsset
-  ctx.fillStyle = '#58b158'; ctx.fillRect(-30, gy, W + 60, u * 0.5);
-  // Mulden nedenunder
-  ctx.fillStyle = '#7a5230'; ctx.fillRect(-30, gy + u * 0.5, W + 60, H);
-  // Små totter græs og sten, faste pr. meter i verden
+  const m = ctx.createLinearGradient(0, gy, 0, H);
+  m.addColorStop(0, '#6e4c2e'); m.addColorStop(0.3, '#5a3c23'); m.addColorStop(1, '#2e1e11');
+  ctx.fillStyle = m; ctx.fillRect(-30, gy, W + 60, H - gy + 40);
+  const gr = ctx.createLinearGradient(0, gy, 0, gy + u * 0.42);
+  gr.addColorStop(0, '#6cbf4a'); gr.addColorStop(0.5, '#4d9a36'); gr.addColorStop(1, '#346c28');
+  ctx.fillStyle = gr; ctx.fillRect(-30, gy, W + 60, u * 0.42);
+  ctx.fillStyle = 'rgba(30,18,8,.35)'; ctx.fillRect(-30, gy + u * 0.42, W + 60, Math.max(2, u * 0.07));
+
   const fra = Math.floor(camX) - 1, til = Math.ceil(camX + W / u) + 1;
-  for (let m = fra; m <= til; m++) {
-    const h1 = hash(m * 3 + 1, 7);
-    if (h1 < 0.4) continue;
-    const px = sx(m + h1);
-    if (h1 > 0.72) {
-      ctx.strokeStyle = '#3f8f42'; ctx.lineWidth = Math.max(1.5, u * 0.05); ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(px, gy + u * 0.1); ctx.lineTo(px - u * 0.08, gy - u * 0.22);
-      ctx.moveTo(px, gy + u * 0.1); ctx.lineTo(px + u * 0.09, gy - u * 0.18); ctx.stroke();
-    } else {
-      ctx.fillStyle = '#9b7b52';
-      ctx.beginPath(); ctx.ellipse(px, gy + u * (0.7 + h1), u * 0.12, u * 0.08, 0, 0, 6.283); ctx.fill();
+  // Sten i mulden – lyse foroven, hvor lyset kommer fra
+  for (let mt = fra; mt <= til; mt++) {
+    for (let k = 0; k < 2; k++) {
+      const h = hash(mt * 5 + k, 17); if (h < 0.5) continue;
+      const x = sx(mt + hash(mt, k + 20)), y = gy + u * (0.75 + hash(mt, k + 30) * 2.2);
+      const rx = u * (0.08 + hash(mt, k + 40) * 0.15), ry = rx * 0.65;
+      ctx.fillStyle = 'rgba(20,12,6,.35)';
+      ctx.beginPath(); ctx.ellipse(x + rx * 0.15, y + ry * 0.3, rx, ry, 0, 0, TAU); ctx.fill();
+      const sg = ctx.createRadialGradient(x + rx * 0.3, y - ry * 0.45, rx * 0.1, x, y, rx * 1.1);
+      sg.addColorStop(0, '#b3a189'); sg.addColorStop(1, '#5d4a37');
+      ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, TAU); ctx.fill();
+    }
+  }
+  // Græsstrå langs kanten – mørke bagved, lyse foran
+  ctx.lineCap = 'round';
+  for (const [farve, nr] of [['#3a7d29', 0], ['#7fd158', 1]]) {
+    ctx.strokeStyle = farve; ctx.lineWidth = Math.max(1, u * 0.03); ctx.beginPath();
+    for (let mt = fra; mt <= til; mt++) {
+      for (let k = 0; k < 6; k++) {
+        const h = hash(mt * 7 + k, 50 + nr);
+        const bx = sx(mt + k / 6 + h * 0.15), len = u * (0.1 + h * 0.2), lean = (h - 0.5) * u * 0.12;
+        ctx.moveTo(bx, gy + u * 0.05);
+        ctx.quadraticCurveTo(bx + lean * 0.2, gy - len * 0.6, bx + lean, gy - len);
+      }
+    }
+    ctx.stroke();
+  }
+  // En blomst i ny og næ
+  for (let mt = fra; mt <= til; mt++) {
+    const h = hash(mt, 41); if (h < 0.82) continue;
+    const bx = sx(mt + hash(mt, 43)), by = gy - u * 0.22;
+    ctx.strokeStyle = '#3f8a2c'; ctx.lineWidth = Math.max(1, u * 0.025);
+    ctx.beginPath(); ctx.moveTo(bx, gy + u * 0.03); ctx.lineTo(bx, by); ctx.stroke();
+    ctx.fillStyle = ['#ffffff', '#ffd84a', '#c89bff'][Math.floor(hash(mt, 45) * 3)];
+    for (let p = 0; p < 5; p++) cirkel(bx + Math.cos(p * 1.257) * u * 0.05, by + Math.sin(p * 1.257) * u * 0.05, u * 0.04);
+    ctx.fillStyle = '#e8a21a'; cirkel(bx, by, u * 0.03);
+  }
+}
+
+/** En blød skygge på jorden, rx meter bred, med centrum i (x, 0). */
+function skygge(x, rx, alfa = 0.35) {
+  ctx.save(); ctx.translate(x, u * 0.02); ctx.scale(1, 0.2);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * u);
+  g.addColorStop(0, `rgba(15,25,8,${alfa})`); g.addColorStop(1, 'rgba(15,25,8,0)');
+  ctx.fillStyle = g; cirkel(0, 0, rx * u);
+  ctx.restore();
+}
+
+/** Røg eller damp, der stiger op og breder sig. farve = 'rgba(r,g,b,'. */
+function roeg(n, farve, fart, hoejde, styrke = 0.45) {
+  for (let i = 0; i < n; i++) {
+    const p = (T * fart + i / n) % 1;
+    const px = Math.sin(p * 4 + i * 2) * u * 0.22 - p * u * 0.45;
+    const py = -u * (0.35 + p * hoejde);
+    const r = u * (0.14 + p * 0.38);
+    const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+    g.addColorStop(0, farve + (styrke * (1 - p)) + ')'); g.addColorStop(1, farve + '0)');
+    ctx.fillStyle = g; cirkel(px, py, r);
+  }
+}
+
+/** Gnister, der flyver op af ilden og slukker undervejs. */
+function gnister(x, y, n, hoejde, frø, bagud = 0.3) {
+  const str = Math.max(1.5, u * 0.035);
+  for (let i = 0; i < n; i++) {
+    const p = (T * (0.6 + hash(frø, i) * 0.5) + hash(i, frø)) % 1;
+    const px = x + (hash(frø + i, 3) - 0.5) * u * 0.6 + Math.sin(p * 6 + i) * u * 0.18 - p * u * bagud * 3;
+    const py = y - p * hoejde * u;
+    ctx.fillStyle = `rgba(255,${(215 - p * 120) | 0},70,${(1 - p).toFixed(2)})`;
+    ctx.fillRect(px, py, str, str);
+  }
+}
+
+/**
+ * Flammer med fod i (x, y): hoejde og bredde i meter, laeg = hvor meget
+ * spidserne blæser bagud. Yderst rødorange tunger, inderst en næsten hvid
+ * kerne – det er sådan, et rigtigt bål ser ud.
+ */
+function flammer(x, y, hoejde, bredde, frø, laeg = 0) {
+  const LAG = [
+    { n: 7, h: 1, b: 1, stop: ['rgba(255,196,70,.95)', 'rgba(250,110,20,.9)', 'rgba(205,40,10,.7)', 'rgba(140,20,5,0)'] },
+    { n: 5, h: 0.72, b: 0.7, stop: ['rgba(255,240,170,1)', 'rgba(255,180,40,.95)', 'rgba(250,110,20,.6)', 'rgba(250,110,20,0)'] },
+    { n: 3, h: 0.42, b: 0.42, stop: ['rgba(255,255,240,1)', 'rgba(255,240,180,.95)', 'rgba(255,200,80,.5)', 'rgba(255,200,80,0)'] },
+  ];
+  for (const lag of LAG) {
+    for (let i = 0; i < lag.n; i++) {
+      const k = lag.n === 1 ? 0 : i / (lag.n - 1) - 0.5;
+      const fl = 0.78 + 0.22 * Math.sin(T * (7 + i) + frø + i * 1.3) + 0.1 * Math.sin(T * 17 + i * 3 + frø);
+      const h = hoejde * lag.h * u * (1 - Math.abs(k) * 1.05) * fl;
+      const b = bredde * lag.b * u * 0.3;
+      const bx = x + k * bredde * lag.b * u * 0.75;
+      const tx = bx + (Math.sin(T * 5 + i * 2 + frø) * 0.12 + laeg * lag.h) * u;
+      const g = ctx.createLinearGradient(0, y, 0, y - h);
+      g.addColorStop(0, lag.stop[0]); g.addColorStop(0.35, lag.stop[1]); g.addColorStop(0.7, lag.stop[2]); g.addColorStop(1, lag.stop[3]);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(bx - b, y);
+      ctx.bezierCurveTo(bx - b * 1.15, y - h * 0.45, tx - b * 0.25, y - h * 0.72, tx, y - h);
+      ctx.bezierCurveTo(tx + b * 0.25, y - h * 0.72, bx + b * 1.15, y - h * 0.45, bx + b, y);
+      ctx.quadraticCurveTo(bx, y + b * 0.5, bx - b, y);
+      ctx.fill();
     }
   }
 }
 
+/** Et varmt skær omkring ilden (lægges bag flammerne). */
+function gloed(x, y, r, alfa) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(255,170,70,${alfa})`); g.addColorStop(1, 'rgba(255,140,50,0)');
+  ctx.fillStyle = g; cirkel(x, y, r);
+}
+
+/* ---------- Boblen og forhindringerne ---------- */
+
 /** Boblen over den næste forhindring: hvilket element vil den have? */
-const BOBLE_HOEJDE = { krat: 2.2, baal: 2.7, flod: 1.7, storm: 3.2 };  // meter over jorden – lige over forhindringen
+const BOBLE_HOEJDE = { krat: 2.2, baal: 2.7, flod: 1.7, storm: 3.4 };  // meter over jorden – lige over forhindringen
 function tegnBoble(px, f) {
   const py = sy(GRUND - BOBLE_HOEJDE[f.slags]) + Math.sin(T * 3 + f.n) * u * 0.08;
-  ctx.fillStyle = 'rgba(255,255,255,.92)';
-  ctx.beginPath(); ctx.arc(px, py, u * 0.42, 0, 6.283); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.12)'; cirkel(px + u * 0.03, py + u * 0.05, u * 0.44);
+  ctx.fillStyle = 'rgba(255,255,255,.94)';
+  ctx.beginPath(); ctx.arc(px, py, u * 0.42, 0, TAU); ctx.fill();
   ctx.beginPath(); ctx.moveTo(px - u * 0.12, py + u * 0.36); ctx.lineTo(px + u * 0.12, py + u * 0.36);
   ctx.lineTo(px, py + u * 0.62); ctx.closePath(); ctx.fill();
   ctx.font = `${Math.round(u * 0.5)}px -apple-system,sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#000';
   ctx.fillText(ELEMENTER[f.klares].tegn, px, py + u * 0.03);
   ctx.textBaseline = 'alphabetic';
 }
@@ -498,187 +730,419 @@ function tegnForhindring(f, loest) {
   else tegnStorm(f);
 }
 
+/** Grenene i krattet – forgrenede, krogede, fra én fod. */
+function grene(f, farve, skala) {
+  ctx.strokeStyle = farve; ctx.lineCap = 'round';
+  for (let i = 0; i < 7; i++) {
+    const a = -Math.PI * (0.14 + 0.72 * i / 6);
+    const l = u * (0.55 + hash(f.n, i + 40) * 0.45) * skala;
+    const ex = Math.cos(a) * l, ey = Math.sin(a) * l * 1.1;
+    ctx.lineWidth = Math.max(1.5, u * 0.055);
+    ctx.beginPath(); ctx.moveTo(Math.cos(a) * u * 0.05, 0); ctx.quadraticCurveTo(ex * 0.3, ey * 0.65, ex, ey); ctx.stroke();
+    ctx.lineWidth = Math.max(1, u * 0.03);
+    const s2 = i % 2 ? 0.6 : -0.6;
+    ctx.beginPath(); ctx.moveTo(ex * 0.6, ey * 0.6); ctx.lineTo(ex * 0.6 + Math.cos(a + s2) * l * 0.38, ey * 0.6 + Math.sin(a + s2) * l * 0.38); ctx.stroke();
+  }
+}
+
 function tegnKrat(f, loest) {
-  if (loest === true) {                             // brændt: sorte stubbe og røg
-    ctx.strokeStyle = '#4a3a30'; ctx.lineWidth = u * 0.1; ctx.lineCap = 'round';
-    for (let i = -2; i <= 2; i++) {
-      ctx.beginPath(); ctx.moveTo(i * u * 0.3, 0); ctx.lineTo(i * u * 0.34, -u * (0.3 + hash(f.n, i) * 0.3)); ctx.stroke();
+  if (loest === true) {                             // brændt: forkullede grene, gløder og røg
+    ctx.fillStyle = 'rgba(70,64,58,.6)';
+    ctx.beginPath(); ctx.ellipse(0, u * 0.03, u * 0.95, u * 0.12, 0, 0, TAU); ctx.fill();
+    grene(f, '#1c1511', 0.65);
+    for (let i = 0; i < 7; i++) {
+      const a = 0.5 + 0.5 * Math.sin(T * 4 + i * 1.9);
+      ctx.fillStyle = `rgba(255,${(110 + a * 80) | 0},30,${(0.4 + a * 0.6).toFixed(2)})`;
+      cirkel((hash(f.n, i) - 0.5) * u * 1.3, -u * hash(f.n, i + 9) * 0.35, u * 0.04);
     }
-    ctx.fillStyle = 'rgba(120,120,120,.35)';
-    for (let i = 0; i < 3; i++) {
-      const ry = (T * 0.6 + i * 0.33) % 1;
-      ctx.beginPath(); ctx.arc(Math.sin(ry * 5 + i) * u * 0.2, -u * (0.5 + ry * 1.4), u * (0.16 - ry * 0.1), 0, 6.283); ctx.fill();
-    }
+    roeg(4, 'rgba(85,82,80,', 0.5, 1.9);
     return;
   }
-  // Tre mørkegrønne buske med torne
-  ctx.fillStyle = '#2e7d3a';
-  for (const [bx, br] of [[-0.5, 0.5], [0.45, 0.55], [0, 0.7]]) {
-    ctx.beginPath(); ctx.arc(bx * u, -br * u * 0.8, br * u, 0, 6.283); ctx.fill();
+  skygge(0, 1.05);
+  const sv = Math.sin(T * 1.6 + f.n) * 0.04;          // krattet svajer en smule
+  grene(f, '#4a3322', 1);
+  // Bladene i klynger: mørke bagerst og nederst, lyse øverst til højre mod solen
+  const FARVER = ['#1d4521', '#28592a', '#367233', '#4b8d3f', '#6aa94f'];
+  for (let lag = 0; lag < FARVER.length; lag++) {
+    ctx.fillStyle = FARVER[lag]; ctx.beginPath();
+    for (let i = 0; i < 18; i++) {
+      const x = hash(f.n * 7 + i, lag) * 2 - 1, y = hash(f.n * 3 + i, lag + 5) * 2 - 1;
+      if (x * x + y * y > 1) continue;
+      const lx = (x * 0.85 + lag * 0.06) , ly = (y * 0.6 - lag * 0.07);
+      const bx = lx * u + sv * u * (0.6 - ly), by = (-0.62 + ly) * u;
+      const br = u * (0.11 + hash(i, f.n + lag) * 0.1) * (1 - lag * 0.08);
+      ctx.moveTo(bx + br, by); ctx.ellipse(bx, by, br, br * 0.78, hash(i, lag) * 3, 0, TAU);
+    }
+    ctx.fill();
   }
-  ctx.strokeStyle = '#1d5527'; ctx.lineWidth = Math.max(1.5, u * 0.06); ctx.lineCap = 'round';
+  // Torne langs kanten – spidse og mørke
+  ctx.fillStyle = '#2a1a10';
+  ctx.beginPath();
+  for (let i = 0; i < 15; i++) {
+    const a = Math.PI * (1.0 + i / 14);
+    const ex = Math.cos(a) * u * 0.86 + sv * u * 0.6, ey = -u * 0.62 + Math.sin(a) * u * 0.62;
+    const nx = Math.cos(a), ny = Math.sin(a), l = u * (0.1 + hash(f.n, i + 60) * 0.08);
+    ctx.moveTo(ex - ny * u * 0.035, ey + nx * u * 0.035);
+    ctx.lineTo(ex + nx * l, ey + ny * l);
+    ctx.lineTo(ex + ny * u * 0.035, ey - nx * u * 0.035);
+    ctx.closePath();
+  }
+  ctx.fill();
+  // Et par røde bær med et lille glimt
+  for (let i = 0; i < 5; i++) {
+    const bx = (hash(f.n, i + 70) - 0.45) * u * 1.1, by = -u * (0.35 + hash(f.n, i + 80) * 0.6);
+    ctx.fillStyle = '#b3172a'; cirkel(bx, by, u * 0.055);
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; cirkel(bx + u * 0.018, by - u * 0.018, u * 0.017);
+  }
+}
+
+/** En kævle fra (x1, y1) til (x2, y2) i meter – med bark og årringe for enden. */
+function kaevle(x1, y1, x2, y2, slukket) {
+  const dx = (x2 - x1) * u, dy = (y2 - y1) * u, l = Math.hypot(dx, dy), t = u * 0.17;
+  ctx.save(); ctx.translate(x1 * u, y1 * u); ctx.rotate(Math.atan2(dy, dx));
+  const g = ctx.createLinearGradient(0, -t / 2, 0, t / 2);
+  if (slukket) { g.addColorStop(0, '#4a403a'); g.addColorStop(1, '#161210'); }
+  else { g.addColorStop(0, '#8e6844'); g.addColorStop(0.5, '#62432a'); g.addColorStop(1, '#342114'); }
+  ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(0, -t / 2, l, t, t * 0.35); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.28)'; ctx.lineWidth = Math.max(1, u * 0.018);
+  ctx.beginPath();
+  for (let k = 1; k < 5; k++) { ctx.moveTo(l * k / 5, -t * 0.32); ctx.lineTo(l * k / 5 + t * 0.9, -t * 0.05); }
+  ctx.stroke();
+  ctx.fillStyle = slukket ? '#2a2420' : '#c99b63';
+  ctx.beginPath(); ctx.ellipse(l, 0, t * 0.28, t * 0.5, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = slukket ? '#0d0b0a' : '#8a5e36';
+  ctx.beginPath(); ctx.ellipse(l, 0, t * 0.13, t * 0.25, 0, 0, TAU); ctx.stroke();
+  ctx.restore();
+}
+
+/** Stenene rundt om bålet – de bagerste (foran = false) eller de forreste. */
+function stenring(foran) {
   for (let i = 0; i < 9; i++) {
-    const a = -Math.PI * (0.15 + 0.7 * (i / 8));
-    const r0 = u * 0.62, r1 = u * (0.85 + hash(f.n, i) * 0.25);
-    ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, -u * 0.56 + Math.sin(a) * r0);
-    ctx.lineTo(Math.cos(a) * r1, -u * 0.56 + Math.sin(a) * r1); ctx.stroke();
+    const a = i / 9 * TAU + 0.2;
+    if ((Math.sin(a) > 0) !== foran) continue;
+    const x = Math.cos(a) * u * 0.82, y = Math.sin(a) * u * 0.13 - u * 0.04;
+    const r = u * (0.13 + hash(i, 5) * 0.05);
+    const g = ctx.createRadialGradient(x + r * 0.3, y - r * 0.5, r * 0.1, x, y, r * 1.2);
+    g.addColorStop(0, '#c9c3ba'); g.addColorStop(1, '#5a554f');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.72, 0, 0, TAU); ctx.fill();
   }
 }
 
 function tegnBaal(f, loest) {
-  // Brændeknuder
-  ctx.strokeStyle = loest === true ? '#3a2c22' : '#7a5230'; ctx.lineWidth = u * 0.16; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(-u * 0.5, -u * 0.08); ctx.lineTo(u * 0.5, -u * 0.3); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-u * 0.5, -u * 0.3); ctx.lineTo(u * 0.5, -u * 0.08); ctx.stroke();
-  if (loest === true) {                             // slukket: damp i stedet for flammer
-    ctx.fillStyle = 'rgba(233,246,255,.5)';
-    for (let i = 0; i < 3; i++) {
-      const ry = (T * 0.7 + i * 0.33) % 1;
-      ctx.beginPath(); ctx.arc(Math.sin(ry * 4 + i) * u * 0.18, -u * (0.5 + ry * 1.3), u * (0.2 - ry * 0.12), 0, 6.283); ctx.fill();
-    }
-    return;
+  const slukket = loest === true;
+  if (!slukket) gloed(0, -u * 0.4, u * 2.2, 0.45 + Math.sin(T * 13 + f.n) * 0.05);
+  skygge(0, 1.0);
+  ctx.fillStyle = 'rgba(28,20,14,.65)';
+  ctx.beginPath(); ctx.ellipse(0, u * 0.01, u * 0.72, u * 0.1, 0, 0, TAU); ctx.fill();
+  stenring(false);
+  kaevle(-0.55, -0.12, 0.55, -0.16, slukket);
+  kaevle(-0.62, 0, 0.3, -0.62, slukket);
+  kaevle(0.62, 0, -0.3, -0.62, slukket);
+  if (slukket) {                                    // slukket: damp og våde, sorte kævler
+    roeg(5, 'rgba(236,243,250,', 0.8, 1.8, 0.6);
+  } else {
+    flammer(0, -u * 0.08, 1.9, 1.3, f.n);
+    gnister(0, -u * 0.5, 10, 2.6, f.n);
   }
-  // Flammer, der blafrer
-  for (const [farve, skala] of [['#ff8a2a', 1], ['#ffd447', 0.6]]) {
-    ctx.fillStyle = farve;
-    const bl = 1 + Math.sin(T * 9 + f.n) * 0.12;
-    ctx.beginPath();
-    ctx.moveTo(0, -u * (0.3 + 1.5 * skala * bl));
-    ctx.quadraticCurveTo(u * 0.55 * skala, -u * 0.9 * skala, 0, -u * 0.22);
-    ctx.quadraticCurveTo(-u * 0.55 * skala, -u * 0.9 * skala, 0, -u * (0.3 + 1.5 * skala * bl));
-    ctx.fill();
-  }
+  stenring(true);
 }
 
 function tegnFlod(f) {
   const br = FORHINDRINGER.flod.bredde * u * 0.5 + u * 0.3;
-  // Brinker
-  ctx.fillStyle = '#7a5230';
-  ctx.beginPath(); ctx.roundRect(-br - u * 0.2, -u * 0.06, (br + u * 0.2) * 2, u * 0.7, u * 0.1); ctx.fill();
-  // Vandet med bølgetoppe
-  ctx.fillStyle = '#3d92e0';
-  ctx.beginPath(); ctx.roundRect(-br, 0, br * 2, u * 0.55, u * 0.12); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = Math.max(1.5, u * 0.06); ctx.lineCap = 'round';
-  ctx.beginPath();
-  for (let px = -br; px <= br; px += u * 0.22) {
-    const py = u * 0.1 + Math.sin(px / u * 3 + T * 5 + f.n) * u * 0.07;
-    px === -br ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  const dyb = u * 0.8, vy = u * 0.14;
+  // Floden er skåret ned i græsset: skrå, våde brinker og mørkt vand i dybet
+  const brink = () => {
+    ctx.beginPath();
+    ctx.moveTo(-br - u * 0.35, -u * 0.01);
+    ctx.quadraticCurveTo(-br - u * 0.05, u * 0.05, -br + u * 0.1, dyb);
+    ctx.lineTo(br - u * 0.1, dyb);
+    ctx.quadraticCurveTo(br + u * 0.05, u * 0.05, br + u * 0.35, -u * 0.01);
+    ctx.closePath();
+  };
+  ctx.save(); brink(); ctx.clip();
+  const jg = ctx.createLinearGradient(0, 0, 0, dyb);
+  jg.addColorStop(0, '#4d341f'); jg.addColorStop(1, '#23160c');
+  ctx.fillStyle = jg; ctx.fillRect(-br - u, -u, br * 2 + u * 2, dyb + u * 2);
+  const vg = ctx.createLinearGradient(0, vy, 0, dyb);
+  vg.addColorStop(0, '#6db4de'); vg.addColorStop(0.2, '#3585bb'); vg.addColorStop(1, '#0c3150');
+  ctx.fillStyle = vg; ctx.beginPath(); ctx.moveTo(-br - u, dyb + u);
+  for (let px = -br - u * 0.4; px <= br + u * 0.4; px += u * 0.12) ctx.lineTo(px, vy + Math.sin(px / u * 4 + T * 4 + f.n) * u * 0.025);
+  ctx.lineTo(br + u, dyb + u); ctx.closePath(); ctx.fill();
+  // Skygge fra brinken ned i vandet
+  const sk = ctx.createLinearGradient(0, vy, 0, vy + u * 0.25);
+  sk.addColorStop(0, 'rgba(5,20,35,.35)'); sk.addColorStop(1, 'rgba(5,20,35,0)');
+  ctx.fillStyle = sk; ctx.fillRect(-br - u, vy, br * 2 + u * 2, u * 0.25);
+  // Lysglimt, der driver med strømmen
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = Math.max(1.2, u * 0.03); ctx.lineCap = 'round';
+  for (let i = 0; i < 10; i++) {
+    const p = (T * 0.22 + hash(f.n, i)) % 1;
+    const x = -br + p * br * 2, y = vy + u * (0.04 + hash(i, f.n) * 0.4);
+    const l = u * (0.12 + hash(i, f.n + 1) * 0.22) * (1 - (y - vy) / dyb);
+    ctx.globalAlpha = Math.sin(p * Math.PI);
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + l, y); ctx.stroke();
   }
-  ctx.stroke();
-  // Et par småfisk-hop, så floden ser levende ud
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  // En fisk, der springer i ny og næ – med en ring i vandet, hvor den lander
   const hop = (T * 0.9 + f.n * 0.4) % 2;
-  if (hop < 0.5) {
-    ctx.fillStyle = '#a8dcff';
-    ctx.beginPath(); ctx.ellipse(Math.sin(f.n) * br * 0.5, -Math.sin(hop / 0.5 * Math.PI) * u * 0.5, u * 0.12, u * 0.07, -0.6, 0, 6.283); ctx.fill();
+  const fx = Math.sin(f.n) * br * 0.5;
+  if (hop < 0.55) {
+    const p = hop / 0.55;
+    const x = fx + (p - 0.5) * u * 0.8, y = vy - Math.sin(p * Math.PI) * u * 0.6;
+    ctx.save(); ctx.translate(x, y); ctx.rotate((p - 0.5) * 2.2);
+    const fg = ctx.createLinearGradient(0, -u * 0.07, 0, u * 0.07);
+    fg.addColorStop(0, '#6f8ea3'); fg.addColorStop(1, '#e6eef3');
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.ellipse(0, 0, u * 0.15, u * 0.06, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-u * 0.12, 0); ctx.lineTo(-u * 0.24, -u * 0.07); ctx.lineTo(-u * 0.24, u * 0.07); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  } else if (hop < 1.1) {
+    const p = (hop - 0.55) / 0.55;
+    ctx.strokeStyle = `rgba(255,255,255,${(0.7 * (1 - p)).toFixed(2)})`; ctx.lineWidth = Math.max(1, u * 0.02);
+    ctx.beginPath(); ctx.ellipse(fx + u * 0.4, vy, u * (0.08 + p * 0.35), u * (0.02 + p * 0.06), 0, 0, TAU); ctx.stroke();
+  }
+  // Siv og sten på begge brinker
+  for (const side of [-1, 1]) {
+    const bx = side * (br + u * 0.22);
+    const sg = ctx.createRadialGradient(bx + u * 0.05, -u * 0.08, u * 0.02, bx, 0, u * 0.2);
+    sg.addColorStop(0, '#b9b2a6'); sg.addColorStop(1, '#5c574f');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(bx, -u * 0.02, u * 0.18, u * 0.1, 0, 0, TAU); ctx.fill();
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 5; k++) {
+      const rx = side * (br + u * (-0.12 + k * 0.09)), h = u * (0.55 + hash(f.n + side, k) * 0.5);
+      const sving = Math.sin(T * 1.8 + k + side) * u * 0.05 + side * u * 0.06;
+      ctx.strokeStyle = k % 2 ? '#4f7f2f' : '#3a6624'; ctx.lineWidth = Math.max(1.2, u * 0.035);
+      ctx.beginPath(); ctx.moveTo(rx, u * 0.02); ctx.quadraticCurveTo(rx, -h * 0.6, rx + sving, -h); ctx.stroke();
+      if (k % 2 === 0) {
+        ctx.fillStyle = '#6b4424';
+        ctx.beginPath(); ctx.ellipse(rx + sving * 0.8, -h * 0.85, u * 0.035, u * 0.1, sving / u, 0, TAU); ctx.fill();
+      }
+    }
   }
 }
 
 function tegnStorm(f) {
-  // En hvirvelstorm: ellipser, der bliver bredere opad og svajer
-  const svaj = Math.sin(T * 2.2 + f.n) * u * 0.18;
-  for (let i = 0; i < 6; i++) {
-    const andel = i / 5;
-    const bredde = u * (0.28 + andel * 0.85);
-    const py = -u * (0.25 + andel * 2.2);
-    const px = svaj * andel + Math.sin(T * 6 + i * 1.7) * u * 0.07;
-    ctx.fillStyle = `rgba(190,200,214,${0.85 - andel * 0.35})`;
-    ctx.beginPath(); ctx.ellipse(px, py, bredde, u * 0.22, Math.sin(T * 4 + i) * 0.15, 0, 6.283); ctx.fill();
+  const H0 = 3.1 * u;
+  const svaj = t => (Math.sin(T * 2.2 + f.n) * 0.28 * t + Math.sin(T * 3.1 + t * 3 + f.n) * 0.07) * u;
+  const bredde = t => u * (0.16 + Math.pow(t, 1.5) * 1.05);
+  const affald = foran => {                         // blade og kviste, der flyver rundt i tragten
+    for (let i = 0; i < 8; i++) {
+      const a = T * (4 + i * 0.35) + i * 1.7 + f.n;
+      if ((Math.sin(a) > 0) !== foran) continue;
+      const t = 0.12 + (i / 7) * 0.72;
+      const x = svaj(t) + Math.cos(a) * bredde(t) * 1.1, y = -t * H0 + Math.sin(a) * bredde(t) * 0.22;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(a * 2);
+      ctx.globalAlpha = foran ? 1 : 0.55;
+      if (i % 3 === 0) { ctx.strokeStyle = '#5a4030'; ctx.lineWidth = Math.max(1.2, u * 0.03); ctx.beginPath(); ctx.moveTo(-u * 0.12, 0); ctx.lineTo(u * 0.12, 0); ctx.stroke(); }
+      else { ctx.fillStyle = i % 2 ? '#7a9a3a' : '#b98a2e'; ctx.beginPath(); ctx.ellipse(0, 0, u * 0.08, u * 0.04, 0, 0, TAU); ctx.fill(); }
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  };
+  skygge(0, 1.3, 0.3);
+  // Støvskyen ved foden, der hvirvles rundt
+  for (let i = 0; i < 8; i++) {
+    const a = T * 3 + i * 0.8 + f.n;
+    const x = Math.cos(a) * u * (0.45 + hash(i, f.n) * 0.4), y = -u * (0.12 + Math.abs(Math.sin(a * 0.7)) * 0.3);
+    const r = u * (0.22 + hash(f.n, i) * 0.2);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(150,124,92,.5)'); g.addColorStop(1, 'rgba(150,124,92,0)');
+    ctx.fillStyle = g; cirkel(x, y, r);
   }
-  // Småting, der flyver rundt i den
-  ctx.fillStyle = '#8a7a5f';
-  for (let i = 0; i < 3; i++) {
-    const a = T * 5 + i * 2.1 + f.n;
-    ctx.beginPath();
-    ctx.arc(Math.cos(a) * u * (0.4 + i * 0.18) + svaj * 0.6, -u * (0.8 + i * 0.55) + Math.sin(a) * u * 0.15, u * 0.07, 0, 6.283);
-    ctx.fill();
+  affald(false);
+  // Tragten: støvet brun forneden, grå foroven, og den forsvinder op i luften
+  const N = 24;
+  ctx.beginPath();
+  for (let i = 0; i <= N; i++) { const t = i / N; ctx.lineTo(svaj(t) - bredde(t), -t * H0); }
+  for (let i = N; i >= 0; i--) { const t = i / N; ctx.lineTo(svaj(t) + bredde(t), -t * H0); }
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, 0, 0, -H0);
+  g.addColorStop(0, 'rgba(118,98,78,.9)'); g.addColorStop(0.45, 'rgba(112,114,120,.78)'); g.addColorStop(1, 'rgba(120,126,138,0)');
+  ctx.fillStyle = g; ctx.fill();
+  // Hvirvlende striber – lyse og mørke – giver tragten dybde og fart
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 18; i++) {
+    const t = (i + 0.5) / 18;
+    const cx = svaj(t), cy = -t * H0, rx = bredde(t);
+    const a0 = (T * 7 + i * 0.8 + f.n) % TAU;
+    const alfa = (0.5 * (1 - t * 0.7)).toFixed(2);
+    ctx.strokeStyle = i % 2 ? `rgba(236,232,224,${alfa})` : `rgba(50,45,40,${alfa})`;
+    ctx.lineWidth = Math.max(1.2, u * (0.03 + t * 0.04));
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.95, rx * 0.22, 0, a0, a0 + 1.9); ctx.stroke();
   }
+  affald(true);
 }
 
 /* ---------- Spilleren: samme sjæl, fire kroppe ---------- */
 function tegnSpiller() {
   const px = sx(s.x);
   const el = s.element;
-  // Vind svæver – det er sådan, den kommer over floden. De andre løber på jorden.
-  const hop = el === 'vind' ? 1.15 + Math.sin(T * 3) * 0.12 : Math.abs(Math.sin(s.x * 2.2)) * 0.12;
+  // Vind svæver – det er sådan, den kommer over floden. Klippen ruller på jorden,
+  // og ild og vand hopper let, mens de løber.
+  const hop = el === 'vind' ? 1.15 + Math.sin(T * 3) * 0.12 : el === 'jord' ? 0 : Math.abs(Math.sin(s.x * 2.2)) * 0.12;
   const py = sy(GRUND - 0.55 - hop);
+  spillerPaa = { x: px, y: py };
+  ctx.save(); ctx.translate(px, sy(GRUND)); skygge(0, 0.7 / (1 + hop * 0.5), 0.42 / (1 + hop)); ctx.restore();
   ctx.save();
   ctx.translate(px, py);
   if (el === 'ild') tegnIld();
-  else if (el === 'jord') tegnJordklump();
-  else if (el === 'vand') tegnVanddraabe();
+  else if (el === 'jord') tegnKlippe();
+  else if (el === 'vand') tegnVand();
   else tegnVind();
-  tegnAnsigt(el);
+  tegnOejne(el);
   ctx.restore();
 }
 
 function tegnIld() {
-  for (const [farve, skala] of [['#ff8a2a', 1], ['#ffd447', 0.62]]) {
-    ctx.fillStyle = farve;
-    const bl = 1 + Math.sin(T * 10) * 0.1;
-    ctx.beginPath();
-    ctx.moveTo(0, -u * 1.0 * skala * bl);
-    ctx.quadraticCurveTo(u * 0.6 * skala, -u * 0.2 * skala, 0, u * 0.55);
-    ctx.quadraticCurveTo(-u * 0.6 * skala, -u * 0.2 * skala, 0, -u * 1.0 * skala * bl);
-    ctx.fill();
+  gloed(0, -u * 0.2, u * 1.7, 0.4 + Math.sin(T * 11) * 0.05);
+  gnister(0, u * 0.1, 9, 1.9, 7, 0.45);
+  // Flammerne blæser bagud, fordi man løber fremad
+  flammer(0, u * 0.5, 1.7, 0.95, 3, -0.4);
+}
+
+// Klippens omrids: 13 hjørner, fast form – ikke en cirkel
+const KLIPPE = Array.from({ length: 13 }, (_, i) => 0.5 + hash(i, 99) * 0.09);
+function tegnKlippe() {
+  const rot = s.x / 0.55;
+  // Støv, der hvirvles op bag klippen
+  for (let i = 0; i < 5; i++) {
+    const p = (T * 1.8 + i / 5) % 1;
+    const x = -u * (0.35 + p * 1.2), y = u * (0.45 - p * 0.55), r = u * (0.12 + p * 0.28);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(165,135,100,${(0.45 * (1 - p)).toFixed(2)})`); g.addColorStop(1, 'rgba(165,135,100,0)');
+    ctx.fillStyle = g; cirkel(x, y, r);
   }
-}
-
-function tegnJordklump() {
-  ctx.save();
-  ctx.rotate(s.x / 0.55 % 6.283);                    // klippen ruller
-  ctx.fillStyle = '#9a8262';
-  ctx.beginPath(); ctx.arc(0, 0, u * 0.55, 0, 6.283); ctx.fill();
-  ctx.strokeStyle = '#6f5a41'; ctx.lineWidth = Math.max(1.5, u * 0.06); ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(-u * 0.25, -u * 0.1); ctx.lineTo(u * 0.05, u * 0.08); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(u * 0.12, -u * 0.3); ctx.lineTo(u * 0.3, -u * 0.05); ctx.stroke();
-  ctx.restore();
-}
-
-function tegnVanddraabe() {
-  const sq = 1 + Math.sin(T * 6) * 0.06;             // dråben dirrer
-  ctx.fillStyle = '#4aa8ff';
+  // Omridset drejer med, men lyset bliver, hvor det er (solen står oppe til højre)
   ctx.beginPath();
-  ctx.moveTo(0, -u * 0.95 * sq);
-  ctx.quadraticCurveTo(u * 0.58, -u * 0.15, 0, u * 0.55 / sq);
-  ctx.quadraticCurveTo(-u * 0.58, -u * 0.15, 0, -u * 0.95 * sq);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.5)';
-  ctx.beginPath(); ctx.ellipse(-u * 0.18, -u * 0.15, u * 0.1, u * 0.2, 0.4, 0, 6.283); ctx.fill();
+  KLIPPE.forEach((r, i) => {
+    const a = rot + i / KLIPPE.length * TAU;
+    ctx.lineTo(Math.cos(a) * r * u * 1.08, Math.sin(a) * r * u * 1.08);
+  });
+  ctx.closePath();
+  const g = ctx.createRadialGradient(u * 0.2, -u * 0.25, u * 0.04, 0, 0, u * 0.66);
+  g.addColorStop(0, '#c4b398'); g.addColorStop(0.5, '#86725a'); g.addColorStop(1, '#3a2e22');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = 'rgba(25,18,10,.55)'; ctx.lineWidth = Math.max(1, u * 0.025); ctx.stroke();
+  // Revner, mos og pletter, der drejer med
+  ctx.save(); ctx.clip(); ctx.rotate(rot);
+  ctx.strokeStyle = 'rgba(40,28,18,.7)'; ctx.lineWidth = Math.max(1.2, u * 0.035); ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-u * 0.5, -u * 0.05); ctx.lineTo(-u * 0.2, u * 0.02); ctx.lineTo(-u * 0.05, u * 0.2); ctx.lineTo(u * 0.1, u * 0.5);
+  ctx.moveTo(-u * 0.2, u * 0.02); ctx.lineTo(-u * 0.25, u * 0.28);
+  ctx.moveTo(u * 0.15, -u * 0.5); ctx.lineTo(u * 0.25, -u * 0.25); ctx.lineTo(u * 0.5, -u * 0.18);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(92,128,58,.75)';
+  ctx.beginPath(); ctx.ellipse(-u * 0.3, -u * 0.38, u * 0.2, u * 0.1, 0.5, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(60,45,30,.5)';
+  for (let i = 0; i < 9; i++) cirkel((hash(i, 7) - 0.5) * u, (hash(i, 8) - 0.5) * u, u * 0.025);
+  ctx.restore();
+  // En lys kant foroven til højre, hvor solen rammer
+  ctx.strokeStyle = 'rgba(255,245,225,.35)'; ctx.lineWidth = Math.max(1.5, u * 0.05);
+  ctx.beginPath(); ctx.arc(0, 0, u * 0.5, -1.35, -0.2); ctx.stroke();
+}
+
+function tegnVand() {
+  // Stænk, der drypper bagud
+  for (let i = 0; i < 6; i++) {
+    const p = (T * 2.2 + i / 6) % 1;
+    const x = -u * (0.45 + p * 0.9), y = u * (0.2 - Math.sin(p * Math.PI) * 0.45 + p * 0.3);
+    ctx.fillStyle = `rgba(110,185,240,${(0.85 * (1 - p)).toFixed(2)})`; cirkel(x, y, u * 0.07 * (1 - p * 0.5));
+  }
+  // Kroppen: en dråbe, der vugger – kanten er aldrig helt stille
+  const N = 32;
+  ctx.beginPath();
+  for (let i = 0; i < N; i++) {
+    const a = i / N * TAU, sn = Math.sin(a), cs = Math.cos(a);
+    const r = u * 0.55 * (1 + 0.05 * Math.sin(3 * a + T * 5) + 0.035 * Math.sin(5 * a - T * 7));
+    const top = sn < 0 ? Math.pow(-sn, 4) : 0;       // spidsen peger op og lidt bagud
+    ctx.lineTo(cs * r * (1 - 0.25 * top * top) - top * u * 0.14, sn * r * (1 + 0.6 * top));
+  }
+  ctx.closePath();
+  const g = ctx.createRadialGradient(-u * 0.12, -u * 0.18, u * 0.04, 0, u * 0.08, u * 0.72);
+  g.addColorStop(0, '#c6ecff'); g.addColorStop(0.35, '#52b3ef'); g.addColorStop(0.8, '#1b6fbf'); g.addColorStop(1, '#0b3d78');
+  ctx.globalAlpha = 0.93; ctx.fillStyle = g; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = Math.max(1, u * 0.025); ctx.stroke();
+  // Lyset, der brydes gennem vandet og samler sig forneden
+  const k = ctx.createRadialGradient(u * 0.1, u * 0.32, 0, u * 0.1, u * 0.32, u * 0.3);
+  k.addColorStop(0, 'rgba(210,245,255,.6)'); k.addColorStop(1, 'rgba(210,245,255,0)');
+  ctx.fillStyle = k; cirkel(u * 0.1, u * 0.32, u * 0.3);
+  // Blanke højlys
+  ctx.fillStyle = 'rgba(255,255,255,.88)';
+  ctx.beginPath(); ctx.ellipse(-u * 0.24, -u * 0.26, u * 0.12, u * 0.06, -0.7, 0, TAU); ctx.fill();
+  cirkel(-u * 0.08, -u * 0.42, u * 0.03);
 }
 
 function tegnVind() {
-  // En lille sky med hvirvler – og fartstriber bagud
-  ctx.fillStyle = 'rgba(240,248,255,.95)';
-  ctx.beginPath();
-  ctx.arc(0, 0, u * 0.42, 0, 6.283);
-  ctx.arc(u * 0.3, u * 0.08, u * 0.3, 0, 6.283);
-  ctx.arc(-u * 0.32, u * 0.1, u * 0.28, 0, 6.283);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(190,215,235,.9)'; ctx.lineWidth = Math.max(1.5, u * 0.06); ctx.lineCap = 'round';
+  ctx.lineCap = 'round';
+  // Fartstriber bagud
+  for (let i = 0; i < 5; i++) {
+    const fy = (i - 2) * u * 0.16, p = (T * 5 + i * 0.37) % 1;
+    ctx.strokeStyle = `rgba(255,255,255,${(0.6 * (1 - p)).toFixed(2)})`; ctx.lineWidth = Math.max(1.2, u * 0.035);
+    ctx.beginPath(); ctx.moveTo(-u * (0.5 + p * 0.3), fy); ctx.lineTo(-u * (1.1 + p * 0.9), fy + Math.sin(T * 9 + i) * u * 0.04); ctx.stroke();
+  }
+  // Kroppen: en tæt, lys dis, så hvirvlen kan ses mod skoven bagved
+  const d = ctx.createRadialGradient(0, 0, 0, 0, 0, u * 0.66);
+  d.addColorStop(0, 'rgba(246,251,255,.9)'); d.addColorStop(0.6, 'rgba(214,230,245,.6)'); d.addColorStop(1, 'rgba(214,230,245,0)');
+  ctx.fillStyle = d; cirkel(0, 0, u * 0.66);
+  // Luftlagene, der drejer rundt – hver med en blågrå skygge under det hvide
+  for (let k = 0; k < 5; k++) {
+    const r = u * (0.18 + k * 0.08), a0 = T * (9 - k) + k * 1.3;
+    for (const [farve, b] of [['rgba(70,105,140,.7)', 1.9], [`rgba(255,255,255,${(0.95 - k * 0.08).toFixed(2)})`, 1]]) {
+      ctx.strokeStyle = farve; ctx.lineWidth = Math.max(1.4, u * (0.065 - k * 0.007) * b);
+      ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.78, -0.2, a0, a0 + 3.6); ctx.stroke();
+    }
+  }
+  // Blade, der er fanget i hvirvlen
   for (let i = 0; i < 3; i++) {
-    const fy = (i - 1) * u * 0.2;
-    ctx.beginPath(); ctx.moveTo(-u * 0.55, fy);
-    ctx.lineTo(-u * (0.9 + ((T * 6 + i) % 1) * 0.4), fy); ctx.stroke();
+    const a = T * 6 + i * 2.1;
+    ctx.save(); ctx.translate(Math.cos(a) * u * 0.55, Math.sin(a) * u * 0.42); ctx.rotate(a * 1.5);
+    ctx.fillStyle = i === 1 ? '#c98a2e' : '#6f9a3a';
+    ctx.beginPath(); ctx.ellipse(0, 0, u * 0.09, u * 0.045, 0, 0, TAU); ctx.fill();
+    ctx.restore();
   }
 }
 
-/** Alle fire kroppe har det samme ansigt – det er jo den samme, der løber. */
-function tegnAnsigt(el) {
-  const oy = el === 'ild' ? -u * 0.15 : el === 'vand' ? -u * 0.1 : -u * 0.08;
-  ctx.fillStyle = '#12231a';
-  const blink = (T % 3.4) < 0.12 ? 0.02 : 0.09;      // der blinkes med øjnene
+/**
+ * Øjnene er det eneste, der er tilbage af ansigtet – så man kan se, at det er
+ * den samme, der løber. Klippen har glødende øjne, som var der lava indeni.
+ */
+const OEJNE = {
+  ild:  { farve: '#4a1204', y: -0.14, gloed: false },
+  jord: { farve: '#ffc25a', y: -0.06, gloed: true },
+  vand: { farve: '#0b2a4a', y: -0.02, gloed: false },
+  vind: { farve: '#2d4050', y: -0.04, gloed: false },
+};
+function tegnOejne(el) {
+  const o = OEJNE[el];
+  const blink = (T % 3.4) < 0.12 ? 0.2 : 1;           // der blinkes med øjnene
   for (const side of [-1, 1]) {
-    ctx.beginPath(); ctx.ellipse(side * u * 0.17, oy, u * 0.07, u * blink, 0, 0, 6.283); ctx.fill();
+    const ex = u * (0.1 + side * 0.15), ey = u * o.y;
+    if (o.gloed) gloed(ex, ey, u * 0.2, 0.7);
+    ctx.fillStyle = o.farve;
+    ctx.beginPath(); ctx.ellipse(ex, ey, u * 0.06, u * 0.09 * blink, 0, 0, TAU); ctx.fill();
+    if (!o.gloed && blink === 1) { ctx.fillStyle = 'rgba(255,255,255,.9)'; cirkel(ex + u * 0.02, ey - u * 0.03, u * 0.02); }
   }
-  ctx.strokeStyle = '#12231a'; ctx.lineWidth = Math.max(1.5, u * 0.05); ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.arc(0, oy + u * 0.12, u * 0.12, 0.3, Math.PI - 0.3); ctx.stroke();
 }
 
+/* ---------- Partikler, råb og kanten ---------- */
 function tegnPartikler() {
   for (const p of partikler) {
-    ctx.globalAlpha = Math.max(0, 1 - p.t / p.liv);
-    ctx.fillStyle = p.farve;
-    ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), p.r * u, 0, 6.283); ctx.fill();
+    const a = Math.max(0, 1 - p.t / p.liv), x = sx(p.x), y = sy(p.y), r = p.r * u;
+    if (p.slags === 'damp') {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(240,246,252,${(0.6 * a).toFixed(2)})`); g.addColorStop(1, 'rgba(240,246,252,0)');
+      ctx.fillStyle = g; cirkel(x, y, r);
+      continue;
+    }
+    ctx.globalAlpha = a;
+    if (p.slags === 'gnist') {
+      ctx.fillStyle = 'rgba(255,150,40,.35)'; cirkel(x, y, r * 2.2);
+      ctx.fillStyle = '#ffe08a'; cirkel(x, y, r * 0.7);
+    } else if (p.slags === 'draabe') {
+      ctx.fillStyle = '#5fb4ee'; cirkel(x, y, r);
+      ctx.fillStyle = 'rgba(255,255,255,.8)'; cirkel(x - r * 0.3, y - r * 0.3, r * 0.3);
+    } else {
+      ctx.fillStyle = p.farve; cirkel(x, y, r);
+    }
   }
   ctx.globalAlpha = 1;
 }
@@ -694,6 +1158,13 @@ function tegnPops() {
     ctx.fillText(q.tekst, px, py);
   }
   ctx.globalAlpha = 1;
+}
+
+/** Lidt mørkere ude i hjørnerne – som gennem en kameralinse. */
+function tegnVignet() {
+  const g = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.4, W / 2, H * 0.45, Math.hypot(W, H) * 0.62);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.26)');
+  ctx.fillStyle = g; ctx.fillRect(-30, -30, W + 60, H + 60);
 }
 
 /* ---------- Styring ---------- */
@@ -751,6 +1222,8 @@ window.GAME = {
   forhindring(n) { return { ...forhindring(s.seed, n) }; },
   /** Den forhindring, man møder næste gang. */
   naeste() { return { ...naesteForhindring(s) }; },
+  /** Hvor tingene står på skærmen lige nu, i CSS-pixels (til tests af tegningen). */
+  get tegning() { return { u, W, H, camX, grundY: sy(GRUND), spiller: { ...spillerPaa } }; },
   /** Stiller løberen et bestemt sted (tests). */
   placer(x) { s.x = x; },
   get state() {

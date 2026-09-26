@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 57,
+      "dato": "2026-09-26",
+      "spil": "elementer",
+      "titel": "Elementløbet ser rigtigt ud nu",
+      "hvad": "Sofie syntes, Elementløbet så for dumt ud, og det havde hun ret i: det var runde klatter med smiley. Nu er hele banen tegnet om. Ilden er rigtige flammer, der blafrer bagud og sender gnister op. Jord er en tung klippe med revner og mos, der ruller hen over græsset og hvirvler støv op. Vand er en blank dråbe, der vugger og glimter i solen, og vind er en hvirvel af luft med blade i. Tornekrattet har blade, torne og røde bær. Bålet er kævler i en stenring med flammer, og når du slukker det, damper det. Floden er skåret ned i jorden, med siv på bredden og en fisk, der springer. Stormen er en rigtig tornado med støv og blade. Bagved ligger der bjerge med sne på toppen, en granskov og bakker med træer, som glider forbi, mens du løber. Øjnene er det eneste, der er tilbage af ansigtet, så du stadig kan se, at det er dig.",
+      "oensket": "Sofie"
+    },
+    {
       "nr": 56,
       "dato": "2026-09-26",
       "spil": "tube",

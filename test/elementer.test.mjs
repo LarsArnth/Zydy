@@ -124,6 +124,66 @@ assert.equal((await state()).element, 'ild', '1-tasten er ild');
   assert.equal(st.liv, st.konst.LIV, 'uden at miste et liv');
 }
 
+/* ---------- Tegningen: lys og skygge, ikke flade farver (Sofies ønske #63) ---------- */
+{
+  // Tæller farverne i et felt af canvas'et (4 bit pr. kanal, så kantudglatning
+  // næsten ikke tæller) og finder gennemsnitsfarven. Flade figurer har en
+  // håndfuld farver; figurer med lys, skygge og forløb har mange.
+  const felt = (x0, y0, x1, y1) => page.evaluate(([x0, y0, x1, y1]) => {
+    const c = document.getElementById('c'), k = c.width / c.clientWidth;
+    const d = c.getContext('2d').getImageData(Math.round(x0 * k), Math.round(y0 * k), Math.round((x1 - x0) * k), Math.round((y1 - y0) * k)).data;
+    const set = new Set(); let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      set.add((d[i] >> 4) << 8 | (d[i + 1] >> 4) << 4 | (d[i + 2] >> 4));
+      r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+    }
+    return { farver: set.size, r: Math.round(r / n), g: Math.round(g / n), b: Math.round(b / n) };
+  }, [x0, y0, x1, y1]);
+  const toBilleder = () => page.evaluate(() => new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok))));
+
+  // «LØB!»-råbet ligger oven på canvas'et – væk med det, så skærmbillederne viser figuren
+  await page.evaluate(() => { window.GAME.start(); window.GAME.pause(); document.getElementById('raab').classList.remove('on'); });
+
+  // De fire former: hver skal ligne sit element
+  const former = {};
+  for (const el of ['ild', 'jord', 'vand', 'vind']) {
+    await page.evaluate(e => { window.GAME.vaelg(e); window.GAME.frem(0.2); }, el);  // forbi blinket
+    await toBilleder();
+    const { u, spiller } = await page.evaluate(() => window.GAME.tegning);
+    const rc = await page.evaluate(() => { const r = document.getElementById('c').getBoundingClientRect(); return { x: r.left, y: r.top }; });
+    former[el] = await felt(spiller.x - u * 0.6, spiller.y - u * 0.6, spiller.x + u * 0.6, spiller.y + u * 0.6);
+    await page.screenshot({ path: SHOTS + `elementer-form-${el}.png`, clip: { x: rc.x + spiller.x - u * 1.6, y: rc.y + spiller.y - u * 1.4, width: u * 2.8, height: u * 2.4 } });
+  }
+  console.log('  former:', JSON.stringify(former));
+  for (const [el, f] of Object.entries(former)) assert.ok(f.farver >= 40, `${el} er tegnet med for få farver (${f.farver}) – ser flad ud`);
+  assert.ok(former.ild.r > former.ild.b + 60, `ilden skal være varm: ${JSON.stringify(former.ild)}`);
+  assert.ok(former.vand.b > former.vand.r + 60, `vandet skal være blåt: ${JSON.stringify(former.vand)}`);
+  assert.ok(former.jord.r > former.jord.b, `klippen skal være brun: ${JSON.stringify(former.jord)}`);
+
+  // Forhindringerne, én af hver slags, stillet ude til højre på skærmen
+  const forhindringer = {};
+  for (const slags of ['krat', 'baal', 'flod', 'storm']) {
+    const f = await page.evaluate(sl => {
+      for (let n = 0; n < 60; n++) { const f = window.GAME.forhindring(n); if (f.slags === sl) return f; }
+    }, slags);
+    assert.ok(f, `banen har et ${slags}`);
+    await page.evaluate(x => { const t = window.GAME.tegning; window.GAME.placer(x - 0.45 * t.W / t.u); }, f.x);
+    await toBilleder();
+    const { u, camX, grundY } = await page.evaluate(() => window.GAME.tegning);
+    const px = (f.x - camX) * u;
+    forhindringer[slags] =
+      slags === 'flod' ? await felt(px - u * 1.2, grundY - u * 0.1, px + u * 1.2, grundY + u * 0.7)
+      : slags === 'storm' ? await felt(px - u * 0.7, grundY - u * 2.6, px + u * 0.7, grundY - u * 0.3)
+      : await felt(px - u * 0.7, grundY - u * 1.3, px + u * 0.7, grundY - u * 0.05);
+    if (slags === 'baal') await page.screenshot({ path: SHOTS + 'elementer-baal.png' });
+  }
+  console.log('  forhindringer:', JSON.stringify(forhindringer));
+  for (const [sl, f] of Object.entries(forhindringer)) assert.ok(f.farver >= 40, `${sl} er tegnet med for få farver (${f.farver}) – ser flad ud`);
+  assert.ok(forhindringer.krat.g > forhindringer.krat.r && forhindringer.krat.g > forhindringer.krat.b, `krattet skal være grønt: ${JSON.stringify(forhindringer.krat)}`);
+  assert.ok(forhindringer.baal.r > forhindringer.baal.b + 40, `bålet skal brænde: ${JSON.stringify(forhindringer.baal)}`);
+  assert.ok(forhindringer.flod.b > forhindringer.flod.r + 30, `floden skal være blå: ${JSON.stringify(forhindringer.flod)}`);
+}
+
 /* ---------- Tre fejl – og slutskærmen med topliste ---------- */
 {
   await page.evaluate(() => window.GAME.start());
