@@ -707,15 +707,14 @@ function byggHaer() {
 function haerRaekkeTekst(o) {
   const t = TROPPER[o.slags], byg = BYGNING_VED[t.bygning];
   const op = tropOpgradering(o.slags, o.niveau);
-  let linje;
-  if (!o.bygninger) linje = `Byg en ${byg.navn.toLowerCase()} for at træne ${t.flertal}`;
-  else {
-    linje = o.undervejs ? `${o.undervejs} på vej` + (o.naeste != null ? ` · næste om ${Math.ceil(o.naeste)} sek.` : '')
-      : `${byg.navn}${o.bygninger > 1 ? 'r: ' + o.bygninger : ''} træner ${o.samtidig} ad gangen`;
-  }
+  // Kort, så det kan stå på to linjer ved siden af knapperne på en iPhone
+  const hvad = !o.bygninger ? `byg en ${byg.navn.toLowerCase()} først`
+    : o.undervejs ? `${o.undervejs} på vej` + (o.naeste != null ? ` · ${Math.ceil(o.naeste)} sek.` : '')
+      : `træner ${o.samtidig} ad gangen`;
+  const linje = `Niv ${o.niveau}/${TROP_MAKS} · ${hvad}`;
   return {
     antal: String(o.paaBanen),
-    navn: `${t.flertal[0].toUpperCase() + t.flertal.slice(1)} · niv ${o.niveau}/${TROP_MAKS}`,
+    navn: t.flertal[0].toUpperCase() + t.flertal.slice(1),
     linje,
     en: { html: `Træn<br>${t.pris} 🪙`, af: !o.kanTraenes || spil.guld < t.pris },
     fem: { html: `×5<br>${t.pris * 5} 🪙`, af: !o.kanTraenes || spil.guld < t.pris },
@@ -1585,7 +1584,7 @@ window.GAME = {
   saetOp(opt = {}) {
     if (opt.guld != null) spil.guld = opt.guld;
     if (opt.husHp != null) { spil.raadhus.hp = opt.husHp; sidsteHusHp = opt.husHp; }
-    if (opt.tid != null) { spil.tid = opt.tid; spil.dag = Math.floor(opt.tid / DAG_LAENGDE) + 1; sidsteDag = spil.dag; }
+    if (opt.tid != null) { spil.tid = opt.tid; spil.dag = Math.floor(opt.tid / DAG_LAENGDE) + 1; sidsteDag = spil.dag; daggryUr = 0; }
     if (opt.roligt) spil.rng = () => 0.999;          // ingen nye zombier af sig selv
     if (opt.udenHaer) { spil.soldater.length = 0; spil.helte.length = 0; valgt = null; }   // ingen til at forsvare huset
     visHud(); tegnKnapper(); visPanel();             // også kassen, så en test ikke skal vente på næste billede

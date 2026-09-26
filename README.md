@@ -1964,7 +1964,7 @@ præcise midtpunkt (6,8). Ting, der er værd at huske, hvis spillet skal røres 
 
 6b. **Hær-oversigten** (⚔️ i HUD'en, ønske #60) står forneden på fladen, hvor
    kassen ellers står — åbner den ene, lukker den anden. Én række pr. slags med
-   antallet ude, hvad der er på vej, og knapperne «Træn», «×5» og «⬆ niv».
+   antallet ude, niveauet, hvad der er på vej, og knapperne «Træn», «×5» og «⬆ niv».
    `traenHaer(spil, slags, antal)` vælger for hver ny tropp den bygning, der
    bliver færdig først (`traeningssted`: færrest undervejs pr. `samtidig`), så
    køen fordeler sig selv på flere kaserner; løber guldet tør halvvejs, kommer

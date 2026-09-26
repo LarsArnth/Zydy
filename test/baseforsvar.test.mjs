@@ -245,9 +245,12 @@ const KAS = await ledigt(HUS.kx + 3, HUS.ky + 3);
   assert.equal(await page.locator('.haerraekke').count(), 3, 'én række pr. slags');
   assert.equal(await raekke('soldat').locator('.antal').textContent(), '2', 'to soldater ude');
   assert.equal(await raekke('bueskytte').locator('.antal').textContent(), '1', 'og en bueskytte');
-  assert.match(await raekke('soldat').textContent(), /Soldater · niv 2\/5/, 'soldaterne er allerede opgraderet');
-  assert.match(await raekke('soldat').textContent(), /Kasernen træner 2 ad gangen/, 'og der står, hvor mange kasernen træner ad gangen');
-  assert.match(await raekke('praest').textContent(), /Byg en kirke/, 'uden kirke står der, hvad man skal');
+  assert.match(await raekke('soldat').textContent(), /Soldater.*Niv 2\/5/, 'soldaterne er allerede opgraderet');
+  {
+    const linje = await raekke('soldat').locator('.om span').textContent();
+    assert.match(linje, /træner 2 ad gangen/, `og der står, hvor mange kasernen træner ad gangen («${linje}»)`);
+  }
+  assert.match(await raekke('praest').textContent(), /byg en kirke/i, 'uden kirke står der, hvad man skal');
   assert.equal(await raekke('praest').locator('[data-goer="1"]').isDisabled(), true, 'og man kan ikke træne præster');
   assert.match(await page.locator('#haerTal').textContent(), /3 ude/);
 
@@ -264,7 +267,7 @@ const KAS = await ledigt(HUS.kx + 3, HUS.ky + 3);
   await raekke('bueskytte').locator('[data-goer="op"]').click();
   s = await state();
   assert.equal(s.tropNiv.bueskytte, 2, 'bueskytterne er opgraderet fra hæren');
-  assert.match(await raekke('bueskytte').textContent(), /niv 2\/5/);
+  assert.match(await raekke('bueskytte').textContent(), /Niv 2\/5/);
 
   // Alt skal være inde på en iPhone-skærm
   const w = await page.evaluate(() => innerWidth);

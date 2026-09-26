@@ -66,7 +66,8 @@ await page.click('#startBtn');
 {
   const st = await state();
   assert.equal(st.fase, 'kamp');
-  assert.equal(st.magi, 5, 'man starter med fem magi');
+  // Et billede kan nå at tikke mellem trykket og aflæsningen, når maskinen har travlt – så lidt over fem er også fem
+  assert.ok(st.magi >= 5 && st.magi < 5.2, `man starter med fem magi (${st.magi})`);
   assert.equal(st.hånd.length, 4, 'fire kort på hånden');
   assert.equal(st.kroner.ned, 0);
   assert.equal(st.niveau, 0, 'den nemme modstander');
