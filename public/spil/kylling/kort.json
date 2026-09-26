@@ -1,0 +1,22 @@
+{
+  "navn": "Kyllingejagt",
+  "beskrivelse": "Løb rundt på gårdspladsen og fang så mange kyllinger du kan på ét minut – men pas på, de slår smut! Guldkyllingen tæller for tre.",
+  "nøgleord": [
+    "kylling",
+    "kyllinger",
+    "høns",
+    "høne",
+    "fang",
+    "bondegård",
+    "gård",
+    "chicken",
+    "catch",
+    "farm"
+  ],
+  "url": "/spil/kylling/",
+  "orden": 186,
+  "kapløb": true,
+  "højscore": {
+    "maks": 500
+  }
+}

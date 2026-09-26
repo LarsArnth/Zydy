@@ -1,0 +1,812 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#24421a">
+<meta name="description" content="Kyllingejagt: løb rundt på gårdspladsen og fang så mange kyllinger du kan på ét minut – men pas på, de slår smut!">
+<title>Kyllingejagt – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235a9a3a'/%3E%3Cellipse cx='30' cy='38' rx='16' ry='13' fill='%23ffd23f'/%3E%3Ccircle cx='40' cy='24' r='10' fill='%23ffd23f'/%3E%3Cpath d='M49 24l8 3-8 3z' fill='%23ff8a1f'/%3E%3Ccircle cx='42' cy='22' r='2.4' fill='%23222'/%3E%3C/svg%3E">
+<style>
+  /*
+    «Kyllingejagt» – Joannas ønske: «Lav et spil hvor man skal fange så mange
+    kyllinger som muligt».
+
+    Gårdspladsen ses skråt oppefra med hønsehuset øverst. Man løber rundt med
+    et flydende joystick (sæt fingeren hvor som helst og træk), og kyllingerne
+    flygter – kommer man helt tæt på, slår de smut til siden. Løber man ind i
+    en, er den fanget og flyver hjem i hønsehuset. Et minut pr. runde, og
+    guldkyllingen tæller for tre.
+
+    Reglerne, fysikken og en bot bor i kylling.mjs, så de kan enhedstestes.
+  */
+  :root{
+    --bg:#24421a; --bg2:#34592a; --bg3:#4d7d36; --text:#fbf7e8; --muted:#c9d8a8;
+    --sun:#ffd447; --roed:#ff5c5c; --ink:#1f2a14; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 16px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:38px;line-height:1;margin:0 0 10px;letter-spacing:-1.5px;font-weight:800}
+  p{margin:0 0 14px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:18px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;text-align:center;text-decoration:none;color:var(--ink)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .pill{background:var(--bg2);border-radius:999px;padding:8px 14px;font-size:15px;color:var(--muted);white-space:nowrap}
+  button.pill{color:var(--text);font-weight:700;min-height:36px}
+
+  .wrap{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:10px;min-height:44px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .name{flex:1;text-align:center;font-weight:800;font-size:19px;letter-spacing:-.4px}
+  #menuBtn[hidden]{display:none}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;background:#5a9a3a}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Fangsten i venstre hjørne, uret i højre – på en mørk pude, så de kan læses mod græsset */
+  .hud{position:absolute;left:12px;top:10px;pointer-events:none;text-shadow:0 2px 10px rgba(0,0,0,.5);
+    background:rgba(28,52,20,.62);border-radius:16px;padding:6px 12px;
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+    opacity:0;transition:opacity .25s}
+  .stage.igang .hud{opacity:1}
+  .hud .lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  #fangstEl{display:block;font-size:40px;font-weight:800;line-height:1;letter-spacing:-1.5px;font-variant-numeric:tabular-nums;
+    transition:transform .12s}
+  #fangstEl.bump{transform:scale(1.18)}
+  .hud.hoejre{left:auto;right:12px;text-align:right}
+  #tidEl{display:block;font-size:40px;font-weight:800;line-height:1;letter-spacing:-1.5px;font-variant-numeric:tabular-nums}
+  #tidEl.snart{color:var(--roed);animation:puls .5s ease-in-out infinite alternate}
+  #rekHud{display:block;font-size:13px;font-weight:700;color:var(--sun);margin-top:2px}
+  @keyframes puls{from{transform:scale(1)}to{transform:scale(1.12)}}
+
+  /* Beskeder midt på fladen */
+  .msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;padding:20px;opacity:0;transition:opacity .3s}
+  .msg.on{opacity:1}
+  #raab .big{font-size:clamp(30px,10vw,58px);font-weight:900;letter-spacing:-1.5px;line-height:1.05;color:#fff;
+    text-shadow:0 0 24px #e8a100,0 6px 0 #7a4a00,0 10px 30px rgba(0,0,0,.5);transform:rotate(-3deg)}
+  #raab.on .big{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+  #raab .sub{margin-top:16px;font-size:17px;font-weight:700;color:var(--text);
+    background:rgba(28,52,20,.7);border-radius:999px;padding:8px 16px}
+  @keyframes pop{from{transform:scale(.3) rotate(-3deg);opacity:0}to{transform:scale(1) rotate(-3deg);opacity:1}}
+
+  /* Start- og slutskærm */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:18px 20px 24px;background:rgba(28,52,20,.8);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:420px;text-align:center;margin:auto}
+  .regler{display:flex;flex-direction:column;gap:7px;margin:0 0 4px;text-align:left}
+  .regler span{font-size:15px;background:var(--bg2);border-radius:14px;padding:9px 13px;color:var(--text)}
+  .regler b{color:var(--sun)}
+  .hs{margin-top:12px}
+  .hs .hs-liste{max-height:30vh}
+  .stor{font-size:64px;font-weight:800;line-height:1;letter-spacing:-2px;color:var(--sun);
+    font-variant-numeric:tabular-nums;margin:2px 0 2px}
+  .stor small{font-size:26px;color:var(--muted);letter-spacing:0}
+  .under{font-size:15px;color:var(--muted);margin:0 0 8px}
+  .hint{font-size:15px;margin:10px 0 0}
+
+  @media (max-height:660px){
+    h1{font-size:30px} #fangstEl,#tidEl{font-size:32px} .stor{font-size:48px} .hs .hs-liste{max-height:24vh}
+    .screen .btn{padding:14px} .regler span{font-size:14px;padding:7px 11px}
+  }
+  @media (max-width:380px){ .top .name{display:none} }
+  @media (prefers-reduced-motion:reduce){
+    .btn,#fangstEl{transition:none} #raab.on .big,#tidEl.snart{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="name">Kyllingejagt</div>
+    <button class="pill" id="menuBtn" hidden>Menu</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Gårdspladsen med kyllingerne"></canvas>
+
+    <div class="hud" aria-live="polite">
+      <span class="lbl">Kyllinger</span>
+      <b id="fangstEl">0</b>
+    </div>
+    <div class="hud hoejre">
+      <span class="lbl">Tid</span>
+      <b id="tidEl">60</b>
+      <span id="rekHud">Rekord 0</span>
+    </div>
+
+    <div class="msg" id="raab">
+      <div class="big" id="raabTekst">FANG DEM!</div>
+      <div class="sub" id="raabUnder">Træk med fingeren for at løbe</div>
+    </div>
+
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>Kyllingejagt</h1>
+        <div class="regler" aria-hidden="true">
+          <span>👆 <b>Sæt fingeren hvor som helst og træk</b> – så løber du</span>
+          <span>🐤 <b>Løb ind i en kylling</b> – så er den fanget</span>
+          <span>💨 Kommer du helt tæt på, <b>slår de smut</b> – jag dem op i et hjørne</span>
+          <span>⏱️ <b>Ét minut</b> – og guldkyllingen tæller for tre</span>
+        </div>
+        <button class="btn" id="startBtn">Fang!</button>
+        <p class="hint">På computer: piletasterne eller WASD.</p>
+        <div class="hs" id="hsStart"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Tiden er gået!</h1>
+        <div class="stor" id="slutFangst">0<small> kyllinger</small></div>
+        <p class="under" id="slutUnder">Din rekord er 0 kyllinger</p>
+        <div class="hs" id="hsSlut"></div>
+        <button class="btn" id="igenBtn">Fang flere</button>
+        <button class="btn ghost" id="tilbageBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="kylling"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+<script type="module">
+import {
+  TID, BONDE_R, KYLLING_R, FANG_R, GULD, ANTAL, DOER_SKY,
+  gaardMaal, doer, nyTur, tik as motorTik, bot,
+} from './kylling.mjs';
+
+/* ---------- Opsætning ---------- */
+const params = new URLSearchParams(location.search);
+const fastSeed = parseInt(params.get('seed'), 10);
+const harFastSeed = Number.isFinite(fastSeed);
+let seed = harFastSeed ? fastSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), ctx = canvas.getContext('2d');
+const fangstEl = $('fangstEl'), tidEl = $('tidEl'), rekHud = $('rekHud');
+const startScreen = $('startScreen'), slutScreen = $('slutScreen');
+const raab = $('raab'), raabTekst = $('raabTekst'), raabUnder = $('raabUnder'), menuBtn = $('menuBtn');
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KEY_BEST = 'zydy.kylling.best';
+const hentBest = () => { try { return Math.max(0, parseInt(localStorage.getItem(KEY_BEST), 10) || 0); } catch (e) { return 0; } };
+const gemBest = v => { try { localStorage.setItem(KEY_BEST, String(v)); } catch (e) {} };
+const kyllingTekst = v => v + (v === 1 ? ' kylling' : ' kyllinger');
+
+const DT = 1 / 120;                 // fast fysik-trin
+const HUS = 3.2;                    // meter over gårdspladsen til hønsehuset
+const KANT = 0.7;                   // meter græs uden for hegnet i siderne og forneden
+const klem = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- Mål ---------- */
+let W = 1, H = 1, dpr = 1, u = 20, ox = 0, oy = 0;
+function maal() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  placerGaard();
+}
+/** Skala og forskydning, så hele gårdspladsen med hønsehus kan ses – midt på skærmen. */
+function placerGaard() {
+  if (!s) return;
+  u = Math.min(W / (s.b + KANT * 2), (H - 8) / (s.h + HUS + KANT));
+  ox = (W - s.b * u) / 2;
+  oy = Math.max(HUS * u, (H - (s.h + HUS + KANT) * u) / 2 + HUS * u);
+}
+/** Gårdspladsens mål til en ny runde: formen følger skærmen (minus plads til huset). */
+function nyGaard() {
+  const r = stage.getBoundingClientRect();
+  return gaardMaal(r.width || 360, Math.max(100, (r.height || 600) * 0.84));
+}
+
+/* ---------- Tilstand ---------- */
+let fase = 'menu';                  // menu | spil | slut
+let s = null;
+let T = 0, best = hentBest();
+let pops = [], fjer = [], flyv = [], stoev = [];
+let paused = false, acc = 0, sidst = 0, raabTil = 0, sidstSek = -1;
+const joy = { aktiv: false, bx: 0, by: 0, x: 0, y: 0 };   // fingerens joystick i pixels
+const taster = new Set();
+
+function nulstil() {
+  if (!harFastSeed) seed = (Math.random() * 4294967296) >>> 0;
+  const g = nyGaard();
+  s = nyTur(seed, g.b, g.h);
+  placerGaard();
+  T = 0; pops = []; fjer = []; flyv = []; stoev = [];
+  raabTil = 0; sidstSek = -1;
+  joy.aktiv = false;
+  visHud();
+}
+
+maal();
+addEventListener('resize', maal);
+addEventListener('orientationchange', () => setTimeout(maal, 60));
+if ('ResizeObserver' in window) new ResizeObserver(maal).observe(stage);
+
+/* ---------- Pynt ---------- */
+function sigTil(stor, lille, sek) {
+  raabTekst.textContent = stor; raabUnder.textContent = lille;
+  raab.classList.add('on'); raabTil = T + sek;
+}
+function fjerVed(x, y, n, guld) {
+  if (roligt) return;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 6.283, f = 1 + Math.random() * 3;
+    fjer.push({ x, y, vx: Math.cos(a) * f, vy: Math.sin(a) * f - 1.5, rot: Math.random() * 6.283,
+      t: 0, liv: 0.8 + Math.random() * 0.6, guld });
+  }
+}
+
+/* ---------- Skærmene ---------- */
+function visHud() {
+  fangstEl.textContent = s.fangst;
+  const tilbage = Math.max(0, Math.ceil(TID - s.t));
+  tidEl.textContent = tilbage;
+  tidEl.classList.toggle('snart', fase === 'spil' && tilbage <= 10);
+  rekHud.textContent = 'Rekord ' + best;
+}
+function bump() {
+  fangstEl.classList.add('bump'); setTimeout(() => fangstEl.classList.remove('bump'), 140);
+}
+
+function start() {
+  nulstil();
+  fase = 'spil';
+  startScreen.classList.remove('on'); slutScreen.classList.remove('on');
+  menuBtn.hidden = false; stage.classList.add('igang');
+  sigTil('FANG DEM!', 'Sæt fingeren ned og træk for at løbe', 1.8);
+  visHud();
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+}
+
+function slut() {
+  if (fase !== 'spil') return;
+  fase = 'slut';
+  joy.aktiv = false; taster.clear();
+  navigator.vibrate && navigator.vibrate([40, 30, 40]);
+  const ny = s.fangst > best;
+  if (ny) { best = s.fangst; gemBest(best); }
+  stage.classList.remove('igang');
+  raab.classList.remove('on');
+  $('slutTitel').textContent = s.fangst === 0 ? 'De slap alle sammen!' : 'Tiden er gået!';
+  $('slutFangst').innerHTML = s.fangst + '<small>' + (s.fangst === 1 ? ' kylling' : ' kyllinger') + '</small>';
+  $('slutUnder').textContent = ny && s.fangst > 0
+    ? 'Ny rekord! Så mange har du aldrig fanget før.'
+    : 'Din rekord er ' + kyllingTekst(best);
+  slutScreen.classList.add('on');
+  visHud();
+  Highscore.panel($('hsSlut'), { spil: 'kylling', score: s.fangst, format: kyllingTekst });
+  // Kapløb mod en ven (?rum=<kode>): min runde op i rummet, så stillingen står øverst på skærmen.
+  if (window.Kaploeb) Kaploeb.slut(s.fangst, kyllingTekst(s.fangst));
+}
+
+function tilMenu() {
+  fase = 'menu';
+  nulstil();
+  slutScreen.classList.remove('on'); startScreen.classList.add('on');
+  menuBtn.hidden = true; raab.classList.remove('on'); stage.classList.remove('igang');
+  Highscore.panel($('hsStart'), { spil: 'kylling', format: kyllingTekst });
+}
+
+/* ---------- Styringen: joystick eller taster → { x, y } med længde 0-1 ---------- */
+const JOY_R = 46;                   // pixels fra midten til kanten af joysticket
+function styring() {
+  if (joy.aktiv) {
+    const dx = joy.x - joy.bx, dy = joy.y - joy.by, l = Math.hypot(dx, dy);
+    if (l < 6) return null;                           // lidt dødzone, så et tryk ikke løber
+    const f = Math.min(1, l / JOY_R) / l;
+    return { x: dx * f, y: dy * f };
+  }
+  let x = 0, y = 0;
+  if (taster.has('ArrowLeft') || taster.has('KeyA')) x -= 1;
+  if (taster.has('ArrowRight') || taster.has('KeyD')) x += 1;
+  if (taster.has('ArrowUp') || taster.has('KeyW')) y -= 1;
+  if (taster.has('ArrowDown') || taster.has('KeyS')) y += 1;
+  return x || y ? { x, y } : null;
+}
+
+/* ---------- Løkken ---------- */
+function uiTik(dt, joyTving) {
+  T += dt;
+  if (fase === 'spil') {
+    const e = motorTik(s, dt, joyTving !== undefined ? joyTving : styring());
+    for (const f of e.fanget) {
+      const guld = f.slags === 'guld';
+      flyv.push({ fx: f.x, fy: f.y, guld, t: 0, liv: 0.75 });
+      pops.push({ x: f.x, y: f.y - 0.8, tekst: guld ? '+3 GULD!' : '+1', guld, t: 0, liv: 1 });
+      fjerVed(f.x, f.y, guld ? 14 : 7, guld);
+      navigator.vibrate && navigator.vibrate(guld ? [20, 20, 20] : 15);
+      bump();
+      if (guld) sigTil('GULDKYLLING!', 'Den tæller for tre', 1.2);
+      else if (s.antal % 10 === 0) sigTil(s.antal + ' KYLLINGER!', 'Bliv ved!', 1.1);
+    }
+    for (const u2 of e.ud) if (u2.slags === 'guld') sigTil('EN GULDKYLLING!', 'Fang den, før den løber hjem', 1.4);
+    for (const h of e.hjem) pops.push({ x: h.x, y: h.y + 0.6, tekst: 'Smuttede hjem…', guld: true, t: 0, liv: 1.2 });
+    if (!roligt) for (const id of e.smut) {
+      const k = s.kyllinger.find(q => q.id === id);
+      if (k) stoev.push({ x: k.x, y: k.y, t: 0, liv: 0.4 });
+    }
+    const sek = Math.ceil(TID - s.t);
+    if (sek !== sidstSek) { sidstSek = sek; visHud(); }
+    if (e.slut) slut();
+  }
+
+  if (raabTil && T > raabTil) { raab.classList.remove('on'); raabTil = 0; }
+  for (const q of pops) q.t += dt;
+  pops = pops.filter(q => q.t < q.liv);
+  for (const f of fjer) { f.t += dt; f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 3 * dt; f.vx *= 0.97; f.rot += dt * 4; }
+  fjer = fjer.filter(f => f.t < f.liv);
+  for (const f of flyv) f.t += dt;
+  flyv = flyv.filter(f => f.t < f.liv);
+  for (const d of stoev) d.t += dt;
+  stoev = stoev.filter(d => d.t < d.liv);
+}
+
+function billede(nu) {
+  requestAnimationFrame(billede);
+  if (!sidst) sidst = nu;
+  let dt = Math.min(0.1, (nu - sidst) / 1000); sidst = nu;
+  if (!paused) { acc += dt; while (acc >= DT) { uiTik(DT); acc -= DT; } }
+  tegn();
+}
+requestAnimationFrame(billede);
+
+/* ---------- Tegning ---------- */
+const sx = wx => ox + wx * u;
+const sy = wy => oy + wy * u;
+const hash = (a, b) => { const t = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return t - Math.floor(t); };
+
+function tegn() {
+  tegnGraes();
+  tegnGaardsplads();
+  tegnHegn();
+  tegnHus();
+
+  // Alle figurer sorteret efter y, så den forreste står forrest
+  const figurer = s.kyllinger.map(k => ({ y: k.y, k }));
+  if (fase !== 'menu') figurer.push({ y: s.bonde.y, bonde: true });
+  figurer.sort((a, b) => a.y - b.y);
+  for (const f of figurer) f.bonde ? tegnBonde() : tegnKylling(f.k);
+
+  tegnFlyv();
+  tegnStoev();
+  tegnFjer();
+  tegnPops();
+  if (joy.aktiv && fase === 'spil') tegnJoystick();
+}
+
+function tegnGraes() {
+  ctx.fillStyle = '#5a9a3a'; ctx.fillRect(0, 0, W, H);
+  // Græstotter, fast pr. meter, så de ikke flimrer
+  ctx.strokeStyle = '#4b8a2f'; ctx.lineWidth = Math.max(1.2, u * 0.06); ctx.lineCap = 'round';
+  const bx = Math.ceil(W / u) + 2, by = Math.ceil(H / u) + 2;
+  for (let i = -1; i < bx; i++) for (let j = -1; j < by; j++) {
+    const h1 = hash(i, j);
+    if (h1 < 0.55) continue;
+    const px = (i + hash(j, i)) * u, py = (j + h1) * u;
+    ctx.beginPath();
+    ctx.moveTo(px - u * 0.1, py); ctx.lineTo(px - u * 0.16, py - u * 0.22);
+    ctx.moveTo(px, py); ctx.lineTo(px, py - u * 0.28);
+    ctx.moveTo(px + u * 0.1, py); ctx.lineTo(px + u * 0.17, py - u * 0.2);
+    ctx.stroke();
+  }
+}
+
+function tegnGaardsplads() {
+  // Trampet jord inden for hegnet med lidt græs og små sten
+  ctx.fillStyle = '#d9b77a';
+  ctx.fillRect(sx(0), sy(0), s.b * u, s.h * u);
+  for (let i = 0; i < s.b; i++) for (let j = 0; j < s.h; j++) {
+    const h1 = hash(i + 31, j + 7);
+    const px = sx(i + hash(j, i + 3)), py = sy(j + h1);
+    if (h1 > 0.82) {
+      ctx.fillStyle = '#b89659';
+      ctx.beginPath(); ctx.ellipse(px, py, u * 0.12, u * 0.08, 0, 0, 6.283); ctx.fill();
+    } else if (h1 < 0.12) {
+      ctx.strokeStyle = '#8fb458'; ctx.lineWidth = Math.max(1, u * 0.05);
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - u * 0.08, py - u * 0.18);
+      ctx.moveTo(px, py); ctx.lineTo(px + u * 0.07, py - u * 0.2); ctx.stroke();
+    } else if (h1 > 0.5 && h1 < 0.53) {
+      // Korn på jorden – det er det, kyllingerne går og pikker i
+      ctx.fillStyle = '#f5d98a';
+      for (let n = 0; n < 4; n++) {
+        ctx.beginPath(); ctx.arc(px + (hash(n, i) - 0.5) * u * 0.5, py + (hash(j, n) - 0.5) * u * 0.3, u * 0.04, 0, 6.283); ctx.fill();
+      }
+    }
+  }
+  // Et blødt mørkere felt foran døren, hvor kyllingerne ikke tør komme ud, når man står der
+  const D = doer(s);
+  if (fase === 'spil') {
+    const naer = Math.hypot(s.bonde.x - D.x, s.bonde.y - D.y) < DOER_SKY;
+    if (naer) {
+      ctx.fillStyle = 'rgba(120,70,20,.18)';
+      ctx.beginPath(); ctx.arc(sx(D.x), sy(D.y), DOER_SKY * u, 0, Math.PI); ctx.fill();
+    }
+  }
+}
+
+function tegnHegn() {
+  const x0 = sx(0), y0 = sy(0), x1 = sx(s.b), y1 = sy(s.h);
+  const D = doer(s), dv = sx(D.x - 1), dh = sx(D.x + 1);
+  ctx.lineCap = 'round';
+  // Lægterne
+  ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = Math.max(2, u * 0.12);
+  for (const off of [-0.25, -0.6]) {
+    ctx.beginPath();
+    ctx.moveTo(x0, y0 + off * u); ctx.lineTo(dv, y0 + off * u);      // øverst, afbrudt ved døren
+    ctx.moveTo(dh, y0 + off * u); ctx.lineTo(x1, y0 + off * u);
+    ctx.moveTo(x0, y1 + off * u); ctx.lineTo(x1, y1 + off * u);      // nederst
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x0, y0 + off * u); ctx.lineTo(x0, y1 + off * u);      // siderne
+    ctx.moveTo(x1, y0 + off * u); ctx.lineTo(x1, y1 + off * u);
+    ctx.stroke();
+  }
+  // Pælene
+  ctx.fillStyle = '#6e4420';
+  const pael = (px, py) => { ctx.fillRect(px - u * 0.09, py - u * 0.85, u * 0.18, u * 0.85); };
+  for (let x = 0; x <= s.b + 0.01; x += 1.5) {
+    const px = sx(Math.min(x, s.b));
+    if (px < dv - 2 || px > dh + 2) pael(px, y0);
+    pael(px, y1);
+  }
+  for (let y = 1.5; y < s.h; y += 1.5) { pael(x0, sy(y)); pael(x1, sy(y)); }
+}
+
+function tegnHus() {
+  const D = doer(s), cx = sx(D.x), bund = sy(0);
+  const hb = 3.4 * u, hh = 2.1 * u;
+  // Væggene
+  ctx.fillStyle = '#c8452f';
+  ctx.fillRect(cx - hb / 2, bund - hh, hb, hh);
+  ctx.strokeStyle = 'rgba(0,0,0,.14)'; ctx.lineWidth = Math.max(1, u * 0.05);
+  for (let y = bund - hh + u * 0.35; y < bund; y += u * 0.35) {
+    ctx.beginPath(); ctx.moveTo(cx - hb / 2, y); ctx.lineTo(cx + hb / 2, y); ctx.stroke();
+  }
+  // Taget
+  ctx.fillStyle = '#6b3a24';
+  ctx.beginPath();
+  ctx.moveTo(cx - hb / 2 - u * 0.35, bund - hh + u * 0.1);
+  ctx.lineTo(cx, bund - hh - u * 1.0);
+  ctx.lineTo(cx + hb / 2 + u * 0.35, bund - hh + u * 0.1);
+  ctx.closePath(); ctx.fill();
+  // Vinduet med en høne, der kigger ud
+  ctx.fillStyle = '#3b2415';
+  ctx.fillRect(cx + hb * 0.18, bund - hh * 0.8, u * 0.7, u * 0.55);
+  ctx.fillStyle = '#fffaf0';
+  ctx.beginPath(); ctx.arc(cx + hb * 0.18 + u * 0.35, bund - hh * 0.8 + u * 0.36, u * 0.2, 0, 6.283); ctx.fill();
+  ctx.fillStyle = '#e8322a';
+  ctx.beginPath(); ctx.arc(cx + hb * 0.18 + u * 0.35, bund - hh * 0.8 + u * 0.13, u * 0.08, 0, 6.283); ctx.fill();
+  // Døråbningen – her kommer de ud, og her flyver de ind
+  ctx.fillStyle = '#2a170d';
+  ctx.beginPath();
+  ctx.moveTo(cx - u * 0.55, bund); ctx.lineTo(cx - u * 0.55, bund - u * 0.9);
+  ctx.arc(cx, bund - u * 0.9, u * 0.55, Math.PI, 0);
+  ctx.lineTo(cx + u * 0.55, bund); ctx.closePath(); ctx.fill();
+  // Rampen
+  ctx.fillStyle = '#a0703c';
+  ctx.fillRect(cx - u * 0.5, bund - u * 0.05, u, u * 0.35);
+}
+
+/**
+ * En kylling set fra siden: gul (eller guld) krop, hoved med næb og kam, små
+ * ben der tripper. Den kigger den vej, den løber, pikker når den står stille
+ * og vifter med vingerne, når den er bange.
+ */
+function tegnKylling(k) {
+  const px = sx(k.x), py = sy(k.y), r = KYLLING_R * u * 1.25;
+  const fart = Math.hypot(k.vx, k.vy);
+  const vendt = k.vx < -0.05 ? -1 : k.vx > 0.05 ? 1 : (k.vendt || 1);
+  k.vendt = vendt;
+  const guld = k.slags === 'guld';
+  const hop = fart > 0.3 ? Math.abs(Math.sin(T * (8 + fart * 3) + k.fase)) * r * 0.25 : 0;
+
+  // Skygge
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  ctx.beginPath(); ctx.ellipse(px, py, r * 1.0, r * 0.35, 0, 0, 6.283); ctx.fill();
+
+  // Guldkyllingen glimter
+  if (guld) {
+    ctx.fillStyle = 'rgba(255,230,120,.35)';
+    ctx.beginPath(); ctx.arc(px, py - r * 0.9, r * 1.8, 0, 6.283); ctx.fill();
+    for (let i = 0; i < 3; i++) {
+      const a = T * 2 + i * 2.1 + k.fase;
+      stjerne(px + Math.cos(a) * r * 1.7, py - r * 0.9 + Math.sin(a) * r * 1.3, r * (0.25 + 0.12 * Math.sin(T * 6 + i)));
+    }
+  }
+
+  ctx.save();
+  ctx.translate(px, py - hop);
+  ctx.scale(vendt, 1);
+  // Ben
+  ctx.strokeStyle = '#ff8a1f'; ctx.lineWidth = Math.max(1.5, r * 0.14); ctx.lineCap = 'round';
+  const trip = fart > 0.3 ? Math.sin(T * (10 + fart * 3) + k.fase) * r * 0.25 : 0;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.2, -r * 0.3); ctx.lineTo(-r * 0.2 + trip, hop);
+  ctx.moveTo(r * 0.15, -r * 0.3); ctx.lineTo(r * 0.15 - trip, hop);
+  ctx.stroke();
+  // Kroppen
+  const krop = guld ? ctx.createLinearGradient(0, -r * 1.5, 0, -r * 0.2) : null;
+  if (krop) { krop.addColorStop(0, '#fff3a0'); krop.addColorStop(1, '#e8a100'); }
+  ctx.fillStyle = krop || '#ffd23f';
+  ctx.beginPath(); ctx.ellipse(-r * 0.1, -r * 0.8, r * 0.75, r * 0.6, 0, 0, 6.283); ctx.fill();
+  // Halen
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.7, -r * 0.95); ctx.lineTo(-r * 1.05, -r * 1.3); ctx.lineTo(-r * 0.85, -r * 0.7);
+  ctx.closePath(); ctx.fill();
+  // Hovedet – nikker ned, når den pikker
+  const pik = fart < 0.2 && !k.bange ? Math.max(0, Math.sin(T * 5 + k.fase)) * r * 0.45 : 0;
+  const hx = r * 0.45, hy = -r * 1.35 + pik;
+  ctx.beginPath(); ctx.arc(hx, hy, r * 0.42, 0, 6.283); ctx.fill();
+  // Kam
+  ctx.fillStyle = '#e8322a';
+  ctx.beginPath(); ctx.arc(hx - r * 0.05, hy - r * 0.42, r * 0.13, 0, 6.283); ctx.arc(hx + r * 0.14, hy - r * 0.38, r * 0.11, 0, 6.283); ctx.fill();
+  // Næb
+  ctx.fillStyle = '#ff8a1f';
+  ctx.beginPath(); ctx.moveTo(hx + r * 0.36, hy - r * 0.08); ctx.lineTo(hx + r * 0.72, hy + r * 0.04); ctx.lineTo(hx + r * 0.36, hy + r * 0.15); ctx.closePath(); ctx.fill();
+  // Øje – stort og rundt, når den er bange
+  ctx.fillStyle = '#fff';
+  if (k.bange) { ctx.beginPath(); ctx.arc(hx + r * 0.12, hy - r * 0.07, r * 0.17, 0, 6.283); ctx.fill(); }
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(hx + r * 0.14, hy - r * 0.07, r * (k.bange ? 0.08 : 0.07), 0, 6.283); ctx.fill();
+  // Vingen – blafrer, når den er bange
+  ctx.fillStyle = guld ? '#f2b705' : '#f0b90b';
+  const blaf = k.bange ? Math.sin(T * 30 + k.fase) * 0.6 : 0;
+  ctx.save(); ctx.translate(-r * 0.2, -r * 0.85); ctx.rotate(-0.3 - blaf);
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.42, r * 0.26, 0, 0, 6.283); ctx.fill();
+  ctx.restore();
+  // Guldkyllingens krone
+  if (guld) {
+    ctx.fillStyle = '#ffe14d'; ctx.strokeStyle = '#b77800'; ctx.lineWidth = Math.max(1, r * 0.06);
+    ctx.beginPath();
+    const kx = hx - r * 0.3, ky = hy - r * 0.45;
+    ctx.moveTo(kx, ky); ctx.lineTo(kx, ky - r * 0.4); ctx.lineTo(kx + r * 0.15, ky - r * 0.2);
+    ctx.lineTo(kx + r * 0.3, ky - r * 0.45); ctx.lineTo(kx + r * 0.45, ky - r * 0.2); ctx.lineTo(kx + r * 0.6, ky - r * 0.4);
+    ctx.lineTo(kx + r * 0.6, ky); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+
+  // «!» over en bange kylling
+  if (k.bange && fase === 'spil') {
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    ctx.font = `900 ${Math.max(11, r * 0.9)}px -apple-system,sans-serif`;
+    ctx.fillText('!', px + vendt * r * 0.5, py - r * 2.2 - hop);
+  }
+}
+
+function stjerne(x, y, r) {
+  ctx.fillStyle = '#fff6c2';
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4, rr = i % 2 ? r * 0.35 : r;
+    i ? ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : ctx.moveTo(x + rr, y);
+  }
+  ctx.closePath(); ctx.fill();
+}
+
+/** Bonden – et barn i blå overalls og stråhat, set forfra. */
+function tegnBonde() {
+  const B = s.bonde, px = sx(B.x), py = sy(B.y), r = BONDE_R * u;
+  const fart = Math.hypot(B.vx, B.vy);
+  const loeb = fart > 0.4 ? Math.sin(T * 14) : 0;
+  const hop = fart > 0.4 ? Math.abs(Math.sin(T * 14)) * r * 0.12 : 0;
+  // Skygge og fangeringen (den viser, hvor tæt man skal være)
+  ctx.fillStyle = 'rgba(0,0,0,.2)';
+  ctx.beginPath(); ctx.ellipse(px, py, r * 1.1, r * 0.4, 0, 0, 6.283); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = Math.max(1.5, u * 0.05);
+  ctx.beginPath(); ctx.ellipse(px, py, FANG_R * u, FANG_R * u * 0.4, 0, 0, 6.283); ctx.stroke();
+
+  ctx.save();
+  ctx.translate(px, py - hop);
+  ctx.scale(B.vendt, 1);
+  // Ben
+  ctx.fillStyle = '#2f5fa8';
+  ctx.fillRect(-r * 0.4, -r * 0.9 + loeb * r * 0.1, r * 0.32, r * 0.9 - loeb * r * 0.1);
+  ctx.fillRect(r * 0.08, -r * 0.9 - loeb * r * 0.1, r * 0.32, r * 0.9 + loeb * r * 0.1);
+  // Støvler
+  ctx.fillStyle = '#5a3a1e';
+  ctx.fillRect(-r * 0.45, -r * 0.12 + loeb * r * 0.1, r * 0.42, r * 0.16);
+  ctx.fillRect(r * 0.05, -r * 0.12 - loeb * r * 0.1, r * 0.42, r * 0.16);
+  // Trøjen og overallen
+  ctx.fillStyle = '#e8453c';
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-r * 0.55, -r * 2.0, r * 1.1, r * 1.2, r * 0.3) : ctx.rect(-r * 0.55, -r * 2.0, r * 1.1, r * 1.2); ctx.fill();
+  ctx.fillStyle = '#2f5fa8';
+  ctx.fillRect(-r * 0.5, -r * 1.45, r * 1.0, r * 0.65);
+  ctx.fillRect(-r * 0.35, -r * 1.9, r * 0.14, r * 0.5); ctx.fillRect(r * 0.21, -r * 1.9, r * 0.14, r * 0.5);
+  // Arme – rakt frem efter kyllingen, når man løber
+  ctx.strokeStyle = '#f2c29b'; ctx.lineWidth = r * 0.22; ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (fart > 0.4) {
+    ctx.moveTo(r * 0.45, -r * 1.75); ctx.lineTo(r * 1.05, -r * 1.55 + loeb * r * 0.15);
+    ctx.moveTo(-r * 0.45, -r * 1.75); ctx.lineTo(r * 0.2, -r * 1.35 - loeb * r * 0.15);
+  } else {
+    ctx.moveTo(r * 0.5, -r * 1.75); ctx.lineTo(r * 0.7, -r * 1.1);
+    ctx.moveTo(-r * 0.5, -r * 1.75); ctx.lineTo(-r * 0.7, -r * 1.1);
+  }
+  ctx.stroke();
+  // Hovedet
+  ctx.fillStyle = '#f2c29b';
+  ctx.beginPath(); ctx.arc(0, -r * 2.45, r * 0.5, 0, 6.283); ctx.fill();
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(r * 0.2, -r * 2.5, r * 0.07, 0, 6.283); ctx.arc(-r * 0.05, -r * 2.5, r * 0.07, 0, 6.283); ctx.fill();
+  ctx.strokeStyle = '#a0522d'; ctx.lineWidth = Math.max(1, r * 0.07);
+  ctx.beginPath(); ctx.arc(r * 0.08, -r * 2.35, r * 0.16, 0.2, Math.PI - 0.2); ctx.stroke();
+  // Stråhatten
+  ctx.fillStyle = '#f2d06b';
+  ctx.beginPath(); ctx.ellipse(0, -r * 2.8, r * 0.85, r * 0.2, 0, 0, 6.283); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, -r * 2.95, r * 0.45, r * 0.3, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = '#e8453c'; ctx.fillRect(-r * 0.45, -r * 2.95, r * 0.9, r * 0.1);
+  ctx.restore();
+}
+
+/** Fangede kyllinger flyver i en bue hjem i hønsehuset. */
+function tegnFlyv() {
+  const D = doer(s);
+  for (const f of flyv) {
+    const p = f.t / f.liv;
+    const x = f.fx + (D.x - f.fx) * p;
+    const y = f.fy + (D.y - 0.4 - f.fy) * p - Math.sin(p * Math.PI) * 3;
+    const k = { x, y, vx: D.x > f.fx ? 1 : -1, vy: 0, slags: f.guld ? 'guld' : 'kylling', bange: true, fase: 0 };
+    ctx.save();
+    const sk = 1 - p * 0.5;
+    ctx.translate(sx(x), sy(y)); ctx.scale(sk, sk); ctx.translate(-sx(x), -sy(y));
+    tegnKylling(k);
+    ctx.restore();
+  }
+}
+
+function tegnStoev() {
+  for (const d of stoev) {
+    const p = d.t / d.liv;
+    ctx.fillStyle = `rgba(240,225,190,${0.6 * (1 - p)})`;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath(); ctx.arc(sx(d.x) + (i - 1) * u * 0.3, sy(d.y) - u * 0.1, u * (0.15 + p * 0.3), 0, 6.283); ctx.fill();
+    }
+  }
+}
+
+function tegnFjer() {
+  for (const f of fjer) {
+    ctx.globalAlpha = Math.max(0, 1 - f.t / f.liv);
+    ctx.fillStyle = f.guld ? '#ffe14d' : '#fff4c0';
+    ctx.save(); ctx.translate(sx(f.x), sy(f.y) - u); ctx.rotate(f.rot);
+    ctx.beginPath(); ctx.ellipse(0, 0, u * 0.16, u * 0.06, 0, 0, 6.283); ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function tegnPops() {
+  ctx.textAlign = 'center'; ctx.font = `900 ${Math.max(15, u * 0.8)}px -apple-system,sans-serif`;
+  for (const q of pops) {
+    ctx.globalAlpha = Math.max(0, 1 - q.t / q.liv);
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.fillText(q.tekst, sx(q.x) + 2, sy(q.y - q.t * 1.5) - u + 2);
+    ctx.fillStyle = q.guld ? '#ffe14d' : '#fff';
+    ctx.fillText(q.tekst, sx(q.x), sy(q.y - q.t * 1.5) - u);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Joysticket, så man kan se, at fingeren betyder noget. */
+function tegnJoystick() {
+  const dx = joy.x - joy.bx, dy = joy.y - joy.by, l = Math.hypot(dx, dy);
+  const f = l > JOY_R ? JOY_R / l : 1;
+  ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(joy.bx, joy.by, JOY_R, 0, 6.283); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.75)';
+  ctx.beginPath(); ctx.arc(joy.bx + dx * f, joy.by + dy * f, 20, 0, 6.283); ctx.fill();
+}
+
+/* ---------- Fingeren: et flydende joystick ---------- */
+/*
+  Sæt fingeren hvor som helst på gårdspladsen, og træk: bonden løber den vej,
+  og jo længere man trækker (op til JOY_R), jo hurtigere. Fingeren dækker
+  altså aldrig kyllingen, man jagter – det ville den, hvis bonden løb hen
+  hvor fingeren er.
+*/
+let joyId = null;
+function fingerPos(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+canvas.addEventListener('pointerdown', e => {
+  if (fase !== 'spil' || joyId !== null) return;
+  e.preventDefault();
+  canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+  joyId = e.pointerId;
+  const p = fingerPos(e);
+  joy.aktiv = true; joy.bx = joy.x = p.x; joy.by = joy.y = p.y;
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerId !== joyId) return;
+  const p = fingerPos(e);
+  joy.x = p.x; joy.y = p.y;
+  // Trækker man langt ud, følger joysticket med, så man ikke løber tør for skærm
+  const dx = joy.x - joy.bx, dy = joy.y - joy.by, l = Math.hypot(dx, dy);
+  if (l > JOY_R * 1.6) { joy.bx = joy.x - dx / l * JOY_R * 1.6; joy.by = joy.y - dy / l * JOY_R * 1.6; }
+});
+for (const t of ['pointerup', 'pointercancel']) {
+  canvas.addEventListener(t, e => { if (e.pointerId === joyId) { joyId = null; joy.aktiv = false; } });
+}
+
+const STYRETASTER = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'];
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (STYRETASTER.includes(e.code)) { e.preventDefault(); taster.add(e.code); }
+  if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat && fase === 'menu') { e.preventDefault(); start(); }
+});
+addEventListener('keyup', e => { taster.delete(e.code); });
+addEventListener('blur', () => { taster.clear(); joy.aktiv = false; joyId = null; });
+
+$('startBtn').addEventListener('click', start);
+$('igenBtn').addEventListener('click', start);
+$('tilbageBtn').addEventListener('click', tilMenu);
+menuBtn.addEventListener('click', tilMenu);
+
+/* ---------- Start ---------- */
+nulstil();
+Highscore.panel($('hsStart'), { spil: 'kylling', format: kyllingTekst });
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  get seed() { return s.seed; },
+  start, tilMenu,
+  tik: (dt, j) => uiTik(dt, j),
+  pause() { paused = true; }, resume() { paused = false; sidst = 0; acc = 0; },
+  /** Spoler sek sekunder frem. j låser joysticket ({x,y} eller null); udeladt bruger skærmen. */
+  frem(sek, j) {
+    const n = Math.round(sek / DT);
+    for (let i = 0; i < n && fase === 'spil'; i++) uiTik(DT, j);
+    return this.state;
+  },
+  /** Lader botten spille resten af runden – som i enhedstestene. */
+  botTur() {
+    let j = null, siden = 1;
+    while (fase === 'spil') {
+      siden += DT;
+      if (siden >= 0.1) { j = bot(s); siden = 0; }
+      uiTik(DT, j);
+    }
+    return this.state;
+  },
+  /** Stiller bonden et bestemt sted (tests). */
+  placer(x, y) { s.bonde.x = x; s.bonde.y = y; s.bonde.vx = 0; s.bonde.vy = 0; },
+  /** Stiller en kylling et bestemt sted (tests). */
+  placerKylling(i, x, y) { const k = s.kyllinger[i]; k.x = x; k.y = y; k.vx = 0; k.vy = 0; },
+  /** Hvor på skærmen et punkt på gårdspladsen er (tests). */
+  skaerm(x, y) { return { x: sx(x), y: sy(y) }; },
+  get state() {
+    return {
+      fase, seed: s.seed, fangst: s.fangst, antal: s.antal, guldFanget: s.guldFanget, best,
+      t: s.t, tilbage: Math.max(0, TID - s.t), b: s.b, h: s.h,
+      bonde: { x: s.bonde.x, y: s.bonde.y, vx: s.bonde.vx, vy: s.bonde.vy },
+      kyllinger: s.kyllinger.map(k => ({ id: k.id, slags: k.slags, x: k.x, y: k.y, bange: k.bange })),
+      joy: { ...joy },
+      konst: { TID, FANG_R, GULD: { ...GULD }, ANTAL },
+    };
+  },
+};
+</script>
+</body></html>

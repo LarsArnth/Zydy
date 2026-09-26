@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 61,
+      "dato": "2026-09-26",
+      "spil": "kylling",
+      "titel": "Nyt spil: Kyllingejagt",
+      "hvad": "Kyllingerne er sluppet ud på gårdspladsen! Sæt fingeren hvor som helst og træk, så løber du – og løber du ind i en kylling, er den fanget og flyver hjem i hønsehuset. Men pas på: kommer du helt tæt på, slår kyllingerne smut til siden, så det gælder om at jage dem op i et hjørne. Du har ét minut til at fange så mange som muligt, og kommer guldkyllingen med kronen ud, så skynd dig – den tæller for tre, men løber hurtigt hjem igen.",
+      "oensket": "✨JOANNA✨"
+    },
+    {
       "nr": 60,
       "dato": "2026-09-26",
       "spil": "fodbold",
