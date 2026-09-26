@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 60,
+      "dato": "2026-09-26",
+      "spil": "fodbold",
+      "titel": "Nyt spil: Fodbold",
+      "hvad": "Et rigtigt fodboldspil med kampe fire mod fire. Du løber med joysticket og har knapper til at skyde og aflevere. I ligaen er der ti robothold, og hver gang du vinder, møder du et sværere – helt op til Verdensholdet. Kampene giver penge, som du kan bruge i butikken på nye trøjer og støvler, der gør dit hold bedre. Du kan også træne skud, fart og afleveringer, så dine spillere bliver bedre. Og vil du spille mod en ven, kan I sidde på hver jeres side af telefonen eller iPad'en med hver jeres joystick.",
+      "oensket": "Alia"
+    },
+    {
       "nr": 59,
       "dato": "2026-09-26",
       "spil": "obby",

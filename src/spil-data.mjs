@@ -44,6 +44,7 @@ export const KORT = [
   { id: 'baseforsvar', navn: 'Baseforsvar', url: '/spil/baseforsvar/' },
   { id: 'tube', navn: 'ZydyTube', url: '/spil/tube/' },
   { id: 'bombe', navn: 'Pass or Die', url: '/spil/bombe/' },
+  { id: 'fodbold', navn: 'Fodbold', url: '/spil/fodbold/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -87,6 +88,7 @@ export const SPIL = {
   baseforsvar: { maks: 200, unik: true },
   tube: { maks: 1000000000, unik: true },
   bombe: { maks: 500, unik: true },
+  fodbold: { maks: 200, unik: true },
 };
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).
@@ -96,4 +98,4 @@ export const SAMMEN = ['dybet', 'kryds', 'papir', 'slanger', 'kaempetal'];
 /** Spil to venner kan tage et kapløb i: samme spil, hver sin telefon, bedste
  *  runde vinder ("kapløb": true i kort.json). Forsiden kender dem på
  *  data-kaploeb, og de må inviteres til gennem /api/rum ligesom SAMMEN. */
-export const KAPLOEB = ['taarn', 'saet', 'farvesortering', 'duel', 'obby', 'storeobby', 'lava', 'klodser', 'miskmask', 'blokblast', 'slotskamp', 'weee', 'klaverregn', 'sejl', 'flaske', 'elementer', 'straffe', 'fjolle', 'taarnforsvar', 'baseforsvar', 'bombe'];
+export const KAPLOEB = ['taarn', 'saet', 'farvesortering', 'duel', 'obby', 'storeobby', 'lava', 'klodser', 'miskmask', 'blokblast', 'slotskamp', 'weee', 'klaverregn', 'sejl', 'flaske', 'elementer', 'straffe', 'fjolle', 'taarnforsvar', 'baseforsvar', 'bombe', 'fodbold'];

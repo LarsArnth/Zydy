@@ -1,0 +1,1036 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f2a1a">
+<meta name="description" content="Fodbold: spil kamp mod robotterne i ligaen, træn skud, fart og afleveringer, tjen penge til butikken – eller spil mod en ven på samme skærm.">
+<title>Fodbold – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232f8f46'/%3E%3Ccircle cx='32' cy='32' r='20' fill='%23fff'/%3E%3Cpath d='M32 22l9 6-3 10h-12l-3-10z' fill='%23222'/%3E%3C/svg%3E">
+<style>
+  /*
+    Fodbold – Alias ønske #66.
+
+    Kamp 4 mod 4 set oppefra, mod robotterne i en liga på ti hold, der bliver
+    sværere for hver sejr – eller mod en ven om den samme skærm. Træning gør
+    ens hold bedre, og kampene giver penge til butikken. Reglerne, bolden og
+    robotterne bor i fodbold.mjs; her tegnes banen, og fingrene sendes ind.
+
+    Tre greb er værd at huske:
+      1) Man styrer altid den spiller, der har bolden eller er tættest på den –
+         skiftet sker af sig selv. «Skyd» uden bold er en tackling, «Aflever»
+         uden bold skifter til den makker, der er nærmest bolden.
+      2) Joysticket er et «flydende» joystick: det sætter sig, hvor tommelfingeren
+         lander i venstre side af panelet. Retningen regnes i skærmens
+         koordinater, og da banen ikke er drejet, er det også banens – også for
+         den, der sidder øverst med et panel, der er vendt på hovedet.
+      3) Knapperne reagerer på pointerdown, ikke click: to venner trykker på
+         samme tid, og et click kommer først, når fingeren slippes.
+  */
+  :root{
+    --bg:#0f2a1a; --bg2:#1a3d27; --bg3:#265536; --text:#f2fff5; --muted:#a8cdb4;
+    --sun:#ffd447; --coral:#ff5d5d; --mint:#3ddc84; --sky:#4d8dff; --ink:#0c1a10; --r:20px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}          /* .btn sætter display:block, og så gemmer hidden ikke af sig selv */
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;height:100dvh;overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 10px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:40px;line-height:1;margin:0 0 6px;letter-spacing:-1.6px;font-weight:800}
+  h2{font-size:24px;margin:0 0 8px;letter-spacing:-.6px}
+  p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{display:block;width:100%;padding:15px;border-radius:var(--r);font-size:19px;font-weight:800;
+    background:var(--sun);margin-top:10px;text-align:center;text-decoration:none;color:var(--ink);transition:transform .08s}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn:disabled{opacity:.45}
+  .pill{background:var(--bg2);border-radius:999px;padding:7px 13px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--sun);font-variant-numeric:tabular-nums}
+  button.pill{min-height:36px;color:var(--text)}
+
+  .wrap{width:100%;max-width:1100px;margin:0 auto;flex:1;display:flex;flex-direction:column;min-height:0}
+  .top{display:flex;align-items:center;gap:8px;min-height:42px}
+  .back{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:0 6px;color:var(--muted);
+    text-decoration:none;font-size:17px;font-weight:600;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .top .brand{flex:1;text-align:center;font-weight:800;font-size:20px;letter-spacing:-.4px}
+
+  .stage{position:relative;flex:1;min-height:0;border-radius:var(--r);overflow:hidden;margin-top:4px;background:#12301d}
+  #c{display:block;position:absolute;inset:0;touch-action:none}
+
+  /* Teksten midt på banen («MÅL!», «Afspark») */
+  #midt{position:absolute;left:0;top:0;width:0;height:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  #midt div{white-space:nowrap;text-align:center;font-weight:900;font-size:40px;letter-spacing:-1px;color:#fff;
+    text-shadow:0 3px 14px rgba(0,0,0,.8);opacity:0;transition:opacity .2s, transform .2s;transform:scale(.8)}
+  #midt div.vis{opacity:1;transform:none}
+  #midt small{display:block;font-size:17px;font-weight:700;color:var(--sun);letter-spacing:0}
+
+  /* ---------- Styrepanelerne: ét pr. menneske ---------- */
+  .styr{position:absolute;left:0;right:0;display:flex;flex-direction:column;gap:4px;padding:5px 10px 8px;
+    background:rgba(9,26,15,.92);border-top:4px solid var(--f,#fff);touch-action:none;transform-origin:center center}
+  .styr.oppe{transform:rotate(180deg)}
+  .s-top{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;min-height:22px}
+  .s-navn{color:var(--f,#fff);max-width:32%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .s-stilling{flex:1;text-align:center;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s-tid{color:var(--sun);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .s-bund{display:flex;gap:8px;flex:1;min-height:0}
+  .stik{position:relative;flex:1.25;border-radius:16px;background:rgba(255,255,255,.05);overflow:hidden;touch-action:none}
+  .stik .spor{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-size:13px;color:var(--muted);pointer-events:none}
+  .hjul{position:absolute;width:84px;height:84px;margin:-42px 0 0 -42px;border-radius:50%;border:3px solid rgba(255,255,255,.35);
+    background:rgba(255,255,255,.07);pointer-events:none;left:50%;top:50%}
+  .knop{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;
+    background:rgba(255,255,255,.8);box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .knapper{display:flex;gap:8px;flex:1}
+  .knap{flex:1;min-width:0;border-radius:18px;font-weight:900;font-size:16px;letter-spacing:.3px;line-height:1.05;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:transform .06s;touch-action:none}
+  .knap:active,.knap.trykket{transform:scale(.93)}
+  .knap i{font-style:normal;font-size:22px}
+  .knap.skyd{background:var(--sun)}
+  .knap.aflever{background:var(--sky);color:#fff}
+  .styr.lille .knap{font-size:13px}
+  .styr.lille .knap i{font-size:18px}
+  #stopBtn{position:absolute;right:8px;top:8px;z-index:3;min-height:36px;background:rgba(9,26,15,.8)}
+
+  /* ---------- Skærmene oven på banen ---------- */
+  .screen{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;overflow-y:auto;
+    padding:12px 14px 20px;background:rgba(15,42,26,.93);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);z-index:5}
+  .screen.on{display:flex}
+  .card{width:100%;max-width:440px;text-align:center;margin:auto}
+  .lavet{margin:0 0 8px;font-size:14px;color:var(--muted);line-height:1.4}
+  .lavet b{color:var(--text)}
+  .navnfelt{width:100%;padding:10px 12px;border-radius:14px;border:2px solid var(--bg3);background:var(--bg);color:var(--text);
+    font:inherit;font-size:17px;text-align:center;margin:0 0 8px}
+  .naeste{display:flex;align-items:center;gap:12px;background:var(--bg2);border-radius:18px;padding:10px 12px;text-align:left}
+  .naeste .skjold{width:44px;height:50px;flex:none}
+  .naeste .om{flex:1;min-width:0}
+  .naeste small{display:block;color:var(--muted);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.8px}
+  .naeste b{display:block;font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .naeste .stjerner{color:var(--sun);font-size:14px;letter-spacing:1px}
+  .tre{display:flex;gap:8px}
+  .tre .btn{font-size:15px;padding:12px 4px;flex:1}
+  .evner{display:grid;grid-template-columns:auto 1fr auto;gap:5px 8px;align-items:center;margin:12px 0 0;text-align:left;font-size:15px}
+  .evner span{color:var(--text);font-weight:700;white-space:nowrap}
+  .evner em{font-style:normal;color:var(--sun);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .bar{height:10px;border-radius:99px;background:var(--bg);overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--mint),var(--sun));border-radius:99px}
+  .rekord-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0 0}
+  .rekord-row span{color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;font-size:13px}
+  .rekord-row b{font-size:26px;font-weight:800;color:var(--sun);letter-spacing:-1px;font-variant-numeric:tabular-nums}
+  .hint{font-size:15px;margin:12px 0 0}
+  .fejl{color:var(--coral);font-weight:700;font-size:15px;margin:8px 0 0;min-height:1em}
+
+  .oevelse{background:var(--bg2);border-radius:18px;padding:12px;margin:0 0 10px;text-align:left}
+  .oevelse h3{margin:0 0 4px;font-size:19px;display:flex;align-items:center;gap:8px}
+  .oevelse h3 em{margin-left:auto;font-style:normal;color:var(--sun);font-size:15px}
+  .oevelse p{font-size:15px;margin:0 0 8px}
+  .oevelse .xp{font-size:13px;color:var(--muted);margin:4px 0 0}
+  .oevelse .btn{margin-top:8px;padding:11px}
+
+  .butik{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left}
+  .ting{background:var(--bg2);border-radius:16px;padding:9px;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:4px;
+    border:3px solid transparent;min-height:118px}
+  .ting.valgt{border-color:var(--sun)}
+  .ting.dyr{opacity:.55}
+  .ting .vis{height:44px;display:flex;align-items:center;justify-content:center;font-size:34px}
+  .ting b{font-size:14px;text-align:center}
+  .ting small{font-size:13px;color:var(--sun);font-weight:800}
+  .ting .om{font-size:12px;color:var(--muted);font-weight:600}
+  .butik h3{grid-column:1/-1;margin:6px 0 0;font-size:16px;color:var(--muted)}
+
+  .ven-navn{display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:14px;padding:6px 8px 6px 12px;margin:0 0 8px}
+  .ven-navn i{width:16px;height:16px;border-radius:50%;flex:none}
+  .ven-navn span{font-size:13px;color:var(--muted);width:60px;text-align:left}
+  .ven-navn input{flex:1;min-width:0;padding:9px 10px;border-radius:10px;border:2px solid var(--bg3);background:var(--bg);color:var(--text);font:inherit;font-size:16px}
+
+  .slutikon{font-size:62px;line-height:1.1;margin:2px 0 4px}
+  .slutscore{font-size:30px;font-weight:900;margin:0 0 6px;font-variant-numeric:tabular-nums}
+  .slutsub{font-size:17px;color:var(--muted);margin:0 0 8px}
+  .ny{color:var(--mint);font-weight:800;font-size:19px;margin:0 0 8px}
+
+  /* Toplisten (fælles klient) */
+  .hs{margin:12px 0 6px}
+  .hs-titel{font-size:20px;margin:0 0 8px;letter-spacing:-.5px;font-weight:800}
+  .hs-liste{list-style:none;margin:0;padding:0;max-height:24vh;overflow-y:auto}
+  .hs-raekke{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:12px;font-size:16px}
+  .hs-raekke:nth-child(odd){background:rgba(255,255,255,.05)}
+  .hs-mig{background:rgba(255,212,71,.18)!important;font-weight:800}
+  .hs-nr{width:22px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+  .hs-navn{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hs-score{font-weight:800;color:var(--sun);font-variant-numeric:tabular-nums}
+  .hs-tom,.hs-fejl,.hs-venter{font-size:15px;color:var(--muted);margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <div class="brand">Fodbold</div>
+    <button class="pill" id="lydBtn" aria-label="Lyd til eller fra">🔊</button>
+    <div class="pill" id="pengePill">🪙 <b id="pengeVal">0</b></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="c"></canvas>
+    <div id="midt"><div id="midtTekst"></div></div>
+    <div id="paneler"></div>
+    <button class="pill" id="stopBtn" hidden aria-label="Stop kampen">✕ Stop</button>
+
+    <!-- Menuen -->
+    <div class="screen on" id="startScreen">
+      <div class="card">
+        <h1>⚽ Fodbold</h1>
+        <div class="lavet"><b>Alia</b> ønskede sig spillet · <b>Far</b> og <b>Claude</b> byggede det</div>
+        <input class="navnfelt" id="navnInput" type="text" maxlength="12" autocomplete="off" spellcheck="false"
+          autocapitalize="words" enterkeyhint="done" placeholder="Dit navn" aria-label="Dit navn">
+        <div class="naeste" id="naeste"></div>
+        <button class="btn" id="kampBtn">⚽ Spil kamp</button>
+        <div class="tre">
+          <button class="btn ghost" id="traenBtn">🏃 Træning</button>
+          <button class="btn ghost" id="butikBtn">🛒 Butik</button>
+          <button class="btn ghost" id="venBtn">👫 Mod ven</button>
+        </div>
+        <div class="evner" id="evner"></div>
+        <div class="rekord-row"><span>Sejre i træk</span><b id="stimeVal">0</b><span>Bedste</span><b id="rekordVal">0</b></div>
+        <div class="hs" id="hsListe"></div>
+        <p class="hint">Træk med tommelfingeren i venstre side for at løbe. <b>Skyd</b> skyder mod målet (joysticket
+          til siden sigter til siden), <b>Aflever</b> spiller bolden til den makker, du peger på. Uden bold tackler
+          <b>Skyd</b>, og <b>Aflever</b> skifter spiller. Vinder du, møder du et sværere hold – træn dig bedre,
+          og brug pengene i butikken.</p>
+      </div>
+    </div>
+
+    <!-- Træning -->
+    <div class="screen" id="traenScreen">
+      <div class="card">
+        <h2>🏃 Træning</h2>
+        <p>Hvert point i en øvelse er ét point erfaring. Fyld baren, så stiger evnen et niveau – og hele dit hold bliver bedre.</p>
+        <div id="oevelser"></div>
+        <button class="btn ghost" data-tilbage>Tilbage</button>
+      </div>
+    </div>
+
+    <!-- Butikken -->
+    <div class="screen" id="butikScreen">
+      <div class="card">
+        <h2>🛒 Butik</h2>
+        <p>Du har <b id="butikPenge">0</b> 🪙. Du tjener penge ved at spille kampe – mest når du vinder.</p>
+        <div class="butik" id="butik"></div>
+        <p class="fejl" id="butikBesked"></p>
+        <button class="btn ghost" data-tilbage>Tilbage</button>
+      </div>
+    </div>
+
+    <!-- Mod en ven -->
+    <div class="screen" id="venScreen">
+      <div class="card">
+        <h2>👫 Mod en ven</h2>
+        <p>I sidder over for hinanden med telefonen eller iPad'en imellem jer. Hver har sit eget joystick og sine egne knapper ved sin kant.</p>
+        <div class="ven-navn"><i id="venFarve0"></i><span>Nederst</span><input id="venNavn0" type="text" maxlength="12" autocomplete="off" spellcheck="false" autocapitalize="words" placeholder="Navn"></div>
+        <div class="ven-navn"><i id="venFarve1"></i><span>Øverst</span><input id="venNavn1" type="text" maxlength="12" autocomplete="off" spellcheck="false" autocapitalize="words" placeholder="Ven"></div>
+        <button class="btn" id="venStartBtn">Spil kamp</button>
+        <button class="btn ghost" data-tilbage>Tilbage</button>
+        <p class="hint">Vil I spille på hver sin telefon? Tag et kapløb fra «Dine venner» på forsiden – så ser I hinandens sejre i træk.</p>
+      </div>
+    </div>
+
+    <!-- Slut -->
+    <div class="screen" id="slutScreen">
+      <div class="card">
+        <h1 id="slutTitel">Du vandt!</h1>
+        <div class="slutikon" id="slutIkon">🏆</div>
+        <div class="slutscore" id="slutScore"></div>
+        <p class="slutsub" id="slutSub"></p>
+        <p class="ny" id="slutNy" hidden></p>
+        <div class="evner" id="slutEvne" hidden></div>
+        <div class="hs" id="hsSlut" hidden></div>
+        <button class="btn" id="igenBtn">Næste kamp</button>
+        <button class="btn ghost" id="menuBtn">Menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="fodbold"></script>
+<!-- Kapløb: to venner spiller det samme spil på hver sin telefon (?rum=<kode>). -->
+<script src="/spil/rum.js"></script>
+<script type="module" src="/spil/kaploeb.js"></script>
+<script type="module">
+import {
+  B, L, R, RB, MAAL_B, KAMP_SEK, LIGA, TRAENING, BUTIK, EVNER, EVNE_MAKS, AUTOPILOT, MENNESKE_AI,
+  nyKamp, nyTraening, robotHold, tik, styr, trykSkyd, trykAflever, styret, spillerMedBold, alleSpillere,
+  nyProfil, rensProfil, samledeEvner, troeje, koeb, efterKamp, efterTraening, krav,
+} from './fodbold.mjs';
+
+/* ---------- Seedbar tilfældighed (?seed=123 giver den samme kamp) ---------- */
+const params = new URLSearchParams(location.search);
+let seed = parseInt(params.get('seed'), 10);
+if (!Number.isFinite(seed)) seed = (Math.random() * 4294967296) >>> 0;
+let kampNr = 0;
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const stage = $('stage'), canvas = $('c'), g = canvas.getContext('2d');
+if (!g.roundRect) CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); };
+const midt = $('midt'), midtTekst = $('midtTekst'), paneler = $('paneler');
+const skærme = ['startScreen', 'traenScreen', 'butikScreen', 'venScreen', 'slutScreen'].map($);
+const roligt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- Lagring ---------- */
+const KEY_PROFIL = 'zydy.fodbold.profil';   // penge, evner, butik og ligaen
+const KEY_VEN = 'zydy.fodbold.ven';         // navnet på vennen øverst
+const KEY_LYD = 'zydy.fodbold.lyd';
+const læs = (k, standard) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? standard; } catch (e) { return standard; } };
+const skriv = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+let profil = rensProfil(læs(KEY_PROFIL, null));
+const gemProfil = () => skriv(KEY_PROFIL, profil);
+const mitNavn = () => (window.Highscore ? Highscore.navn.hent() : '') || '';
+
+/* ---------- Lyd (WebAudio, ingen filer) ---------- */
+let lydTil = læs(KEY_LYD, true) !== false;
+let ac = null;
+function vækLyd() {
+  if (!lydTil) return;
+  try {
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+  } catch (e) { ac = null; }
+}
+function tone(frek, sek, type = 'square', styrke = 0.06, til = null, om = 0) {
+  if (!lydTil || !ac) return;
+  const t = ac.currentTime + om, o = ac.createOscillator(), v = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(frek, t);
+  if (til) o.frequency.exponentialRampToValueAtTime(til, t + sek);
+  v.gain.setValueAtTime(styrke, t); v.gain.exponentialRampToValueAtTime(0.0001, t + sek);
+  o.connect(v).connect(ac.destination); o.start(t); o.stop(t + sek + 0.02);
+}
+function støj(sek, styrke, frek) {
+  if (!lydTil || !ac) return;
+  const t = ac.currentTime, len = Math.floor(ac.sampleRate * sek);
+  const buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.5);
+  const src = ac.createBufferSource(), f = ac.createBiquadFilter(), v = ac.createGain();
+  src.buffer = buf; f.type = 'bandpass'; f.frequency.value = frek; v.gain.value = styrke;
+  src.connect(f).connect(v).connect(ac.destination); src.start(t);
+}
+const LYD = {
+  fløjt() { tone(2600, 0.16, 'sine', 0.07); tone(2600, 0.28, 'sine', 0.07, 2400, 0.2); },
+  spark() { tone(140, 0.09, 'sine', 0.25, 60); støj(0.05, 0.3, 900); },
+  aflevering() { tone(180, 0.07, 'sine', 0.16, 90); },
+  mål() { støj(1.4, 0.35, 1100); [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.08, null, i * 0.09)); },
+  redning() { støj(0.12, 0.35, 500); tone(220, 0.12, 'triangle', 0.1); },
+  tackling() { tone(320, 0.08, 'square', 0.04, 180); },
+  point() { tone(880, 0.09, 'triangle', 0.08); tone(1320, 0.14, 'triangle', 0.07, null, 0.08); },
+  forkert() { tone(200, 0.18, 'square', 0.04, 150); },
+  bande() { tone(95, 0.06, 'square', 0.05); },
+};
+function visLydKnap() { $('lydBtn').textContent = lydTil ? '🔊' : '🔇'; }
+$('lydBtn').addEventListener('click', () => { lydTil = !lydTil; skriv(KEY_LYD, lydTil); visLydKnap(); vækLyd(); });
+addEventListener('pointerdown', vækLyd, { capture: true });
+visLydKnap();
+
+/* ---------- Tilstanden ---------- */
+let kamp = null;
+let tilstand = 'menu';        // menu | liga | traening | ven | slut
+let mennesker = [];           // de hold, der har et panel: [{ h, navn, farve, drej }]
+let partikler = [], midtUr = 0, sidsteT = 0, pauset = false, sidsteResultat = null;
+let bot = false;              // testene kan lade autopiloten spille menneskets hold
+
+function visSkærm(id) {
+  for (const s of skærme) s.classList.toggle('on', s.id === id);
+  $('stopBtn').hidden = !!id || !kamp;
+}
+
+/* ---------- Opsætning: banen og panelerne ---------- */
+let W = 1, H = 1, dpr = 1, T = 130;
+let omr = { x0: 0, y0: 0, x1: 1, y1: 1 }, s = 1, ox = 0, oy = 0;
+function resize() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  lægUd();
+}
+
+/** Hvor panelerne og banen skal være. */
+function lægUd() {
+  const to = mennesker.length === 2;
+  T = Math.round(Math.max(112, Math.min(158, H * (to ? 0.19 : 0.21))));
+  const bund = mennesker.length ? T : 0, top = to ? T : 0;
+  omr = { x0: 0, y0: top, x1: W, y1: H - bund };
+  const bw = omr.x1 - omr.x0, bh = omr.y1 - omr.y0;
+  s = Math.max(1, Math.min((bw - 14) / (B + 3), (bh - 10) / (L + 8)));
+  ox = omr.x0 + (bw - B * s) / 2; oy = omr.y0 + (bh - L * s) / 2;
+  midt.style.left = (ox + B * s / 2) + 'px'; midt.style.top = (oy + L * s / 2) + 'px';
+  for (const el of paneler.children) {
+    const oppe = el.classList.contains('oppe');
+    Object.assign(el.style, { height: T + 'px', top: oppe ? '0px' : (H - T) + 'px' });
+    el.classList.toggle('lille', T < 124);
+  }
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 60));
+if ('ResizeObserver' in window) new ResizeObserver(resize).observe(stage);
+
+const px = (x, y) => [ox + x * s, oy + y * s];
+
+/* ---------- Panelerne ---------- */
+function bygPaneler() {
+  paneler.innerHTML = '';
+  sidstLabels = {};
+  for (const m of mennesker) {
+    const el = document.createElement('div');
+    el.className = 'styr' + (m.drej ? ' oppe' : '');
+    el.dataset.h = m.h;
+    el.style.setProperty('--f', m.farve);
+    el.innerHTML = `<div class="s-top"><span class="s-navn">${esc(m.navn)}</span><span class="s-stilling"></span><span class="s-tid"></span></div>
+      <div class="s-bund">
+        <div class="stik"><span class="spor">Træk her for at løbe</span><div class="hjul"><div class="knop"></div></div></div>
+        <div class="knapper">
+          <button class="knap aflever" data-h="${m.h}"><i>↗</i><span>AFLEVER</span></button>
+          <button class="knap skyd" data-h="${m.h}"><i>⚽</i><span>SKYD</span></button>
+        </div>
+      </div>`;
+    paneler.appendChild(el);
+    kobleStik(el.querySelector('.stik'), m.h, m.drej);
+    for (const b of el.querySelectorAll('.knap')) {
+      b.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        vækLyd();
+        b.classList.add('trykket'); setTimeout(() => b.classList.remove('trykket'), 120);
+        if (!kamp || bot) return;
+        if (b.classList.contains('skyd')) trykSkyd(kamp, m.h); else trykAflever(kamp, m.h);
+        tømHændelser();
+      });
+    }
+  }
+  lægUd();
+}
+
+/** Et flydende joystick: det sætter sig, hvor tommelfingeren lander. */
+function kobleStik(zone, h, drej) {
+  const hjul = zone.querySelector('.hjul'), knop = zone.querySelector('.knop'), spor = zone.querySelector('.spor');
+  let id = null, o = null;
+  const RADIUS = 38;
+  const lokal = (cx, cy) => {
+    const r = zone.getBoundingClientRect();
+    return drej ? { x: r.right - cx, y: r.bottom - cy } : { x: cx - r.left, y: cy - r.top };
+  };
+  const slip = () => {
+    id = null;
+    hjul.style.left = '50%'; hjul.style.top = '50%'; knop.style.transform = '';
+    spor.hidden = false;
+    if (kamp) styr(kamp, h, 0, 0);
+  };
+  zone.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (id !== null) return;
+    id = e.pointerId;
+    zone.setPointerCapture && zone.setPointerCapture(id);
+    o = { x: e.clientX, y: e.clientY };
+    const l = lokal(e.clientX, e.clientY);
+    hjul.style.left = l.x + 'px'; hjul.style.top = l.y + 'px';
+    spor.hidden = true;
+  });
+  zone.addEventListener('pointermove', e => {
+    if (e.pointerId !== id) return;
+    let dx = e.clientX - o.x, dy = e.clientY - o.y;
+    const d = Math.hypot(dx, dy);
+    if (d > RADIUS) { dx *= RADIUS / d; dy *= RADIUS / d; }
+    // Retningen på skærmen er også retningen på banen – banen er ikke drejet.
+    const v = d < 6 ? [0, 0] : [dx / RADIUS, dy / RADIUS];
+    if (kamp && !bot) styr(kamp, h, v[0], v[1]);
+    knop.style.transform = drej ? `translate(${-dx}px,${-dy}px)` : `translate(${dx}px,${dy}px)`;
+  });
+  for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) zone.addEventListener(t, e => { if (e.pointerId === id) slip(); });
+}
+
+/** Tastaturet til computeren: pile/WASD, mellemrum = skyd, X = aflever. */
+const taster = new Set();
+addEventListener('keydown', e => {
+  if (!kamp || tilstand === 'menu' || tilstand === 'slut' || e.target.tagName === 'INPUT') return;
+  const k = e.code;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(k)) { e.preventDefault(); taster.add(k); tasteRetning(); }
+  else if (k === 'Space') { e.preventDefault(); if (!e.repeat) { trykSkyd(kamp, 0); tømHændelser(); } }
+  else if (k === 'KeyX' || k === 'ShiftLeft' || k === 'ShiftRight') { e.preventDefault(); if (!e.repeat) { trykAflever(kamp, 0); tømHændelser(); } }
+});
+addEventListener('keyup', e => { if (taster.delete(e.code)) tasteRetning(); });
+function tasteRetning() {
+  if (!kamp || bot) return;
+  const x = (taster.has('ArrowRight') || taster.has('KeyD') ? 1 : 0) - (taster.has('ArrowLeft') || taster.has('KeyA') ? 1 : 0);
+  const y = (taster.has('ArrowDown') || taster.has('KeyS') ? 1 : 0) - (taster.has('ArrowUp') || taster.has('KeyW') ? 1 : 0);
+  styr(kamp, 0, x, y);
+}
+
+/* ---------- Menuen ---------- */
+const stjerner = trin => '★'.repeat(trin + 1) + '☆'.repeat(LIGA.length - trin - 1);
+function skjoldSvg(farve, farve2) {
+  return `<svg class="skjold" viewBox="0 0 44 50"><path d="M22 2l18 6v14c0 13-8 21-18 26C12 43 4 35 4 22V8z" fill="${farve}" stroke="${farve2}" stroke-width="3"/>`
+    + `<circle cx="22" cy="24" r="8" fill="#fff"/><path d="M22 19l4 3-1.5 4.5h-5L18 22z" fill="#222"/></svg>`;
+}
+function evneLinjer(rod, fremhæv = null) {
+  const alle = samledeEvner(profil);
+  rod.innerHTML = EVNER.map(e => {
+    const q = profil.evner[e], t = TRAENING[e];   // øvelserne hedder det samme som evnerne
+    const fuld = q.n >= EVNE_MAKS, andel = fuld ? 1 : q.xp / krav(q.n);
+    const plus = alle[e] - q.n;
+    return `<span>${t.tegn} ${evneNavn(e)}</span><div class="bar"><i style="width:${Math.round(andel * 100)}%"></i></div>`
+      + `<em${fremhæv === e ? ' style="color:var(--mint)"' : ''}>niv. ${q.n}${plus ? ' +' + plus + '👟' : ''}</em>`;
+  }).join('');
+}
+const evneNavn = e => ({ fart: 'Fart', skud: 'Skud', aflevering: 'Aflevering' }[e]);
+
+function visMenu() {
+  tilstand = 'menu';
+  kamp = null; mennesker = []; bygPaneler();
+  const hold = robotHold(profil.trin);
+  $('naeste').innerHTML = skjoldSvg(hold.farve, hold.farve2)
+    + `<div class="om"><small>${profil.mester ? '🏆 Mester · næste kamp' : 'Næste kamp · hold ' + (profil.trin + 1) + ' af ' + LIGA.length}</small>`
+    + `<b>${esc(hold.navn)}</b><span class="stjerner">${stjerner(profil.trin)}</span></div>`;
+  $('navnInput').value = mitNavn();
+  evneLinjer($('evner'));
+  $('stimeVal').textContent = profil.stime;
+  $('rekordVal').textContent = profil.best;
+  $('pengeVal').textContent = profil.penge;
+  visMidt('');
+  visSkærm('startScreen');
+  tegnListe();
+}
+$('navnInput').addEventListener('change', () => {
+  const n = $('navnInput').value.replace(/\s+/g, ' ').trim().slice(0, 12);
+  if (n && window.Highscore) Highscore.navn.gem(n);
+  tegnListe();
+});
+$('navnInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('navnInput').blur(); });
+
+function visTræning() {
+  $('oevelser').innerHTML = Object.entries(TRAENING).map(([id, t]) => {
+    const q = profil.evner[t.evne], fuld = q.n >= EVNE_MAKS;
+    return `<div class="oevelse"><h3>${t.tegn} ${t.navn}<em>${evneNavn(t.evne)} niv. ${q.n}</em></h3><p>${t.om}</p>`
+      + `<div class="bar"><i style="width:${fuld ? 100 : Math.round(q.xp / krav(q.n) * 100)}%"></i></div>`
+      + `<div class="xp">${fuld ? 'Trænet helt op! Du kan stadig øve dig.' : `${q.xp} / ${krav(q.n)} erfaring til niveau ${q.n + 1}`}</div>`
+      + `<button class="btn" data-oevelse="${id}">Træn</button></div>`;
+  }).join('');
+  visSkærm('traenScreen');
+}
+$('oevelser').addEventListener('click', e => {
+  const b = e.target.closest('[data-oevelse]');
+  if (b) startTræning(b.dataset.oevelse);
+});
+
+function visButik(besked = '') {
+  $('butikPenge').textContent = profil.penge;
+  $('pengeVal').textContent = profil.penge;
+  const kort = t => {
+    const ejer = profil.ejer.includes(t.id), valgt = profil.troeje === t.id;
+    const vis = t.type === 'trøje' ? trøjeSvg(t.farve, t.farve2) : '👟';
+    const pris = valgt ? '✓ Har den på' : ejer ? (t.type === 'trøje' ? 'Tag den på' : '✓ Din') : t.pris ? t.pris + ' 🪙' : 'Gratis';
+    return `<button class="ting${valgt ? ' valgt' : ''}${!ejer && t.pris > profil.penge ? ' dyr' : ''}" data-ting="${t.id}">`
+      + `<span class="vis">${vis}</span><b>${esc(t.navn)}</b>${t.om ? `<span class="om">${t.om}</span>` : ''}<small>${pris}</small></button>`;
+  };
+  $('butik').innerHTML = '<h3>👕 Trøjer</h3>' + BUTIK.filter(t => t.type === 'trøje').map(kort).join('')
+    + '<h3>👟 Støvler – gør dit hold bedre</h3>' + BUTIK.filter(t => t.type === 'støvler').map(kort).join('');
+  $('butikBesked').textContent = besked;
+  visSkærm('butikScreen');
+}
+function trøjeSvg(f, f2) {
+  return `<svg viewBox="0 0 48 44" width="46" height="42"><path d="M16 3l-13 7 5 11 5-3v23h22V18l5 3 5-11-13-7c-1 4-4 6-8 6s-7-2-8-6z" fill="${f}" stroke="${f2}" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+}
+$('butik').addEventListener('click', e => {
+  const b = e.target.closest('[data-ting]');
+  if (!b) return;
+  const svar = koeb(profil, b.dataset.ting);
+  if (svar.ok) { gemProfil(); LYD.point(); }
+  else LYD.forkert();
+  visButik(svar.ok ? (svar.valgt ? 'Du har den på nu.' : 'Købt! 🎉') : svar.grund);
+});
+
+function visVen() {
+  $('venNavn0').value = mitNavn();
+  $('venNavn1').value = læs(KEY_VEN, '') || '';
+  const [a, b] = venFarver();
+  $('venFarve0').style.background = a.farve; $('venFarve1').style.background = b.farve;
+  visSkærm('venScreen');
+}
+function venFarver() {
+  const mig = troeje(profil);
+  const anden = BUTIK.find(t => t.id === (mig.id === 'blaa' ? 'roed' : 'blaa'));
+  return [mig, anden];
+}
+
+for (const b of document.querySelectorAll('[data-tilbage]')) b.addEventListener('click', visMenu);
+$('kampBtn').addEventListener('click', () => { vækLyd(); startLiga(); });
+$('traenBtn').addEventListener('click', visTræning);
+$('butikBtn').addEventListener('click', () => visButik());
+$('venBtn').addEventListener('click', visVen);
+$('venStartBtn').addEventListener('click', () => { vækLyd(); startVen(); });
+
+/* ---------- At gå i gang ---------- */
+/** To farver, der ligner hinanden for meget, bliver svære at se forskel på. */
+function forEns(a, b) {
+  const t = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [t(a), t(b)];
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]) < 110;
+}
+
+function startLiga() {
+  const trøje = troeje(profil), navn = mitNavn() || 'Dig';
+  const mod = robotHold(profil.trin);
+  if (forEns(trøje.farve, mod.farve)) [mod.farve, mod.farve2] = [mod.farve2, mod.farve];
+  kamp = nyKamp({
+    seed: (seed + ++kampNr * 7919) >>> 0,
+    hold: [{ navn, kort: navn, farve: trøje.farve, farve2: trøje.farve2, menneske: true, evner: samledeEvner(profil) }, mod],
+  });
+  mennesker = [{ h: 0, navn, farve: trøje.farve, drej: 0 }];
+  begynd('liga', `${navn} mod ${mod.navn}`);
+}
+
+function startTræning(øvelse) {
+  const trøje = troeje(profil);
+  kamp = nyTraening({ type: øvelse, evner: samledeEvner(profil), farve: trøje.farve, seed: (seed + ++kampNr * 7919) >>> 0 });
+  kamp.hold[0].farve2 = trøje.farve2;
+  mennesker = [{ h: 0, navn: TRAENING[øvelse].tegn + ' ' + TRAENING[øvelse].navn, farve: trøje.farve, drej: 0 }];
+  begynd('traening', TRAENING[øvelse].navn);
+}
+
+function startVen() {
+  const rens = v => v.replace(/\s+/g, ' ').trim().slice(0, 12);
+  const n0 = rens($('venNavn0').value) || 'Nederst', n1 = rens($('venNavn1').value) || 'Øverst';
+  if (rens($('venNavn0').value) && window.Highscore) Highscore.navn.gem(n0);
+  skriv(KEY_VEN, rens($('venNavn1').value));
+  const [a, b] = venFarver();
+  // Lige hold: ingen af de to får sin træning med – så er det kun fingrene, der tæller.
+  const lige = { fart: 3, skud: 3, aflevering: 3 };
+  kamp = nyKamp({
+    seed: (seed + ++kampNr * 7919) >>> 0,
+    hold: [
+      { navn: n0, farve: a.farve, farve2: a.farve2, menneske: true, evner: lige },
+      { navn: n1, farve: b.farve, farve2: b.farve2, menneske: true, evner: lige },
+    ],
+  });
+  mennesker = [{ h: 0, navn: n0, farve: a.farve, drej: 0 }, { h: 1, navn: n1, farve: b.farve, drej: 180 }];
+  begynd('ven', `${n0} mod ${n1}`);
+}
+
+function begynd(hvad, tekst) {
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+  tilstand = hvad; bot = false; partikler = []; taster.clear();
+  bygPaneler();
+  visSkærm(null);
+  visMidt(hvad === 'traening' ? tekst : 'Afspark!', hvad === 'traening' ? '40 sekunder – kom så!' : tekst, 1.6);
+  opdaterPaneler();
+}
+
+/* ---------- Hændelserne fra motoren ---------- */
+function visMidt(tekst, lille = '', sek = 1.4) {
+  midtTekst.innerHTML = tekst ? esc(tekst) + (lille ? `<small>${esc(lille)}</small>` : '') : '';
+  midtTekst.classList.toggle('vis', !!tekst);
+  midtUr = tekst ? sek : 0;
+}
+function tømHændelser() {
+  if (!kamp) return;
+  for (const e of kamp.hændelser) {
+    if (e.type === 'fløjt') LYD.fløjt();
+    else if (e.type === 'skud' || e.type === 'spark') LYD.spark();
+    else if (e.type === 'aflevering') LYD.aflevering();
+    else if (e.type === 'redning') { LYD.redning(); if (kamp.type === 'kamp') visMidt('Redning!', '', 0.9); }
+    else if (e.type === 'tackling') LYD.tackling();
+    else if (e.type === 'bande' || e.type === 'stolpe') LYD.bande();
+    else if (e.type === 'forkert') LYD.forkert();
+    else if (e.type === 'point' && kamp.type === 'traening') { LYD.point(); konfetti(kamp.bold.x, kamp.bold.y, 14); }
+    else if (e.type === 'mål') {
+      LYD.mål();
+      if (kamp.type === 'kamp') {
+        const hold = kamp.hold[e.h];
+        const vores = tilstand === 'liga' ? e.h === 0 : true;
+        visMidt(vores ? 'MÅÅÅL!' : 'Mål til dem', `${hold.navn} · ${kamp.hold[0].mål} – ${kamp.hold[1].mål}`, 1.6);
+        konfetti(B / 2, e.h === 0 ? 2 : L - 2, vores ? 60 : 20, hold.farve);
+      } else visMidt('MÅL!', `${kamp.point} point`, 0.9);
+    }
+    else if (e.type === 'forlænget') visMidt('Forlænget!', 'Næste mål vinder', 2);
+    else if (e.type === 'slut') { LYD.fløjt(); setTimeout(() => LYD.fløjt(), 250); }
+  }
+  kamp.hændelser.length = 0;
+}
+
+function konfetti(x, y, n, farve) {
+  if (roligt) return;
+  const [cx, cy] = px(x, y);
+  const farver = ['#ffd447', '#ff5d5d', '#3ddc84', '#4d8dff', '#ffffff'];
+  for (let i = 0; i < n; i++) {
+    const v = Math.random() * Math.PI * 2, f = 60 + Math.random() * 220;
+    partikler.push({ x: cx, y: cy, vx: Math.cos(v) * f, vy: Math.sin(v) * f - 80, liv: 1.2, maks: 1.2,
+      farve: farve && i % 2 ? farve : farver[i % farver.length], str: 2 + Math.random() * 3 });
+  }
+}
+
+/* ---------- Panelernes tekst ---------- */
+const kampUr = k => {
+  if (k.type === 'traening') return Math.max(0, Math.ceil(k.længde - k.tid)) + ' s';
+  if (k.forlænget) return "90+" + Math.max(1, Math.ceil((k.tid - KAMP_SEK) / FORL_MIN)) + "'";
+  return Math.min(90, Math.floor(k.tid / KAMP_SEK * 90)) + "'";
+};
+const FORL_MIN = 45 / 30;    // forlænget: 45 sekunder vises som 30 minutter
+let sidstLabels = {};
+function opdaterPaneler() {
+  if (!kamp) return;
+  for (const el of paneler.children) {
+    const h = +el.dataset.h;
+    let stilling;
+    if (kamp.type === 'traening') stilling = `⭐ ${kamp.point} point`;
+    else stilling = `${kamp.hold[h].mål} – ${kamp.hold[1 - h].mål} ${esc(kamp.hold[1 - h].kort)}`;
+    const top = el.querySelector('.s-stilling'), tid = el.querySelector('.s-tid');
+    if (top.innerHTML !== stilling) top.innerHTML = stilling;
+    const t = kampUr(kamp);
+    if (tid.textContent !== t) tid.textContent = t;
+    // Knapperne siger, hvad de gør lige nu.
+    const p = styret(kamp, h), c = spillerMedBold(kamp);
+    const har = p && c === p;
+    // I træningen er der ingen at tackle, så dér siger knapperne det samme hele tiden.
+    const træning = kamp.type === 'traening';
+    const labels = har || træning ? ['AFLEVER', træning && kamp.øvelse !== 'skud' ? 'SPARK' : 'SKYD'] : ['SKIFT', 'TACKL'];
+    const nøgle = h + labels.join();
+    if (sidstLabels[h] !== nøgle) {
+      sidstLabels[h] = nøgle;
+      el.querySelector('.aflever span').textContent = labels[0];
+      el.querySelector('.aflever i').textContent = har || træning ? '↗' : '🔄';
+      el.querySelector('.skyd span').textContent = labels[1];
+      el.querySelector('.skyd i').textContent = har || træning ? '⚽' : '🦶';
+    }
+  }
+}
+
+/* ---------- Kampen kører ---------- */
+function opdater(dt) {
+  if (!kamp || tilstand === 'menu' || tilstand === 'slut') return;
+  tik(kamp, dt);
+  tømHændelser();
+  opdaterPaneler();
+  if (kamp.fase === 'slut') slutSkærm();
+}
+
+function slutSkærm() {
+  const k = kamp;
+  const hvad = tilstand;
+  tilstand = 'slut';
+  for (const h of [0, 1]) styr(k, h, 0, 0);
+  const [a, b] = k.hold.map(o => o.mål);
+  $('slutEvne').hidden = true;
+  $('slutNy').hidden = true;
+  $('hsSlut').hidden = true;
+  $('slutScore').textContent = k.type === 'traening' ? '' : `${a} – ${b}`;
+  let titel, ikon, sub = '', ny = '', igen = 'Næste kamp';
+  if (hvad === 'liga') {
+    const r = efterKamp(profil, a, b);
+    gemProfil();
+    sidsteResultat = r;
+    titel = r.resultat === 'sejr' ? 'Du vandt!' : r.resultat === 'uafgjort' ? 'Uafgjort' : 'Du tabte';
+    ikon = r.resultat === 'sejr' ? (r.mester ? '👑' : '🏆') : r.resultat === 'uafgjort' ? '🤝' : '😣';
+    $('slutScore').textContent = `${a} – ${b} mod ${k.hold[1].kort}`;
+    sub = `+${r.penge} 🪙 · du har ${profil.penge} · ` + (r.resultat === 'sejr' ? `Sejre i træk: ${r.stime}` : r.resultat === 'tab' ? 'Stimen starter forfra' : `Stimen står på ${r.stime}`);
+    if (r.mester) ny = '👑 Du er MESTER! Du har slået alle ti hold. +200 🪙';
+    else if (r.rykOp) ny = `Næste hold: ${robotHold(profil.trin).navn} – de er sværere!`;
+    else if (r.rekord) ny = 'Ny rekord!';
+    igen = r.resultat === 'sejr' ? 'Næste kamp' : 'Prøv igen';
+    $('hsSlut').hidden = false;
+    tegnListe();
+    if (r.rekord) sendRekord(r.stime);
+    // Kapløb mod en ven (?rum=<kode>): sejre i træk op i rummet, så stillingen står øverst på skærmen.
+    if (window.Kaploeb) Kaploeb.slut(r.stime, r.stime === 1 ? '1 sejr' : r.stime + ' sejre');
+    if (r.resultat === 'sejr') konfetti(B / 2, L / 2, 80);
+  } else if (hvad === 'traening') {
+    const r = efterTraening(profil, k.øvelse, k.point);
+    gemProfil();
+    sidsteResultat = r;
+    titel = 'Træning slut';
+    ikon = TRAENING[k.øvelse].tegn;
+    $('slutScore').textContent = `${k.point} point`;
+    sub = `+${r.xp} erfaring i ${evneNavn(r.evne).toLowerCase()}` + (r.penge ? ` · +${r.penge} 🪙` : '');
+    if (r.op) ny = `⬆️ ${evneNavn(r.evne)} er nu niveau ${r.niveau}!`;
+    $('slutEvne').hidden = false;
+    evneLinjer($('slutEvne'), r.evne);
+    igen = 'Træn igen';
+  } else {
+    const v = k.vinder;
+    titel = v == null ? 'Uafgjort' : `${k.hold[v].navn} vandt!`;
+    ikon = v == null ? '🤝' : '🏆';
+    sub = `${k.hold[0].navn} ${a} – ${b} ${k.hold[1].navn}`;
+    $('slutScore').textContent = '';
+    igen = 'Omkamp';
+    if (v != null) konfetti(B / 2, v === 0 ? L - 10 : 10, 60, k.hold[v].farve);
+  }
+  $('slutTitel').textContent = titel;
+  $('slutIkon').textContent = ikon;
+  $('slutSub').textContent = sub;
+  $('slutNy').textContent = ny;
+  $('slutNy').hidden = !ny;
+  $('igenBtn').textContent = igen;
+  $('igenBtn').dataset.hvad = hvad;
+  $('pengeVal').textContent = profil.penge;
+  visSkærm('slutScreen');
+}
+$('igenBtn').addEventListener('click', () => {
+  vækLyd();
+  const hvad = $('igenBtn').dataset.hvad;
+  if (hvad === 'liga') startLiga();
+  else if (hvad === 'traening') startTræning(kamp.øvelse);
+  else startVen();
+});
+$('menuBtn').addEventListener('click', visMenu);
+// Stop midt i en kamp: der tælles ingenting, hverken penge eller nederlag.
+$('stopBtn').addEventListener('click', visMenu);
+
+/* ---------- Tegning ---------- */
+function tegnBane(nu) {
+  g.fillStyle = '#12301d'; g.fillRect(0, 0, W, H);
+  // Banderne
+  const bnd = 1.2 * s;
+  g.fillStyle = '#e9edf2';
+  g.beginPath(); g.roundRect(ox - bnd, oy - bnd, B * s + bnd * 2, L * s + bnd * 2, bnd * 1.5); g.fill();
+  // Græsset i striber
+  for (let i = 0; i < 10; i++) {
+    g.fillStyle = i % 2 ? '#2f8f46' : '#36a04f';
+    g.fillRect(ox, oy + i * L / 10 * s, B * s, L / 10 * s + 0.5);
+  }
+  // Kridtstregerne
+  g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = Math.max(1.5, 0.35 * s);
+  const [x0, y0] = px(0, 0);
+  g.strokeRect(x0 + 1.2 * s, y0 + 1.2 * s, (B - 2.4) * s, (L - 2.4) * s);
+  g.beginPath(); g.moveTo(...px(1.2, L / 2)); g.lineTo(...px(B - 1.2, L / 2)); g.stroke();
+  g.beginPath(); g.arc(...px(B / 2, L / 2), 8 * s, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = 'rgba(255,255,255,.85)';
+  g.beginPath(); g.arc(...px(B / 2, L / 2), 0.6 * s, 0, Math.PI * 2); g.fill();
+  if (!(kamp && kamp.maalLukket)) {
+    for (const [ya, ret] of [[1.2, 1], [L - 1.2, -1]]) {
+      const [bx, by] = px(B / 2 - 15, ya);
+      g.strokeRect(bx, ret > 0 ? by : by - 14 * s, 30 * s, 14 * s);
+      const [sx, sy] = px(B / 2 - 7, ya);
+      g.strokeRect(sx, ret > 0 ? sy : sy - 5 * s, 14 * s, 5 * s);
+      g.beginPath(); g.arc(...px(B / 2, ya + ret * 14), 5 * s, ret > 0 ? 0 : Math.PI, ret > 0 ? Math.PI : Math.PI * 2); g.stroke();
+    }
+  }
+  // Målene med net
+  for (const [y, ret] of [[0, -1], [L, 1]]) {
+    const træning = kamp && kamp.type === 'traening';
+    if (kamp && (kamp.maalLukket || (træning && y === L))) continue;
+    const [mx, my] = px(B / 2 - MAAL_B / 2, y);
+    const dyb = 3.2 * s, top = ret < 0 ? my - dyb : my;
+    g.fillStyle = 'rgba(255,255,255,.15)'; g.fillRect(mx, top, MAAL_B * s, dyb);
+    g.strokeStyle = 'rgba(255,255,255,.4)'; g.lineWidth = 1;
+    g.beginPath();
+    for (let i = 1; i < 8; i++) { g.moveTo(mx + i * MAAL_B * s / 8, top); g.lineTo(mx + i * MAAL_B * s / 8, top + dyb); }
+    for (let i = 1; i < 3; i++) { g.moveTo(mx, top + i * dyb / 3); g.lineTo(mx + MAAL_B * s, top + i * dyb / 3); }
+    g.stroke();
+    g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(3, 0.7 * s); g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(mx, my); g.lineTo(mx, ret < 0 ? my - dyb : my + dyb); g.lineTo(mx + MAAL_B * s, ret < 0 ? my - dyb : my + dyb); g.lineTo(mx + MAAL_B * s, my); g.stroke();
+  }
+}
+
+function tegnSpiller(p, nu) {
+  const hold = kamp.hold[p.h];
+  const [x, y] = px(p.x, p.y), r = R * s;
+  const styres = styret(kamp, p.h) === p && !bot;
+  // Ring under den, man styrer
+  if (styres) {
+    g.strokeStyle = mennesker.length === 2 ? hold.farve : '#ffd447'; g.lineWidth = Math.max(2.5, 0.45 * s);
+    g.beginPath(); g.arc(x, y, r * 1.55, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = mennesker.length === 2 ? hold.farve : '#ffd447';
+    const v = Math.atan2(p.fy, p.fx);
+    g.beginPath();
+    g.moveTo(x + Math.cos(v) * r * 2.3, y + Math.sin(v) * r * 2.3);
+    g.lineTo(x + Math.cos(v + 0.35) * r * 1.7, y + Math.sin(v + 0.35) * r * 1.7);
+    g.lineTo(x + Math.cos(v - 0.35) * r * 1.7, y + Math.sin(v - 0.35) * r * 1.7);
+    g.fill();
+  }
+  // Lysende makker i afleveringstræningen
+  if (kamp.type === 'traening' && p.rolle === 'makker' && kamp.lyser === p.i) {
+    const puls = 1.6 + 0.3 * Math.sin(nu * 7);
+    const gl = g.createRadialGradient(x, y, r * 0.5, x, y, r * puls * 1.6);
+    gl.addColorStop(0, 'rgba(255,212,71,.7)'); gl.addColorStop(1, 'rgba(255,212,71,0)');
+    g.fillStyle = gl; g.beginPath(); g.arc(x, y, r * puls * 1.6, 0, Math.PI * 2); g.fill();
+  }
+  // Skygge
+  g.fillStyle = 'rgba(0,0,0,.25)';
+  g.beginPath(); g.ellipse(x + r * 0.25, y + r * 0.35, r * 1.05, r * 0.8, 0, 0, Math.PI * 2); g.fill();
+  // Kroppen (skuldrene), set oppefra og drejet i løberetningen
+  const v = Math.atan2(p.fy, p.fx);
+  g.save(); g.translate(x, y); g.rotate(v + Math.PI / 2);
+  const keeper = p.rolle === 'keeper';
+  const trøje = keeper ? (p.h === 0 ? '#c6ff3d' : '#ff9f1c') : hold.farve;
+  // Benene, der løber
+  const fart = Math.hypot(p.vx, p.vy), trin = Math.sin(nu * 16 + p.i * 2) * Math.min(1, fart / 8);
+  g.fillStyle = '#222';
+  g.beginPath(); g.ellipse(-r * 0.4, -trin * r * 0.7, r * 0.26, r * 0.4, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(r * 0.4, trin * r * 0.7, r * 0.26, r * 0.4, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = trøje; g.strokeStyle = keeper ? '#1a1a1a' : hold.farve2; g.lineWidth = Math.max(1.5, 0.22 * s);
+  g.beginPath(); g.ellipse(0, 0, r, r * 0.62, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  // Målmanden har handsker
+  if (keeper) {
+    g.fillStyle = '#ffffff';
+    g.beginPath(); g.arc(-r * 0.95, -r * 0.2, r * 0.26, 0, Math.PI * 2); g.arc(r * 0.95, -r * 0.2, r * 0.26, 0, Math.PI * 2); g.fill();
+  }
+  // Hovedet med hår
+  g.fillStyle = ['#f0c8a0', '#c68e5d', '#8d5a36', '#f5d7b8'][(p.i + p.h) % 4];
+  g.beginPath(); g.arc(0, 0, r * 0.46, 0, Math.PI * 2); g.fill();
+  g.fillStyle = ['#4a3120', '#1d1d1d', '#e0b35a', '#7a3b1b'][(p.i * 3 + p.h) % 4];
+  g.beginPath(); g.arc(0, r * 0.08, r * 0.44, 0, Math.PI); g.fill();
+  g.restore();
+}
+
+function tegnBold(nu) {
+  const b = kamp.bold;
+  const [x, y] = px(b.x, b.y), r = Math.max(4, RB * s * 1.15);
+  const fart = Math.hypot(b.vx, b.vy);
+  if (!b.hos && fart > 18 && !roligt) {
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = r * 1.2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x - b.vx * 0.05 * s, y - b.vy * 0.05 * s); g.stroke();
+  }
+  g.fillStyle = 'rgba(0,0,0,.3)';
+  g.beginPath(); g.ellipse(x + r * 0.3, y + r * 0.4, r, r * 0.75, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#ffffff';
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#333'; g.lineWidth = 1; g.stroke();
+  g.fillStyle = '#222';
+  const v = b.drej * 0.9;
+  g.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = v + i * Math.PI * 2 / 5;
+    g[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * r * 0.42, y + Math.sin(a) * r * 0.42);
+  }
+  g.closePath(); g.fill();
+}
+
+function tegnKegle(nu) {
+  if (!kamp.kegle) return;
+  const [x, y] = px(kamp.kegle.x, kamp.kegle.y), r = 1.6 * s;
+  const puls = 1 + 0.12 * Math.sin(nu * 6);
+  g.strokeStyle = 'rgba(255,212,71,.8)'; g.lineWidth = 2;
+  g.beginPath(); g.arc(x, y, (R + 2.6) * s * puls, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(x + r * 0.3, y + r * 0.4, r, r * 0.8, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#ff7a1a'; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#fff'; g.lineWidth = r * 0.3; g.beginPath(); g.arc(x, y, r * 0.55, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = '#ffb36b'; g.beginPath(); g.arc(x, y, r * 0.28, 0, Math.PI * 2); g.fill();
+}
+
+function tegn(nu, dt) {
+  tegnBane(nu);
+  if (kamp) {
+    if (kamp.type === 'traening') tegnKegle(nu);
+    const alle = alleSpillere(kamp).slice().sort((a, b) => a.y - b.y);
+    for (const p of alle) tegnSpiller(p, nu);
+    tegnBold(nu);
+  }
+  for (let i = partikler.length - 1; i >= 0; i--) {
+    const q = partikler[i];
+    q.liv -= dt;
+    if (q.liv <= 0) { partikler.splice(i, 1); continue; }
+    q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.98; q.vy = q.vy * 0.98 + 160 * dt;
+    g.globalAlpha = Math.min(1, q.liv / q.maks * 1.5);
+    g.fillStyle = q.farve;
+    g.fillRect(q.x - q.str / 2, q.y - q.str / 2, q.str, q.str * 1.6);
+  }
+  g.globalAlpha = 1;
+}
+
+function frame(nu) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (nu - sidsteT) / 1000 || 0);
+  sidsteT = nu;
+  if (midtUr > 0) { midtUr -= dt; if (midtUr <= 0) midtTekst.classList.remove('vis'); }
+  if (!document.hidden && !pauset) opdater(dt);
+  tegn(nu / 1000, dt);
+}
+
+/* ---------- Topliste (sejre i træk i ligaen) ---------- */
+const SPIL = 'fodbold';
+const KEY_MIN = 'zydy.fodbold.min';
+let top = null;
+const formatSejre = v => v + (v === 1 ? ' sejr' : ' sejre');
+function tegnListe() {
+  if (!top || !window.Highscore) return;
+  const liste = top.liste || [], mig = mitNavn() || null;
+  Highscore.tegnListe($('hsListe'), liste, mig, 'Flest sejre i træk', formatSejre);
+  Highscore.tegnListe($('hsSlut'), liste, mig, 'Flest sejre i træk', formatSejre);
+}
+async function hentListe() {
+  if (!window.Highscore) return;
+  const rod = $('hsListe');
+  if (!top) rod.innerHTML = '<p class="hs-venter">Henter toplisten…</p>';
+  try { top = await Highscore.hent(SPIL); tegnListe(); }
+  catch (e) { if (!top) Highscore.tegnFejl(rod); }
+}
+async function sendRekord(sejre) {
+  const n = mitNavn();
+  if (!n || !top || !Highscore.kvalificerer(top, sejre)) return;
+  try {
+    const svar = await Highscore.send(SPIL, n, sejre);
+    if (svar.token) skriv(KEY_MIN, { id: svar.id, token: svar.token });
+    top = { ...top, liste: svar.liste };
+    tegnListe();
+  } catch (e) { /* toplisten er pynt – spillet kører videre */ }
+}
+
+/* ---------- Start ---------- */
+visMenu(); resize(); hentListe();
+requestAnimationFrame(frame);
+
+/* ---------- Test-API ---------- */
+window.GAME = {
+  seed,
+  liga: () => startLiga(),
+  traening: ø => startTræning(ø),
+  ven: () => startVen(),
+  menu: () => visMenu(),
+  /** Spoler frem uden at vente. */
+  frem(sekunder) {
+    let rest = sekunder;
+    while (rest > 0 && kamp && tilstand !== 'slut' && tilstand !== 'menu') { const d = Math.min(0.1, rest); opdater(d); rest -= d; }
+    return this.state;
+  },
+  pause(p = true) { pauset = p; },
+  /** Autopiloten spiller menneskets hold (så en hel kamp kan spilles i en test). */
+  bot(til = true) {
+    bot = til;
+    const h = kamp.hold[0];
+    if (til) { h.menneske = false; h.ai = AUTOPILOT; kamp.styrer[0] = null; }
+    else { h.menneske = true; h.ai = MENNESKE_AI; kamp.styrer[0] = 2; }
+  },
+  /** Stiller en situation op (bruges af testene). */
+  saetOp(opt = {}) {
+    if (opt.profil) { profil = rensProfil({ ...profil, ...opt.profil }); gemProfil(); if (tilstand === 'menu') visMenu(); }
+    if (!kamp) return this.state;
+    if (opt.mål) opt.mål.forEach((m, h) => { kamp.hold[h].mål = m; });
+    if (opt.tid != null) kamp.tid = opt.tid;
+    if (opt.klar) { kamp.fase = 'spil'; kamp.ur = 0; }
+    if (opt.mig) { const p = styret(kamp, 0); Object.assign(p, opt.mig); }
+    if (opt.point != null) kamp.point = opt.point;
+    return this.state;
+  },
+  /** Et punkt på banen i skærmens koordinater, så testen kan trykke og trække. */
+  px(x, y) { const r = canvas.getBoundingClientRect(), q = px(x, y); return { x: r.left + q[0], y: r.top + q[1] }; },
+  get state() {
+    const p = kamp && styret(kamp, 0), c = kamp && spillerMedBold(kamp);
+    return {
+      tilstand, profil: JSON.parse(JSON.stringify(profil)), sidsteResultat,
+      kamp: kamp && {
+        type: kamp.type, øvelse: kamp.øvelse, fase: kamp.fase, tid: kamp.tid, længde: kamp.længde, forlænget: kamp.forlænget,
+        mål: kamp.hold.map(o => o.mål), navne: kamp.hold.map(o => o.navn), point: kamp.point, vinder: kamp.vinder,
+        styrer: kamp.styrer.slice(), input: kamp.input.map(v => ({ ...v })),
+        mig: p && { x: p.x, y: p.y, i: p.i }, harBold: !!(p && c === p),
+        bold: { x: kamp.bold.x, y: kamp.bold.y, vx: kamp.bold.vx, vy: kamp.bold.vy, hos: kamp.bold.hos && { ...kamp.bold.hos } },
+        kegle: kamp.kegle && { ...kamp.kegle }, lyser: kamp.lyser,
+      },
+    };
+  },
+};
+</script>
+</body></html>

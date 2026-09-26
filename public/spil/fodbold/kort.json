@@ -1,0 +1,23 @@
+{
+  "navn": "Fodbold",
+  "beskrivelse": "Spil kamp 4 mod 4 mod robotterne – vinder du, møder du et sværere hold. Træn skud, fart og afleveringer, tjen penge til nye trøjer og støvler, eller spil mod en ven.",
+  "nøgleord": [
+    "football",
+    "soccer",
+    "fifa",
+    "kamp",
+    "liga",
+    "træning",
+    "mål",
+    "robotter",
+    "venner",
+    "bold"
+  ],
+  "url": "/spil/fodbold/",
+  "orden": 184,
+  "kapløb": true,
+  "højscore": {
+    "maks": 200,
+    "unik": true
+  }
+}
