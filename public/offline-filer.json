@@ -1,6 +1,6 @@
 {
   "_om": "GENERERET af scripts/byg-forside.mjs — ret ikke i hånden. Alt hvad public/sw.js kan lægge på telefonen, så zydy.dk virker uden internet. \"version\" er en hash af indholdet: ændrer den sig, henter service workeren det nye ned.",
-  "version": "7ade767faf6d",
+  "version": "ea143d1e6dba",
   "skal": [
     "/",
     "/beskeder.js",
@@ -119,6 +119,7 @@
     "/spil/obby/ikon.svg",
     "/spil/obby/kort.json",
     "/spil/obby/musik.mjs",
+    "/spil/obby/skins.mjs",
     "/spil/ordle/ikon.svg",
     "/spil/ordle/kort.json",
     "/spil/ordstige/",

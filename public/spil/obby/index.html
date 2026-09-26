@@ -48,7 +48,14 @@
     trækker en ny sang. Sangene er noder i musik.mjs, som spilles med WebAudio –
     se «Musikken» nede i koden. 🔊-knappen i toppen slår dem fra igen.
 
-    To filer: musik.mjs (sangene) og index.html. Ellers ingen afhængigheder
+    Ottende ønske (Sofie): «Kan du add flere skins og de må godt være dyre».
+    Der er kommet ti dyre skins til på 150-1000 coins (Piraten, Vikingen,
+    Tigerkatten, Englen, Djævlen, Lavamonstret, Diamanten, Galaksen, Guldkongen
+    og Enhjørningen) med glød, glimt og regnbue, og de står for sig selv under
+    «💎 Dyre skins» i butikken. Skins og tegnekoden flyttede til skins.mjs.
+
+    Tre filer: musik.mjs (sangene), skins.mjs (skins og hvordan de tegnes) og
+    index.html. Ellers ingen afhængigheder
     (ud over toplistens fælles klient /spil/highscore.js).
 
     Spilverdenen regnes i "enheder" (1 enhed = spillerens bredde), og en
@@ -137,6 +144,13 @@
   .skin-kort.dyr{opacity:.5}
   .skin-kort.dyr .skin-pris{color:var(--muted)}
   .skin-kort.ryst{animation:ryst .32s}
+  /* De dyre skins: egen overskrift og en lilla-gylden kant */
+  .dyre-titel{grid-column:1/-1;display:flex;flex-direction:column;gap:2px;margin:8px 0 0;text-align:left}
+  .dyre-titel b{font-size:18px;color:var(--text)}
+  .dyre-titel span{font-size:14px;color:var(--muted)}
+  .skin-kort.sjaelden{background:linear-gradient(160deg,#2c2366,var(--bg2) 70%);border-color:rgba(255,212,71,.35)}
+  .skin-kort.sjaelden.valgt{border-color:var(--sun)}
+  .skin-kort.sjaelden.dyr{opacity:.75}              /* man skal kunne se, hvad man sparer op til */
   @keyframes ryst{0%,100%{transform:none}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 
   /* Beskeder midt på spilfladen */
@@ -303,6 +317,7 @@
 <script type="module" src="/spil/kaploeb.js"></script>
 <script type="module">
 import * as Musik from './musik.mjs';
+import * as Skins from './skins.mjs';
 (() => {
 'use strict';
 
@@ -570,118 +585,9 @@ function stepPlayer(p, t0, dt) {
 }
 
 /* ---------- Skins ---------- */
-/*
-  Hver skin er en firkant med et ansigt og eventuelt en hat. Prisen er i coins og
-  må højst være 100 (Sofies regel). Klassisk er gratis og ejes fra start.
-  Tegnes af tegnSkin() i et 1x1-koordinatsystem, så den samme kode kan bruges
-  både til spilleren på canvas og til de små forhåndsvisninger i butikken.
-*/
-const SKINS = [
-  { id: 'klassisk',  navn: 'Klassisk',  pris: 0,   krop: '#ffd447', ansigt: 'smil' },
-  { id: 'mynte',     navn: 'Mynte',     pris: 10,  krop: '#5ee0a8', ansigt: 'smil' },
-  { id: 'himmel',    navn: 'Himmel',    pris: 10,  krop: '#5b8cff', ansigt: 'grin' },
-  { id: 'koral',     navn: 'Koral',     pris: 15,  krop: '#ff5c7a', ansigt: 'overrasket' },
-  { id: 'violet',    navn: 'Violet',    pris: 20,  krop: '#8f6bff', ansigt: 'sov' },
-  { id: 'slik',      navn: 'Slik',      pris: 25,  krop: '#ff9ad5', ansigt: 'grin', hat: 'sloejfe' },
-  { id: 'frosk',     navn: 'Frøen',     pris: 30,  krop: '#7bd34a', ansigt: 'grin', hat: 'blad' },
-  { id: 'sej',       navn: 'Den seje',  pris: 40,  krop: '#2ec9c9', ansigt: 'sej' },
-  { id: 'kasket',    navn: 'Kasketten', pris: 45,  krop: '#ff8a3d', ansigt: 'smil', hat: 'kasket' },
-  { id: 'spoegelse', navn: 'Spøgelse',  pris: 55,  krop: '#eef0ff', ansigt: 'overrasket' },
-  { id: 'nisse',     navn: 'Nissen',    pris: 60,  krop: '#e8413f', ansigt: 'smil', hat: 'nissehue' },
-  { id: 'troldmand', navn: 'Troldmand', pris: 75,  krop: '#4a3fb0', ansigt: 'sov', hat: 'spids' },
-  { id: 'robot',     navn: 'Robotten',  pris: 85,  krop: '#9aa7c7', ansigt: 'robot', hat: 'antenne' },
-  { id: 'konge',     navn: 'Kongen',    pris: 100, krop: '#ffd447', ansigt: 'sej', hat: 'krone' },
-];
-const skinMed = id => SKINS.find(s => s.id === id) || SKINS[0];
-
-/**
- * Tegner en skin i et kvadrat med hjørne (0,0) og siden `s`. `ctx` skal være
- * translateret på forhånd. Bruges både på spilfladen og i butikken.
- */
-function tegnSkin(ctx, s, skin) {
-  const m = s / 100, mork = '#1c1f4a';
-  const e = (x, y, r) => { ctx.beginPath(); ctx.arc(x * m, y * m, r * m, 0, 6.283); ctx.fill(); };
-
-  // Hatten sidder oven på hovedet og tegnes før kroppen, så den ligger bagved kanten
-  if (skin.hat === 'krone') {
-    ctx.fillStyle = '#ffcc2e';
-    ctx.beginPath();
-    ctx.moveTo(18 * m, -4 * m); ctx.lineTo(30 * m, -24 * m); ctx.lineTo(44 * m, -10 * m);
-    ctx.lineTo(58 * m, -28 * m); ctx.lineTo(72 * m, -10 * m); ctx.lineTo(84 * m, -24 * m);
-    ctx.lineTo(84 * m, 2 * m); ctx.lineTo(18 * m, 2 * m); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#ff5c7a'; e(51, -6, 5);
-  } else if (skin.hat === 'kasket') {
-    ctx.fillStyle = '#2b6be0';
-    ctx.beginPath(); ctx.ellipse(50 * m, -6 * m, 32 * m, 22 * m, 0, Math.PI, 0); ctx.fill();
-    ctx.fillRect(18 * m, -8 * m, 64 * m, 9 * m);
-    ctx.fillStyle = '#1e4fa8'; ctx.fillRect(50 * m, -8 * m, 44 * m, 8 * m);   // skyggen
-  } else if (skin.hat === 'nissehue') {
-    ctx.fillStyle = '#d8342f';
-    ctx.beginPath(); ctx.moveTo(16 * m, 0); ctx.lineTo(62 * m, -34 * m); ctx.lineTo(84 * m, 0); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.fillRect(12 * m, -8 * m, 76 * m, 9 * m); e(62, -34, 8);
-  } else if (skin.hat === 'spids') {
-    ctx.fillStyle = '#6a5ae0';
-    ctx.beginPath(); ctx.moveTo(12 * m, 2 * m); ctx.lineTo(50 * m, -40 * m); ctx.lineTo(88 * m, 2 * m); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#4b3fb5'; ctx.fillRect(10 * m, -8 * m, 80 * m, 10 * m);   // skygge under skyggen
-    ctx.fillStyle = '#ffd447'; e(50, -24, 5); e(36, -10, 4); e(64, -12, 3);
-  } else if (skin.hat === 'sloejfe') {
-    ctx.fillStyle = '#ff4f9a';
-    ctx.beginPath(); ctx.moveTo(50 * m, -6 * m); ctx.lineTo(22 * m, -22 * m); ctx.lineTo(22 * m, 4 * m); ctx.closePath();
-    ctx.moveTo(50 * m, -6 * m); ctx.lineTo(78 * m, -22 * m); ctx.lineTo(78 * m, 4 * m); ctx.closePath(); ctx.fill();
-    e(50, -7, 8);
-  } else if (skin.hat === 'blad') {
-    ctx.fillStyle = '#3f9e2f';
-    ctx.beginPath(); ctx.ellipse(60 * m, -14 * m, 20 * m, 9 * m, -0.5, 0, 6.283); ctx.fill();
-    ctx.strokeStyle = '#2c7320'; ctx.lineWidth = 4 * m; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(46 * m, 2 * m); ctx.lineTo(58 * m, -14 * m); ctx.stroke();
-  } else if (skin.hat === 'antenne') {
-    ctx.strokeStyle = '#6f7b98'; ctx.lineWidth = 5 * m; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(50 * m, 4 * m); ctx.lineTo(50 * m, -20 * m); ctx.stroke();
-    ctx.fillStyle = '#ff5c7a'; e(50, -25, 9);
-  }
-
-  // Kroppen
-  ctx.fillStyle = skin.krop;
-  ctx.beginPath(); ctx.roundRect(0, 0, s, s, 0.22 * s); ctx.fill();
-
-  // Ansigtet
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  if (skin.ansigt === 'sej') {
-    ctx.fillStyle = '#15182e';
-    ctx.beginPath(); ctx.roundRect(16 * m, 30 * m, 68 * m, 22 * m, 6 * m); ctx.fill();
-    ctx.fillRect(46 * m, 34 * m, 8 * m, 8 * m);
-    ctx.fillStyle = '#fff'; ctx.globalAlpha = .35;
-    ctx.beginPath(); ctx.moveTo(22 * m, 48 * m); ctx.lineTo(34 * m, 33 * m); ctx.lineTo(40 * m, 33 * m); ctx.lineTo(28 * m, 48 * m); ctx.closePath(); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = mork; ctx.lineWidth = 7 * m;
-    ctx.beginPath(); ctx.arc(50 * m, 62 * m, 16 * m, 0.25, Math.PI - 0.25); ctx.stroke();
-  } else if (skin.ansigt === 'robot') {
-    ctx.fillStyle = '#15182e';
-    ctx.beginPath(); ctx.roundRect(20 * m, 32 * m, 22 * m, 16 * m, 4 * m); ctx.roundRect(58 * m, 32 * m, 22 * m, 16 * m, 4 * m); ctx.fill();
-    ctx.fillStyle = '#5ee0a8'; ctx.fillRect(25 * m, 36 * m, 12 * m, 8 * m); ctx.fillRect(63 * m, 36 * m, 12 * m, 8 * m);
-    ctx.strokeStyle = mork; ctx.lineWidth = 6 * m;
-    ctx.beginPath(); ctx.moveTo(30 * m, 68 * m); ctx.lineTo(70 * m, 68 * m); ctx.stroke();
-  } else if (skin.ansigt === 'sov') {
-    ctx.strokeStyle = mork; ctx.lineWidth = 6 * m;
-    ctx.beginPath(); ctx.arc(34 * m, 42 * m, 12 * m, Math.PI * 0.15, Math.PI * 0.85);
-    ctx.arc(70 * m, 42 * m, 12 * m, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
-    ctx.beginPath(); ctx.arc(50 * m, 70 * m, 10 * m, Math.PI * 1.2, Math.PI * 1.8); ctx.stroke();
-  } else {
-    // Øjne med hvid baggrund (smil, grin, overrasket)
-    ctx.fillStyle = '#fff'; e(36, 40, 15); e(70, 40, 15);
-    ctx.fillStyle = mork; e(40, 42, 7); e(74, 42, 7);
-    if (skin.ansigt === 'grin') {
-      ctx.fillStyle = mork;
-      ctx.beginPath(); ctx.arc(52 * m, 60 * m, 20 * m, 0.1, Math.PI - 0.1); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.fillRect(34 * m, 60 * m, 36 * m, 6 * m);
-    } else if (skin.ansigt === 'overrasket') {
-      ctx.fillStyle = mork; e(52, 68, 11);
-    } else {
-      ctx.strokeStyle = mork; ctx.lineWidth = 6 * m;
-      ctx.beginPath(); ctx.arc(52 * m, 58 * m, 16 * m, 0.2, Math.PI - 0.2); ctx.stroke();
-    }
-  }
-}
+// Skins, priser og tegnekoden bor i skins.mjs (enhedstestet). Her bruges kun
+// SKINS, skinMed() og tegnSkin(); erDyr() deler butikken i to.
+const { SKINS, skinMed, tegnSkin, erDyr, erLevende } = Skins;
 
 /* ---------- Coins og ejede skins ---------- */
 const KEY_COINS = 'zydy.obby.coins', KEY_EJET = 'zydy.obby.skins', KEY_VALGT = 'zydy.obby.skin';
@@ -702,10 +608,11 @@ const maksNaaet = () => maksNaaetPr[grad.id] || 0;
   point eller coins for, ellers får man alt for mange coins for hurtigt").
   Regnestykket bag tallet 3: checkpoints ligger på hver 5. firkant, så 3 coins
   pr. checkpoint er 0,6 coins pr. firkant mod 1 før. Den dyreste skin koster 100
-  coins, og butikken koster 570 i alt. Et almindeligt løb til firkant 25 giver
-  15 coins (en billig skin), et godt løb til 50 giver 30, og et rigtig langt løb
-  til 100 giver 60. Kongen til 100 kan altså spares op på et par gode løb – men
-  aldrig på ét, og det var netop pointen.
+  coins blandt de almindelige, og de koster 570 i alt. Et almindeligt løb til
+  firkant 25 giver 15 coins (en billig skin), et godt løb til 50 giver 30, og et
+  rigtig langt løb til 100 giver 60. Kongen til 100 kan altså spares op på et par
+  gode løb – men aldrig på ét, og det var netop pointen. De ti dyre skins (ønske
+  #65) koster 150-1000 og 4.600 i alt: Enhjørningen til 1000 er en snes lange løb.
 */
 const COINS_PR_CHECKPOINT = 3;
 
@@ -1233,7 +1140,7 @@ function draw() {
     ctx.translate(px + u / 2, py + u);
     ctx.rotate(tilt); ctx.scale(1 / sq, sq);
     ctx.translate(-u / 2, -u);
-    tegnSkin(ctx, u, skinMed(valgtSkin));
+    tegnSkin(ctx, u, skinMed(valgtSkin), reduceMotion ? 0 : performance.now() / 1000);
     ctx.restore();
   }
 
@@ -1369,7 +1276,7 @@ function skinKort(skin) {
   const harDen = ejet.includes(skin.id), erValgt = skin.id === valgtSkin, raad = coins >= skin.pris;
   const knap = document.createElement('button');
   knap.type = 'button';
-  knap.className = 'skin-kort' + (harDen ? ' ejet' : '') + (erValgt ? ' valgt' : '') + (!harDen && !raad ? ' dyr' : '');
+  knap.className = 'skin-kort' + (erDyr(skin) ? ' sjaelden' : '') + (harDen ? ' ejet' : '') + (erValgt ? ' valgt' : '') + (!harDen && !raad ? ' dyr' : '');
   knap.dataset.skin = skin.id;
   knap.setAttribute('aria-pressed', String(erValgt));
 
@@ -1378,9 +1285,13 @@ function skinKort(skin) {
   c.width = c.height = Math.round(px * dp);
   c.style.width = c.style.height = px + 'px';
   const k = c.getContext('2d');
-  k.setTransform(dp, 0, 0, dp, 0, 0);
-  k.translate(px * 0.15, px * 0.29);              // luft over hovedet, så hatten ikke klippes
-  tegnSkin(k, px * 0.70, skin);
+  const tegn = tid => {
+    k.setTransform(dp, 0, 0, dp, 0, 0); k.clearRect(0, 0, px, px);
+    k.translate(px * 0.15, px * 0.29);            // luft over hovedet, så hatten ikke klippes
+    tegnSkin(k, px * 0.70, skin, tid);
+  };
+  tegn(0);
+  if (erLevende(skin)) levendeKort.push(tegn);
   knap.appendChild(c);
 
   const navnEl = document.createElement('span');
@@ -1396,10 +1307,34 @@ function skinKort(skin) {
   return knap;
 }
 
+/*
+  Butikken er delt i to: de almindelige skins og «Dyre skins» (Sofies ønske #65:
+  «flere skins og de må godt være dyre»). De dyre koster 150-1000 coins, så de
+  står for sig selv under en overskrift, der siger, at man skal spare op – ellers
+  ligner en grå skin til 1000 bare en fejl. De levende (regnbue, glimt, flammer …)
+  bevæger sig også her i butikken; det er dét, man sparer op til.
+*/
+const levendeKort = [];
+let butikAnim = 0;
+
 function tegnButik() {
-  skinGitter.innerHTML = '';
-  for (const skin of SKINS) skinGitter.appendChild(skinKort(skin));
+  skinGitter.innerHTML = ''; levendeKort.length = 0;
+  for (const skin of SKINS.filter(k => !erDyr(k))) skinGitter.appendChild(skinKort(skin));
+  const dyre = SKINS.filter(erDyr);
+  const titel = document.createElement('div');
+  titel.className = 'dyre-titel'; titel.id = 'dyreTitel';
+  titel.innerHTML = '<b>💎 Dyre skins</b><span>' + dyre.length + ' skins til ' + dyre[0].pris + '-' + dyre[dyre.length - 1].pris + ' coins – spar op!</span>';
+  skinGitter.appendChild(titel);
+  for (const skin of dyre) skinGitter.appendChild(skinKort(skin));
   visCoins();
+  if (!butikAnim && !reduceMotion && levendeKort.length) butikAnim = requestAnimationFrame(animerButik);
+}
+
+/** Tegner de levende forhåndsvisninger igen, så længe butikken er åben. */
+function animerButik(nu) {
+  if (!shopScreen.classList.contains('on')) { butikAnim = 0; return; }
+  for (const tegn of levendeKort) tegn(nu / 1000);
+  butikAnim = requestAnimationFrame(animerButik);
 }
 
 /** Klik på et kort: ejer man den, vælges den; ellers købes den, hvis man har råd. */
@@ -1480,7 +1415,9 @@ visNavn(); updateHud(); visCoins(); hentListe();
 window.GAME = {
   start, jump, tick, frem, simJump, spawn, tilMenu, aabnButik, lukButik, seed, vaelgGrad, saetMusik,
   sange: Musik.SANGE.map(s => ({ id: s.id, navn: s.navn, bpm: s.bpm })),
-  skins: SKINS.map(k => ({ id: k.id, navn: k.navn, pris: k.pris, hat: k.hat || null })),
+  skins: SKINS.map(k => ({ id: k.id, navn: k.navn, pris: k.pris, hat: k.hat || null, dyr: erDyr(k), levende: erLevende(k) })),
+  /** Giv coins (tests: så de dyre skins kan købes uden 300 løb). */
+  givCoins(n) { coins += n; skriv(KEY_COINS, coins); visCoins(); if (shopScreen.classList.contains('on')) tegnButik(); },
   grader: GRADER.map(g => ({ id: g.id, navn: g.navn, tempo: g.tempo })),
   pause() { paused = true; }, resume() { paused = false; lastT = 0; acc = 0; },
   die() { if (phase === 'run' || phase === 'ready') { player.alive = false; die('lava'); } },

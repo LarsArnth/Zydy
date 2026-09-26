@@ -221,7 +221,7 @@ await page.evaluate(() => window.GAME.placer(120));
 /* ---------- Skinbutikken ---------- */
 const skins = await page.evaluate(() => window.GAME.skins);
 assert.ok(skins.length >= 10, `der er mange skins at vælge mellem (${skins.length})`);
-assert.ok(skins.every(k => k.pris <= 100), 'ingen skin koster over 100 coins');
+assert.ok(skins.filter(k => !k.dyr).every(k => k.pris <= 100), 'de almindelige skins koster højst 100 coins');
 assert.equal(skins.filter(k => k.pris === 0).length, 1, 'præcis én gratis skin at starte med');
 assert.ok(skins.filter(k => k.hat).length >= 4, 'nogle af dem har hat');
 
@@ -622,6 +622,71 @@ assert.equal(await lydKnap.textContent(), '🔇', 'musikken er stadig slået fra
 await lydKnap.click();
 assert.equal((await page.evaluate(() => window.GAME.state)).musik.til, true, 'og kan slås til igen');
 assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'lydknappen giver ikke vandret scroll');
+
+/* ---------- Dyre skins (Sofies ønske #65) ---------- */
+// «Kan du add flere skins og de må godt være dyre» – ti skins til 150-1000 coins,
+// for sig selv under «💎 Dyre skins» i butikken.
+const dyre = skins.filter(k => k.dyr);
+assert.ok(dyre.length >= 8, `mange dyre skins (${dyre.length})`);
+assert.ok(dyre.every(k => k.pris >= 150) && dyre.some(k => k.pris >= 1000), 'de er rigtig dyre');
+const enhjoerning = dyre.find(k => k.id === 'regnbue');
+assert.ok(enhjoerning && enhjoerning.levende, 'Enhjørningen er den dyreste og bevæger sig');
+
+await page.evaluate(() => window.GAME.tilMenu());
+const c0 = (await page.evaluate(() => window.GAME.state)).coins;
+assert.ok(c0 < 1000, 'udgangspunktet er, at man ikke har råd');
+await page.locator('#skinStartBtn').click();
+await page.waitForSelector('#shopScreen.on');
+const titel = page.locator('#dyreTitel');
+assert.match(await titel.textContent(), /Dyre skins/, 'de dyre har deres egen overskrift');
+assert.match(await titel.textContent(), /spar op/i, 'og overskriften siger, at man skal spare op');
+assert.equal(await page.locator('.skin-kort.sjaelden').count(), dyre.length, 'hver dyr skin har sit eget kort');
+const orden = await page.evaluate(() => {
+  const t = document.getElementById('dyreTitel');
+  return [...document.querySelectorAll('.skin-kort')].map(k => ({
+    sjaelden: k.classList.contains('sjaelden'),
+    efter: !!(t.compareDocumentPosition(k) & Node.DOCUMENT_POSITION_FOLLOWING),
+  }));
+});
+assert.ok(orden.every(k => k.sjaelden === k.efter), 'de dyre står under overskriften, de almindelige over');
+
+// For dyr endnu: grå, og der sker ingenting ved et tryk
+const kort = page.locator('.skin-kort[data-skin="regnbue"]');
+await kort.scrollIntoViewIfNeeded();
+assert.ok(await kort.evaluate(k => k.classList.contains('dyr')), 'Enhjørningen er grå, når man ikke har råd');
+assert.ok(await kort.evaluate(k => parseFloat(getComputedStyle(k).opacity) >= 0.7), '… men ikke så grå, at man ikke kan se den');
+assert.match(await kort.textContent(), /1000/, 'prisen står på kortet');
+await kort.click();
+assert.ok(!(await page.evaluate(() => window.GAME.state)).ejet.includes('regnbue'), 'ikke købt uden coins');
+
+// Den levende forhåndsvisning bevæger sig i butikken
+const billede = () => kort.locator('canvas').evaluate(c => c.toDataURL());
+const b1 = await billede();
+await page.waitForTimeout(400);
+assert.notEqual(await billede(), b1, 'regnbuen glider hen over Enhjørningen i butikken');
+await page.screenshot({ path: SHOTS + 'obby-dyre-skins.png' });
+
+// Spar op (her: få dem foræret) og køb
+await page.evaluate(() => window.GAME.givCoins(1200));
+await kort.click();
+let sd = await page.evaluate(() => window.GAME.state);
+assert.equal(sd.coins, c0 + 200, '1000 coins trukket fra');
+assert.ok(sd.ejet.includes('regnbue'));
+assert.equal(sd.skin, 'regnbue', 'Enhjørningen er valgt');
+assert.match(await kort.textContent(), /Valgt/);
+
+// Og den er med på banen
+await page.locator('#shopTilbageBtn').click();
+await page.getByRole('button', { name: 'Spil', exact: true }).click();
+await page.evaluate(() => { const G = window.GAME; G.jump(); for (let n = 0; n < 40; n++) G.tick(1 / 120); });
+await page.waitForTimeout(100);
+assert.equal((await page.evaluate(() => window.GAME.state)).phase, 'run', 'man løber rundt som Enhjørningen');
+await page.screenshot({ path: SHOTS + 'obby-enhjoerning.png' });
+await page.reload();
+await page.waitForSelector('#hsListe .hs-liste, #hsListe .hs-fejl');
+sd = await page.evaluate(() => window.GAME.state);
+assert.equal(sd.skin, 'regnbue', 'den dyre skin huskes efter en genindlæsning');
+assert.equal(sd.coins, c0 + 200, 'og coins med');
 
 // API-fejl må ikke vælte spillet
 await page.unroute('**/api/highscore/**');
