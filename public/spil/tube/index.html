@@ -1,0 +1,1036 @@
+<!DOCTYPE html><html lang="da"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11142a">
+<meta name="description" content="ZydyTube: start din egen kanal, optag videoer, find på titler og miniaturer, og se seerne, likes og abonnenterne strømme ind.">
+<title>ZydyTube – zydy.dk</title>
+<!-- Cloudflare Web Analytics: cookiefri besøgstal, se dash.cloudflare.com -->
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "faf0f571e4f34c53aeca8872f361bf6c"}'></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23232a63'/%3E%3Crect x='10' y='16' width='44' height='32' rx='10' fill='%23ff3b4f'/%3E%3Cpath d='M27 24 L41 32 L27 40 Z' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  /*
+    ZydyTube – ens egen videokanal. Reglerne (visninger, abonnenter, udstyr,
+    kommentarer) bor i kanal.mjs; her er skærmene, optagelsen på canvas og
+    fingrene.
+  */
+  :root{
+    --bg:#11142a; --bg2:#1b1f42; --bg3:#232860; --text:#fff7e6; --muted:#a9acd6;
+    --sun:#ffd447; --rod:#ff3b4f; --mint:#5ee0a8; --sky:#5b8cff; --ink:#1c1f4a; --r:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overscroll-behavior:none;overflow:hidden}
+  body{display:flex;flex-direction:column;height:100vh;height:100dvh;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 12px);
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  h1{font-size:40px;line-height:1;margin:0 0 8px;letter-spacing:-1.5px;font-weight:800}
+  h2{margin:0;font-size:22px;letter-spacing:-.4px}
+  p{margin:0 0 12px;color:var(--muted);font-size:17px;line-height:1.4}
+  button{font:inherit;border:0;cursor:pointer;color:var(--ink)}
+  .btn{width:100%;padding:16px;border-radius:var(--r);font-size:19px;font-weight:700;
+    background:var(--sun);margin-top:10px;transition:transform .08s;min-height:44px}
+  .btn:active{transform:scale(.97)}
+  .btn.rod{background:var(--rod);color:#fff}
+  .btn.ghost{background:var(--bg2);color:var(--text)}
+  .btn:disabled{opacity:.45}
+  .pill{background:var(--bg2);border-radius:999px;padding:7px 12px;font-size:15px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--text)}
+
+  .screen{display:none;flex-direction:column;flex:1;width:100%;max-width:620px;margin:0 auto;min-height:0}
+  .screen.on{display:flex}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;min-height:44px;flex:none}
+  .back{color:var(--muted);text-decoration:none;font-size:17px;font-weight:700;display:inline-flex;background:none;
+    align-items:center;min-height:44px;min-width:44px;padding:0 6px 0 2px;border-radius:12px}
+  .back:active{background:var(--bg2)}
+  .logo{font-weight:800;font-size:20px;letter-spacing:-.4px;display:inline-flex;align-items:center;gap:6px}
+  .logo .play{display:inline-block;width:30px;height:21px;border-radius:7px;background:var(--rod);position:relative}
+  .logo .play::after{content:'';position:absolute;left:11px;top:5px;border-left:10px solid #fff;
+    border-top:5.5px solid transparent;border-bottom:5.5px solid transparent}
+  .overskrift{font-weight:800;font-size:17px;text-align:center}
+  .rund{background:var(--bg2);color:var(--text);border-radius:999px;min-width:44px;height:44px;font-size:19px;padding:0 10px}
+  .label{font-weight:700;font-size:16px;margin:12px 0 6px}
+  .rul{overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0}
+
+  /* ======== Startskærm ======== */
+  #start .indhold{flex:1;display:flex;flex-direction:column;overflow-y:auto;padding-bottom:10px}
+  #start h1{font-size:44px;display:flex;align-items:center;gap:10px;margin-top:4px}
+  #start h1 .play{width:58px;height:40px;border-radius:13px}
+  #start h1 .play::after{left:21px;top:10px;border-left-width:19px;border-top-width:10px;border-bottom-width:10px}
+  .navnefelt{font:inherit;font-size:20px;font-weight:700;text-align:center;padding:13px;border-radius:16px;
+    border:2px solid transparent;background:var(--bg2);color:var(--text);outline:none;width:100%;
+    -webkit-user-select:text;user-select:text}
+  .navnefelt:focus{border-color:var(--sun)}
+  .navnefelt::placeholder{color:var(--muted);font-weight:500}
+  .avatarer{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+  .avatarer button{aspect-ratio:1;border-radius:14px;background:var(--bg2);font-size:24px;border:3px solid transparent;min-height:40px;padding:0}
+  .avatarer button.on{border-color:var(--sun)}
+  .farver{display:flex;gap:10px}
+  .farver button{flex:1;height:40px;border-radius:14px;border:3px solid transparent}
+  .farver button.on{border-color:#fff}
+  .gemtKanal{display:flex;align-items:center;gap:12px;background:var(--bg2);border-radius:var(--r);padding:12px;margin:6px 0 4px}
+  .gemtKanal .ava{width:56px;height:56px;font-size:32px;flex:none}
+  .gemtKanal b{display:block;font-size:19px}
+  .gemtKanal span{color:var(--muted);font-size:15px}
+  #velkomst{margin:10px 0 0;color:var(--mint);font-weight:700}
+
+  /* ======== Kanalen ======== */
+  .banner{border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px;flex:none;
+    background:linear-gradient(135deg,var(--kanal,#ff5c7a),#232860)}
+  .ava{border-radius:50%;background:#fff3;display:grid;place-items:center;border:3px solid #fff8}
+  .banner .ava{width:62px;height:62px;font-size:36px;flex:none}
+  .banner .navn{font-weight:800;font-size:21px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .banner .abo{font-size:30px;font-weight:800;letter-spacing:-.8px;line-height:1.1}
+  .banner .abo small{font-size:15px;font-weight:700;letter-spacing:0;opacity:.85}
+  .tal{display:flex;gap:6px;margin:8px 0 0;flex-wrap:wrap;flex:none}
+  .tal .pill{flex:1;text-align:center;padding:7px 6px}
+  .maal{margin:8px 0 0;flex:none}
+  .maal .tekst{display:flex;justify-content:space-between;font-size:14px;color:var(--muted);font-weight:700;margin-bottom:4px}
+  .spor{height:10px;border-radius:99px;background:var(--bg2);overflow:hidden}
+  .spor i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--sun),var(--rod));border-radius:99px;transition:width .3s}
+  .trend{margin-top:8px;background:#ff3b4f22;border:2px solid #ff3b4f66;border-radius:16px;padding:8px 12px;font-weight:700;font-size:15px;flex:none}
+  .handlinger{display:flex;gap:8px;flex:none}
+  .handlinger .btn{margin-top:8px}
+  .handlinger .btn.ghost{flex:0 0 36%}
+  .hylde{display:flex;gap:8px;margin-top:8px;overflow-x:auto;flex:none}
+  .hylde .knap{flex:none}
+  #videoer{flex:1;margin-top:8px;padding-bottom:6px}
+  .tom{color:var(--muted);text-align:center;padding:24px 12px;font-size:16px}
+  .video{display:flex;gap:10px;width:100%;background:none;color:var(--text);text-align:left;padding:6px;border-radius:16px;align-items:flex-start}
+  .video:active{background:var(--bg2)}
+  .video .thumb{width:44%;flex:none}
+  .video .om{flex:1;min-width:0}
+  .video .titel{font-weight:700;font-size:15px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .video .meta{color:var(--muted);font-size:13px;margin-top:3px}
+  .video.ny{animation:ny 1.2s ease 2}
+  @keyframes ny{50%{background:var(--bg3)}}
+
+  /* ======== Miniaturen ======== */
+  .thumb{aspect-ratio:16/9;border-radius:12px;position:relative;overflow:hidden;
+    background:linear-gradient(135deg,var(--f,#ff5c7a),color-mix(in srgb,var(--f,#ff5c7a) 45%,#11142a))}
+  .thumb .stk{position:absolute;right:8%;top:50%;transform:translateY(-50%);font-size:calc(var(--s,60px));line-height:1}
+  .thumb .mig{position:absolute;left:6%;bottom:8%;font-size:calc(var(--s,60px) * .62);line-height:1}
+  .thumb .hd{position:absolute;right:5px;bottom:5px;background:#000b;color:#fff;font-size:11px;font-weight:800;border-radius:5px;padding:1px 5px}
+  .thumb .trendm{position:absolute;left:5px;top:5px;font-size:13px}
+
+  /* ======== Emnevalg ======== */
+  .emner{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .emne{background:var(--bg2);color:var(--text);border-radius:var(--r);padding:12px 8px;display:flex;flex-direction:column;
+    align-items:center;gap:2px;font-weight:800;font-size:17px;border:3px solid transparent;min-height:96px;position:relative}
+  .emne .ik{font-size:36px;line-height:1.1}
+  .emne .mrk{font-size:12px;font-weight:700;color:var(--muted)}
+  .emne.trendy{border-color:var(--rod)}
+  .emne.trendy .mrk{color:#ff8a98}
+  .emne:active{transform:scale(.97)}
+
+  /* ======== Optagelsen ======== */
+  .recbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex:none}
+  .rec{font-weight:800;color:#fff;background:#0006;border-radius:999px;padding:7px 13px;font-size:16px}
+  .rec i{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--rod);margin-right:6px;animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:.2}}
+  .scene{flex:1;position:relative;border-radius:var(--r);overflow:hidden;min-height:0;touch-action:none}
+  #laerred{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .hint{text-align:center;margin:8px 0 0;font-size:15px;flex:none}
+  .resultat{position:absolute;inset:0;background:#11142ae6;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center}
+  .resultat .stj{font-size:46px;letter-spacing:4px;margin-bottom:6px}
+  .resultat .btn{max-width:360px}
+  #nedtael{position:absolute;inset:0;display:grid;place-items:center;font-size:110px;font-weight:800;color:#fff;
+    text-shadow:0 6px 30px #0008;pointer-events:none}
+
+  /* ======== Klip og upload ======== */
+  #klip .rul{flex:1;padding-bottom:8px}
+  /* Miniaturen står fast øverst, så man kan se den skifte, mens man vælger */
+  #klipThumb{--s:54px;width:62%;margin:0 auto 2px;flex:none}
+  .forslag{display:flex;flex-direction:column;gap:6px}
+  .forslag button{background:var(--bg2);color:var(--text);border-radius:14px;padding:11px 12px;text-align:left;font-weight:700;font-size:16px;border:3px solid transparent;min-height:44px}
+  .forslag button.on{border-color:var(--sun)}
+  #egenTitel{font-size:16px;text-align:left;padding:11px 12px;border:3px solid transparent}
+  #egenTitel.on{border-color:var(--sun)}
+  .stickers{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+  .stickers button{aspect-ratio:1;border-radius:12px;background:var(--bg2);font-size:22px;border:3px solid transparent;min-height:40px;padding:0}
+  .stickers button.on{border-color:var(--sun)}
+  #forventet{font-size:15px;margin:10px 0 0;color:var(--text)}
+  #forventet .godt{color:var(--mint)} #forventet .skidt{color:#ff8a98}
+  #klip .fod{flex:none}
+
+  /* ======== Ark ======== */
+  .ark{position:fixed;inset:0;background:rgba(9,11,26,.72);display:none;align-items:flex-end;z-index:40}
+  .ark.on{display:flex}
+  .ark .kort{background:var(--bg);width:100%;max-width:620px;margin:0 auto;border-radius:26px 26px 0 0;
+    padding:16px 16px calc(env(safe-area-inset-bottom) + 16px);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .arkTop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .luk{background:var(--bg2);color:var(--text);border-radius:999px;width:44px;height:44px;font-size:20px;flex:none}
+  #vaThumb{--s:90px}
+  #vaTitel{font-size:19px;font-weight:800;margin:10px 0 2px;line-height:1.25}
+  #vaMeta{color:var(--muted);font-size:14px}
+  .vaTal{display:flex;gap:6px;margin:10px 0}
+  .vaTal .pill{flex:1;text-align:center}
+  .kom{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid #ffffff12}
+  .kom .ik{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:var(--ink);flex:none;font-size:15px}
+  .kom .txt{flex:1;min-width:0;font-size:15px;line-height:1.35}
+  .kom .txt b{font-size:13px;color:var(--muted);display:block}
+  .kom .hjerte{background:none;font-size:20px;min-width:44px;min-height:44px;color:var(--muted);margin:-6px -6px 0 0}
+  .flere{color:var(--muted);font-size:14px;text-align:center;margin:10px 0 0}
+  .udstyr{display:flex;align-items:center;gap:10px;background:var(--bg2);border-radius:18px;padding:10px 12px;margin-top:8px}
+  .udstyr .ik{font-size:30px;flex:none}
+  .udstyr .om{flex:1;min-width:0}
+  .udstyr .om b{display:block;font-size:16px}
+  .udstyr .om span{color:var(--muted);font-size:14px}
+  .prikker{letter-spacing:2px;color:var(--sun);font-size:12px}
+  .udstyr button{background:var(--sun);border-radius:14px;padding:8px 10px;font-weight:800;font-size:14px;min-height:44px;flex:none;max-width:42%}
+  .udstyr button:disabled{background:var(--bg3);color:var(--muted)}
+
+  /* ======== Afspilningsknappen ======== */
+  #maerkeArk .kort{text-align:center}
+  .knap{width:76px;height:92px;border-radius:12px;position:relative;display:inline-grid;place-items:center;
+    background:linear-gradient(160deg,#fff,#bfc6dc);box-shadow:inset 0 0 0 4px #0002,0 4px 12px #0005}
+  .knap::before{content:'';width:46%;height:30%;border-radius:22%;background:var(--rod);grid-area:1/1}
+  .knap::after{content:'';grid-area:1/1;margin-left:4%;border-left:12px solid #fff;border-top:7px solid transparent;border-bottom:7px solid transparent}
+  .knap.bronze{background:linear-gradient(160deg,#ffd0a0,#b0692c)}
+  .knap.soelv{background:linear-gradient(160deg,#ffffff,#9aa3bd)}
+  .knap.guld{background:linear-gradient(160deg,#fff3a0,#d69b12)}
+  .knap.diamant{background:linear-gradient(160deg,#e8fbff,#7fc8ff 55%,#c9a8ff)}
+  .knap.rubin{background:linear-gradient(160deg,#ffc0c8,#c8102e)}
+  .knap.lille{width:44px;height:54px;border-radius:8px}
+  .knap.lille::after{border-left-width:7px;border-top-width:4px;border-bottom-width:4px}
+  .knap.stor{width:150px;height:180px;border-radius:20px;margin:8px auto 12px;display:grid}
+  .knap.stor::after{border-left-width:24px;border-top-width:14px;border-bottom-width:14px}
+  .fest{font-size:66px;margin:8px 0}
+  .maerkeFlad{font-size:30px;flex:none;background:var(--bg2);border-radius:12px;width:44px;height:54px;display:grid;place-items:center}
+  .glimt{animation:glimt 1.6s ease-in-out infinite}
+  @keyframes glimt{50%{transform:scale(1.05) rotate(-2deg)}}
+  #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 62px);transform:translateX(-50%);z-index:60;
+    background:var(--mint);color:var(--ink);font-weight:800;border-radius:999px;padding:12px 18px;font-size:16px;
+    box-shadow:0 6px 20px #0006;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .25s}
+  #toast.on{opacity:1}
+  @media (prefers-reduced-motion:reduce){ .btn,.spor i,#toast{transition:none} .glimt,.video.ny,.rec i{animation:none} }
+  @media (max-height:600px){ .banner .ava{width:48px;height:48px;font-size:28px} .banner .abo{font-size:24px} #start h1{font-size:34px} }
+</style>
+</head><body>
+
+<!-- ===== Start ===== -->
+<div class="screen on" id="start">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="pill" id="startPill" hidden></span>
+  </div>
+  <div class="indhold">
+    <h1><span class="logo"><span class="play"></span></span>ZydyTube</h1>
+    <p id="startTekst">Start din egen kanal! Optag videoer, find på en god titel og se seerne strømme ind.</p>
+
+    <div id="gemt" hidden>
+      <div class="gemtKanal"><div class="ava" id="gemtAva"></div><div><b id="gemtNavn"></b><span id="gemtAbo"></span></div></div>
+      <div id="velkomst" hidden></div>
+      <button class="btn rod" id="fortsaetBtn">▶ Til min kanal</button>
+      <button class="btn ghost" id="nyKanalBtn">Start en ny kanal</button>
+    </div>
+
+    <div id="opret">
+      <input class="navnefelt" id="kanalNavn" maxlength="18" placeholder="Hvad skal kanalen hedde?" autocomplete="off" enterkeyhint="done">
+      <div class="label">Dit kanalbillede</div>
+      <div class="avatarer" id="avatarer"></div>
+      <div class="label">Kanalens farve</div>
+      <div class="farver" id="farver"></div>
+      <button class="btn rod" id="opretBtn">Opret kanal</button>
+    </div>
+    <div id="hsStart"></div>
+  </div>
+</div>
+
+<!-- ===== Kanalen ===== -->
+<div class="screen" id="kanal">
+  <div class="topbar">
+    <a class="back" href="/">‹ zydy.dk</a>
+    <span class="logo"><span class="play"></span>ZydyTube</span>
+    <button class="rund" id="toplisteBtn" aria-label="Topliste">🏆</button>
+  </div>
+  <div class="banner" id="banner">
+    <div class="ava" id="kAva"></div>
+    <div style="min-width:0">
+      <div class="navn" id="kNavn"></div>
+      <div class="abo"><span id="kAbo">0</span> <small>abonnenter</small></div>
+    </div>
+  </div>
+  <div class="tal">
+    <span class="pill">👁 <b id="kVis">0</b></span>
+    <span class="pill">💰 <b id="kPenge">0</b> kr.</span>
+    <span class="pill">📹 <b id="kKval">×1</b></span>
+  </div>
+  <div class="maal" id="maal">
+    <div class="tekst"><span id="maalNavn"></span><span id="maalTal"></span></div>
+    <div class="spor"><i id="maalSpor"></i></div>
+  </div>
+  <div class="trend" id="trend"></div>
+  <div class="handlinger">
+    <button class="btn rod" id="nyVideoBtn">🎬 Lav en video</button>
+    <button class="btn ghost" id="udstyrBtn">🛒 Udstyr</button>
+  </div>
+  <div class="hylde" id="hylde" hidden></div>
+  <div class="rul" id="videoer"></div>
+</div>
+
+<!-- ===== Vælg emne ===== -->
+<div class="screen" id="emne">
+  <div class="topbar">
+    <button class="back" id="emneTilbage">‹ Kanalen</button>
+    <span class="overskrift">Hvad handler videoen om?</span>
+    <span style="width:44px"></span>
+  </div>
+  <div class="rul" style="flex:1">
+    <div class="emner" id="emner"></div>
+    <p style="margin-top:12px;font-size:15px">🔥 = det, seerne ønsker sig lige nu. Laver du det samme tre gange i træk, keder de sig.</p>
+  </div>
+</div>
+
+<!-- ===== Optagelsen ===== -->
+<div class="screen" id="optag">
+  <div class="recbar">
+    <span class="rec"><i></i><span id="recTid">0:10</span></span>
+    <span class="pill" id="recEmne"></span>
+    <span class="pill">⭐ <b id="recFanget">0</b></span>
+  </div>
+  <div class="scene" id="scene">
+    <canvas id="laerred"></canvas>
+    <div id="nedtael"></div>
+    <div class="resultat" id="resultat" hidden>
+      <div class="stj" id="resStj"></div>
+      <h2 id="resTitel"></h2>
+      <p id="resTekst" style="margin-top:8px"></p>
+      <button class="btn rod" id="tilKlipBtn">✂️ Klip videoen</button>
+      <button class="btn ghost" id="igenBtn">🔁 Optag igen</button>
+    </div>
+  </div>
+  <p class="hint" id="recHint"></p>
+</div>
+
+<!-- ===== Klip og upload ===== -->
+<div class="screen" id="klip">
+  <div class="topbar">
+    <button class="back" id="klipTilbage">‹ Kanalen</button>
+    <span class="overskrift">Klip og upload</span>
+    <span style="width:44px"></span>
+  </div>
+  <div class="thumb" id="klipThumb"></div>
+  <div class="rul">
+    <div class="label">Titel</div>
+    <div class="forslag" id="forslag"></div>
+    <input class="navnefelt" id="egenTitel" maxlength="60" placeholder="✏️ Eller skriv din egen titel" autocomplete="off" enterkeyhint="done" style="margin-top:6px">
+    <div class="label">Baggrund</div>
+    <div class="farver" id="thumbFarver"></div>
+    <div class="label">Billede på miniaturen</div>
+    <div class="stickers" id="stickers"></div>
+    <p id="forventet"></p>
+  </div>
+  <div class="fod"><button class="btn rod" id="uploadBtn">⬆️ Upload videoen</button></div>
+</div>
+
+<!-- ===== En video ===== -->
+<div class="ark" id="videoArk">
+  <div class="kort">
+    <div class="arkTop"><h2>Video</h2><button class="luk" id="vaLuk" aria-label="Luk">✕</button></div>
+    <div class="thumb" id="vaThumb"></div>
+    <div id="vaTitel"></div>
+    <div id="vaMeta"></div>
+    <div class="vaTal">
+      <span class="pill">👁 <b id="vaVis">0</b></span>
+      <span class="pill">👍 <b id="vaLikes">0</b></span>
+      <span class="pill">➕ <b id="vaAbo">0</b></span>
+    </div>
+    <div class="label" id="vaKomTitel">Kommentarer</div>
+    <div id="vaKom"></div>
+    <div class="flere" id="vaFlere"></div>
+  </div>
+</div>
+
+<!-- ===== Udstyr ===== -->
+<div class="ark" id="udstyrArk">
+  <div class="kort">
+    <div class="arkTop"><h2>Udstyr</h2><span class="pill">💰 <b id="uPenge">0</b> kr.</span><button class="luk" id="uLuk" aria-label="Luk">✕</button></div>
+    <p>Bedre udstyr giver flottere videoer – og flottere videoer får flere seere. Videokvalitet lige nu: <b id="uKval" style="color:var(--text)"></b></p>
+    <div id="udstyrListe"></div>
+  </div>
+</div>
+
+<!-- ===== Afspilningsknap ===== -->
+<div class="ark" id="maerkeArk">
+  <div class="kort">
+    <div id="mBillede"></div>
+    <h2 id="mTitel"></h2>
+    <p id="mTekst" style="margin-top:8px"></p>
+    <button class="btn rod" id="mVidere">Videre</button>
+    <div id="mHs"></div>
+  </div>
+</div>
+
+<!-- ===== Topliste ===== -->
+<div class="ark" id="toplisteArk">
+  <div class="kort">
+    <div class="arkTop"><h2 id="hsTitel">Topliste</h2><button class="luk" id="hsLuk" aria-label="Luk toplisten">✕</button></div>
+    <p>De største kanaler på zydy.dk – målt i abonnenter.</p>
+    <div id="hsPanel"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/spil/highscore.js"></script>
+<script src="/spil/aktivitet.js" data-spil="tube"></script>
+<script type="module">
+import {
+  EMNER, emnet, UHELD, AVATARER, FARVER, UDSTYR, MAKS_TRIN, MAERKER, OPTAG_SEK, GODE, LEVETID,
+  mulberry32, optagPlan, fremme, optagKvalitet, stjerner, nyKanal, udstyrFaktor, prisFor, koebUdstyr,
+  abonnenter, visningerIalt, penge, visningerAf, likesAf, aboAf, keder, lokkerFor, forventning, upload,
+  nyeMaerker, naesteMaerke, synligeKommentarer, kommentarer, givHjerte, tal, siden, serialiser, laes, mensDuVarVaek,
+} from './kanal.mjs';
+
+const $ = s => document.querySelector(s);
+const KEY = 'zydy.tube.v1';
+const SPIL = 'tube';
+
+const params = new URLSearchParams(location.search);
+const seed = parseInt(params.get('seed'), 10) || ((Math.random() * 2 ** 31) | 0);
+const rnd = mulberry32(seed);
+
+/* ================= Tilstand ================= */
+const state = {
+  skaerm: 'start',
+  kanal: null,
+  valgtAvatar: AVATARER[0],
+  valgtFarve: FARVER[0],
+  optag: null,            // { emne, plan, t, taget, fanget, uheld, effekter, slut }
+  klip: null,             // { emne, kvalitet, titel, egen, farve, klistermaerke, stickers }
+  aabenVideo: null,
+  nyVideo: null,          // id på den video, der lige er lagt op (blinker i listen)
+  seed,
+};
+const GAME = window.GAME = { state, seed };
+const nu = () => Date.now();
+let koerer = true;
+
+/* ================= Gem og hent ================= */
+function gemNu() {
+  if (!state.kanal) return;
+  try { localStorage.setItem(KEY, JSON.stringify({ kanal: JSON.parse(serialiser(state.kanal)), sidst: nu() })); } catch {}
+}
+function hentGemt() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (!d) return null;
+    const kanal = laes(JSON.stringify(d.kanal));
+    return kanal ? { kanal, sidst: Number(d.sidst) || null } : null;
+  } catch { return null; }
+}
+
+/* ================= Små hjælpere ================= */
+function vis(id) {
+  for (const s of document.querySelectorAll('.screen')) s.classList.toggle('on', s.id === id);
+  state.skaerm = id;
+}
+const aabn = el => el.classList.add('on');
+const luk = el => el.classList.remove('on');
+let toastTimer = 0;
+function toast(tekst) {
+  const t = $('#toast'); t.textContent = tekst; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2600);
+}
+const el = (tag, cls, tekst) => { const e = document.createElement(tag); if (cls) e.className = cls; if (tekst != null) e.textContent = tekst; return e; };
+const kvalTekst = k => `×${udstyrFaktor(k).toFixed(2).replace('.', ',')}`;
+const ejefald = n => (/[sxz]$/i.test(n) ? `${n}'` : `${n}s`);
+
+/** En miniature: baggrund, klistermærke, ens kanalbillede og opløsningen. */
+function tegnThumb(rod, { farve, klistermaerke, kamera = 0, trend = false }, avatar) {
+  rod.replaceChildren();
+  rod.style.setProperty('--f', farve);
+  rod.appendChild(el('span', 'stk', klistermaerke));
+  rod.appendChild(el('span', 'mig', avatar));
+  rod.appendChild(el('span', 'hd', UDSTYR[0].maerke[kamera] || '480p'));
+  if (trend) rod.appendChild(el('span', 'trendm', '🔥'));
+}
+
+/* ================= Startskærmen ================= */
+function byggStart() {
+  const av = $('#avatarer'); av.replaceChildren();
+  for (const a of AVATARER) {
+    const b = el('button', a === state.valgtAvatar ? 'on' : '', a);
+    b.setAttribute('aria-label', `Kanalbillede ${a}`);
+    b.addEventListener('click', () => { state.valgtAvatar = a; byggStart(); });
+    av.appendChild(b);
+  }
+  const fv = $('#farver'); fv.replaceChildren();
+  for (const f of FARVER) {
+    const b = el('button', f === state.valgtFarve ? 'on' : '');
+    b.style.background = f; b.setAttribute('aria-label', 'Farve');
+    b.addEventListener('click', () => { state.valgtFarve = f; byggStart(); });
+    fv.appendChild(b);
+  }
+  let navn = '';
+  try { navn = (localStorage.getItem('zydy.navn') || '').trim(); } catch {}
+  if (navn) $('#kanalNavn').placeholder = `Fx «${ejefald(navn)} kanal»`;
+}
+
+function opret() {
+  let navn = $('#kanalNavn').value.trim();
+  if (!navn) {
+    let mit = '';
+    try { mit = (localStorage.getItem('zydy.navn') || '').trim(); } catch {}
+    navn = mit ? `${ejefald(mit)} kanal` : 'Min kanal';
+  }
+  state.kanal = nyKanal(navn, state.valgtAvatar, state.valgtFarve, nu(), (rnd() * 2 ** 31) >>> 0);
+  gemNu();
+  tilKanal();
+  toast('Kanalen er klar – lav din første video!');
+}
+
+/* ================= Kanalen ================= */
+function tilKanal() {
+  vis('kanal');
+  byggKanal();
+  opdater();
+}
+
+function byggKanal() {
+  const k = state.kanal;
+  $('#banner').style.setProperty('--kanal', k.farve);
+  $('#kAva').textContent = k.avatar;
+  $('#kNavn').textContent = k.navn;
+  const t = emnet(k.trend);
+  $('#trend').textContent = `🔥 Seerne vil gerne se: ${t.ikon} ${t.navn}`;
+  byggHylde();
+  byggVideoer();
+}
+
+function byggHylde() {
+  const h = $('#hylde'); h.replaceChildren();
+  const k = state.kanal;
+  for (const m of MAERKER.filter(m => k.maerker.includes(m.n))) {
+    const e = m.knap ? el('span', `knap lille ${m.knap}`) : el('span', 'maerkeFlad', m.ikon);
+    e.title = m.navn;
+    h.appendChild(e);
+  }
+  h.hidden = !h.children.length;
+}
+
+function byggVideoer() {
+  const liste = $('#videoer'); liste.replaceChildren();
+  const k = state.kanal;
+  if (!k.videoer.length) {
+    liste.appendChild(el('div', 'tom', 'Kanalen er tom endnu. Tryk på «🎬 Lav en video» og optag din første!'));
+    return;
+  }
+  for (const v of k.videoer) {
+    const b = el('button', 'video' + (v.id === state.nyVideo ? ' ny' : ''));
+    b.dataset.id = v.id;
+    const th = el('div', 'thumb'); th.style.setProperty('--s', '40px');
+    tegnThumb(th, v, k.avatar);
+    const om = el('div', 'om');
+    om.appendChild(el('div', 'titel', v.titel));
+    om.appendChild(el('div', 'meta'));
+    b.append(th, om);
+    b.addEventListener('click', () => aabnVideo(v.id));
+    liste.appendChild(b);
+  }
+  opdaterVideoer();
+}
+
+function opdaterVideoer() {
+  const k = state.kanal, t = nu();
+  for (const b of document.querySelectorAll('#videoer .video')) {
+    const v = k.videoer.find(x => x.id === Number(b.dataset.id));
+    if (!v) continue;
+    const kom = synligeKommentarer(v, k, t).length;
+    b.querySelector('.meta').textContent =
+      `${tal(visningerAf(v, t))} visninger · ${siden(t - v.oprettet)} · 👍 ${tal(likesAf(v, t))} · 💬 ${kom}`;
+  }
+}
+
+function opdater() {
+  const k = state.kanal;
+  if (!k) return;
+  const t = nu();
+  const S = abonnenter(k, t);
+  $('#kAbo').textContent = tal(S);
+  $('#kVis').textContent = tal(visningerIalt(k, t));
+  $('#kPenge').textContent = tal(Math.max(0, penge(k, t)));
+  $('#kKval').textContent = kvalTekst(k);
+  const m = naesteMaerke(S);
+  $('#maal').hidden = !m;
+  if (m) {
+    const forrige = [...MAERKER].reverse().find(x => x.n <= S)?.n || 0;
+    $('#maalNavn').textContent = `Næste: ${m.ikon} ${m.navn}`;
+    $('#maalTal').textContent = `${tal(S)} / ${tal(m.n)}`;
+    $('#maalSpor').style.width = `${Math.min(100, ((S - forrige) / (m.n - forrige)) * 100)}%`;
+  }
+  if (state.skaerm === 'kanal') opdaterVideoer();
+  if (state.aabenVideo != null) opdaterVideoArk();
+  if ($('#udstyrArk').classList.contains('on')) opdaterUdstyr();
+  tjekMaerker();
+}
+
+/* ================= Afspilningsknapper ================= */
+const koe = [];
+function tjekMaerker() {
+  // Knapperne, man har fået, mens man var væk, venter, til man er inde på kanalen.
+  if (state.skaerm === 'start') return;
+  const nye = nyeMaerker(state.kanal, nu());
+  if (!nye.length) return;
+  koe.push(...nye);
+  gemNu();
+  byggHylde();
+  if (!$('#maerkeArk').classList.contains('on')) visMaerke();
+}
+function visMaerke() {
+  const m = koe.shift();
+  if (!m) { luk($('#maerkeArk')); return; }
+  const k = state.kanal;
+  const bil = $('#mBillede'); bil.replaceChildren();
+  bil.appendChild(m.knap ? el('div', `knap stor glimt ${m.knap}`) : el('div', 'fest glimt', m.ikon));
+  $('#mTitel').textContent = m.knap ? `Du har fået ${m.navn}!` : `${tal(m.n)} abonnenter!`;
+  $('#mTekst').textContent = m.knap
+    ? `${k.navn} har rundet ${tal(m.n)} abonnenter. Den hænger nu på din kanal.`
+    : `Hurra! ${tal(m.n)} har trykket abonnér på ${k.navn}.`;
+  $('#mVidere').textContent = koe.length ? 'Der er mere …' : 'Videre';
+  // Toplisten popper op ved hver knap – så kan man se, hvem der er større.
+  Highscore.panel($('#mHs'), { spil: SPIL, score: abonnenter(k, nu()), titel: 'Største kanaler', format: tal });
+  aabn($('#maerkeArk'));
+  navigator.vibrate?.([30, 40, 30]);
+}
+
+/* ================= Videoarket ================= */
+function aabnVideo(id) {
+  state.aabenVideo = id;
+  const k = state.kanal, v = k.videoer.find(x => x.id === id);
+  if (!v) return;
+  tegnThumb($('#vaThumb'), v, k.avatar);
+  $('#vaTitel').textContent = v.titel;
+  vistKom = -1;
+  opdaterVideoArk();
+  aabn($('#videoArk'));
+}
+let vistKom = -1;
+function opdaterVideoArk() {
+  const k = state.kanal, v = k.videoer.find(x => x.id === state.aabenVideo);
+  if (!v) return;
+  const t = nu();
+  $('#vaMeta').textContent = `${emnet(v.emne).ikon} ${emnet(v.emne).navn} · ${siden(t - v.oprettet)}`;
+  $('#vaVis').textContent = tal(visningerAf(v, t));
+  $('#vaLikes').textContent = tal(likesAf(v, t));
+  $('#vaAbo').textContent = tal(aboAf(v, t));
+  const synlige = synligeKommentarer(v, k, t);
+  const alle = kommentarer(v, k).length;
+  $('#vaKomTitel').textContent = `Kommentarer · ${synlige.length}`;
+  $('#vaFlere').textContent = synlige.length < alle ? 'Flere kommentarer kommer, når flere har set videoen …' : '';
+  if (synlige.length === vistKom) return;
+  vistKom = synlige.length;
+  const rod = $('#vaKom'); rod.replaceChildren();
+  // Nyeste øverst, som på de rigtige kanaler.
+  for (const c of [...synlige].reverse()) {
+    const r = el('div', 'kom');
+    const ik = el('div', 'ik', c.navn[0].toUpperCase());
+    ik.style.background = FARVER[c.navn.length % FARVER.length];
+    const txt = el('div', 'txt'); txt.append(el('b', '', c.navn), document.createTextNode(c.tekst));
+    const har = k.hjerter.includes(`${v.id}:${c.nr}`);
+    const hj = el('button', 'hjerte', har ? '❤️' : '♡');
+    hj.setAttribute('aria-label', 'Giv et hjerte');
+    hj.addEventListener('click', () => { givHjerte(k, v.id, c.nr); gemNu(); vistKom = -1; opdaterVideoArk(); });
+    r.append(ik, txt, hj);
+    rod.appendChild(r);
+  }
+}
+
+/* ================= Udstyr ================= */
+function opdaterUdstyr() {
+  const k = state.kanal, p = Math.max(0, penge(k, nu()));
+  $('#uPenge').textContent = tal(p);
+  $('#uKval').textContent = kvalTekst(k);
+  const liste = $('#udstyrListe');
+  if (!liste.children.length) {
+    for (const u of UDSTYR) {
+      const r = el('div', 'udstyr'); r.dataset.id = u.id;
+      const om = el('div', 'om');
+      om.append(el('b'), el('span', 'prikker'));
+      const b = el('button');
+      b.addEventListener('click', () => koeb(u.id));
+      r.append(el('span', 'ik', u.ikon), om, b);
+      liste.appendChild(r);
+    }
+  }
+  for (const r of liste.children) {
+    const u = UDSTYR.find(x => x.id === r.dataset.id), trin = k.udstyr[u.id];
+    r.querySelector('b').textContent = `${u.navn}: ${u.trin[trin]}${u.maerke ? ` (${u.maerke[trin]})` : ''}`;
+    r.querySelector('.prikker').textContent = '●'.repeat(trin + 1) + '○'.repeat(MAKS_TRIN - trin);
+    const b = r.querySelector('button'), pris = prisFor(k, u.id);
+    if (pris == null) { b.textContent = '✓ Det bedste'; b.disabled = true; continue; }
+    b.textContent = p >= pris ? `${u.trin[trin + 1]} · ${tal(pris)} kr.` : `Mangler ${tal(pris - p)} kr.`;
+    b.disabled = p < pris;
+  }
+}
+function koeb(id) {
+  const k = state.kanal, u = UDSTYR.find(x => x.id === id);
+  if (!koebUdstyr(k, id, nu())) return false;
+  gemNu();
+  toast(`Du købte ${u.trin[k.udstyr[id]].toLowerCase()}! 🎉`);
+  opdater();
+  opdaterUdstyr();
+  return true;
+}
+
+/* ================= Emnevalg ================= */
+function tilEmne() {
+  const k = state.kanal;
+  const rod = $('#emner'); rod.replaceChildren();
+  for (const e of EMNER) {
+    const b = el('button', 'emne' + (k.trend === e.id ? ' trendy' : ''));
+    b.dataset.emne = e.id;
+    b.append(el('span', 'ik', e.ikon), el('span', '', e.navn));
+    const mrk = k.trend === e.id ? '🔥 Populært lige nu' : keder(k, e.id) ? '😴 Seerne keder sig' : '';
+    if (mrk) b.appendChild(el('span', 'mrk', mrk));
+    b.addEventListener('click', () => startOptag(e.id));
+    rod.appendChild(b);
+  }
+  vis('emne');
+}
+
+/* ================= Optagelsen ================= */
+const laerred = $('#laerred');
+const ctx = laerred.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function maalOp() {
+  const r = laerred.getBoundingClientRect();
+  DPR = Math.min(2, devicePixelRatio || 1);
+  W = r.width; H = r.height;
+  laerred.width = Math.max(1, Math.round(W * DPR)); laerred.height = Math.max(1, Math.round(H * DPR));
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener('resize', () => { if (state.skaerm === 'optag') { maalOp(); tegnOptag(); } });
+
+function startOptag(emneId) {
+  const e = emnet(emneId);
+  state.optag = {
+    emne: e.id, plan: optagPlan(e.id, (rnd() * 2 ** 31) >>> 0),
+    t: -1.6, taget: new Set(), fanget: 0, uheld: 0, effekter: [], slut: false,
+  };
+  $('#recEmne').textContent = `${e.ikon} ${e.navn}`;
+  $('#recFanget').textContent = '0';
+  $('#recHint').textContent = `Tryk på de sjove øjeblikke ${e.ting.slice(0, 3).join(' ')} – men ikke på ${UHELD.join(' ')}!`;
+  $('#resultat').hidden = true;
+  vis('optag');
+  maalOp();
+  tegnOptag();
+}
+
+/** Øjeblikkets størrelse i pixels. */
+const ting = () => Math.max(40, Math.min(W, H) * 0.15);
+
+function optagTik(dt) {
+  const o = state.optag;
+  if (!o || o.slut) return;
+  o.t += dt;
+  for (const f of o.effekter) f.t += dt;
+  o.effekter = o.effekter.filter(f => f.t < 0.8);
+  const n = o.t < 0 ? Math.ceil(-o.t / 0.55) : 0;
+  $('#nedtael').textContent = o.t < 0 ? String(Math.min(3, n)) : '';
+  const tilbage = Math.max(0, OPTAG_SEK - Math.max(0, o.t));
+  $('#recTid').textContent = `0:${String(Math.ceil(tilbage)).padStart(2, '0')}`;
+  if (o.t >= OPTAG_SEK) slutOptag();
+}
+
+function trykOptag(px, py) {
+  const o = state.optag;
+  if (!o || o.slut || o.t < 0) return null;
+  const s = ting();
+  let bedst = null, bd = Infinity;
+  for (const p of fremme(o.plan, o.t, o.taget)) {
+    const d = Math.hypot(px - p.x * W, py - p.y * H);
+    if (d < s * 0.75 && d < bd) { bedst = p; bd = d; }
+  }
+  if (!bedst) return null;
+  o.taget.add(bedst.nr);
+  if (bedst.god) { o.fanget++; o.effekter.push({ x: bedst.x * W, y: bedst.y * H, t: 0, tekst: '+1', god: true }); navigator.vibrate?.(10); }
+  else { o.uheld++; o.effekter.push({ x: bedst.x * W, y: bedst.y * H, t: 0, tekst: 'Av!', god: false }); navigator.vibrate?.([20, 30, 20]); }
+  $('#recFanget').textContent = String(o.fanget);
+  return bedst.god;
+}
+
+function slutOptag() {
+  const o = state.optag;
+  o.slut = true;
+  o.kvalitet = optagKvalitet(o.fanget, o.uheld);
+  const st = stjerner(o.kvalitet);
+  $('#nedtael').textContent = '';
+  $('#resStj').textContent = '⭐'.repeat(st) + '☆'.repeat(3 - st);
+  $('#resTitel').textContent = st === 3 ? 'Sikke en optagelse!' : st === 2 ? 'God optagelse!' : 'Den kan godt blive bedre';
+  $('#resTekst').textContent = `Du fangede ${o.fanget} af ${GODE} sjove øjeblikke` +
+    (o.uheld ? ` – og ramte ${o.uheld} uheld.` : '.');
+  $('#resultat').hidden = false;
+  tegnOptag();
+}
+
+function tegnOptag() {
+  const o = state.optag, k = state.kanal;
+  if (!o || !W) return;
+  const lys = k.udstyr.lys, kam = k.udstyr.kamera, mik = k.udstyr.mikrofon, pc = k.udstyr.computer;
+  // Væggen og gulvet: bedre lys = lysere rum
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  const lyst = 0.35 + lys * 0.12;
+  g.addColorStop(0, blend(k.farve, '#11142a', 1 - lyst));
+  g.addColorStop(1, blend(k.farve, '#11142a', 0.85 - lys * 0.08));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#0003'; ctx.fillRect(0, H * 0.8, W, H * 0.2);
+  // Plakat og hylde, så det ligner et værelse
+  ctx.fillStyle = '#ffffff18'; rundRekt(W * 0.07, H * 0.1, W * 0.2, H * 0.22, 8); ctx.fill();
+  ctx.fillStyle = '#ffffff22'; ctx.fillRect(W * 0.66, H * 0.3, W * 0.28, 6);
+  emoji(emnet(o.emne).ikon, W * 0.17, H * 0.21, Math.min(W, H) * 0.1, 0.5);
+  // Lyset
+  if (lys >= 2) {
+    const r = Math.min(W, H) * (lys >= 3 ? 0.2 : 0.14);
+    ctx.lineWidth = 8; ctx.strokeStyle = '#fff6d0'; ctx.shadowColor = '#fff6d0'; ctx.shadowBlur = 24;
+    ctx.beginPath(); ctx.arc(W * 0.5, H * 0.46, r * 1.9, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
+  } else if (lys === 1) {
+    emoji('💡', W * 0.86, H * 0.2, Math.min(W, H) * 0.09, 0.9);
+  }
+  // Mig selv midt i billedet
+  emoji(k.avatar, W * 0.5, H * 0.58, Math.min(W, H) * 0.3, 1);
+  // Mikrofonen og computeren foran
+  if (mik > 0) emoji('🎙️', W * 0.5 + Math.min(W, H) * 0.2, H * 0.78, Math.min(W, H) * (0.08 + mik * 0.02), 1);
+  if (pc > 0) emoji('💻', W * 0.14, H * 0.86, Math.min(W, H) * 0.1, 0.9);
+  // De sjove øjeblikke og uheldene
+  if (o.t >= 0 && !o.slut) {
+    const s = ting();
+    for (const p of fremme(o.plan, o.t, o.taget)) {
+      const a = o.t - p.t;
+      const pop = Math.min(1, a / 0.15) * (a > LEVETID - 0.25 ? Math.max(0, (LEVETID - a) / 0.25) : 1);
+      ctx.fillStyle = p.god ? '#ffffff30' : '#ff3b4f30';
+      ctx.beginPath(); ctx.arc(p.x * W, p.y * H, s * 0.6 * pop, 0, Math.PI * 2); ctx.fill();
+      emoji(p.ikon, p.x * W, p.y * H, s * pop, 1);
+    }
+  }
+  for (const f of o.effekter) {
+    ctx.globalAlpha = 1 - f.t / 0.8;
+    ctx.fillStyle = f.god ? '#ffd447' : '#ff3b4f';
+    ctx.font = `800 ${Math.round(ting() * 0.5)}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(f.tekst, f.x, f.y - f.t * 60);
+    ctx.globalAlpha = 1;
+  }
+  // Kameraets søger: hjørner og opløsning. Den gamle mobil er lidt grynet.
+  if (kam === 0) { ctx.fillStyle = '#ffffff08'; for (let i = 0; i < 90; i++) ctx.fillRect(((i * 97) % 100) / 100 * W, ((i * 61 + Math.floor(o.t * 12) * 13) % 100) / 100 * H, 3, 3); }
+  ctx.strokeStyle = '#ffffffb0'; ctx.lineWidth = 3;
+  const m = 14, l = 26;
+  for (const [x, y, dx, dy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) {
+    ctx.beginPath(); ctx.moveTo(x, y + dy * l); ctx.lineTo(x, y); ctx.lineTo(x + dx * l, y); ctx.stroke();
+  }
+  ctx.fillStyle = '#ffffffd0'; ctx.font = '800 14px -apple-system, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+  ctx.fillText(UDSTYR[0].maerke[kam], W - m - 8, m + 8);
+}
+
+function emoji(tegn, x, y, stoerrelse, alpha) {
+  // Farve-emojis arver gennemsigtigheden fra fillStyle, så den skal være helt dækkende.
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = alpha;
+  ctx.font = `${Math.round(stoerrelse)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(tegn, x, y);
+  ctx.globalAlpha = 1;
+}
+function rundRekt(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+/** Bland to farver: a mod b med andelen t af b. */
+function blend(a, b, t) {
+  const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [p(a), p(b)];
+  return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * Math.max(0, Math.min(1, t)))).join(',')})`;
+}
+
+laerred.addEventListener('pointerdown', e => {
+  const r = laerred.getBoundingClientRect();
+  trykOptag(e.clientX - r.left, e.clientY - r.top);
+  tegnOptag();
+});
+
+/* ================= Klip og upload ================= */
+function tilKlip() {
+  const o = state.optag, e = emnet(o.emne);
+  // Fire klistermærker, der passer, og fire, der ikke gør.
+  const andre = EMNER.filter(x => x.id !== e.id);
+  const fremmede = [];
+  while (fremmede.length < 4) {
+    const x = andre[Math.floor(rnd() * andre.length)].ting[Math.floor(rnd() * 5)];
+    if (!fremmede.includes(x) && !e.ting.includes(x)) fremmede.push(x);
+  }
+  const egne = [...e.ting].slice(0, 4);
+  const stickers = [...egne, ...fremmede].sort(() => rnd() - 0.5);
+  state.klip = {
+    emne: e.id, kvalitet: o.kvalitet, titel: e.titler[0], egen: false,
+    farve: e.farve && FARVER.includes(e.farve) ? e.farve : FARVER[Math.floor(rnd() * FARVER.length)],
+    klistermaerke: stickers[0], stickers,
+  };
+  $('#egenTitel').value = '';
+  byggKlip();
+  vis('klip');
+}
+
+function byggKlip() {
+  const c = state.klip, e = emnet(c.emne), k = state.kanal;
+  tegnThumb($('#klipThumb'), { farve: c.farve, klistermaerke: c.klistermaerke, kamera: k.udstyr.kamera, trend: k.trend === c.emne }, k.avatar);
+  const fs = $('#forslag'); fs.replaceChildren();
+  e.titler.forEach(t => {
+    const b = el('button', !c.egen && c.titel === t ? 'on' : '', t);
+    b.addEventListener('click', () => { c.titel = t; c.egen = false; $('#egenTitel').value = ''; byggKlip(); });
+    fs.appendChild(b);
+  });
+  $('#egenTitel').classList.toggle('on', c.egen);
+  const tf = $('#thumbFarver'); tf.replaceChildren();
+  for (const f of FARVER) {
+    const b = el('button', f === c.farve ? 'on' : ''); b.style.background = f; b.setAttribute('aria-label', 'Baggrund');
+    b.addEventListener('click', () => { c.farve = f; byggKlip(); });
+    tf.appendChild(b);
+  }
+  const st = $('#stickers'); st.replaceChildren();
+  for (const s of c.stickers) {
+    const b = el('button', s === c.klistermaerke ? 'on' : '', s);
+    b.addEventListener('click', () => { c.klistermaerke = s; byggKlip(); });
+    st.appendChild(b);
+  }
+  const f = forventning(k, c, nu());
+  const linjer = [`Forventet: ca. <b>${tal(Math.round(f.visninger / 10) * 10 || 10)}</b> visninger`];
+  if (f.trend) linjer.push('<span class="godt">🔥 Seerne ønsker sig lige præcis det her</span>');
+  if (f.keder) linjer.push('<span class="skidt">😴 Seerne har set meget af det her på det sidste</span>');
+  linjer.push(f.passer ? '<span class="godt">✓ Billedet passer til videoen</span>'
+    : '<span class="skidt">Tip: et billede, der passer til videoen, får flere til at klikke</span>');
+  if (f.lokker === 2) linjer.push('<span class="skidt">😒 Titlen lover mere, end videoen holder – mange klikker, men få abonnerer</span>');
+  else if (f.lokker === 0) linjer.push('<span class="godt">👍 En ærlig titel – dem, der klikker, bliver hængende</span>');
+  $('#forventet').innerHTML = linjer.join('<br>');
+}
+
+function uploadNu() {
+  const c = state.klip, k = state.kanal;
+  const v = upload(k, c, nu());
+  state.nyVideo = v.id;
+  state.optag = null; state.klip = null;
+  gemNu();
+  tilKanal();
+  $('#videoer').scrollTop = 0;
+  toast('⬆️ Uploadet! Nu kommer seerne …');
+  return v;
+}
+
+/* ================= Knapper ================= */
+$('#opretBtn').addEventListener('click', opret);
+$('#kanalNavn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); opret(); } });
+$('#fortsaetBtn').addEventListener('click', tilKanal);
+$('#nyKanalBtn').addEventListener('click', () => {
+  const b = $('#nyKanalBtn');
+  if (!b.dataset.sikker) {
+    b.dataset.sikker = '1';
+    b.textContent = `Ja, slet ${state.kanal.navn} og start forfra`;
+    return;
+  }
+  $('#gemt').hidden = true; $('#opret').hidden = false;
+  $('#kanalNavn').focus();
+});
+$('#nyVideoBtn').addEventListener('click', tilEmne);
+$('#emneTilbage').addEventListener('click', tilKanal);
+$('#klipTilbage').addEventListener('click', tilKanal);
+$('#tilKlipBtn').addEventListener('click', tilKlip);
+$('#igenBtn').addEventListener('click', () => startOptag(state.optag.emne));
+$('#uploadBtn').addEventListener('click', uploadNu);
+$('#egenTitel').addEventListener('input', () => {
+  const t = $('#egenTitel').value.trim(), c = state.klip;
+  if (t) { c.titel = t; c.egen = true; } else { c.titel = emnet(c.emne).titler[0]; c.egen = false; }
+  byggKlip();
+});
+$('#egenTitel').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
+$('#udstyrBtn').addEventListener('click', () => { opdaterUdstyr(); aabn($('#udstyrArk')); });
+$('#uLuk').addEventListener('click', () => luk($('#udstyrArk')));
+$('#vaLuk').addEventListener('click', () => { state.aabenVideo = null; luk($('#videoArk')); });
+$('#mVidere').addEventListener('click', visMaerke);
+$('#toplisteBtn').addEventListener('click', aabnTopliste);
+$('#hsLuk').addEventListener('click', () => luk($('#toplisteArk')));
+for (const ark of document.querySelectorAll('.ark')) {
+  ark.addEventListener('click', e => {
+    if (e.target !== ark) return;
+    if (ark.id === 'maerkeArk') { visMaerke(); return; }
+    if (ark.id === 'videoArk') state.aabenVideo = null;
+    luk(ark);
+  });
+}
+function aabnTopliste() {
+  const S = abonnenter(state.kanal, nu());
+  $('#hsTitel').textContent = `${tal(S)} abonnenter`;
+  aabn($('#toplisteArk'));
+  Highscore.panel($('#hsPanel'), { spil: SPIL, score: S > 0 ? S : undefined, titel: 'Største kanaler', format: tal });
+}
+
+document.addEventListener('visibilitychange', () => { if (document.hidden) gemNu(); });
+addEventListener('pagehide', gemNu);
+
+/* ================= Loop ================= */
+let sidstTid = 0, sidsteOpdater = 0, sidsteGem = 0;
+function billede(t) {
+  requestAnimationFrame(billede);
+  const dt = Math.min(0.1, (t - sidstTid) / 1000 || 0);
+  sidstTid = t;
+  if (!koerer) return;
+  if (state.skaerm === 'optag' && state.optag && !state.optag.slut) { optagTik(dt); tegnOptag(); }
+  // Tallene rører DOM'en, så de opdateres nogle få gange i sekundet.
+  if (state.kanal && t - sidsteOpdater > 250) { sidsteOpdater = t; opdater(); }
+  if (state.kanal && t - sidsteGem > 10000) { sidsteGem = t; gemNu(); }
+}
+requestAnimationFrame(billede);
+
+/* ================= Start ================= */
+{
+  byggStart();
+  const gemt = hentGemt();
+  if (gemt) {
+    const k = state.kanal = gemt.kanal;
+    $('#gemt').hidden = false; $('#opret').hidden = true;
+    $('#gemtAva').textContent = k.avatar;
+    $('#gemtAva').style.background = k.farve;
+    $('#gemtNavn').textContent = k.navn;
+    $('#gemtAbo').textContent = `${tal(abonnenter(k, nu()))} abonnenter · ${k.antal} ${k.antal === 1 ? 'video' : 'videoer'}`;
+    $('#startTekst').textContent = 'Velkommen tilbage! Din kanal venter på dig.';
+    const vaek = mensDuVarVaek(k, gemt.sidst, nu());
+    if (vaek) {
+      $('#velkomst').hidden = false;
+      $('#velkomst').textContent = `Mens du var væk: +${tal(vaek.visninger)} visninger og +${tal(vaek.abo)} abonnenter!`;
+    }
+  }
+  Highscore.panel($('#hsStart'), { spil: SPIL, titel: 'Største kanaler', format: tal });
+}
+
+/* ================= Til test ================= */
+Object.assign(GAME, {
+  opret, tilKanal, tilEmne, startOptag, optagTik, trykOptag, slutOptag, tilKlip, uploadNu, koeb,
+  aabnVideo, aabnTopliste, opdater, tegnOptag, gemNu, hentGemt,
+  pause: () => { koerer = false; },
+  resume: () => { koerer = true; },
+  /**
+   * Lad tiden gå: videoerne rykkes tilbage i tiden, så visningerne kommer,
+   * som om de havde ligget ude i sek sekunder. (Uret selv røres ikke, så det
+   * også passer efter en genindlæsning.)
+   */
+  spol: sek => {
+    for (const v of state.kanal.videoer) v.oprettet -= sek * 1000;
+    gemNu(); opdater();
+  },
+  nu,
+  emneTing: id => emnet(id).ting,
+  abonnenter: () => abonnenter(state.kanal, nu()),
+  visninger: () => visningerIalt(state.kanal, nu()),
+  penge: () => penge(state.kanal, nu()),
+  /** Hvor på skærmen de øjeblikke står, der er fremme lige nu (til en rigtig finger). */
+  fremmePunkter: () => {
+    const o = state.optag; if (!o) return [];
+    const r = laerred.getBoundingClientRect();
+    return fremme(o.plan, o.t, o.taget).map(p => ({ nr: p.nr, god: p.god, x: r.left + p.x * W, y: r.top + p.y * H }));
+  },
+});
+Object.defineProperty(GAME, 'kanal', { get: () => state.kanal });
+</script>
+</body></html>

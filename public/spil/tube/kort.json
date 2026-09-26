@@ -1,0 +1,18 @@
+{
+  "navn": "ZydyTube",
+  "beskrivelse": "Start din egen kanal: optag videoer, find på titel og miniature, og se seerne, likes og abonnenterne strømme ind – helt op til Guldknappen.",
+  "nøgleord": [
+    "youtube",
+    "youtuber",
+    "video",
+    "kanal",
+    "abonnenter",
+    "influencer"
+  ],
+  "url": "/spil/tube/",
+  "orden": 180,
+  "højscore": {
+    "maks": 1000000000,
+    "unik": true
+  }
+}

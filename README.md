@@ -2,7 +2,7 @@
 
 Forsiden på **<https://zydy.dk>**: en liste med familiens apps og spil, så
 børnene bare skal huske ét domæne. Siden er statisk HTML uden build og uden
-afhængigheder. De store apps bor i egne repoer og linkes til; treogtredive spil
+afhængigheder. De store apps bor i egne repoer og linkes til; seksogtredive spil
 ligger direkte her under `public/spil/`. Den eneste server-kode er tre små
 API'er (`src/`): en [online topliste](#online-topliste),
 [hvem der er på siden, og hvor tit spillene spilles](#populaere-spil-og-spiller-nu)
@@ -17,9 +17,9 @@ og [venner](#venner).
 
 ## Spil der bor her
 
-Ud over links til de andre apps huser repoet femogtredive spil under `public/spil/<navn>/`
+Ud over links til de andre apps huser repoet seksogtredive spil under `public/spil/<navn>/`
 uden afhængigheder eller build (alle én HTML-fil, undtagen Stenalder, der er tre,
-Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar og Baseforsvar, der er to). De udrulles sammen
+Dybet, der er fire, og Kryds og bolle, Duel, Gulvet er lava, Klodser, Min kat, Min hund, Miskmask, Blokblast, Slotskamp, Weeee!, Legebyen, Mit liv, Papirøen, Fiskedybet, Copyright, Klaverregn, Til søs!, Flaskehavet, Slanger, Kæmpetal, Elementløbet, Pjattemaskinen, Straffespark, Store Obby, Fjolle-Obby, Tårnforsvar, Baseforsvar og ZydyTube, der er to). De udrulles sammen
 med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Spil | Sti | Hvad |
@@ -62,6 +62,7 @@ med forsiden og ligger på `https://zydy.dk/spil/<navn>/`:
 
 | Tårnforsvar | `public/spil/taarnforsvar/` | SorteSlyngels ønske om «et Tower Defense-stil spil, hvor man kæmper om at komme længst». Stien snor sig fra hullet i toppen ned til porten, og på græsset ved siden af bygger man otte slags tårne: bueskytte (billig og hurtig), isbøsse (fryser, så de andre når at skyde flere gange), giftsky (skade pr. sekund, som panser ikke stopper), kanon (bomben rammer flere), guldmine (skyder ikke – betaler efter hver bølge), lynspole (lynet hopper videre til flere), troldmand (dyr, men lynet går igennem panser) og snigskytte (rammer hele banen og går efter det stærkeste monster). Fem niveauer pr. tårn, og man kan sælge igen. Monstrene kommer i bølger, der aldrig holder op: slim, flagermus, trolde med panser og en monsterkonge hver femte bølge. Score = **klarede bølger** – motoren er helt uden tilfældighed, så alle møder de samme bølger i den samme rækkefølge. To filer: `forsvar.mjs` (banen, tårnene, monstrene, bølgerne og en bot, enhedstestet) og `index.html`. Se «Tårnforsvar – stien, de otte tårne og bølgerne» nedenfor. |
 | Baseforsvar | `public/spil/baseforsvar/` | SorteSlyngels ønske om «et spil hvor man bygger en base og skal forsvare den fra fjender», med Warcraft 3-banen «Zombie Defense» som forbillede. Rådhuset står midt på et gitter på 13 × 17 felter med **tilfældigt terræn** (klipper, sø, skov) hver runde. Man bygger **mure**, **skydetårn**, **kanontårn**, **ballista** (skyder længst, sigter efter belejrere), **farm** (bønder giver guld ved daggry), **kaserne** (soldater og bueskyttere) og **kirke** (præster, der heler). Tropper trænes i kø uden loft, kan trykkes på for at se liv og tal, og opgraderes pr. slags; ⚔️-knappen i toppen åbner **hær-oversigten** med antallet af hver slags, træn 1 eller 5 og opgradér. Tre **helte** hyres på rådhuset — hver med aura, trylleformular og erfaring op til niveau 10. Zombierne kommer tilfældigt hen over døgnet fra alle kanter, flest om natten; fra dag 6 kommer **belejrere**, der kaster længere end alle tårne. Score = **overlevede dage**. To filer: `base.mjs` (motoren, vejkortet, terrænet og en bot, enhedstestet) og `index.html`. Se «Baseforsvar – basen, zombiernes vej og døgnet» nedenfor. |
+| ZydyTube | `public/spil/tube/` | Selmas ønske «YouTube»: ens egen videokanal. Man opretter en kanal (navn, kanalbillede, farve), vælger et af otte emner (gaming, kattevideo, bagning, dans, slim, tegning, udfordring, pakkeleg), **optager** i ti sekunder ved at trykke på de sjove øjeblikke, der popper op (men ikke på 🐝 🔔 🕷️), vælger titel og miniature og uploader. Så tikker visninger, likes, kommentarer og abonnenter ind i rigtig tid. Pengene køber bedre kamera, mikrofon, lys og computer, og ved 10.000, 100.000, 1 mio. og 10 mio. abonnenter kommer bronze-, sølv-, guld- og diamantknappen. Score = **abonnenter**, online topliste. To filer: `kanal.mjs` (visninger, abonnenter, udstyr og kommentarer, enhedstestet) og `index.html`. Se «ZydyTube – seerne, titlen og udstyret» nedenfor. |
 
 Alle spil gemmer highscore/fremskridt i `localStorage` under `zydy.<navn>.*`,
 kan seedes med `?seed=123` og eksponerer `window.GAME` til tests.
@@ -2007,6 +2008,52 @@ hyret, sendt ud og skjoldslaget kastet, hær-oversigten med fem soldater trænet
 og bueskytterne opgraderet derfra, en ballista mod en belejrer, natten,
 rådhuset falder) + `test/unit/baseforsvar.test.mjs`.
 
+### ZydyTube – seerne, titlen og udstyret
+
+Ønsket lød bare «YouTube». Et rigtigt videosite kan et statisk site ikke være
+(og skal ikke være for børn), så det er blevet det, børnene leger, når de leger
+YouTube: at *være* YouTuber. Reglerne bor i `kanal.mjs`, som ikke rører DOM'en.
+
+Fem valg er værd at huske:
+
+1. **Alt udledes af tiden.** En video får ved upload et *potentiale*
+   (visninger, abonnenter, likes), og hvor meget der er kommet ind, afhænger kun
+   af dens alder: `andel()` giver 95 % efter et minut (`VISNING_TAU` 20 sek.)
+   og så en hale på 50 % mere over det næste døgn. Abonnenter, visninger og
+   penge er summer over videoerne, så der er intet, der skal tælles op i en
+   løkke, og «mens du var væk: +1.234 visninger» regner sig selv ud.
+   Pengene er `visninger × 0,05 − brugt`.
+2. **Kvaliteten er to ting ganget sammen**: optagelsen (minispillet, 0,2-1) og
+   udstyret (1 + 0,12 pr. trin, 2,92 med alt). Den første er ens egen, den anden
+   køber man. En sjusket optagelse giver både færre seere og færre, der
+   abonnerer.
+3. **Titlen er spillets eneste lille lektie.** Den ærlige titel giver færrest
+   klik men flest abonnenter, den spændende flest penge, og den overdrevne
+   («KAGEN EKSPLODEREDE!!! 😱») flest klik, men skuffede seere, der ikke
+   abonnerer og skriver «Titlen passer jo slet ikke 😒». En selvskrevet titel
+   gættes ud fra, hvor meget den råber (`lokkerFor`).
+4. **Trenden og kedsomheden holder emnerne i gang.** Det, seerne ønsker sig
+   (🔥, og én kommentar under den nyeste video siger det), giver 1,6 × seere og
+   skifter, når man har lavet det; det samme emne tre gange i træk giver 0,7 ×.
+   Et klistermærke på miniaturen, der passer til emnet, giver 1,2 × klik.
+5. **Væksten er dæmpet med vilje** (`seere ∝ abonnenter^0,75`). Med eksponent 1
+   voksede en god kanal eksponentielt og havde 10 mio. efter 50 videoer.
+   Enhedstestens bot (80 % optagelse, tager trenden) når nu 1.000 efter ~14
+   videoer, Sølvknappen efter ~54 og Guldknappen efter ~90; Rubinknappen
+   (100 mio.) er næsten umulig.
+
+Kommentarerne gemmes ikke: de udledes af videoens frø (`kommentarer()`), så de
+er de samme, hver gang man kigger, og dukker op efterhånden som visningerne
+kommer. Farmor kommenterer altid den første video. Højst 40 videoer gemmes
+enkeltvis; de ældre lægges i `arkiv` med deres fulde tal. Kanalen ligger i
+`localStorage` under `zydy.tube.v1`, og `laes()` retter det, der ikke passer
+(ukendte emner, udstyr over toppen). Afspilningsknapperne fejres én gang hver
+(`maerker`) og ikke på startskærmen, og ved hver knap popper toplisten op.
+
+Test: `test/tube.test.mjs` (optager med en rigtig finger, uploader, spoler tiden
+med `GAME.spol(sek)`, som rykker videoerne tilbage i tiden, køber udstyr, får
+sølvknappen og kommer tilbage efter ti minutter) + `test/unit/tube.test.mjs`.
+
 ### Stenalder – regelvalg
 
 Reglerne følger den officielle regelbog (Rio Grande/Hans im Glück 2008),
@@ -2031,7 +2078,7 @@ PLAYWRIGHT=../DungeonCrawler/node_modules/playwright/index.mjs node test/run.mjs
 ```
 
 ```bash
-node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
+node --test test/unit/*.test.mjs     # Stenalders regelmotor, Dybets motor og «spil sammen»-lag, Kryds og bolles computerspiller, Duel-botten, Gulvet er lavas bane, Klodsers verden og fysik, Min kats behov og butik, Min hunds behov, gåtur og tricks, Mit livs behov, møbler og arbejde, Legebyens rum og figurer, Miskmasks 13 minispil, Blokblasts bræt og point, Slotskamps kamp og modstander, Weeee!s bakke og fysik, Papirøens sløjfe og modstandere, Papirøens to venner på ét papir, Fiskedybets farvande, kamp og økonomi, Copyrights motiver, gæt og point, Kæmpetals tal, hjælpere og loft, Store Obbys bane, fysik og bot, Fjolle-Obbys ni etaper og fjollerier, Obbys sange og sangpose, Tårnforsvars sti, tårne, bølger og balance, Baseforsvars base, zombievej, økonomi og balance, ZydyTubes seere, titler, udstyr og balance, kapløbets stilling, forsidens kort og søgning, nyhedslisten, testserverens portvalg, højscore-, aktivitets-, idé-, venne-, rum-, besked- og gruppe-API'et (ingen browser, ~5 sek.)
 ```
 
 **Flere testkørsler på én gang.** Kører to sessioner suiten samtidig, er de om

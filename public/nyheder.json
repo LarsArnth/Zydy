@@ -2,6 +2,14 @@
   "_om": "Nyt på zydy.dk. Nyeste først. Tilføj en linje øverst, hver gang der bliver lavet noget: nr = det højeste + 1, dato = i dag, spil = mappenavnet under public/spil/ ('' hvis det er hele siden), oensket = den der bad om det. 'nr' er den version, forsiden husker i localStorage (zydy.nyheder.set). Se README «Nyt på Zydy».",
   "nyheder": [
     {
+      "nr": 56,
+      "dato": "2026-09-26",
+      "spil": "tube",
+      "titel": "ZydyTube – din egen kanal",
+      "hvad": "Selma ønskede sig YouTube, og nu kan du blive YouTuber! Opret din kanal med navn, kanalbillede og farve, og vælg hvad videoen skal handle om: gaming, katte, bagning, dans, slim, tegning, udfordringer eller pakkeleg. Når du optager, popper de sjove øjeblikke op – tryk på dem, men pas på bien, klokken og edderkoppen! Bagefter finder du på en titel og laver miniaturen, og så uploader du. Nu kommer seerne: visninger, likes, kommentarer og abonnenter tikker ind. Pengene kan købe bedre kamera, mikrofon og lys, og når du har 100.000 abonnenter, får du Sølvknappen. Tip: en ærlig titel får flest til at abonnere.",
+      "oensket": "Selma"
+    },
+    {
       "nr": 55,
       "dato": "2026-09-26",
       "spil": "baseforsvar",

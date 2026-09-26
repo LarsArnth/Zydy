@@ -42,6 +42,7 @@ export const KORT = [
   { id: 'fjolle', navn: 'Fjolle-Obby', url: '/spil/fjolle/' },
   { id: 'taarnforsvar', navn: 'Tårnforsvar', url: '/spil/taarnforsvar/' },
   { id: 'baseforsvar', navn: 'Baseforsvar', url: '/spil/baseforsvar/' },
+  { id: 'tube', navn: 'ZydyTube', url: '/spil/tube/' },
 ];
 
 /** Spil med online topliste. Nøglen er spillets id, eller <id>-<tilstand> hvis
@@ -83,6 +84,7 @@ export const SPIL = {
   fjolle: { retning: 'asc', min: 30, maks: 5400, unik: true },
   taarnforsvar: { maks: 200, unik: true },
   baseforsvar: { maks: 200, unik: true },
+  tube: { maks: 1000000000, unik: true },
 };
 
 /** Spil to venner kan spille sammen over nettet ("sammen": true i kort.json).
